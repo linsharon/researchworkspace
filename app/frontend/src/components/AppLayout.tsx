@@ -1,6 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -30,29 +31,9 @@ import {
   Plus,
   X,
   Crown,
+  Globe,
 } from "lucide-react";
 import { DUMMY_PROJECT, DUMMY_PROJECTS, STEP_META, type WorkflowStep, type ProjectItem } from "@/lib/data";
-
-const NAV_ITEMS = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/workflow/1", label: "1. Purpose", icon: Target },
-  { path: "/workflow/2", label: "2. Discover", icon: Search },
-  { path: "/workflow/3", label: "3. Read", icon: BookOpen },
-  { path: "/workflow/4", label: "4. Expand", icon: Network },
-  { path: "/workflow/5", label: "5. Visualize", icon: Eye },
-  { path: "/workflow/6", label: "6. Draft", icon: PenTool },
-];
-
-const ARTIFACT_NAV_ITEMS = [
-  { path: "/artifacts?tab=all", label: "All Artifacts", icon: Archive },
-  { path: "/artifacts?tab=purpose", label: "Purpose Cards", icon: Target },
-  { path: "/artifacts?tab=search", label: "Search Logs", icon: Search },
-  { path: "/artifacts?tab=notes", label: "Notes", icon: FileText },
-  { path: "/artifacts?tab=drafts", label: "Drafts", icon: PenTool },
-  { path: "/artifacts?tab=visual", label: "Visualizations", icon: Map },
-];
-
-
 
 const STEP_ICONS: Record<WorkflowStep, typeof Target> = {
   1: Target,
@@ -75,10 +56,10 @@ export default function AppLayout({
   rightPanelContent,
 }: AppLayoutProps) {
   const location = useLocation();
+  const { t, lang, setLang } = useI18n();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const project = DUMMY_PROJECT;
-  const progressPercent = ((project.currentStep - 1) / 5) * 100;
 
   // Project switcher state
   const [showProjectSwitcher, setShowProjectSwitcher] = useState(false);
@@ -87,6 +68,9 @@ export default function AppLayout({
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [newProjectGoal, setNewProjectGoal] = useState("");
+
+  // Language switcher state
+  const [showLangSwitcher, setShowLangSwitcher] = useState(false);
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0];
 
@@ -107,6 +91,25 @@ export default function AppLayout({
     setShowProjectSwitcher(false);
   };
 
+  const NAV_ITEMS = [
+    { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { path: "/workflow/1", label: t("nav.purpose"), icon: Target },
+    { path: "/workflow/2", label: t("nav.discover"), icon: Search },
+    { path: "/workflow/3", label: t("nav.read"), icon: BookOpen },
+    { path: "/workflow/4", label: t("nav.expand"), icon: Network },
+    { path: "/workflow/5", label: t("nav.visualize"), icon: Eye },
+    { path: "/workflow/6", label: t("nav.draft"), icon: PenTool },
+  ];
+
+  const ARTIFACT_NAV_ITEMS = [
+    { path: "/artifacts?tab=all", label: t("nav.allArtifacts"), icon: Archive },
+    { path: "/artifacts?tab=purpose", label: t("nav.purposeCards"), icon: Target },
+    { path: "/artifacts?tab=search", label: t("nav.searchLogs"), icon: Search },
+    { path: "/artifacts?tab=notes", label: t("nav.notes"), icon: FileText },
+    { path: "/artifacts?tab=drafts", label: t("nav.drafts"), icon: PenTool },
+    { path: "/artifacts?tab=visual", label: t("nav.visualizations"), icon: Map },
+  ];
+
   return (
     <div className="flex h-screen bg-white overflow-hidden">
       {/* Left Sidebar */}
@@ -124,7 +127,7 @@ export default function AppLayout({
                 <BookOpen className="w-4 h-4 text-white" />
               </div>
               <span className="font-semibold text-sm text-slate-800 truncate">
-                Academic Workspace
+                {t("app.title")}
               </span>
             </div>
           )}
@@ -135,22 +138,130 @@ export default function AppLayout({
           )}
         </div>
 
-        {/* Project Info */}
+        {/* Project Info + Switcher in Sidebar */}
         {!sidebarCollapsed && (
           <div className="px-4 py-3 border-b border-slate-200 shrink-0">
             <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
-              Current Project
+              {t("app.currentProject")}
             </p>
-            <p className="text-sm font-medium text-slate-800 truncate">
-              {activeProject.title}
-            </p>
+            <button
+              onClick={() => setShowProjectSwitcher(!showProjectSwitcher)}
+              className="w-full text-left flex items-center justify-between gap-1 group"
+            >
+              <p className="text-sm font-medium text-slate-800 truncate group-hover:text-[#1E3A5F] transition-colors">
+                {activeProject.title}
+              </p>
+              <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform", showProjectSwitcher && "rotate-180")} />
+            </button>
             <div className="mt-2">
               <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                <span>Step {activeProject.currentStep} of 6</span>
+                <span>{t("app.step")} {activeProject.currentStep} {t("app.of")} 6</span>
                 <span>{Math.round(((activeProject.currentStep - 1) / 5) * 100)}%</span>
               </div>
               <Progress value={((activeProject.currentStep - 1) / 5) * 100} className="h-1.5" />
             </div>
+
+            {/* Project Switcher Dropdown (in sidebar) */}
+            {showProjectSwitcher && (
+              <div className="mt-2 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">
+                <div className="p-2 border-b border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                      {t("app.switchProject")}
+                    </p>
+                    <Badge className="text-[8px] bg-amber-100 text-amber-700 border-amber-200">
+                      <Crown className="w-2 h-2 mr-0.5" />
+                      {t("app.premium")}
+                    </Badge>
+                  </div>
+                </div>
+                <ScrollArea className="max-h-[200px]">
+                  <div className="p-1.5 space-y-0.5">
+                    {projects.map((proj) => (
+                      <button
+                        key={proj.id}
+                        onClick={() => {
+                          setActiveProjectId(proj.id);
+                          setShowProjectSwitcher(false);
+                        }}
+                        className={cn(
+                          "w-full text-left p-2 rounded-md transition-all",
+                          proj.id === activeProjectId
+                            ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20"
+                            : "hover:bg-slate-50 border border-transparent"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-medium text-slate-800 truncate">
+                            {proj.title}
+                          </span>
+                          {proj.id === activeProjectId && (
+                            <CheckCircle2 className="w-3 h-3 text-[#1E3A5F] shrink-0" />
+                          )}
+                        </div>
+                        <p className="text-[9px] text-slate-400 truncate">{proj.goal}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <Badge variant="outline" className="text-[8px] px-1 py-0">
+                            {t("app.step")} {proj.currentStep}/6
+                          </Badge>
+                          <span className="text-[8px] text-slate-300">{proj.updatedAt}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </ScrollArea>
+                <div className="p-1.5 border-t border-slate-100">
+                  {showNewProject ? (
+                    <div className="p-1.5 space-y-1.5">
+                      <Input
+                        value={newProjectTitle}
+                        onChange={(e) => setNewProjectTitle(e.target.value)}
+                        placeholder={t("app.projectTitle")}
+                        className="text-xs h-7"
+                        autoFocus
+                      />
+                      <Input
+                        value={newProjectGoal}
+                        onChange={(e) => setNewProjectGoal(e.target.value)}
+                        placeholder={t("app.researchGoal")}
+                        className="text-xs h-7"
+                      />
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          className="text-[10px] h-6 bg-[#1E3A5F] hover:bg-[#162d4a] text-white flex-1"
+                          onClick={handleCreateProject}
+                        >
+                          {t("app.create")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-[10px] h-6"
+                          onClick={() => {
+                            setShowNewProject(false);
+                            setNewProjectTitle("");
+                            setNewProjectGoal("");
+                          }}
+                        >
+                          {t("app.cancel")}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-[10px] h-7"
+                      onClick={() => setShowNewProject(true)}
+                    >
+                      <Plus className="w-2.5 h-2.5 mr-1" />
+                      {t("app.newProject")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -159,7 +270,7 @@ export default function AppLayout({
           <nav className="p-2 space-y-0.5">
             {!sidebarCollapsed && (
               <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 pt-2 pb-1">
-                Workflow
+                {t("nav.workflow")}
               </p>
             )}
             {NAV_ITEMS.map((item, idx) => {
@@ -203,7 +314,7 @@ export default function AppLayout({
 
             {!sidebarCollapsed && (
               <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 pt-4 pb-1">
-                Artifacts
+                {t("nav.artifacts")}
               </p>
             )}
             {sidebarCollapsed && <Separator className="my-2" />}
@@ -230,8 +341,6 @@ export default function AppLayout({
                 </Link>
               );
             })}
-
-
           </nav>
         </ScrollArea>
 
@@ -254,123 +363,61 @@ export default function AppLayout({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Bar with Project Switcher */}
+        {/* Top Bar with Language Switcher */}
         <header className="h-12 border-b border-slate-200 bg-white flex items-center justify-end px-4 shrink-0">
           <div className="relative">
             <button
-              onClick={() => setShowProjectSwitcher(!showProjectSwitcher)}
+              onClick={() => setShowLangSwitcher(!showLangSwitcher)}
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm"
             >
-              <FolderOpen className="w-3.5 h-3.5 text-slate-500" />
-              <span className="text-slate-700 font-medium max-w-[180px] truncate">
-                {activeProject.title}
+              <Globe className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-slate-700 font-medium">
+                {lang === "en" ? "English" : "中文"}
               </span>
-              <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                Step {activeProject.currentStep}
-              </Badge>
-              <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", showProjectSwitcher && "rotate-180")} />
+              <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", showLangSwitcher && "rotate-180")} />
             </button>
 
-            {/* Project Switcher Dropdown */}
-            {showProjectSwitcher && (
+            {/* Language Switcher Dropdown */}
+            {showLangSwitcher && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => { setShowProjectSwitcher(false); setShowNewProject(false); }} />
-                <div className="absolute right-0 top-full mt-1 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
-                  <div className="p-3 border-b border-slate-100">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        Switch Project
-                      </p>
-                      <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">
-                        <Crown className="w-2.5 h-2.5 mr-0.5" />
-                        Premium
-                      </Badge>
-                    </div>
+                <div className="fixed inset-0 z-40" onClick={() => setShowLangSwitcher(false)} />
+                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
+                  <div className="p-2 border-b border-slate-100">
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                      {t("app.language")}
+                    </p>
                   </div>
-                  <ScrollArea className="max-h-[240px]">
-                    <div className="p-2 space-y-1">
-                      {projects.map((proj) => (
-                        <button
-                          key={proj.id}
-                          onClick={() => {
-                            setActiveProjectId(proj.id);
-                            setShowProjectSwitcher(false);
-                          }}
-                          className={cn(
-                            "w-full text-left p-3 rounded-lg transition-all",
-                            proj.id === activeProjectId
-                              ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20"
-                              : "hover:bg-slate-50 border border-transparent"
-                          )}
-                        >
-                          <div className="flex items-center justify-between mb-0.5">
-                            <span className="text-sm font-medium text-slate-800 truncate">
-                              {proj.title}
-                            </span>
-                            {proj.id === activeProjectId && (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-[#1E3A5F] shrink-0" />
-                            )}
-                          </div>
-                          <p className="text-[10px] text-slate-400 truncate">{proj.goal}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-[9px] px-1 py-0">
-                              Step {proj.currentStep}/6
-                            </Badge>
-                            <span className="text-[9px] text-slate-300">{proj.updatedAt}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                  <div className="p-2 border-t border-slate-100">
-                    {showNewProject ? (
-                      <div className="p-2 space-y-2">
-                        <Input
-                          value={newProjectTitle}
-                          onChange={(e) => setNewProjectTitle(e.target.value)}
-                          placeholder="Project title..."
-                          className="text-xs h-8"
-                          autoFocus
-                        />
-                        <Input
-                          value={newProjectGoal}
-                          onChange={(e) => setNewProjectGoal(e.target.value)}
-                          placeholder="Research goal (optional)..."
-                          className="text-xs h-8"
-                        />
-                        <div className="flex gap-1.5">
-                          <Button
-                            size="sm"
-                            className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white flex-1"
-                            onClick={handleCreateProject}
-                          >
-                            Create
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-xs h-7"
-                            onClick={() => {
-                              setShowNewProject(false);
-                              setNewProjectTitle("");
-                              setNewProjectGoal("");
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full text-xs h-8"
-                        onClick={() => setShowNewProject(true)}
-                      >
-                        <Plus className="w-3 h-3 mr-1" />
-                        New Project
-                      </Button>
-                    )}
+                  <div className="p-1.5 space-y-0.5">
+                    <button
+                      onClick={() => { setLang("en"); setShowLangSwitcher(false); }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between",
+                        lang === "en"
+                          ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20 font-medium"
+                          : "hover:bg-slate-50 border border-transparent"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="text-base">🇺🇸</span>
+                        <span className="text-slate-700">English</span>
+                      </span>
+                      {lang === "en" && <CheckCircle2 className="w-3.5 h-3.5 text-[#1E3A5F]" />}
+                    </button>
+                    <button
+                      onClick={() => { setLang("zh"); setShowLangSwitcher(false); }}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between",
+                        lang === "zh"
+                          ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20 font-medium"
+                          : "hover:bg-slate-50 border border-transparent"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="text-base">🇨🇳</span>
+                        <span className="text-slate-700">中文</span>
+                      </span>
+                      {lang === "zh" && <CheckCircle2 className="w-3.5 h-3.5 text-[#1E3A5F]" />}
+                    </button>
                   </div>
                 </div>
               </>
@@ -393,7 +440,7 @@ export default function AppLayout({
           <div className="flex items-center justify-between px-3 h-14 border-b border-slate-200 shrink-0">
             {!rightPanelCollapsed && (
               <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                Assistant
+                {t("panel.assistant")}
               </span>
             )}
             <Button
@@ -422,35 +469,64 @@ export default function AppLayout({
 }
 
 function DefaultRightPanel() {
+  const { t } = useI18n();
   const project = DUMMY_PROJECT;
-  const stepMeta = STEP_META[project.currentStep];
+  const stepKey = project.currentStep as WorkflowStep;
+
+  const stepLabels: Record<WorkflowStep, string> = {
+    1: t("step.1.label"),
+    2: t("step.2.label"),
+    3: t("step.3.label"),
+    4: t("step.4.label"),
+    5: t("step.5.label"),
+    6: t("step.6.label"),
+  };
+
+  const stepShortLabels: Record<WorkflowStep, string> = {
+    1: t("step.1.short"),
+    2: t("step.2.short"),
+    3: t("step.3.short"),
+    4: t("step.4.short"),
+    5: t("step.5.short"),
+    6: t("step.6.short"),
+  };
+
+  const stepDescs: Record<WorkflowStep, string> = {
+    1: t("step.1.desc"),
+    2: t("step.2.desc"),
+    3: t("step.3.desc"),
+    4: t("step.4.desc"),
+    5: t("step.5.desc"),
+    6: t("step.6.desc"),
+  };
+
+  const stepMeta = STEP_META[stepKey];
 
   return (
     <div className="p-4 space-y-5">
       {/* Current Goal */}
       <div>
         <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          Current Goal
+          {t("panel.currentGoal")}
         </h4>
         <div className="p-3 bg-white rounded-lg border border-slate-200">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-base">{stepMeta.icon}</span>
             <span className="text-sm font-medium text-slate-800">
-              {stepMeta.label}
+              {stepLabels[stepKey]}
             </span>
           </div>
-          <p className="text-xs text-slate-500">{stepMeta.description}</p>
+          <p className="text-xs text-slate-500">{stepDescs[stepKey]}</p>
         </div>
       </div>
 
       {/* Completion */}
       <div>
         <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          Progress
+          {t("panel.progress")}
         </h4>
         <div className="space-y-2">
           {([1, 2, 3, 4, 5, 6] as WorkflowStep[]).map((step) => {
-            const meta = STEP_META[step];
             const Icon = STEP_ICONS[step];
             const isCompleted = step < project.currentStep;
             const isCurrent = step === project.currentStep;
@@ -473,7 +549,7 @@ function DefaultRightPanel() {
                 ) : (
                   <Circle className="w-3.5 h-3.5" />
                 )}
-                <span>{meta.shortLabel}</span>
+                <span>{stepShortLabels[step]}</span>
               </div>
             );
           })}
@@ -483,17 +559,17 @@ function DefaultRightPanel() {
       {/* Next Suggested Move */}
       <div>
         <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          Next Suggested Move
+          {t("panel.nextMove")}
         </h4>
         <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="flex items-start gap-2">
             <Sparkles className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
             <div>
               <p className="text-xs font-medium text-amber-800">
-                Complete keyword search
+                {t("panel.completeKeyword")}
               </p>
               <p className="text-[11px] text-amber-600 mt-0.5">
-                Add 2 more search records to strengthen your search log
+                {t("panel.addSearchRecords")}
               </p>
             </div>
           </div>
@@ -502,7 +578,7 @@ function DefaultRightPanel() {
               size="sm"
               className="w-full mt-2 h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white"
             >
-              Go <ArrowRight className="w-3 h-3 ml-1" />
+              {t("panel.go")} <ArrowRight className="w-3 h-3 ml-1" />
             </Button>
           </Link>
         </div>
@@ -511,15 +587,15 @@ function DefaultRightPanel() {
       {/* AI Copilot Placeholder */}
       <div>
         <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          AI Copilot
+          {t("panel.aiCopilot")}
         </h4>
         <div className="p-3 bg-white border border-dashed border-slate-300 rounded-lg text-center">
           <Bot className="w-8 h-8 text-slate-300 mx-auto mb-2" />
           <p className="text-xs text-slate-400">
-            AI assistant coming soon
+            {t("panel.aiComingSoon")}
           </p>
           <p className="text-[10px] text-slate-300 mt-1">
-            Get suggestions, summaries, and writing help
+            {t("panel.aiDesc")}
           </p>
         </div>
       </div>
@@ -527,7 +603,7 @@ function DefaultRightPanel() {
       {/* Quick Actions */}
       <div>
         <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          Quick Actions
+          {t("panel.quickActions")}
         </h4>
         <div className="space-y-1.5">
           <Button
@@ -536,7 +612,7 @@ function DefaultRightPanel() {
             className="w-full justify-start h-8 text-xs"
           >
             <FileText className="w-3.5 h-3.5 mr-2" />
-            Import Papers
+            {t("panel.importPapers")}
           </Button>
           <Button
             variant="outline"
@@ -544,7 +620,7 @@ function DefaultRightPanel() {
             className="w-full justify-start h-8 text-xs"
           >
             <Archive className="w-3.5 h-3.5 mr-2" />
-            View All Artifacts
+            {t("panel.viewAllArtifacts")}
           </Button>
         </div>
       </div>

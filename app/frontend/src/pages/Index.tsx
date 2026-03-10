@@ -1,12 +1,11 @@
 import { Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
+import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ArrowRight,
-  BookOpen,
   Calendar,
   CheckCircle2,
   Clock,
@@ -14,7 +13,6 @@ import {
   Import,
   Play,
   Sparkles,
-  Target,
   TrendingUp,
 } from "lucide-react";
 import {
@@ -23,14 +21,41 @@ import {
   STEP_META,
   ARTIFACT_TYPE_META,
   type WorkflowStep,
+  type ArtifactType,
 } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
+  const { t } = useI18n();
   const project = DUMMY_PROJECT;
   const stepMeta = STEP_META[project.currentStep];
   const progressPercent = ((project.currentStep - 1) / 5) * 100;
   const latestArtifacts = DUMMY_ARTIFACTS.slice(-4).reverse();
+
+  const stepShortLabels: Record<WorkflowStep, string> = {
+    1: t("step.1.short"),
+    2: t("step.2.short"),
+    3: t("step.3.short"),
+    4: t("step.4.short"),
+    5: t("step.5.short"),
+    6: t("step.6.short"),
+  };
+
+  const stepLabel = t(`step.${project.currentStep}.label`);
+  const stepDesc = t(`step.${project.currentStep}.desc`);
+
+  const artifactTypeLabels: Record<ArtifactType, string> = {
+    purpose: t("artifact.purpose"),
+    keyword: t("artifact.keyword"),
+    "search-log": t("artifact.searchLog"),
+    "entry-paper": t("artifact.entryPaper"),
+    "literature-note": t("artifact.litNote"),
+    "permanent-note": t("artifact.permNote"),
+    visualization: t("artifact.vizBoard"),
+    "rq-draft": t("artifact.rqDraft"),
+    "writing-block": t("artifact.writingBlock"),
+    "writing-draft": t("artifact.writingDraft"),
+  };
 
   return (
     <AppLayout>
@@ -48,7 +73,7 @@ export default function Dashboard() {
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="text-xs">
               <Import className="w-3.5 h-3.5 mr-1.5" />
-              Import Papers
+              {t("dashboard.importPapers")}
             </Button>
             <Link to={`/workflow/${project.currentStep}`}>
               <Button
@@ -56,7 +81,7 @@ export default function Dashboard() {
                 className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
               >
                 <Play className="w-3.5 h-3.5 mr-1.5" />
-                Continue Current Step
+                {t("dashboard.continueStep")}
               </Button>
             </Link>
           </div>
@@ -68,25 +93,24 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-sm font-semibold text-slate-800">
-                  Workflow Progress
+                  {t("dashboard.workflowProgress")}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Step {project.currentStep} of 6 —{" "}
-                  {stepMeta.label}
+                  {t("app.step")} {project.currentStep} {t("app.of")} 6 —{" "}
+                  {stepLabel}
                 </p>
               </div>
               <Badge
                 variant="outline"
                 className="text-[#1E3A5F] border-[#1E3A5F]/30 bg-blue-50"
               >
-                {Math.round(progressPercent)}% Complete
+                {Math.round(progressPercent)}% {t("dashboard.complete")}
               </Badge>
             </div>
 
             {/* Step Progress Bar */}
             <div className="flex items-center gap-1 mb-2">
               {([1, 2, 3, 4, 5, 6] as WorkflowStep[]).map((step) => {
-                const meta = STEP_META[step];
                 const isCompleted = step < project.currentStep;
                 const isCurrent = step === project.currentStep;
                 return (
@@ -95,19 +119,13 @@ export default function Dashboard() {
                     to={`/workflow/${step}`}
                     className="flex-1"
                   >
-                    <div
-                      className={cn(
-                        "relative group cursor-pointer"
-                      )}
-                    >
+                    <div className="relative group cursor-pointer">
                       <div
                         className={cn(
                           "h-2 rounded-full transition-colors",
                           isCompleted && "bg-emerald-500",
                           isCurrent && "bg-[#1E3A5F]",
-                          !isCompleted &&
-                            !isCurrent &&
-                            "bg-slate-200"
+                          !isCompleted && !isCurrent && "bg-slate-200"
                         )}
                       />
                       <div className="flex items-center gap-1 mt-2">
@@ -129,14 +147,11 @@ export default function Dashboard() {
                           className={cn(
                             "text-[10px] hidden sm:inline",
                             isCompleted && "text-emerald-600",
-                            isCurrent &&
-                              "text-[#1E3A5F] font-medium",
-                            !isCompleted &&
-                              !isCurrent &&
-                              "text-slate-400"
+                            isCurrent && "text-[#1E3A5F] font-medium",
+                            !isCompleted && !isCurrent && "text-slate-400"
                           )}
                         >
-                          {meta.shortLabel}
+                          {stepShortLabels[step]}
                         </span>
                       </div>
                     </div>
@@ -149,8 +164,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-1.5 mt-4 p-2 bg-slate-50 rounded-md">
               <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
               <p className="text-[11px] text-slate-500">
-                This is an iterative workflow — you can always go back to
-                earlier steps to refine your research.
+                {t("dashboard.iterativeHint")}
               </p>
             </div>
           </CardContent>
@@ -163,7 +177,7 @@ export default function Dashboard() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-[#1E3A5F]" />
-                Today's Target
+                {t("dashboard.todaysTarget")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -171,11 +185,11 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-base">{stepMeta.icon}</span>
                   <span className="text-sm font-medium text-slate-800">
-                    {stepMeta.label}
+                    {stepLabel}
                   </span>
                 </div>
                 <p className="text-xs text-slate-600 mb-3">
-                  {stepMeta.description}
+                  {stepDesc}
                 </p>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs text-slate-600">
@@ -183,16 +197,16 @@ export default function Dashboard() {
                       <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                     </div>
                     <span className="line-through text-slate-400">
-                      Define initial keywords
+                      {t("dashboard.defineKeywords")}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-600">
                     <div className="w-4 h-4 rounded border border-[#1E3A5F] bg-blue-50" />
-                    <span>Search Web of Science with refined query</span>
+                    <span>{t("dashboard.searchWos")}</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-600">
                     <div className="w-4 h-4 rounded border border-slate-300" />
-                    <span>Select 1-2 entry papers from results</span>
+                    <span>{t("dashboard.selectEntry")}</span>
                   </div>
                 </div>
               </div>
@@ -201,7 +215,7 @@ export default function Dashboard() {
                   size="sm"
                   className="w-full text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
                 >
-                  Start Today's Task
+                  {t("dashboard.startTask")}
                   <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
               </Link>
@@ -213,27 +227,24 @@ export default function Dashboard() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-500" />
-                Next Suggested Move
+                {t("dashboard.nextSuggestedMove")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-lg">
                 <p className="text-sm font-medium text-amber-800 mb-1">
-                  Refine your search strategy
+                  {t("dashboard.refineSearch")}
                 </p>
                 <p className="text-xs text-amber-700">
-                  You have 3 search records. Consider adding searches
-                  in Scopus and ERIC databases to broaden your coverage.
-                  Then select your entry paper.
+                  {t("dashboard.refineSearchDesc")}
                 </p>
               </div>
               <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-lg">
                 <p className="text-sm font-medium text-emerald-800 mb-1">
-                  Ready for entry paper selection
+                  {t("dashboard.readyEntry")}
                 </p>
                 <p className="text-xs text-emerald-700">
-                  Chen et al. (2024) looks like a strong entry paper —
-                  it's a comprehensive review that maps the field well.
+                  {t("dashboard.readyEntryDesc")}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -243,7 +254,7 @@ export default function Dashboard() {
                     size="sm"
                     className="w-full text-xs"
                   >
-                    Go to Entry Paper Selection
+                    {t("dashboard.goEntryPaper")}
                   </Button>
                 </Link>
                 <Link to="/artifacts" className="flex-1">
@@ -252,7 +263,7 @@ export default function Dashboard() {
                     size="sm"
                     className="w-full text-xs"
                   >
-                    View Artifacts
+                    {t("dashboard.viewArtifacts")}
                   </Button>
                 </Link>
               </div>
@@ -266,11 +277,11 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                 <FileText className="w-4 h-4 text-[#2D6A4F]" />
-                Latest Artifacts
+                {t("dashboard.latestArtifacts")}
               </CardTitle>
               <Link to="/artifacts">
                 <Button variant="ghost" size="sm" className="text-xs h-7">
-                  View All <ArrowRight className="w-3 h-3 ml-1" />
+                  {t("dashboard.viewAll")} <ArrowRight className="w-3 h-3 ml-1" />
                 </Button>
               </Link>
             </div>
@@ -293,10 +304,10 @@ export default function Dashboard() {
                           typeMeta.color
                         )}
                       >
-                        {typeMeta.label}
+                        {artifactTypeLabels[artifact.type]}
                       </Badge>
                       <span className="text-[10px] text-slate-400">
-                        Step {artifact.sourceStep}
+                        {t("app.step")} {artifact.sourceStep}
                       </span>
                     </div>
                     <h4 className="text-sm font-medium text-slate-800 mb-1 group-hover:text-[#1E3A5F] transition-colors line-clamp-1">
@@ -326,11 +337,10 @@ export default function Dashboard() {
           <div className="absolute inset-0 bg-gradient-to-r from-[#1E3A5F]/80 to-transparent flex items-center">
             <div className="p-6">
               <h2 className="text-white text-lg font-semibold mb-1">
-                Your Research, Your Workflow
+                {t("dashboard.heroTitle")}
               </h2>
               <p className="text-white/80 text-xs max-w-md">
-                Not just managing files — driving your research forward
-                with structured artifacts and clear next steps.
+                {t("dashboard.heroDesc")}
               </p>
             </div>
           </div>
