@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import {
   Target,
@@ -19,19 +18,21 @@ import {
   Archive,
   FileText,
   Map,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   Sparkles,
   ArrowRight,
   CheckCircle2,
   Circle,
   Bot,
-  FolderOpen,
   Plus,
   X,
   Crown,
   Globe,
+  PanelLeftOpen,
+  PanelLeftClose,
+  PanelRightOpen,
+  PanelRightClose,
+  MessageSquare,
 } from "lucide-react";
 import { DUMMY_PROJECT, DUMMY_PROJECTS, STEP_META, type WorkflowStep, type ProjectItem } from "@/lib/data";
 
@@ -57,8 +58,9 @@ export default function AppLayout({
 }: AppLayoutProps) {
   const location = useLocation();
   const { t, lang, setLang } = useI18n();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  // Default to collapsed
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
   const project = DUMMY_PROJECT;
 
   // Project switcher state
@@ -116,163 +118,152 @@ export default function AppLayout({
       <aside
         className={cn(
           "flex flex-col border-r border-slate-200 bg-slate-50/80 transition-all duration-300 shrink-0",
-          sidebarCollapsed ? "w-16" : "w-60"
+          sidebarCollapsed ? "w-0 overflow-hidden border-r-0" : "w-60"
         )}
       >
         {/* Logo */}
-        <div className="flex items-center gap-2 px-4 h-14 border-b border-slate-200 shrink-0">
-          {!sidebarCollapsed && (
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-[#1E3A5F] flex items-center justify-center shrink-0">
-                <BookOpen className="w-4 h-4 text-white" />
-              </div>
-              <span className="font-semibold text-sm text-slate-800 truncate">
-                {t("app.title")}
-              </span>
-            </div>
-          )}
-          {sidebarCollapsed && (
-            <div className="w-7 h-7 rounded-lg bg-[#1E3A5F] flex items-center justify-center mx-auto">
+        <div className="flex items-center gap-2 px-4 h-12 border-b border-slate-200 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-[#1E3A5F] flex items-center justify-center shrink-0">
               <BookOpen className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-semibold text-sm text-slate-800 truncate">
+              {t("app.title")}
+            </span>
+          </div>
+        </div>
+
+        {/* Project Info + Switcher in Sidebar */}
+        <div className="px-4 py-3 border-b border-slate-200 shrink-0">
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+            {t("app.currentProject")}
+          </p>
+          <button
+            onClick={() => setShowProjectSwitcher(!showProjectSwitcher)}
+            className="w-full text-left flex items-center justify-between gap-1 group"
+          >
+            <p className="text-sm font-medium text-slate-800 truncate group-hover:text-[#1E3A5F] transition-colors">
+              {activeProject.title}
+            </p>
+            <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform", showProjectSwitcher && "rotate-180")} />
+          </button>
+          <div className="mt-2">
+            <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+              <span>{t("app.step")} {activeProject.currentStep} {t("app.of")} 6</span>
+              <span>{Math.round(((activeProject.currentStep - 1) / 5) * 100)}%</span>
+            </div>
+            <Progress value={((activeProject.currentStep - 1) / 5) * 100} className="h-1.5" />
+          </div>
+
+          {/* Project Switcher Dropdown (in sidebar) */}
+          {showProjectSwitcher && (
+            <div className="mt-2 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">
+              <div className="p-2 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    {t("app.switchProject")}
+                  </p>
+                  <Badge className="text-[8px] bg-amber-100 text-amber-700 border-amber-200">
+                    <Crown className="w-2 h-2 mr-0.5" />
+                    {t("app.premium")}
+                  </Badge>
+                </div>
+              </div>
+              <ScrollArea className="max-h-[200px]">
+                <div className="p-1.5 space-y-0.5">
+                  {projects.map((proj) => (
+                    <button
+                      key={proj.id}
+                      onClick={() => {
+                        setActiveProjectId(proj.id);
+                        setShowProjectSwitcher(false);
+                      }}
+                      className={cn(
+                        "w-full text-left p-2 rounded-md transition-all",
+                        proj.id === activeProjectId
+                          ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20"
+                          : "hover:bg-slate-50 border border-transparent"
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-xs font-medium text-slate-800 truncate">
+                          {proj.title}
+                        </span>
+                        {proj.id === activeProjectId && (
+                          <CheckCircle2 className="w-3 h-3 text-[#1E3A5F] shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-[9px] text-slate-400 truncate">{proj.goal}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Badge variant="outline" className="text-[8px] px-1 py-0">
+                          {t("app.step")} {proj.currentStep}/6
+                        </Badge>
+                        <span className="text-[8px] text-slate-300">{proj.updatedAt}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+              <div className="p-1.5 border-t border-slate-100">
+                {showNewProject ? (
+                  <div className="p-1.5 space-y-1.5">
+                    <Input
+                      value={newProjectTitle}
+                      onChange={(e) => setNewProjectTitle(e.target.value)}
+                      placeholder={t("app.projectTitle")}
+                      className="text-xs h-7"
+                      autoFocus
+                    />
+                    <Input
+                      value={newProjectGoal}
+                      onChange={(e) => setNewProjectGoal(e.target.value)}
+                      placeholder={t("app.researchGoal")}
+                      className="text-xs h-7"
+                    />
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        className="text-[10px] h-6 bg-[#1E3A5F] hover:bg-[#162d4a] text-white flex-1"
+                        onClick={handleCreateProject}
+                      >
+                        {t("app.create")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-[10px] h-6"
+                        onClick={() => {
+                          setShowNewProject(false);
+                          setNewProjectTitle("");
+                          setNewProjectGoal("");
+                        }}
+                      >
+                        {t("app.cancel")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-[10px] h-7"
+                    onClick={() => setShowNewProject(true)}
+                  >
+                    <Plus className="w-2.5 h-2.5 mr-1" />
+                    {t("app.newProject")}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Project Info + Switcher in Sidebar */}
-        {!sidebarCollapsed && (
-          <div className="px-4 py-3 border-b border-slate-200 shrink-0">
-            <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
-              {t("app.currentProject")}
-            </p>
-            <button
-              onClick={() => setShowProjectSwitcher(!showProjectSwitcher)}
-              className="w-full text-left flex items-center justify-between gap-1 group"
-            >
-              <p className="text-sm font-medium text-slate-800 truncate group-hover:text-[#1E3A5F] transition-colors">
-                {activeProject.title}
-              </p>
-              <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform", showProjectSwitcher && "rotate-180")} />
-            </button>
-            <div className="mt-2">
-              <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                <span>{t("app.step")} {activeProject.currentStep} {t("app.of")} 6</span>
-                <span>{Math.round(((activeProject.currentStep - 1) / 5) * 100)}%</span>
-              </div>
-              <Progress value={((activeProject.currentStep - 1) / 5) * 100} className="h-1.5" />
-            </div>
-
-            {/* Project Switcher Dropdown (in sidebar) */}
-            {showProjectSwitcher && (
-              <div className="mt-2 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">
-                <div className="p-2 border-b border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                      {t("app.switchProject")}
-                    </p>
-                    <Badge className="text-[8px] bg-amber-100 text-amber-700 border-amber-200">
-                      <Crown className="w-2 h-2 mr-0.5" />
-                      {t("app.premium")}
-                    </Badge>
-                  </div>
-                </div>
-                <ScrollArea className="max-h-[200px]">
-                  <div className="p-1.5 space-y-0.5">
-                    {projects.map((proj) => (
-                      <button
-                        key={proj.id}
-                        onClick={() => {
-                          setActiveProjectId(proj.id);
-                          setShowProjectSwitcher(false);
-                        }}
-                        className={cn(
-                          "w-full text-left p-2 rounded-md transition-all",
-                          proj.id === activeProjectId
-                            ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20"
-                            : "hover:bg-slate-50 border border-transparent"
-                        )}
-                      >
-                        <div className="flex items-center justify-between mb-0.5">
-                          <span className="text-xs font-medium text-slate-800 truncate">
-                            {proj.title}
-                          </span>
-                          {proj.id === activeProjectId && (
-                            <CheckCircle2 className="w-3 h-3 text-[#1E3A5F] shrink-0" />
-                          )}
-                        </div>
-                        <p className="text-[9px] text-slate-400 truncate">{proj.goal}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <Badge variant="outline" className="text-[8px] px-1 py-0">
-                            {t("app.step")} {proj.currentStep}/6
-                          </Badge>
-                          <span className="text-[8px] text-slate-300">{proj.updatedAt}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </ScrollArea>
-                <div className="p-1.5 border-t border-slate-100">
-                  {showNewProject ? (
-                    <div className="p-1.5 space-y-1.5">
-                      <Input
-                        value={newProjectTitle}
-                        onChange={(e) => setNewProjectTitle(e.target.value)}
-                        placeholder={t("app.projectTitle")}
-                        className="text-xs h-7"
-                        autoFocus
-                      />
-                      <Input
-                        value={newProjectGoal}
-                        onChange={(e) => setNewProjectGoal(e.target.value)}
-                        placeholder={t("app.researchGoal")}
-                        className="text-xs h-7"
-                      />
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          className="text-[10px] h-6 bg-[#1E3A5F] hover:bg-[#162d4a] text-white flex-1"
-                          onClick={handleCreateProject}
-                        >
-                          {t("app.create")}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-[10px] h-6"
-                          onClick={() => {
-                            setShowNewProject(false);
-                            setNewProjectTitle("");
-                            setNewProjectGoal("");
-                          }}
-                        >
-                          {t("app.cancel")}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full text-[10px] h-7"
-                      onClick={() => setShowNewProject(true)}
-                    >
-                      <Plus className="w-2.5 h-2.5 mr-1" />
-                      {t("app.newProject")}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Navigation */}
         <ScrollArea className="flex-1">
           <nav className="p-2 space-y-0.5">
-            {!sidebarCollapsed && (
-              <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 pt-2 pb-1">
-                {t("nav.workflow")}
-              </p>
-            )}
+            <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 pt-2 pb-1">
+              {t("nav.workflow")}
+            </p>
             {NAV_ITEMS.map((item, idx) => {
               const isActive =
                 location.pathname === item.path ||
@@ -290,8 +281,7 @@ export default function AppLayout({
                       "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
                       isActive
                         ? "bg-[#1E3A5F] text-white"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-                      sidebarCollapsed && "justify-center px-0"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     )}
                   >
                     {isCompleted && !isActive ? (
@@ -304,20 +294,15 @@ export default function AppLayout({
                     ) : (
                       <Icon className="w-4 h-4 shrink-0" />
                     )}
-                    {!sidebarCollapsed && (
-                      <span className="truncate">{item.label}</span>
-                    )}
+                    <span className="truncate">{item.label}</span>
                   </div>
                 </Link>
               );
             })}
 
-            {!sidebarCollapsed && (
-              <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 pt-4 pb-1">
-                {t("nav.artifacts")}
-              </p>
-            )}
-            {sidebarCollapsed && <Separator className="my-2" />}
+            <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 pt-4 pb-1">
+              {t("nav.artifacts")}
+            </p>
             {ARTIFACT_NAV_ITEMS.map((item) => {
               const isActive = location.pathname + location.search === item.path ||
                 (location.pathname === "/artifacts" && item.path.includes("tab=all") && !location.search);
@@ -329,98 +314,137 @@ export default function AppLayout({
                       "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
                       isActive
                         ? "bg-[#1E3A5F] text-white"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-                      sidebarCollapsed && "justify-center px-0"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     )}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
-                    {!sidebarCollapsed && (
-                      <span className="truncate">{item.label}</span>
-                    )}
+                    <span className="truncate">{item.label}</span>
                   </div>
                 </Link>
               );
             })}
           </nav>
         </ScrollArea>
-
-        {/* Collapse Toggle */}
-        <div className="p-2 border-t border-slate-200 shrink-0">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-center"
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <ChevronLeft className="w-4 h-4" />
-            )}
-          </Button>
-        </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Bar with Language Switcher */}
-        <header className="h-12 border-b border-slate-200 bg-white flex items-center justify-end px-4 shrink-0">
-          <div className="relative">
-            <button
-              onClick={() => setShowLangSwitcher(!showLangSwitcher)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm"
-            >
-              <Globe className="w-3.5 h-3.5 text-slate-500" />
-              <span className="text-slate-700 font-medium">
-                {lang === "en" ? "English" : "中文"}
-              </span>
-              <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", showLangSwitcher && "rotate-180")} />
-            </button>
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Top Bar */}
+        <header className="h-12 border-b border-slate-200 bg-white flex items-center px-2 shrink-0">
+          {/* Left toggle button */}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className={cn(
+              "flex items-center gap-1.5 h-9 px-3 rounded-lg border transition-all text-xs font-medium",
+              sidebarCollapsed
+                ? "border-[#1E3A5F] bg-[#1E3A5F]/5 text-[#1E3A5F] hover:bg-[#1E3A5F]/10"
+                : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+            )}
+            title={sidebarCollapsed ? t("app.expandSidebar") : t("app.collapseSidebar")}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4" />
+            )}
+            <span>{sidebarCollapsed ? t("app.menu") : t("app.hideMenu")}</span>
+          </button>
 
-            {/* Language Switcher Dropdown */}
-            {showLangSwitcher && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowLangSwitcher(false)} />
-                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
-                  <div className="p-2 border-b border-slate-100">
-                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                      {t("app.language")}
-                    </p>
-                  </div>
-                  <div className="p-1.5 space-y-0.5">
-                    <button
-                      onClick={() => { setLang("en"); setShowLangSwitcher(false); }}
-                      className={cn(
-                        "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between",
-                        lang === "en"
-                          ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20 font-medium"
-                          : "hover:bg-slate-50 border border-transparent"
-                      )}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="text-base">🇺🇸</span>
-                        <span className="text-slate-700">English</span>
-                      </span>
-                      {lang === "en" && <CheckCircle2 className="w-3.5 h-3.5 text-[#1E3A5F]" />}
-                    </button>
-                    <button
-                      onClick={() => { setLang("zh"); setShowLangSwitcher(false); }}
-                      className={cn(
-                        "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between",
-                        lang === "zh"
-                          ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20 font-medium"
-                          : "hover:bg-slate-50 border border-transparent"
-                      )}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span className="text-base">🇨🇳</span>
-                        <span className="text-slate-700">中文</span>
-                      </span>
-                      {lang === "zh" && <CheckCircle2 className="w-3.5 h-3.5 text-[#1E3A5F]" />}
-                    </button>
-                  </div>
+          {/* Center spacer with app title when both collapsed */}
+          <div className="flex-1 flex items-center justify-center min-w-0">
+            {sidebarCollapsed && (
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-[#1E3A5F] flex items-center justify-center">
+                  <BookOpen className="w-3.5 h-3.5 text-white" />
                 </div>
-              </>
+                <span className="text-sm font-semibold text-slate-700 hidden sm:inline">
+                  {t("app.title")}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Right side: Language switcher + Right panel toggle */}
+          <div className="flex items-center gap-2">
+            {/* Language Switcher */}
+            <div className="relative">
+              <button
+                onClick={() => setShowLangSwitcher(!showLangSwitcher)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm"
+              >
+                <Globe className="w-3.5 h-3.5 text-slate-500" />
+                <span className="text-slate-700 font-medium text-xs">
+                  {lang === "en" ? "EN" : "中"}
+                </span>
+                <ChevronDown className={cn("w-3 h-3 text-slate-400 transition-transform", showLangSwitcher && "rotate-180")} />
+              </button>
+
+              {/* Language Switcher Dropdown */}
+              {showLangSwitcher && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowLangSwitcher(false)} />
+                  <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
+                    <div className="p-2 border-b border-slate-100">
+                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                        {t("app.language")}
+                      </p>
+                    </div>
+                    <div className="p-1.5 space-y-0.5">
+                      <button
+                        onClick={() => { setLang("en"); setShowLangSwitcher(false); }}
+                        className={cn(
+                          "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between",
+                          lang === "en"
+                            ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20 font-medium"
+                            : "hover:bg-slate-50 border border-transparent"
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-base">🇺🇸</span>
+                          <span className="text-slate-700">English</span>
+                        </span>
+                        {lang === "en" && <CheckCircle2 className="w-3.5 h-3.5 text-[#1E3A5F]" />}
+                      </button>
+                      <button
+                        onClick={() => { setLang("zh"); setShowLangSwitcher(false); }}
+                        className={cn(
+                          "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between",
+                          lang === "zh"
+                            ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20 font-medium"
+                            : "hover:bg-slate-50 border border-transparent"
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-base">🇨🇳</span>
+                          <span className="text-slate-700">中文</span>
+                        </span>
+                        {lang === "zh" && <CheckCircle2 className="w-3.5 h-3.5 text-[#1E3A5F]" />}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Right Panel toggle */}
+            {showRightPanel && (
+              <button
+                onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+                className={cn(
+                  "flex items-center gap-1.5 h-9 px-3 rounded-lg border transition-all text-xs font-medium",
+                  rightPanelCollapsed
+                    ? "border-[#1E3A5F] bg-[#1E3A5F]/5 text-[#1E3A5F] hover:bg-[#1E3A5F]/10"
+                    : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+                )}
+                title={rightPanelCollapsed ? t("app.expandAssistant") : t("app.collapseAssistant")}
+              >
+                <span>{rightPanelCollapsed ? t("app.assistant") : t("app.hideAssistant")}</span>
+                {rightPanelCollapsed ? (
+                  <PanelRightOpen className="w-4 h-4" />
+                ) : (
+                  <PanelRightClose className="w-4 h-4" />
+                )}
+              </button>
             )}
           </div>
         </header>
@@ -434,34 +458,26 @@ export default function AppLayout({
         <aside
           className={cn(
             "border-l border-slate-200 bg-slate-50/50 transition-all duration-300 shrink-0 flex flex-col",
-            rightPanelCollapsed ? "w-10" : "w-72"
+            rightPanelCollapsed ? "w-0 overflow-hidden border-l-0" : "w-72"
           )}
         >
-          <div className="flex items-center justify-between px-3 h-14 border-b border-slate-200 shrink-0">
-            {!rightPanelCollapsed && (
-              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-                {t("panel.assistant")}
-              </span>
-            )}
+          <div className="flex items-center justify-between px-3 h-12 border-b border-slate-200 shrink-0">
+            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+              {t("panel.assistant")}
+            </span>
             <Button
               variant="ghost"
               size="sm"
               className="h-7 w-7 p-0"
-              onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+              onClick={() => setRightPanelCollapsed(true)}
             >
-              {rightPanelCollapsed ? (
-                <ChevronLeft className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )}
+              <X className="w-3.5 h-3.5" />
             </Button>
           </div>
 
-          {!rightPanelCollapsed && (
-            <ScrollArea className="flex-1">
-              {rightPanelContent || <DefaultRightPanel />}
-            </ScrollArea>
-          )}
+          <ScrollArea className="flex-1">
+            {rightPanelContent || <DefaultRightPanel />}
+          </ScrollArea>
         </aside>
       )}
     </div>
@@ -527,7 +543,6 @@ function DefaultRightPanel() {
         </h4>
         <div className="space-y-2">
           {([1, 2, 3, 4, 5, 6] as WorkflowStep[]).map((step) => {
-            const Icon = STEP_ICONS[step];
             const isCompleted = step < project.currentStep;
             const isCurrent = step === project.currentStep;
             return (
