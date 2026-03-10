@@ -35,7 +35,8 @@ export type ArtifactType =
   | "permanent-note"
   | "visualization"
   | "rq-draft"
-  | "writing-block";
+  | "writing-block"
+  | "writing-draft";
 
 export interface Paper {
   id: string;
@@ -132,6 +133,7 @@ export const ARTIFACT_TYPE_META: Record<
   visualization: { label: "Visualization Board", color: "text-cyan-700", bgColor: "bg-cyan-50" },
   "rq-draft": { label: "RQ Draft", color: "text-teal-700", bgColor: "bg-teal-50" },
   "writing-block": { label: "Writing Block", color: "text-slate-700", bgColor: "bg-slate-100" },
+  "writing-draft": { label: "Writing Draft", color: "text-orange-700", bgColor: "bg-orange-50" },
 };
 
 // --- Dummy Data ---

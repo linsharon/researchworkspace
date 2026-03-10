@@ -41,11 +41,18 @@ const NAV_ITEMS = [
   { path: "/workflow/4", label: "4. Expand", icon: Network },
   { path: "/workflow/5", label: "5. Visualize", icon: Eye },
   { path: "/workflow/6", label: "6. Draft", icon: PenTool },
-  { path: "/artifacts", label: "Artifacts", icon: Archive },
-  { path: "/paper/paper-1", label: "Paper View", icon: FileText },
-  { path: "/visualization", label: "Viz Board", icon: Map },
-  { path: "/draft", label: "Draft Studio", icon: PenTool },
 ];
+
+const ARTIFACT_NAV_ITEMS = [
+  { path: "/artifacts?tab=all", label: "All Artifacts", icon: Archive },
+  { path: "/artifacts?tab=purpose", label: "Purpose Cards", icon: Target },
+  { path: "/artifacts?tab=search", label: "Search Logs", icon: Search },
+  { path: "/artifacts?tab=notes", label: "Notes", icon: FileText },
+  { path: "/artifacts?tab=drafts", label: "Drafts", icon: PenTool },
+  { path: "/artifacts?tab=visual", label: "Visualizations", icon: Map },
+];
+
+
 
 const STEP_ICONS: Record<WorkflowStep, typeof Target> = {
   1: Target,
@@ -155,13 +162,13 @@ export default function AppLayout({
                 Workflow
               </p>
             )}
-            {NAV_ITEMS.slice(0, 7).map((item) => {
+            {NAV_ITEMS.map((item, idx) => {
               const isActive =
                 location.pathname === item.path ||
                 (item.path !== "/" &&
                   location.pathname.startsWith(item.path));
               const Icon = item.icon;
-              const stepNum = NAV_ITEMS.indexOf(item);
+              const stepNum = idx;
               const isCompleted = stepNum > 0 && stepNum < project.currentStep;
               const isCurrent = stepNum === project.currentStep;
 
@@ -196,12 +203,13 @@ export default function AppLayout({
 
             {!sidebarCollapsed && (
               <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 pt-4 pb-1">
-                Tools
+                Artifacts
               </p>
             )}
             {sidebarCollapsed && <Separator className="my-2" />}
-            {NAV_ITEMS.slice(7).map((item) => {
-              const isActive = location.pathname.startsWith(item.path);
+            {ARTIFACT_NAV_ITEMS.map((item) => {
+              const isActive = location.pathname + location.search === item.path ||
+                (location.pathname === "/artifacts" && item.path.includes("tab=all") && !location.search);
               const Icon = item.icon;
               return (
                 <Link key={item.path} to={item.path}>
@@ -222,6 +230,8 @@ export default function AppLayout({
                 </Link>
               );
             })}
+
+
           </nav>
         </ScrollArea>
 

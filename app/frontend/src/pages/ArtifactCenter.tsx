@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +32,7 @@ const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "search", label: "Search" },
   { value: "notes", label: "Notes" },
   { value: "visual", label: "Visual" },
-  { value: "draft", label: "Draft" },
+  { value: "drafts", label: "Drafts" },
 ];
 
 const FILTER_MAP: Record<string, ArtifactType[]> = {
@@ -41,13 +41,22 @@ const FILTER_MAP: Record<string, ArtifactType[]> = {
   search: ["keyword", "search-log", "entry-paper"],
   notes: ["literature-note", "permanent-note"],
   visual: ["visualization"],
-  draft: ["rq-draft", "writing-block"],
+  drafts: ["rq-draft", "writing-block", "writing-draft"],
 };
 
 export default function ArtifactCenter() {
-  const [filter, setFilter] = useState("all");
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get("tab") || "all";
+  const [filter, setFilter] = useState(tabFromUrl);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab && FILTER_OPTIONS.some((o) => o.value === tab)) {
+      setFilter(tab);
+    }
+  }, [searchParams]);
 
   const filteredArtifacts = DUMMY_ARTIFACTS.filter((a) => {
     const matchesFilter =

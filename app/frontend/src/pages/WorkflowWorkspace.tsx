@@ -2245,9 +2245,20 @@ function ExpandWorkspace() {
     <div className="space-y-5">
       <Card className="border-slate-200">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">
-            Expansion Paths from Entry Paper
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold">
+              Expansion Paths from Entry Paper
+            </CardTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs h-7"
+              onClick={() => setShowAdd(true)}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add Manually
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-5 gap-2">
@@ -2467,7 +2478,8 @@ function ExpandWorkspace() {
 // Step 5: Visualize Workspace
 // ============================================================
 function VisualizeWorkspace() {
-  const [vizSection, setVizSection] = useState<"workspace" | "research">("workspace");
+  const [vizSection, setVizSection] = useState<"workspace" | "research" | "viztools">("workspace");
+  const [researchSubTab, setResearchSubTab] = useState<"papers" | "files" | "ai-summary" | "perm-notes" | "synthesis">("papers");
 
   // Workspace stats
   const workspaceStats = {
@@ -2487,7 +2499,7 @@ function VisualizeWorkspace() {
   const readPapers = papers.filter((p) => p.annotations.length > 0);
 
   // Upload state
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: string; date: string }>>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: string; date: string; addedToVisual?: boolean }>>([]);
   const [showUploadArea, setShowUploadArea] = useState(false);
 
   // AI summary
@@ -2500,13 +2512,76 @@ function VisualizeWorkspace() {
   const [permNoteContent, setPermNoteContent] = useState("");
   const [addedPermNotes, setAddedPermNotes] = useState<Array<{ id: string; title: string; content: string; date: string }>>([]);
 
-  // Synthesis table
-  const [showSynthesisTable, setShowSynthesisTable] = useState(false);
-  const [synthColumns, setSynthColumns] = useState<string[]>(["Research Question", "Method", "Key Finding"]);
+  // Synthesis tables (multiple)
+  interface SynthesisTable {
+    id: string;
+    name: string;
+    columns: string[];
+    selectedPapers: string[];
+    data: Record<string, Record<string, string>>;
+    createdAt: string;
+  }
+  const [synthTables, setSynthTables] = useState<SynthesisTable[]>([
+    {
+      id: "st-1",
+      name: "Main Synthesis Table",
+      columns: ["Research Question", "Method", "Key Finding"],
+      selectedPapers: papers.slice(0, 2).map((p) => p.id),
+      data: {},
+      createdAt: "2026-03-09",
+    },
+  ]);
+  const [activeSynthTableId, setActiveSynthTableId] = useState("st-1");
+  const activeSynthTable = synthTables.find((t) => t.id === activeSynthTableId) || synthTables[0];
+
+  const [showSynthesisTable, setShowSynthesisTable] = useState(true);
+  const synthColumns = activeSynthTable?.columns || [];
+  const synthSelectedPapers = activeSynthTable?.selectedPapers || [];
+  const synthData = activeSynthTable?.data || {};
   const [newSynthCol, setNewSynthCol] = useState("");
-  const [synthSelectedPapers, setSynthSelectedPapers] = useState<string[]>(papers.slice(0, 2).map((p) => p.id));
-  const [synthData, setSynthData] = useState<Record<string, Record<string, string>>>({});
   const [aiSearching, setAiSearching] = useState(false);
+
+  const updateActiveSynthTable = (updates: Partial<SynthesisTable>) => {
+    setSynthTables((prev) =>
+      prev.map((t) => (t.id === activeSynthTableId ? { ...t, ...updates } : t))
+    );
+  };
+
+  const setSynthColumns = (cols: string[]) => updateActiveSynthTable({ columns: cols });
+  const setSynthSelectedPapers = (pids: string[]) => updateActiveSynthTable({ selectedPapers: pids });
+  const setSynthData = (data: Record<string, Record<string, string>>) => updateActiveSynthTable({ data });
+
+  const handleCreateNewSynthTable = () => {
+    const newTable: SynthesisTable = {
+      id: `st-${Date.now()}`,
+      name: `Synthesis Table ${synthTables.length + 1}`,
+      columns: ["Research Question", "Method", "Key Finding"],
+      selectedPapers: [],
+      data: {},
+      createdAt: new Date().toISOString().split("T")[0],
+    };
+    setSynthTables([...synthTables, newTable]);
+    setActiveSynthTableId(newTable.id);
+    setShowSynthesisTable(true);
+  };
+
+  const handleExportSynthTable = () => {
+    if (!activeSynthTable) return;
+    const headers = ["Paper", ...activeSynthTable.columns];
+    const rows = activeSynthTable.selectedPapers.map((pid) => {
+      const paper = papers.find((p) => p.id === pid);
+      const paperLabel = paper ? `${paper.authors[0]} (${paper.year})` : pid;
+      return [paperLabel, ...activeSynthTable.columns.map((col) => activeSynthTable.data[pid]?.[col] || "")];
+    });
+    const csvContent = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${activeSynthTable.name.replace(/\s+/g, "_")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Sort papers
   const [paperSort, setPaperSort] = useState<"year" | "access">("year");
@@ -2554,18 +2629,25 @@ function VisualizeWorkspace() {
     setShowUploadArea(false);
   };
 
+  const handleAddFileToVisualArtifacts = (index: number) => {
+    setUploadedFiles((prev) =>
+      prev.map((f, i) => (i === index ? { ...f, addedToVisual: true } : f))
+    );
+  };
+
   const handleAiSearchSynthesis = () => {
+    if (!activeSynthTable) return;
     setAiSearching(true);
     setTimeout(() => {
-      const newData: Record<string, Record<string, string>> = { ...synthData };
-      synthSelectedPapers.forEach((pid) => {
+      const newData: Record<string, Record<string, string>> = { ...activeSynthTable.data };
+      activeSynthTable.selectedPapers.forEach((pid) => {
         const paper = papers.find((p) => p.id === pid);
         if (paper) {
           newData[pid] = {
             "Research Question": paper.researchQuestion || "How does AI tutoring affect learning outcomes?",
             "Method": paper.method || "Systematic review / Meta-analysis",
             "Key Finding": paper.findings || "AI tutoring improves test scores but SRL impact is unclear.",
-            ...synthColumns.reduce((acc, col) => {
+            ...activeSynthTable.columns.reduce((acc, col) => {
               if (!["Research Question", "Method", "Key Finding"].includes(col)) {
                 acc[col] = newData[pid]?.[col] || "(AI: Data not found for this attribute)";
               }
@@ -2574,7 +2656,7 @@ function VisualizeWorkspace() {
           };
         }
       });
-      setSynthData(newData);
+      updateActiveSynthTable({ data: newData });
       setAiSearching(false);
     }, 1500);
   };
@@ -2587,6 +2669,55 @@ function VisualizeWorkspace() {
     { label: "Purpose Cards", count: workspaceStats.purposeCards, color: "bg-purple-400" },
   ];
   const maxArtifactCount = Math.max(...artifactBreakdown.map((a) => a.count), 1);
+
+  // Visualization Tools state
+  interface VizTool {
+    id: string;
+    name: string;
+    url: string;
+    description: string;
+    pricing: "free" | "paid" | "freemium";
+    price: string;
+    source: "built-in" | "user";
+  }
+  const [vizTools, setVizTools] = useState<VizTool[]>([
+    { id: "vt-1", name: "VOSviewer", url: "https://www.vosviewer.com", description: "Constructing and visualizing bibliometric networks (co-citation, co-authorship, keyword co-occurrence).", pricing: "free", price: "", source: "built-in" },
+    { id: "vt-2", name: "CiteSpace", url: "http://cluster.cis.drexel.edu/~cchen/citespace/", description: "Visualizing and analyzing trends and patterns in scientific literature. Detects research fronts and intellectual bases.", pricing: "free", price: "", source: "built-in" },
+    { id: "vt-3", name: "Gephi", url: "https://gephi.org", description: "Open-source network analysis and visualization software. Great for large-scale citation networks and co-authorship graphs.", pricing: "free", price: "", source: "built-in" },
+    { id: "vt-4", name: "Tableau", url: "https://www.tableau.com", description: "Powerful data visualization platform for creating interactive dashboards and charts from research data.", pricing: "freemium", price: "$70/user/month (Creator)", source: "built-in" },
+    { id: "vt-5", name: "Connected Papers", url: "https://www.connectedpapers.com", description: "Visual tool to explore academic papers in a graph format. Find related papers and build a visual overview of a research field.", pricing: "freemium", price: "Free (5 graphs/month), $3/month (Pro)", source: "built-in" },
+    { id: "vt-6", name: "Litmaps", url: "https://www.litmaps.com", description: "Discover and visualize relevant literature using citation-based maps. Track new papers in your field.", pricing: "freemium", price: "Free (basic), $10/month (Pro)", source: "built-in" },
+    { id: "vt-7", name: "Bibliometrix (R package)", url: "https://www.bibliometrix.org", description: "Comprehensive R-tool for quantitative research in scientometrics and bibliometrics. Includes Biblioshiny web interface.", pricing: "free", price: "", source: "built-in" },
+    { id: "vt-8", name: "RAWGraphs", url: "https://rawgraphs.io", description: "Open-source data visualization framework for creating custom vector-based visualizations from tabular data.", pricing: "free", price: "", source: "built-in" },
+    { id: "vt-9", name: "Flourish", url: "https://flourish.studio", description: "Create interactive data visualizations and storytelling. Supports many chart types and animated transitions.", pricing: "freemium", price: "Free (public), $63/month (Business)", source: "built-in" },
+    { id: "vt-10", name: "Miro", url: "https://miro.com", description: "Online whiteboard for concept mapping, mind mapping, and collaborative visual brainstorming of research themes.", pricing: "freemium", price: "Free (basic), $8/member/month (Starter)", source: "built-in" },
+  ]);
+  const [showAddVizTool, setShowAddVizTool] = useState(false);
+  const [newVizToolName, setNewVizToolName] = useState("");
+  const [newVizToolUrl, setNewVizToolUrl] = useState("");
+  const [newVizToolDesc, setNewVizToolDesc] = useState("");
+  const [newVizToolPricing, setNewVizToolPricing] = useState<"free" | "paid" | "freemium">("free");
+  const [newVizToolPrice, setNewVizToolPrice] = useState("");
+
+  const handleAddVizTool = () => {
+    if (!newVizToolName.trim()) return;
+    const newTool: VizTool = {
+      id: `vt-${Date.now()}`,
+      name: newVizToolName.trim(),
+      url: newVizToolUrl.trim(),
+      description: newVizToolDesc.trim(),
+      pricing: newVizToolPricing,
+      price: newVizToolPrice.trim(),
+      source: "user",
+    };
+    setVizTools([...vizTools, newTool]);
+    setNewVizToolName("");
+    setNewVizToolUrl("");
+    setNewVizToolDesc("");
+    setNewVizToolPricing("free");
+    setNewVizToolPrice("");
+    setShowAddVizTool(false);
+  };
 
   return (
     <div className="space-y-5">
@@ -2611,6 +2742,15 @@ function VisualizeWorkspace() {
             >
               <BookOpen className="w-3 h-3 mr-1" />
               Research Content
+            </Button>
+            <Button
+              size="sm"
+              variant={vizSection === "viztools" ? "default" : "outline"}
+              className={cn("text-xs", vizSection === "viztools" && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white")}
+              onClick={() => setVizSection("viztools")}
+            >
+              <Zap className="w-3 h-3 mr-1" />
+              Visualization Tools
             </Button>
           </div>
         </CardContent>
@@ -2662,7 +2802,7 @@ function VisualizeWorkspace() {
         </div>
       )}
 
-      {/* ===== RESEARCH CONTENT ===== */}
+      {/* ===== RESEARCH CONTENT with Sub-Tabs ===== */}
       {vizSection === "research" && (
         <div className="space-y-5">
           {/* Paper Stats */}
@@ -2687,111 +2827,161 @@ function VisualizeWorkspace() {
             </Card>
           </div>
 
-          {/* Paper List with Sort */}
-          <Card className="border-slate-200">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold">Papers Overview</CardTitle>
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant={paperSort === "year" ? "default" : "outline"}
-                    className={cn("text-[10px] h-6", paperSort === "year" && "bg-[#1E3A5F] text-white")}
-                    onClick={() => setPaperSort("year")}
-                  >
-                    <Clock className="w-2.5 h-2.5 mr-0.5" />
-                    By Year
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={paperSort === "access" ? "default" : "outline"}
-                    className={cn("text-[10px] h-6", paperSort === "access" && "bg-[#1E3A5F] text-white")}
-                    onClick={() => setPaperSort("access")}
-                  >
-                    <Eye className="w-2.5 h-2.5 mr-0.5" />
-                    By Access
+          {/* Research Content Sub-Tabs */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {([
+              { key: "papers" as const, label: "Papers Overview", icon: "📄" },
+              { key: "files" as const, label: "External Files", icon: "📁" },
+              { key: "ai-summary" as const, label: "AI Summarize Notes (Premium)", icon: "✨" },
+              { key: "perm-notes" as const, label: "Permanent Notes", icon: "📝" },
+              { key: "synthesis" as const, label: "Synthesis Tables", icon: "📊" },
+            ]).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setResearchSubTab(tab.key)}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-xs font-medium transition-all border whitespace-nowrap",
+                  researchSubTab === tab.key
+                    ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                )}
+              >
+                {tab.icon} {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Sub-Tab: Papers Overview */}
+          {researchSubTab === "papers" && (
+            <Card className="border-slate-200">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold">Papers Overview</CardTitle>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant={paperSort === "year" ? "default" : "outline"}
+                      className={cn("text-[10px] h-6", paperSort === "year" && "bg-[#1E3A5F] text-white")}
+                      onClick={() => setPaperSort("year")}
+                    >
+                      <Clock className="w-2.5 h-2.5 mr-0.5" />
+                      By Year
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={paperSort === "access" ? "default" : "outline"}
+                      className={cn("text-[10px] h-6", paperSort === "access" && "bg-[#1E3A5F] text-white")}
+                      onClick={() => setPaperSort("access")}
+                    >
+                      <Eye className="w-2.5 h-2.5 mr-0.5" />
+                      By Access
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="max-h-[400px]">
+                  <div className="space-y-2">
+                    {sortedPapers.map((paper) => (
+                      <div key={paper.id} className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition-all">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs font-medium text-slate-800 line-clamp-1">{paper.title}</h4>
+                            <p className="text-[10px] text-slate-500">{paper.authors.join(", ")} ({paper.year})</p>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <div className="text-center">
+                              <p className="text-xs font-bold text-yellow-600">{paper.annotations.length}</p>
+                              <p className="text-[8px] text-slate-400">Highlights</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs font-bold text-blue-600">{Math.max(1, paper.annotations.length - 1)}</p>
+                              <p className="text-[8px] text-slate-400">Lit Notes</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs font-bold text-rose-600">{paper.annotations.length > 1 ? 1 : 0}</p>
+                              <p className="text-[8px] text-slate-400">Perm Notes</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Sub-Tab: External Files */}
+          {researchSubTab === "files" && (
+            <Card className="border-slate-200">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                    <Upload className="w-4 h-4" />
+                    External Files
+                  </CardTitle>
+                  <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setShowUploadArea(!showUploadArea)}>
+                    <FolderUp className="w-3 h-3 mr-1" />
+                    Upload File
                   </Button>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="max-h-[300px]">
-                <div className="space-y-2">
-                  {sortedPapers.map((paper) => (
-                    <div key={paper.id} className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition-all">
-                      <div className="flex items-start justify-between gap-2">
+              </CardHeader>
+              <CardContent>
+                {showUploadArea && (
+                  <div className="p-4 mb-3 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/30 text-center">
+                    <Upload className="w-8 h-8 text-blue-300 mx-auto mb-2" />
+                    <p className="text-xs text-slate-500 mb-2">Drag & drop files here, or click to browse</p>
+                    <Button size="sm" className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white" onClick={handleUploadFile}>
+                      <Plus className="w-3 h-3 mr-1" />
+                      Simulate Upload
+                    </Button>
+                  </div>
+                )}
+                {uploadedFiles.length > 0 ? (
+                  <div className="space-y-2">
+                    {uploadedFiles.map((file, i) => (
+                      <div key={i} className="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
+                        <FileText className="w-4 h-4 text-slate-400" />
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-xs font-medium text-slate-800 line-clamp-1">{paper.title}</h4>
-                          <p className="text-[10px] text-slate-500">{paper.authors.join(", ")} ({paper.year})</p>
+                          <p className="text-xs font-medium text-slate-700 truncate">{file.name}</p>
+                          <p className="text-[10px] text-slate-400">{file.size} · {file.date}</p>
                         </div>
-                        <div className="flex gap-2 shrink-0">
-                          <div className="text-center">
-                            <p className="text-xs font-bold text-yellow-600">{paper.annotations.length}</p>
-                            <p className="text-[8px] text-slate-400">Highlights</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs font-bold text-blue-600">{Math.max(1, paper.annotations.length - 1)}</p>
-                            <p className="text-[8px] text-slate-400">Lit Notes</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-xs font-bold text-rose-600">{paper.annotations.length > 1 ? 1 : 0}</p>
-                            <p className="text-[8px] text-slate-400">Perm Notes</p>
-                          </div>
+                        <div className="shrink-0">
+                          {file.addedToVisual ? (
+                            <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-emerald-200">
+                              <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />
+                              Added to Visual
+                            </Badge>
+                          ) : (
+                            <Link to="/artifacts?tab=visual">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-[10px] h-6 px-2 border-purple-300 text-purple-600 hover:bg-purple-50"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleAddFileToVisualArtifacts(i);
+                                }}
+                              >
+                                <Eye className="w-2.5 h-2.5 mr-0.5" />
+                                Add to Visual Artifacts
+                              </Button>
+                            </Link>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 text-center py-3">No external files uploaded yet.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Upload External Files */}
-          <Card className="border-slate-200">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                  <Upload className="w-4 h-4" />
-                  External Files
-                </CardTitle>
-                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setShowUploadArea(!showUploadArea)}>
-                  <FolderUp className="w-3 h-3 mr-1" />
-                  Upload File
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {showUploadArea && (
-                <div className="p-4 mb-3 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/30 text-center">
-                  <Upload className="w-8 h-8 text-blue-300 mx-auto mb-2" />
-                  <p className="text-xs text-slate-500 mb-2">Drag & drop files here, or click to browse</p>
-                  <Button size="sm" className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white" onClick={handleUploadFile}>
-                    <Plus className="w-3 h-3 mr-1" />
-                    Simulate Upload
-                  </Button>
-                </div>
-              )}
-              {uploadedFiles.length > 0 ? (
-                <div className="space-y-2">
-                  {uploadedFiles.map((file, i) => (
-                    <div key={i} className="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
-                      <FileText className="w-4 h-4 text-slate-400" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-slate-700 truncate">{file.name}</p>
-                        <p className="text-[10px] text-slate-400">{file.size} · {file.date}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-400 text-center py-3">No external files uploaded yet.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* AI Summarize + Add Permanent Note */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {/* AI Summarize */}
+          {/* Sub-Tab: AI Summarize Notes */}
+          {researchSubTab === "ai-summary" && (
             <Card className="border-slate-200">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
@@ -2825,8 +3015,10 @@ function VisualizeWorkspace() {
                 )}
               </CardContent>
             </Card>
+          )}
 
-            {/* Add Permanent Note */}
+          {/* Sub-Tab: Permanent Notes */}
+          {researchSubTab === "perm-notes" && (
             <Card className="border-slate-200">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -2871,7 +3063,7 @@ function VisualizeWorkspace() {
                     </div>
                   </div>
                 )}
-                <ScrollArea className="max-h-[200px]">
+                <ScrollArea className="max-h-[400px]">
                   <div className="space-y-2">
                     {addedPermNotes.map((note) => (
                       <div key={note.id} className="p-2 rounded-lg border border-rose-200 bg-rose-50/20">
@@ -2889,155 +3081,344 @@ function VisualizeWorkspace() {
                 </ScrollArea>
               </CardContent>
             </Card>
-          </div>
+          )}
 
-          {/* Synthesis Table */}
-          <Card className="border-slate-200">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                  <Table2 className="w-4 h-4" />
-                  Synthesis Table
-                </CardTitle>
-                <Button
-                  size="sm"
-                  variant={showSynthesisTable ? "default" : "outline"}
-                  className={cn("text-xs h-7", showSynthesisTable && "bg-[#1E3A5F] text-white")}
-                  onClick={() => setShowSynthesisTable(!showSynthesisTable)}
-                >
-                  {showSynthesisTable ? "Hide Table" : "Create Synthesis Table"}
-                </Button>
-              </div>
-            </CardHeader>
-            {showSynthesisTable && (
-              <CardContent className="space-y-4">
-                {/* Select Papers (Rows) */}
-                <div>
-                  <p className="text-xs font-medium text-slate-600 mb-2">Select Papers (Rows):</p>
-                  <div className="space-y-1 max-h-[150px] overflow-y-auto">
-                    {papers.map((paper) => (
-                      <label key={paper.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer">
-                        <Checkbox
-                          checked={synthSelectedPapers.includes(paper.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) setSynthSelectedPapers([...synthSelectedPapers, paper.id]);
-                            else setSynthSelectedPapers(synthSelectedPapers.filter((id) => id !== paper.id));
-                          }}
-                        />
-                        <span className="text-xs text-slate-700 truncate">{paper.title} ({paper.year})</span>
-                      </label>
-                    ))}
+          {/* Sub-Tab: Synthesis Tables */}
+          {researchSubTab === "synthesis" && (
+            <Card className="border-slate-200">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                    <Table2 className="w-4 h-4" />
+                    Synthesis Tables ({synthTables.length})
+                  </CardTitle>
+                  <div className="flex gap-1.5">
+                    <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleExportSynthTable}>
+                      <Download className="w-3 h-3 mr-1" />
+                      Export CSV
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleCreateNewSynthTable}>
+                      <Plus className="w-3 h-3 mr-1" />
+                      New Table
+                    </Button>
                   </div>
                 </div>
-
-                {/* Custom Columns */}
-                <div>
-                  <p className="text-xs font-medium text-slate-600 mb-2">Columns (Attributes):</p>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {synthColumns.map((col) => (
-                      <Badge key={col} variant="secondary" className="text-[10px] px-2 py-0.5 bg-slate-100 gap-1">
-                        {col}
-                        <button onClick={() => setSynthColumns(synthColumns.filter((c) => c !== col))} className="hover:text-red-500">
-                          <X className="w-2.5 h-2.5" />
+              </CardHeader>
+              {showSynthesisTable && (
+                <CardContent className="space-y-4">
+                  {/* Table Switcher */}
+                  {synthTables.length > 1 && (
+                    <div className="flex gap-1.5 overflow-x-auto pb-1">
+                      {synthTables.map((table) => (
+                        <button
+                          key={table.id}
+                          onClick={() => setActiveSynthTableId(table.id)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-all border",
+                            activeSynthTableId === table.id
+                              ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
+                              : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                          )}
+                        >
+                          {table.name}
                         </button>
-                      </Badge>
-                    ))}
+                      ))}
+                    </div>
+                  )}
+                  {/* Select Papers (Rows) */}
+                  <div>
+                    <p className="text-xs font-medium text-slate-600 mb-2">Select Papers (Rows):</p>
+                    <div className="space-y-1 max-h-[150px] overflow-y-auto">
+                      {papers.map((paper) => (
+                        <label key={paper.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer">
+                          <Checkbox
+                            checked={synthSelectedPapers.includes(paper.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) setSynthSelectedPapers([...synthSelectedPapers, paper.id]);
+                              else setSynthSelectedPapers(synthSelectedPapers.filter((id) => id !== paper.id));
+                            }}
+                          />
+                          <span className="text-xs text-slate-700 truncate">{paper.title} ({paper.year})</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex gap-1.5">
-                    <Input
-                      value={newSynthCol}
-                      onChange={(e) => setNewSynthCol(e.target.value)}
-                      placeholder="Add column (e.g., Sample Size, Theory)..."
-                      className="text-xs h-7"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
+
+                  {/* Custom Columns */}
+                  <div>
+                    <p className="text-xs font-medium text-slate-600 mb-2">Columns (Attributes):</p>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {synthColumns.map((col) => (
+                        <Badge key={col} variant="secondary" className="text-[10px] px-2 py-0.5 bg-slate-100 gap-1">
+                          {col}
+                          <button onClick={() => setSynthColumns(synthColumns.filter((c) => c !== col))} className="hover:text-red-500">
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Input
+                        value={newSynthCol}
+                        onChange={(e) => setNewSynthCol(e.target.value)}
+                        placeholder="Add column (e.g., Sample Size, Theory)..."
+                        className="text-xs h-7"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const val = newSynthCol.trim();
+                            if (val && !synthColumns.includes(val)) {
+                              setSynthColumns([...synthColumns, val]);
+                              setNewSynthCol("");
+                            }
+                          }
+                        }}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7 shrink-0"
+                        onClick={() => {
                           const val = newSynthCol.trim();
                           if (val && !synthColumns.includes(val)) {
                             setSynthColumns([...synthColumns, val]);
                             setNewSynthCol("");
                           }
-                        }
-                      }}
+                        }}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* AI Auto-fill Button */}
+                  <Button
+                    size="sm"
+                    className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                    onClick={handleAiSearchSynthesis}
+                    disabled={aiSearching || synthSelectedPapers.length === 0}
+                  >
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    {aiSearching ? "AI Searching..." : "AI Auto-fill Data (Premium)"}
+                  </Button>
+
+                  {/* Table */}
+                  {synthSelectedPapers.length > 0 && synthColumns.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr>
+                            <th className="text-left p-2 border border-slate-200 bg-slate-50 font-semibold text-slate-600 min-w-[150px]">
+                              Paper
+                            </th>
+                            {synthColumns.map((col) => (
+                              <th key={col} className="text-left p-2 border border-slate-200 bg-slate-50 font-semibold text-slate-600 min-w-[120px]">
+                                {col}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {synthSelectedPapers.map((pid) => {
+                            const paper = papers.find((p) => p.id === pid);
+                            if (!paper) return null;
+                            return (
+                              <tr key={pid}>
+                                <td className="p-2 border border-slate-200 font-medium text-slate-700">
+                                  {paper.authors[0]} ({paper.year})
+                                </td>
+                                {synthColumns.map((col) => (
+                                  <td key={col} className="p-2 border border-slate-200">
+                                    <input
+                                      type="text"
+                                      value={synthData[pid]?.[col] || ""}
+                                      onChange={(e) => {
+                                        setSynthData((prev) => ({
+                                          ...prev,
+                                          [pid]: { ...prev[pid], [col]: e.target.value },
+                                        }));
+                                      }}
+                                      placeholder="Enter data..."
+                                      className="w-full text-[10px] text-slate-600 bg-transparent outline-none"
+                                    />
+                                  </td>
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* ===== VISUALIZATION TOOLS ===== */}
+      {vizSection === "viztools" && (
+        <div className="space-y-5">
+          <Card className="border-slate-200">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-amber-500" />
+                    Visualization Tools Directory
+                  </CardTitle>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Common software and apps for research visualization, bibliometrics, and data presentation.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                  onClick={() => setShowAddVizTool(!showAddVizTool)}
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Tool
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Add New Tool Form */}
+              {showAddVizTool && (
+                <div className="p-4 rounded-lg border-2 border-dashed border-amber-200 bg-amber-50/30 space-y-3">
+                  <p className="text-xs font-semibold text-amber-700">➕ Add a New Visualization Tool</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-slate-600">Name *</label>
+                      <Input
+                        value={newVizToolName}
+                        onChange={(e) => setNewVizToolName(e.target.value)}
+                        placeholder="Tool name..."
+                        className="text-xs h-8"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-slate-600">URL</label>
+                      <Input
+                        value={newVizToolUrl}
+                        onChange={(e) => setNewVizToolUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="text-xs h-8"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-slate-600">Description</label>
+                    <Textarea
+                      value={newVizToolDesc}
+                      onChange={(e) => setNewVizToolDesc(e.target.value)}
+                      rows={2}
+                      placeholder="What does this tool do? What is it best for?"
+                      className="text-xs"
                     />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs h-7 shrink-0"
-                      onClick={() => {
-                        const val = newSynthCol.trim();
-                        if (val && !synthColumns.includes(val)) {
-                          setSynthColumns([...synthColumns, val]);
-                          setNewSynthCol("");
-                        }
-                      }}
-                    >
-                      <Plus className="w-3 h-3" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-slate-600">Pricing</label>
+                      <div className="flex gap-1.5">
+                        {(["free", "freemium", "paid"] as const).map((p) => (
+                          <button
+                            key={p}
+                            onClick={() => setNewVizToolPricing(p)}
+                            className={cn(
+                              "px-2.5 py-1 rounded text-[10px] border capitalize transition-all",
+                              newVizToolPricing === p
+                                ? p === "free" ? "bg-emerald-500 text-white border-emerald-500"
+                                  : p === "freemium" ? "bg-amber-500 text-white border-amber-500"
+                                  : "bg-red-500 text-white border-red-500"
+                                : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                            )}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-slate-600">Price Details</label>
+                      <Input
+                        value={newVizToolPrice}
+                        onChange={(e) => setNewVizToolPrice(e.target.value)}
+                        placeholder="e.g., $10/month, Free tier available..."
+                        className="text-xs h-8"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Button size="sm" className="text-xs h-7 bg-amber-500 hover:bg-amber-600 text-white" onClick={handleAddVizTool}>
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Tool
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setShowAddVizTool(false)}>
+                      Cancel
                     </Button>
                   </div>
                 </div>
+              )}
 
-                {/* AI Auto-fill Button */}
-                <Button
-                  size="sm"
-                  className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
-                  onClick={handleAiSearchSynthesis}
-                  disabled={aiSearching || synthSelectedPapers.length === 0}
-                >
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  {aiSearching ? "AI Searching..." : "AI Auto-fill Data (Premium)"}
-                </Button>
-
-                {/* Table */}
-                {synthSelectedPapers.length > 0 && synthColumns.length > 0 && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs border-collapse">
-                      <thead>
-                        <tr>
-                          <th className="text-left p-2 border border-slate-200 bg-slate-50 font-semibold text-slate-600 min-w-[150px]">
-                            Paper
-                          </th>
-                          {synthColumns.map((col) => (
-                            <th key={col} className="text-left p-2 border border-slate-200 bg-slate-50 font-semibold text-slate-600 min-w-[120px]">
-                              {col}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {synthSelectedPapers.map((pid) => {
-                          const paper = papers.find((p) => p.id === pid);
-                          if (!paper) return null;
-                          return (
-                            <tr key={pid}>
-                              <td className="p-2 border border-slate-200 font-medium text-slate-700">
-                                {paper.authors[0]} ({paper.year})
-                              </td>
-                              {synthColumns.map((col) => (
-                                <td key={col} className="p-2 border border-slate-200">
-                                  <input
-                                    type="text"
-                                    value={synthData[pid]?.[col] || ""}
-                                    onChange={(e) => {
-                                      setSynthData((prev) => ({
-                                        ...prev,
-                                        [pid]: { ...prev[pid], [col]: e.target.value },
-                                      }));
-                                    }}
-                                    placeholder="Enter data..."
-                                    className="w-full text-[10px] text-slate-600 bg-transparent outline-none"
-                                  />
-                                </td>
-                              ))}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+              {/* Tools Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {vizTools.map((tool) => (
+                  <div
+                    key={tool.id}
+                    className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all group"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-semibold text-slate-800">{tool.name}</h4>
+                        {tool.source === "user" && (
+                          <Badge variant="outline" className="text-[8px] px-1 py-0 border-purple-300 text-purple-600">
+                            Custom
+                          </Badge>
+                        )}
+                      </div>
+                      <Badge
+                        className={cn(
+                          "text-[9px] px-1.5 py-0",
+                          tool.pricing === "free" && "bg-emerald-100 text-emerald-700 border-emerald-200",
+                          tool.pricing === "freemium" && "bg-amber-100 text-amber-700 border-amber-200",
+                          tool.pricing === "paid" && "bg-red-100 text-red-700 border-red-200"
+                        )}
+                      >
+                        {tool.pricing === "free" ? "Free" : tool.pricing === "freemium" ? "Freemium" : "Paid"}
+                      </Badge>
+                    </div>
+                    <p className="text-[10px] text-slate-600 mb-2 line-clamp-2">{tool.description}</p>
+                    {tool.price && (
+                      <p className="text-[9px] text-slate-400 mb-2">💰 {tool.price}</p>
+                    )}
+                    <div className="flex items-center justify-between">
+                      {tool.url && (
+                        <a
+                          href={tool.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-0.5"
+                        >
+                          🔗 Visit Website
+                        </a>
+                      )}
+                      {tool.source === "user" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-[9px] h-5 px-1.5 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => setVizTools(vizTools.filter((t) => t.id !== tool.id))}
+                        >
+                          <X className="w-2.5 h-2.5 mr-0.5" />
+                          Remove
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            )}
+                ))}
+              </div>
+            </CardContent>
           </Card>
         </div>
       )}
@@ -3175,39 +3556,66 @@ function DraftWorkspaceInline() {
   const [newPreWriteContent, setNewPreWriteContent] = useState("");
   const [preWriteCollapsed, setPreWriteCollapsed] = useState(false);
 
+  // Tool & upload state for pre-writing notes
+  const [newPreWriteTool, setNewPreWriteTool] = useState("");
+  const [newPreWriteUploads, setNewPreWriteUploads] = useState<Array<{ name: string; type: string }>>([]);
+
   const preWriteStrategies = {
     brainstorming: {
       icon: "💡",
       label: "Brainstorming",
       description: "Generate ideas freely without judgment. Write down every thought related to your research topic. Quantity over quality at this stage.",
       tips: ["Set a timer (10-15 min)", "No idea is too wild", "Build on previous ideas", "Don't edit or filter yet"],
+      tools: [
+        { name: "Miro", url: "https://miro.com", desc: "Online whiteboard for visual brainstorming" },
+        { name: "MindMeister", url: "https://www.mindmeister.com", desc: "Mind mapping tool" },
+        { name: "Padlet", url: "https://padlet.com", desc: "Collaborative idea board" },
+        { name: "Google Jamboard", url: "https://jamboard.google.com", desc: "Digital whiteboard" },
+      ],
     },
     listing: {
       icon: "📋",
       label: "Listing",
       description: "Create organized lists of key concepts, arguments, evidence, and questions. Group related items together.",
       tips: ["List main arguments", "List supporting evidence for each", "List counter-arguments", "List unanswered questions"],
+      tools: [
+        { name: "Notion", url: "https://notion.so", desc: "Structured note-taking & databases" },
+        { name: "Workflowy", url: "https://workflowy.com", desc: "Infinite nested lists" },
+        { name: "Dynalist", url: "https://dynalist.io", desc: "Outliner with rich formatting" },
+        { name: "Google Docs", url: "https://docs.google.com", desc: "Collaborative document editing" },
+      ],
     },
     clustering: {
       icon: "🕸️",
       label: "Clustering",
       description: "Start with a central concept and branch out to related ideas. Draw connections between clusters to find unexpected relationships.",
       tips: ["Put main topic in center", "Branch to sub-topics", "Connect related branches", "Identify gaps between clusters"],
+      tools: [
+        { name: "XMind", url: "https://xmind.app", desc: "Professional mind mapping" },
+        { name: "Coggle", url: "https://coggle.it", desc: "Collaborative mind maps" },
+        { name: "Whimsical", url: "https://whimsical.com", desc: "Flowcharts & mind maps" },
+        { name: "Scapple", url: "https://www.literatureandlatte.com/scapple", desc: "Freeform concept mapping" },
+      ],
     },
     freewriting: {
       icon: "✍️",
       label: "Free Writing",
       description: "Write continuously for a set period without stopping. Don't worry about grammar, spelling, or structure. Let your thoughts flow.",
       tips: ["Write for 10-20 minutes non-stop", "Don't delete anything", "Follow tangents freely", "Highlight key insights after"],
+      tools: [],
     },
   };
 
   const handleAddPreWriteNote = () => {
     if (!newPreWriteTitle.trim() || !newPreWriteContent.trim()) return;
+    const toolInfo = newPreWriteTool ? ` [Tool: ${newPreWriteTool}]` : "";
+    const uploadInfo = newPreWriteUploads.length > 0
+      ? `\n📎 Attachments: ${newPreWriteUploads.map((u) => u.name).join(", ")}`
+      : "";
     const newNote = {
       id: `pw-${Date.now()}`,
-      title: newPreWriteTitle.trim(),
-      content: newPreWriteContent.trim(),
+      title: newPreWriteTitle.trim() + toolInfo,
+      content: newPreWriteContent.trim() + uploadInfo,
       date: new Date().toISOString().split("T")[0],
     };
     setPreWriteNotes((prev) => ({
@@ -3216,7 +3624,84 @@ function DraftWorkspaceInline() {
     }));
     setNewPreWriteTitle("");
     setNewPreWriteContent("");
+    setNewPreWriteTool("");
+    setNewPreWriteUploads([]);
     setShowNewPreWrite(false);
+  };
+
+  const handleSimulateUpload = () => {
+    const fakeFiles = [
+      { name: `${preWriteTab}_result_${Date.now()}.png`, type: "image/png" },
+    ];
+    setNewPreWriteUploads([...newPreWriteUploads, ...fakeFiles]);
+  };
+
+  // Writing draft versioning
+  interface WritingDraftVersion {
+    id: string;
+    content: Record<string, string>;
+    savedAt: string;
+  }
+  interface WritingDraft {
+    id: string;
+    name: string;
+    styleId: string;
+    versions: WritingDraftVersion[];
+    createdAt: string;
+  }
+  const [writingDrafts, setWritingDrafts] = useState<WritingDraft[]>([]);
+  const [showDraftBrowser, setShowDraftBrowser] = useState(false);
+  const [showArtifactBrowser, setShowArtifactBrowser] = useState(false);
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+  const [draftSaveMsg, setDraftSaveMsg] = useState<string | null>(null);
+
+  const handleSaveAsWritingDraft = () => {
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+    const timeStr = now.toLocaleTimeString();
+    const currentContent = { ...componentContents };
+
+    // Check if we have a selected draft to save a new version to
+    if (selectedDraftId) {
+      setWritingDrafts((prev) =>
+        prev.map((d) =>
+          d.id === selectedDraftId
+            ? {
+                ...d,
+                versions: [
+                  ...d.versions,
+                  { id: `v-${Date.now()}`, content: currentContent, savedAt: `${dateStr} ${timeStr}` },
+                ],
+              }
+            : d
+        )
+      );
+      setDraftSaveMsg(`New version saved to "${writingDrafts.find((d) => d.id === selectedDraftId)?.name}" at ${timeStr}`);
+    } else {
+      const newDraft: WritingDraft = {
+        id: `wd-${Date.now()}`,
+        name: `Draft — ${activeStyle.name} — ${dateStr}`,
+        styleId: selectedStyle,
+        versions: [{ id: `v-${Date.now()}`, content: currentContent, savedAt: `${dateStr} ${timeStr}` }],
+        createdAt: dateStr,
+      };
+      setWritingDrafts([...writingDrafts, newDraft]);
+      setSelectedDraftId(newDraft.id);
+      setDraftSaveMsg(`Writing draft "${newDraft.name}" saved at ${timeStr}`);
+    }
+    setTimeout(() => setDraftSaveMsg(null), 3000);
+  };
+
+  const handleLoadDraftVersion = (draftId: string, versionId: string) => {
+    const draft = writingDrafts.find((d) => d.id === draftId);
+    const version = draft?.versions.find((v) => v.id === versionId);
+    if (version) {
+      setComponentContents(version.content);
+      setSelectedDraftId(draftId);
+      setSelectedVersionId(versionId);
+      setShowDraftBrowser(false);
+    }
   };
 
   const previewArtifact = allArtifacts.find((a) => a.id === previewArtifactId);
@@ -3267,13 +3752,34 @@ function DraftWorkspaceInline() {
             {/* Strategy Description & Tips */}
             <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-lg">
               <p className="text-xs text-slate-700 mb-2">{preWriteStrategies[preWriteTab].description}</p>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5 mb-2">
                 {preWriteStrategies[preWriteTab].tips.map((tip, i) => (
                   <Badge key={i} variant="outline" className="text-[9px] border-amber-200 text-amber-700">
                     💡 {tip}
                   </Badge>
                 ))}
               </div>
+              {preWriteStrategies[preWriteTab].tools.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-amber-100">
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                    🛠️ Recommended Tools
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {preWriteStrategies[preWriteTab].tools.map((tool) => (
+                      <a
+                        key={tool.name}
+                        href={tool.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50 transition-all text-[10px] text-slate-600 hover:text-amber-700"
+                        title={tool.desc}
+                      >
+                        🔗 {tool.name}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Notes for this strategy */}
@@ -3311,12 +3817,62 @@ function DraftWorkspaceInline() {
                   }
                   className="text-xs font-mono"
                 />
+                {/* Tool Selection */}
+                {preWriteStrategies[preWriteTab].tools.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-medium text-slate-500">Tool Used (optional):</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {preWriteStrategies[preWriteTab].tools.map((tool) => (
+                        <button
+                          key={tool.name}
+                          onClick={() => setNewPreWriteTool(newPreWriteTool === tool.name ? "" : tool.name)}
+                          className={cn(
+                            "px-2 py-0.5 rounded text-[10px] border transition-all",
+                            newPreWriteTool === tool.name
+                              ? "bg-amber-500 text-white border-amber-500"
+                              : "bg-white text-slate-600 border-slate-200 hover:border-amber-300"
+                          )}
+                        >
+                          {tool.name}
+                        </button>
+                      ))}
+                      <Input
+                        value={newPreWriteTool && !preWriteStrategies[preWriteTab].tools.find((t) => t.name === newPreWriteTool) ? newPreWriteTool : ""}
+                        onChange={(e) => setNewPreWriteTool(e.target.value)}
+                        placeholder="Other tool..."
+                        className="text-[10px] h-6 w-28"
+                      />
+                    </div>
+                  </div>
+                )}
+                {/* Upload Visualization / Document */}
+                <div className="space-y-1">
+                  <p className="text-[10px] font-medium text-slate-500">Upload Result / Document (optional):</p>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={handleSimulateUpload}>
+                      <Upload className="w-3 h-3 mr-1" />
+                      Upload File
+                    </Button>
+                    {newPreWriteUploads.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {newPreWriteUploads.map((f, i) => (
+                          <Badge key={i} variant="secondary" className="text-[9px] px-1.5 py-0 bg-blue-50 text-blue-700 gap-1">
+                            📎 {f.name}
+                            <button onClick={() => setNewPreWriteUploads(newPreWriteUploads.filter((_, idx) => idx !== i))}>
+                              <X className="w-2 h-2" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div className="flex gap-1.5">
                   <Button size="sm" className="text-xs h-7 bg-amber-500 hover:bg-amber-600 text-white" onClick={handleAddPreWriteNote}>
                     <Save className="w-3 h-3 mr-1" />
                     Save Note
                   </Button>
-                  <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => { setShowNewPreWrite(false); setNewPreWriteTitle(""); setNewPreWriteContent(""); }}>
+                  <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => { setShowNewPreWrite(false); setNewPreWriteTitle(""); setNewPreWriteContent(""); setNewPreWriteTool(""); setNewPreWriteUploads([]); }}>
                     Cancel
                   </Button>
                 </div>
@@ -3383,9 +3939,17 @@ function DraftWorkspaceInline() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
         {/* Left Column: Available Artifacts */}
         <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Available Artifacts
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Artifacts
+            </h3>
+            <Link to="/artifacts?tab=all">
+              <Button size="sm" variant="outline" className="text-[10px] h-6 px-2">
+                <Eye className="w-2.5 h-2.5 mr-0.5" />
+                Browse All
+              </Button>
+            </Link>
+          </div>
           <ScrollArea className="max-h-[600px]">
             <div className="space-y-2 pr-1">
               {allArtifacts.map((artifact) => {
@@ -3442,8 +4006,14 @@ function DraftWorkspaceInline() {
                 <CardTitle className="text-sm font-semibold">
                   Writing Block — {activeStyle.name}
                 </CardTitle>
-                <div className="flex items-center gap-1.5">
-                  {lastSaved && (
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  {draftSaveMsg && (
+                    <span className="text-[10px] text-emerald-500 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      {draftSaveMsg}
+                    </span>
+                  )}
+                  {lastSaved && !draftSaveMsg && (
                     <span className="text-[10px] text-emerald-500 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
                       Saved {lastSaved}
@@ -3452,6 +4022,14 @@ function DraftWorkspaceInline() {
                   <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleManualSave}>
                     <Save className="w-3 h-3 mr-1" />
                     Save
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs h-7 border-orange-300 text-orange-700 hover:bg-orange-50" onClick={handleSaveAsWritingDraft}>
+                    <FileText className="w-3 h-3 mr-1" />
+                    Save as Draft
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setShowDraftBrowser(!showDraftBrowser)}>
+                    <FolderUp className="w-3 h-3 mr-1" />
+                    Load Draft
                   </Button>
                   <Button
                     size="sm"
@@ -3466,6 +4044,59 @@ function DraftWorkspaceInline() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* Draft Browser */}
+              {showDraftBrowser && (
+                <div className="p-3 rounded-lg border-2 border-dashed border-orange-200 bg-orange-50/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-orange-700">📂 Writing Drafts</p>
+                    <button onClick={() => setShowDraftBrowser(false)} className="hover:bg-orange-100 rounded p-0.5">
+                      <X className="w-3 h-3 text-orange-400" />
+                    </button>
+                  </div>
+                  {writingDrafts.length === 0 ? (
+                    <p className="text-[10px] text-slate-400 text-center py-3">
+                      No writing drafts saved yet. Use &quot;Save as Draft&quot; to create one.
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-[250px] overflow-y-auto">
+                      {writingDrafts.map((draft) => (
+                        <div key={draft.id} className="p-2 rounded-lg border border-orange-200 bg-white">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="text-xs font-medium text-slate-800">{draft.name}</h4>
+                            <Badge variant="outline" className="text-[9px] px-1 py-0">
+                              {draft.versions.length} version{draft.versions.length > 1 ? "s" : ""}
+                            </Badge>
+                          </div>
+                          <p className="text-[9px] text-slate-400 mb-1.5">Created: {draft.createdAt}</p>
+                          <div className="space-y-1">
+                            {draft.versions.map((version) => (
+                              <button
+                                key={version.id}
+                                onClick={() => handleLoadDraftVersion(draft.id, version.id)}
+                                className={cn(
+                                  "w-full text-left p-1.5 rounded text-[10px] transition-all border",
+                                  selectedDraftId === draft.id && selectedVersionId === version.id
+                                    ? "bg-orange-100 border-orange-300 text-orange-800"
+                                    : "bg-slate-50 border-slate-200 hover:border-orange-200 text-slate-600"
+                                )}
+                              >
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  {version.savedAt}
+                                  {selectedDraftId === draft.id && selectedVersionId === version.id && (
+                                    <Badge className="text-[8px] px-1 py-0 bg-orange-500 text-white ml-auto">Active</Badge>
+                                  )}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Component Tabs */}
               <div className="flex gap-1 overflow-x-auto pb-1">
                 {activeStyle.components.map((comp) => (
