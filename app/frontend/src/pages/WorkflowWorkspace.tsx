@@ -13,13 +13,20 @@ import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   BookOpen,
+  Brain,
   Check,
   CheckCircle2,
   ChevronRight,
+  Clock,
   Download,
   Eye,
   FileText,
+  FolderUp,
+  Hash,
+  Lightbulb,
+  List,
   Network,
   PenTool,
   Plus,
@@ -27,8 +34,10 @@ import {
   Search,
   Sparkles,
   Star,
+  Table2,
   Tag,
   Target,
+  Upload,
   X,
   Zap,
 } from "lucide-react";
@@ -2458,122 +2467,580 @@ function ExpandWorkspace() {
 // Step 5: Visualize Workspace
 // ============================================================
 function VisualizeWorkspace() {
-  const [activeView, setActiveView] = useState("topic");
-  const [insightText, setInsightText] = useState(
-    "Three main clusters emerge: (1) AI tutoring effectiveness studies, (2) SRL theory and measurement, (3) Technology-enhanced metacognition. The gap lies at the intersection of clusters 1 and 2."
+  const [vizSection, setVizSection] = useState<"workspace" | "research">("workspace");
+
+  // Workspace stats
+  const workspaceStats = {
+    projects: 3,
+    totalArtifacts: DUMMY_ARTIFACTS.length,
+    annotations: DUMMY_ARTIFACTS.filter((a) => a.type === "highlight").length + 3,
+    litNotes: DUMMY_ARTIFACTS.filter((a) => a.type === "literature-note").length + 2,
+    permNotes: DUMMY_ARTIFACTS.filter((a) => a.type === "permanent-note").length + 1,
+    drafts: DUMMY_ARTIFACTS.filter((a) => a.type === "rq-draft").length,
+    purposeCards: DUMMY_ARTIFACTS.filter((a) => a.type === "purpose").length + 1,
+    onlineHours: 24.5,
+    totalWords: 12840,
+  };
+
+  // Research content stats
+  const papers = DUMMY_PAPERS;
+  const readPapers = papers.filter((p) => p.annotations.length > 0);
+
+  // Upload state
+  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: string; date: string }>>([]);
+  const [showUploadArea, setShowUploadArea] = useState(false);
+
+  // AI summary
+  const [aiSummaryResult, setAiSummaryResult] = useState<string | null>(null);
+  const [aiSummarizing, setAiSummarizing] = useState(false);
+
+  // Add permanent note
+  const [showAddPermNote, setShowAddPermNote] = useState(false);
+  const [permNoteTitle, setPermNoteTitle] = useState("");
+  const [permNoteContent, setPermNoteContent] = useState("");
+  const [addedPermNotes, setAddedPermNotes] = useState<Array<{ id: string; title: string; content: string; date: string }>>([]);
+
+  // Synthesis table
+  const [showSynthesisTable, setShowSynthesisTable] = useState(false);
+  const [synthColumns, setSynthColumns] = useState<string[]>(["Research Question", "Method", "Key Finding"]);
+  const [newSynthCol, setNewSynthCol] = useState("");
+  const [synthSelectedPapers, setSynthSelectedPapers] = useState<string[]>(papers.slice(0, 2).map((p) => p.id));
+  const [synthData, setSynthData] = useState<Record<string, Record<string, string>>>({});
+  const [aiSearching, setAiSearching] = useState(false);
+
+  // Sort papers
+  const [paperSort, setPaperSort] = useState<"year" | "access">("year");
+  const sortedPapers = [...papers].sort((a, b) =>
+    paperSort === "year" ? b.year - a.year : 0
   );
+
+  const handleAiSummarize = () => {
+    setAiSummarizing(true);
+    setTimeout(() => {
+      setAiSummaryResult(
+        "📝 AI Summary of Notes & Highlights:\n\n" +
+        "Key Themes Identified:\n" +
+        "1. AI tutoring systems improve performance metrics but their effect on self-regulated learning (SRL) remains underexplored.\n" +
+        "2. Personalization algorithms are the primary mechanism connecting AI tutoring to outcomes, but metacognitive impacts are unclear.\n" +
+        "3. A significant gap exists between performance outcomes and process outcomes in AI education research.\n\n" +
+        "Insight Note (Auto-generated):\n" +
+        "The literature converges on a critical tension: while AI tutoring systems demonstrate measurable improvements in test scores and completion rates, they may inadvertently bypass the self-regulatory processes that lead to deeper, transferable learning. Future research should investigate design features that explicitly scaffold SRL within adaptive systems."
+      );
+      setAiSummarizing(false);
+    }, 2000);
+  };
+
+  const handleAddPermNote = () => {
+    if (!permNoteTitle.trim() || !permNoteContent.trim()) return;
+    setAddedPermNotes([
+      ...addedPermNotes,
+      {
+        id: `vpn-${Date.now()}`,
+        title: permNoteTitle.trim(),
+        content: permNoteContent.trim(),
+        date: new Date().toISOString().split("T")[0],
+      },
+    ]);
+    setPermNoteTitle("");
+    setPermNoteContent("");
+    setShowAddPermNote(false);
+  };
+
+  const handleUploadFile = () => {
+    setUploadedFiles([
+      ...uploadedFiles,
+      { name: `external_data_${uploadedFiles.length + 1}.pdf`, size: "2.4 MB", date: new Date().toISOString().split("T")[0] },
+    ]);
+    setShowUploadArea(false);
+  };
+
+  const handleAiSearchSynthesis = () => {
+    setAiSearching(true);
+    setTimeout(() => {
+      const newData: Record<string, Record<string, string>> = { ...synthData };
+      synthSelectedPapers.forEach((pid) => {
+        const paper = papers.find((p) => p.id === pid);
+        if (paper) {
+          newData[pid] = {
+            "Research Question": paper.researchQuestion || "How does AI tutoring affect learning outcomes?",
+            "Method": paper.method || "Systematic review / Meta-analysis",
+            "Key Finding": paper.findings || "AI tutoring improves test scores but SRL impact is unclear.",
+            ...synthColumns.reduce((acc, col) => {
+              if (!["Research Question", "Method", "Key Finding"].includes(col)) {
+                acc[col] = newData[pid]?.[col] || "(AI: Data not found for this attribute)";
+              }
+              return acc;
+            }, {} as Record<string, string>),
+          };
+        }
+      });
+      setSynthData(newData);
+      setAiSearching(false);
+    }, 1500);
+  };
+
+  const artifactBreakdown = [
+    { label: "Annotations/Highlights", count: workspaceStats.annotations, color: "bg-yellow-400" },
+    { label: "Literature Notes", count: workspaceStats.litNotes, color: "bg-blue-400" },
+    { label: "Permanent Notes", count: workspaceStats.permNotes, color: "bg-rose-400" },
+    { label: "Drafts", count: workspaceStats.drafts, color: "bg-emerald-400" },
+    { label: "Purpose Cards", count: workspaceStats.purposeCards, color: "bg-purple-400" },
+  ];
+  const maxArtifactCount = Math.max(...artifactBreakdown.map((a) => a.count), 1);
 
   return (
     <div className="space-y-5">
+      {/* Section Tabs */}
       <Card className="border-slate-200">
         <CardContent className="p-3">
           <div className="flex gap-2">
-            {VIZ_VIEWS.map((view) => (
-              <Button
-                key={view.id}
-                size="sm"
-                variant={activeView === view.id ? "default" : "outline"}
-                className={cn(
-                  "text-xs",
-                  activeView === view.id &&
-                    "bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
-                )}
-                onClick={() => setActiveView(view.id)}
-              >
-                {view.label}
-              </Button>
-            ))}
+            <Button
+              size="sm"
+              variant={vizSection === "workspace" ? "default" : "outline"}
+              className={cn("text-xs", vizSection === "workspace" && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white")}
+              onClick={() => setVizSection("workspace")}
+            >
+              <BarChart3 className="w-3 h-3 mr-1" />
+              Workspace Analytics
+            </Button>
+            <Button
+              size="sm"
+              variant={vizSection === "research" ? "default" : "outline"}
+              className={cn("text-xs", vizSection === "research" && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white")}
+              onClick={() => setVizSection("research")}
+            >
+              <BookOpen className="w-3 h-3 mr-1" />
+              Research Content
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2">
-          <Card className="border-slate-200 h-[400px]">
-            <CardContent className="p-0 h-full relative">
-              <img
-                src="https://mgx-backend-cdn.metadl.com/generate/images/1012783/2026-03-09/d73120cf-3173-4321-a9bb-689bd05b9c7f.png"
-                alt="Visualization network"
-                className="w-full h-full object-cover rounded-lg opacity-30"
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <svg
-                  viewBox="0 0 500 300"
-                  className="w-full h-full p-6"
+      {/* ===== WORKSPACE ANALYTICS ===== */}
+      {vizSection === "workspace" && (
+        <div className="space-y-5">
+          {/* Overview Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: "Projects", value: workspaceStats.projects, icon: "📁" },
+              { label: "Total Artifacts", value: workspaceStats.totalArtifacts, icon: "📦" },
+              { label: "Online Hours", value: `${workspaceStats.onlineHours}h`, icon: "⏱️" },
+              { label: "Total Words", value: workspaceStats.totalWords.toLocaleString(), icon: "✍️" },
+            ].map((stat) => (
+              <Card key={stat.label} className="border-slate-200">
+                <CardContent className="p-4 text-center">
+                  <span className="text-2xl block mb-1">{stat.icon}</span>
+                  <p className="text-xl font-bold text-slate-800">{stat.value}</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider">{stat.label}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Artifact Breakdown */}
+          <Card className="border-slate-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold">Artifact Breakdown by Type</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {artifactBreakdown.map((item) => (
+                  <div key={item.label} className="flex items-center gap-3">
+                    <span className="text-xs text-slate-600 w-36 shrink-0">{item.label}</span>
+                    <div className="flex-1 bg-slate-100 rounded-full h-5 overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-full transition-all", item.color)}
+                        style={{ width: `${(item.count / maxArtifactCount) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-slate-700 w-8 text-right">{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ===== RESEARCH CONTENT ===== */}
+      {vizSection === "research" && (
+        <div className="space-y-5">
+          {/* Paper Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <Card className="border-slate-200">
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-slate-800">{papers.length}</p>
+                <p className="text-[10px] text-slate-500 uppercase">Total Papers</p>
+              </CardContent>
+            </Card>
+            <Card className="border-slate-200">
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-emerald-600">{readPapers.length}</p>
+                <p className="text-[10px] text-slate-500 uppercase">Papers Read</p>
+              </CardContent>
+            </Card>
+            <Card className="border-slate-200">
+              <CardContent className="p-4 text-center">
+                <p className="text-2xl font-bold text-amber-600">{papers.length - readPapers.length}</p>
+                <p className="text-[10px] text-slate-500 uppercase">Unread</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Paper List with Sort */}
+          <Card className="border-slate-200">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold">Papers Overview</CardTitle>
+                <div className="flex gap-1">
+                  <Button
+                    size="sm"
+                    variant={paperSort === "year" ? "default" : "outline"}
+                    className={cn("text-[10px] h-6", paperSort === "year" && "bg-[#1E3A5F] text-white")}
+                    onClick={() => setPaperSort("year")}
+                  >
+                    <Clock className="w-2.5 h-2.5 mr-0.5" />
+                    By Year
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={paperSort === "access" ? "default" : "outline"}
+                    className={cn("text-[10px] h-6", paperSort === "access" && "bg-[#1E3A5F] text-white")}
+                    onClick={() => setPaperSort("access")}
+                  >
+                    <Eye className="w-2.5 h-2.5 mr-0.5" />
+                    By Access
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="max-h-[300px]">
+                <div className="space-y-2">
+                  {sortedPapers.map((paper) => (
+                    <div key={paper.id} className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition-all">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-medium text-slate-800 line-clamp-1">{paper.title}</h4>
+                          <p className="text-[10px] text-slate-500">{paper.authors.join(", ")} ({paper.year})</p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <div className="text-center">
+                            <p className="text-xs font-bold text-yellow-600">{paper.annotations.length}</p>
+                            <p className="text-[8px] text-slate-400">Highlights</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs font-bold text-blue-600">{Math.max(1, paper.annotations.length - 1)}</p>
+                            <p className="text-[8px] text-slate-400">Lit Notes</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs font-bold text-rose-600">{paper.annotations.length > 1 ? 1 : 0}</p>
+                            <p className="text-[8px] text-slate-400">Perm Notes</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          {/* Upload External Files */}
+          <Card className="border-slate-200">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <Upload className="w-4 h-4" />
+                  External Files
+                </CardTitle>
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setShowUploadArea(!showUploadArea)}>
+                  <FolderUp className="w-3 h-3 mr-1" />
+                  Upload File
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {showUploadArea && (
+                <div className="p-4 mb-3 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/30 text-center">
+                  <Upload className="w-8 h-8 text-blue-300 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500 mb-2">Drag & drop files here, or click to browse</p>
+                  <Button size="sm" className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white" onClick={handleUploadFile}>
+                    <Plus className="w-3 h-3 mr-1" />
+                    Simulate Upload
+                  </Button>
+                </div>
+              )}
+              {uploadedFiles.length > 0 ? (
+                <div className="space-y-2">
+                  {uploadedFiles.map((file, i) => (
+                    <div key={i} className="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
+                      <FileText className="w-4 h-4 text-slate-400" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-slate-700 truncate">{file.name}</p>
+                        <p className="text-[10px] text-slate-400">{file.size} · {file.date}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 text-center py-3">No external files uploaded yet.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* AI Summarize + Add Permanent Note */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* AI Summarize */}
+            <Card className="border-slate-200">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-purple-500" />
+                  AI Summarize Notes (Premium)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-slate-500 mb-3">
+                  Automatically summarize your literature notes, highlights, and permanent notes. Generate insight notes from patterns found across your materials.
+                </p>
+                <Button
+                  size="sm"
+                  className="w-full text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={handleAiSummarize}
+                  disabled={aiSummarizing}
                 >
-                  <line x1="250" y1="80" x2="120" y2="160" stroke="#1E3A5F" strokeWidth="1.5" opacity="0.3" />
-                  <line x1="250" y1="80" x2="380" y2="140" stroke="#1E3A5F" strokeWidth="1.5" opacity="0.3" />
-                  <line x1="250" y1="80" x2="250" y2="200" stroke="#2D6A4F" strokeWidth="2" opacity="0.4" />
-                  <line x1="120" y1="160" x2="180" y2="240" stroke="#1E3A5F" strokeWidth="1" opacity="0.2" />
-                  <line x1="380" y1="140" x2="350" y2="230" stroke="#1E3A5F" strokeWidth="1" opacity="0.2" />
-                  <line x1="250" y1="200" x2="180" y2="240" stroke="#2D6A4F" strokeWidth="1.5" opacity="0.3" />
-                  <line x1="250" y1="200" x2="350" y2="230" stroke="#2D6A4F" strokeWidth="1.5" opacity="0.3" />
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  {aiSummarizing ? "Summarizing..." : "Generate AI Summary & Insights"}
+                </Button>
+                {aiSummaryResult && (
+                  <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-semibold text-purple-700 uppercase">AI Result</span>
+                      <button onClick={() => setAiSummaryResult(null)} className="hover:bg-purple-100 rounded p-0.5">
+                        <X className="w-3 h-3 text-purple-400" />
+                      </button>
+                    </div>
+                    <pre className="text-[10px] text-purple-800 whitespace-pre-wrap leading-relaxed">{aiSummaryResult}</pre>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-                  <circle cx="250" cy="80" r="28" fill="#1E3A5F" opacity="0.9" />
-                  <text x="250" y="84" textAnchor="middle" fill="white" fontSize="8" fontWeight="600">AI Tutoring</text>
+            {/* Add Permanent Note */}
+            <Card className="border-slate-200">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                    <PenTool className="w-4 h-4 text-rose-500" />
+                    Permanent Notes
+                  </CardTitle>
+                  <Button
+                    size="sm"
+                    className="text-xs h-7 bg-rose-600 hover:bg-rose-700 text-white"
+                    onClick={() => setShowAddPermNote(!showAddPermNote)}
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add Note
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {showAddPermNote && (
+                  <div className="p-3 mb-3 rounded-lg border-2 border-dashed border-rose-200 bg-rose-50/30 space-y-2">
+                    <Input
+                      value={permNoteTitle}
+                      onChange={(e) => setPermNoteTitle(e.target.value)}
+                      placeholder="Note title..."
+                      className="text-xs"
+                    />
+                    <Textarea
+                      value={permNoteContent}
+                      onChange={(e) => setPermNoteContent(e.target.value)}
+                      rows={4}
+                      placeholder="Write your permanent note — synthesize insights across sources..."
+                      className="text-xs"
+                    />
+                    <div className="flex gap-1.5">
+                      <Button size="sm" className="text-xs h-7 bg-rose-600 hover:bg-rose-700 text-white" onClick={handleAddPermNote}>
+                        <Save className="w-3 h-3 mr-1" />
+                        Save
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setShowAddPermNote(false)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <ScrollArea className="max-h-[200px]">
+                  <div className="space-y-2">
+                    {addedPermNotes.map((note) => (
+                      <div key={note.id} className="p-2 rounded-lg border border-rose-200 bg-rose-50/20">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="text-xs font-medium text-slate-800">{note.title}</h4>
+                          <span className="text-[9px] text-slate-400">{note.date}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-600 line-clamp-2">{note.content}</p>
+                      </div>
+                    ))}
+                    {addedPermNotes.length === 0 && !showAddPermNote && (
+                      <p className="text-xs text-slate-400 text-center py-3">No permanent notes added from this page yet.</p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </div>
 
-                  <circle cx="120" cy="160" r="22" fill="#2D6A4F" opacity="0.8" />
-                  <text x="120" y="164" textAnchor="middle" fill="white" fontSize="7" fontWeight="500">SRL Theory</text>
-
-                  <circle cx="380" cy="140" r="20" fill="#1E3A5F" opacity="0.7" />
-                  <text x="380" y="144" textAnchor="middle" fill="white" fontSize="7" fontWeight="500">Metacognition</text>
-
-                  <circle cx="250" cy="200" r="24" fill="#dc2626" opacity="0.6" />
-                  <text x="250" y="197" textAnchor="middle" fill="white" fontSize="7" fontWeight="600">GAP</text>
-                  <text x="250" y="207" textAnchor="middle" fill="white" fontSize="6">AI × SRL</text>
-
-                  <circle cx="180" cy="240" r="16" fill="#64748b" opacity="0.5" />
-                  <text x="180" y="243" textAnchor="middle" fill="white" fontSize="6">Methods</text>
-
-                  <circle cx="350" cy="230" r="16" fill="#64748b" opacity="0.5" />
-                  <text x="350" y="233" textAnchor="middle" fill="white" fontSize="6">Feedback</text>
-                </svg>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-4">
+          {/* Synthesis Table */}
           <Card className="border-slate-200">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">
-                Insights
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={insightText}
-                onChange={(e) => setInsightText(e.target.value)}
-                rows={6}
-                className="text-xs"
-                placeholder="Write your synthesis insights..."
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">
-                Candidate Research Questions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="p-2 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-800">
-                  How do AI-powered adaptive tutoring systems influence
-                  the development of self-regulated learning strategies
-                  among graduate students?
-                </div>
-                <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600">
-                  What design features of AI tutoring systems mediate
-                  the relationship between adaptive feedback and
-                  metacognitive development?
-                </div>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
+                  <Table2 className="w-4 h-4" />
+                  Synthesis Table
+                </CardTitle>
+                <Button
+                  size="sm"
+                  variant={showSynthesisTable ? "default" : "outline"}
+                  className={cn("text-xs h-7", showSynthesisTable && "bg-[#1E3A5F] text-white")}
+                  onClick={() => setShowSynthesisTable(!showSynthesisTable)}
+                >
+                  {showSynthesisTable ? "Hide Table" : "Create Synthesis Table"}
+                </Button>
               </div>
-            </CardContent>
+            </CardHeader>
+            {showSynthesisTable && (
+              <CardContent className="space-y-4">
+                {/* Select Papers (Rows) */}
+                <div>
+                  <p className="text-xs font-medium text-slate-600 mb-2">Select Papers (Rows):</p>
+                  <div className="space-y-1 max-h-[150px] overflow-y-auto">
+                    {papers.map((paper) => (
+                      <label key={paper.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer">
+                        <Checkbox
+                          checked={synthSelectedPapers.includes(paper.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) setSynthSelectedPapers([...synthSelectedPapers, paper.id]);
+                            else setSynthSelectedPapers(synthSelectedPapers.filter((id) => id !== paper.id));
+                          }}
+                        />
+                        <span className="text-xs text-slate-700 truncate">{paper.title} ({paper.year})</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom Columns */}
+                <div>
+                  <p className="text-xs font-medium text-slate-600 mb-2">Columns (Attributes):</p>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {synthColumns.map((col) => (
+                      <Badge key={col} variant="secondary" className="text-[10px] px-2 py-0.5 bg-slate-100 gap-1">
+                        {col}
+                        <button onClick={() => setSynthColumns(synthColumns.filter((c) => c !== col))} className="hover:text-red-500">
+                          <X className="w-2.5 h-2.5" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Input
+                      value={newSynthCol}
+                      onChange={(e) => setNewSynthCol(e.target.value)}
+                      placeholder="Add column (e.g., Sample Size, Theory)..."
+                      className="text-xs h-7"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const val = newSynthCol.trim();
+                          if (val && !synthColumns.includes(val)) {
+                            setSynthColumns([...synthColumns, val]);
+                            setNewSynthCol("");
+                          }
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7 shrink-0"
+                      onClick={() => {
+                        const val = newSynthCol.trim();
+                        if (val && !synthColumns.includes(val)) {
+                          setSynthColumns([...synthColumns, val]);
+                          setNewSynthCol("");
+                        }
+                      }}
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* AI Auto-fill Button */}
+                <Button
+                  size="sm"
+                  className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={handleAiSearchSynthesis}
+                  disabled={aiSearching || synthSelectedPapers.length === 0}
+                >
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  {aiSearching ? "AI Searching..." : "AI Auto-fill Data (Premium)"}
+                </Button>
+
+                {/* Table */}
+                {synthSelectedPapers.length > 0 && synthColumns.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr>
+                          <th className="text-left p-2 border border-slate-200 bg-slate-50 font-semibold text-slate-600 min-w-[150px]">
+                            Paper
+                          </th>
+                          {synthColumns.map((col) => (
+                            <th key={col} className="text-left p-2 border border-slate-200 bg-slate-50 font-semibold text-slate-600 min-w-[120px]">
+                              {col}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {synthSelectedPapers.map((pid) => {
+                          const paper = papers.find((p) => p.id === pid);
+                          if (!paper) return null;
+                          return (
+                            <tr key={pid}>
+                              <td className="p-2 border border-slate-200 font-medium text-slate-700">
+                                {paper.authors[0]} ({paper.year})
+                              </td>
+                              {synthColumns.map((col) => (
+                                <td key={col} className="p-2 border border-slate-200">
+                                  <input
+                                    type="text"
+                                    value={synthData[pid]?.[col] || ""}
+                                    onChange={(e) => {
+                                      setSynthData((prev) => ({
+                                        ...prev,
+                                        [pid]: { ...prev[pid], [col]: e.target.value },
+                                      }));
+                                    }}
+                                    placeholder="Enter data..."
+                                    className="w-full text-[10px] text-slate-600 bg-transparent outline-none"
+                                  />
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            )}
           </Card>
         </div>
-      </div>
+      )}
 
       <div className="flex gap-2">
         <Button variant="outline">
@@ -2693,10 +3160,193 @@ function DraftWorkspaceInline() {
       .join("\n\n---\n\n");
   };
 
+  // Pre-writing state
+  const [preWriteTab, setPreWriteTab] = useState<"brainstorming" | "listing" | "clustering" | "freewriting">("brainstorming");
+  const [preWriteNotes, setPreWriteNotes] = useState<Record<string, Array<{ id: string; title: string; content: string; date: string }>>>({
+    brainstorming: [
+      { id: "pw-1", title: "Initial Ideas on AI & SRL", content: "What if AI tutoring actually hinders SRL by doing too much for students? Need to explore the 'scaffolding paradox' — support vs. dependency.", date: "2026-03-08" },
+    ],
+    listing: [],
+    clustering: [],
+    freewriting: [],
+  });
+  const [showNewPreWrite, setShowNewPreWrite] = useState(false);
+  const [newPreWriteTitle, setNewPreWriteTitle] = useState("");
+  const [newPreWriteContent, setNewPreWriteContent] = useState("");
+  const [preWriteCollapsed, setPreWriteCollapsed] = useState(false);
+
+  const preWriteStrategies = {
+    brainstorming: {
+      icon: "💡",
+      label: "Brainstorming",
+      description: "Generate ideas freely without judgment. Write down every thought related to your research topic. Quantity over quality at this stage.",
+      tips: ["Set a timer (10-15 min)", "No idea is too wild", "Build on previous ideas", "Don't edit or filter yet"],
+    },
+    listing: {
+      icon: "📋",
+      label: "Listing",
+      description: "Create organized lists of key concepts, arguments, evidence, and questions. Group related items together.",
+      tips: ["List main arguments", "List supporting evidence for each", "List counter-arguments", "List unanswered questions"],
+    },
+    clustering: {
+      icon: "🕸️",
+      label: "Clustering",
+      description: "Start with a central concept and branch out to related ideas. Draw connections between clusters to find unexpected relationships.",
+      tips: ["Put main topic in center", "Branch to sub-topics", "Connect related branches", "Identify gaps between clusters"],
+    },
+    freewriting: {
+      icon: "✍️",
+      label: "Free Writing",
+      description: "Write continuously for a set period without stopping. Don't worry about grammar, spelling, or structure. Let your thoughts flow.",
+      tips: ["Write for 10-20 minutes non-stop", "Don't delete anything", "Follow tangents freely", "Highlight key insights after"],
+    },
+  };
+
+  const handleAddPreWriteNote = () => {
+    if (!newPreWriteTitle.trim() || !newPreWriteContent.trim()) return;
+    const newNote = {
+      id: `pw-${Date.now()}`,
+      title: newPreWriteTitle.trim(),
+      content: newPreWriteContent.trim(),
+      date: new Date().toISOString().split("T")[0],
+    };
+    setPreWriteNotes((prev) => ({
+      ...prev,
+      [preWriteTab]: [...(prev[preWriteTab] || []), newNote],
+    }));
+    setNewPreWriteTitle("");
+    setNewPreWriteContent("");
+    setShowNewPreWrite(false);
+  };
+
   const previewArtifact = allArtifacts.find((a) => a.id === previewArtifactId);
 
   return (
     <div className="space-y-5">
+      {/* Pre-Writing Block */}
+      <Card className="border-slate-200">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-amber-500" />
+              Pre-Writing Strategies
+            </CardTitle>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs h-7"
+              onClick={() => setPreWriteCollapsed(!preWriteCollapsed)}
+            >
+              {preWriteCollapsed ? "Expand" : "Collapse"}
+            </Button>
+          </div>
+        </CardHeader>
+        {!preWriteCollapsed && (
+          <CardContent className="space-y-3">
+            {/* Strategy Tabs */}
+            <div className="flex gap-1.5">
+              {(Object.keys(preWriteStrategies) as Array<keyof typeof preWriteStrategies>).map((key) => {
+                const strategy = preWriteStrategies[key];
+                return (
+                  <button
+                    key={key}
+                    onClick={() => { setPreWriteTab(key); setShowNewPreWrite(false); }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-xs font-medium transition-all border",
+                      preWriteTab === key
+                        ? "bg-amber-500 text-white border-amber-500"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-amber-300"
+                    )}
+                  >
+                    {strategy.icon} {strategy.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Strategy Description & Tips */}
+            <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-lg">
+              <p className="text-xs text-slate-700 mb-2">{preWriteStrategies[preWriteTab].description}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {preWriteStrategies[preWriteTab].tips.map((tip, i) => (
+                  <Badge key={i} variant="outline" className="text-[9px] border-amber-200 text-amber-700">
+                    💡 {tip}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes for this strategy */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-500">
+                Notes ({(preWriteNotes[preWriteTab] || []).length})
+              </span>
+              <Button
+                size="sm"
+                className="text-xs h-7 bg-amber-500 hover:bg-amber-600 text-white"
+                onClick={() => setShowNewPreWrite(!showNewPreWrite)}
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                New Note
+              </Button>
+            </div>
+
+            {showNewPreWrite && (
+              <div className="p-3 rounded-lg border-2 border-dashed border-amber-200 bg-amber-50/30 space-y-2">
+                <Input
+                  value={newPreWriteTitle}
+                  onChange={(e) => setNewPreWriteTitle(e.target.value)}
+                  placeholder={`${preWriteStrategies[preWriteTab].label} note title...`}
+                  className="text-xs"
+                />
+                <Textarea
+                  value={newPreWriteContent}
+                  onChange={(e) => setNewPreWriteContent(e.target.value)}
+                  rows={preWriteTab === "freewriting" ? 8 : 4}
+                  placeholder={
+                    preWriteTab === "brainstorming" ? "Dump all your ideas here..." :
+                    preWriteTab === "listing" ? "- Item 1\n- Item 2\n- Item 3..." :
+                    preWriteTab === "clustering" ? "Central concept: ...\n  → Branch 1: ...\n  → Branch 2: ..." :
+                    "Start writing freely without stopping..."
+                  }
+                  className="text-xs font-mono"
+                />
+                <div className="flex gap-1.5">
+                  <Button size="sm" className="text-xs h-7 bg-amber-500 hover:bg-amber-600 text-white" onClick={handleAddPreWriteNote}>
+                    <Save className="w-3 h-3 mr-1" />
+                    Save Note
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => { setShowNewPreWrite(false); setNewPreWriteTitle(""); setNewPreWriteContent(""); }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {(preWriteNotes[preWriteTab] || []).length > 0 && (
+              <ScrollArea className="max-h-[200px]">
+                <div className="space-y-2">
+                  {(preWriteNotes[preWriteTab] || []).map((note) => (
+                    <div key={note.id} className="p-3 rounded-lg border border-amber-200 bg-amber-50/20 group">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="text-xs font-medium text-slate-800">{note.title}</h4>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] text-slate-400">{note.date}</span>
+                          <Badge variant="outline" className="text-[8px] px-1 py-0 border-amber-300 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                            + Add as Artifact
+                          </Badge>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-slate-600 whitespace-pre-wrap line-clamp-3">{note.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        )}
+      </Card>
+
       {/* Reporting Style Selector */}
       <Card className="border-slate-200">
         <CardContent className="p-3">
