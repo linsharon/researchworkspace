@@ -44,6 +44,12 @@ import {
   VIZ_VIEWS,
   DISCOVERY_PATH_OPTIONS,
   DATABASE_OPTIONS,
+  REPORTING_STYLES,
+  MACRO_CHECKLIST,
+  MESO_TOULMIN_CHECKLIST,
+  MICRO_CHECKLIST_BASIC,
+  MICRO_CHECKLIST_READABILITY,
+  MICRO_CHECKLIST_CREDIBILITY,
   type WorkflowStep,
   type Paper,
   type Keyword,
@@ -2593,159 +2599,613 @@ function VisualizeWorkspace() {
 // Step 6: Draft Workspace (Inline version)
 // ============================================================
 function DraftWorkspaceInline() {
-  const [draftContent, setDraftContent] = useState(
-    `# Introduction\n\nThe integration of artificial intelligence in educational settings has garnered significant attention in recent years. AI-powered tutoring systems, in particular, have shown promise in improving student learning outcomes through personalized instruction and adaptive feedback mechanisms.\n\nHowever, a critical gap exists in our understanding of how these systems affect deeper learning processes. While studies consistently demonstrate improvements in test scores and completion rates (Chen et al., 2024), the impact on self-regulated learning (SRL) — the ability of students to plan, monitor, and evaluate their own learning — remains largely unexplored.\n\n## Research Question\n\nHow do AI-powered adaptive tutoring systems influence the development of self-regulated learning strategies among graduate students, and what design features mediate this relationship?`
-  );
+  // Reporting style
+  const [selectedStyle, setSelectedStyle] = useState("apa");
+  const activeStyle = REPORTING_STYLES.find((s) => s.id === selectedStyle) || REPORTING_STYLES[0];
 
-  const materials = DUMMY_ARTIFACTS.filter((a) =>
-    ["permanent-note", "literature-note", "rq-draft", "purpose"].includes(
-      a.type
-    )
-  );
+  // Component contents keyed by style-component id
+  const [componentContents, setComponentContents] = useState<Record<string, string>>({
+    "apa-introduction":
+      "The integration of artificial intelligence in educational settings has garnered significant attention in recent years. AI-powered tutoring systems, in particular, have shown promise in improving student learning outcomes through personalized instruction and adaptive feedback mechanisms.\n\nHowever, a critical gap exists in our understanding of how these systems affect deeper learning processes. While studies consistently demonstrate improvements in test scores and completion rates (Chen et al., 2024), the impact on self-regulated learning (SRL) — the ability of students to plan, monitor, and evaluate their own learning — remains largely unexplored.",
+    "apa-literature-review": "",
+    "apa-method": "",
+    "apa-results": "",
+    "apa-discussion": "",
+    "apa-abstract":
+      "This study investigates how AI-powered adaptive tutoring systems influence self-regulated learning strategies among graduate students.",
+  });
+
+  // Active component being edited
+  const [activeComponentId, setActiveComponentId] = useState(activeStyle.components[0]?.id || "");
+
+  // Auto-save indicator
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [autoSaveTimer, setAutoSaveTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  // Preview mode
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Artifact preview
+  const [previewArtifactId, setPreviewArtifactId] = useState<string | null>(null);
+
+  // Insert position
+  const [insertTarget, setInsertTarget] = useState<string | null>(null);
+
+  // Structure check state
+  const [checkTab, setCheckTab] = useState<"macro" | "meso" | "micro">("macro");
+  const [macroChecked, setMacroChecked] = useState<Record<string, boolean>>({});
+  const [mesoChecked, setMesoChecked] = useState<Record<string, boolean>>({});
+  const [microBasicChecked, setMicroBasicChecked] = useState<Record<string, boolean>>({});
+  const [microReadChecked, setMicroReadChecked] = useState<Record<string, boolean>>({});
+  const [microCredChecked, setMicroCredChecked] = useState<Record<string, boolean>>({});
+  const [aiCheckResult, setAiCheckResult] = useState<string | null>(null);
+  const [aiChecking, setAiChecking] = useState(false);
+
+  const allArtifacts = DUMMY_ARTIFACTS;
+
+  const getContentKey = (compId: string) => `${selectedStyle}-${compId}`;
+
+  const handleContentChange = (compId: string, value: string) => {
+    const key = getContentKey(compId);
+    setComponentContents((prev) => ({ ...prev, [key]: value }));
+    // Auto-save after 2 seconds of inactivity
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    const timer = setTimeout(() => {
+      setLastSaved(new Date().toLocaleTimeString());
+    }, 2000);
+    setAutoSaveTimer(timer);
+  };
+
+  const handleManualSave = () => {
+    setLastSaved(new Date().toLocaleTimeString());
+  };
+
+  const handleInsertArtifact = (artifactId: string) => {
+    const artifact = allArtifacts.find((a) => a.id === artifactId);
+    if (!artifact || !insertTarget) return;
+    const key = getContentKey(insertTarget);
+    const existing = componentContents[key] || "";
+    const insertText = `\n\n[Inserted from: ${artifact.title}]\n${artifact.content || artifact.description}\n`;
+    setComponentContents((prev) => ({ ...prev, [key]: existing + insertText }));
+    setInsertTarget(null);
+  };
+
+  const handleAiCheck = () => {
+    setAiChecking(true);
+    setTimeout(() => {
+      setAiCheckResult(
+        "AI Analysis Complete:\n\n" +
+        "✅ Macro: Introduction and abstract are well-structured. Literature review section needs more content.\n" +
+        "⚠️ Meso (Toulmin): Claims are stated but warrants need strengthening. Consider adding more explicit logical connections between evidence and claims. Rebuttals are missing in 2 paragraphs.\n" +
+        "⚠️ Micro: 3 potential grammar issues detected. Signposting could be improved in paragraphs 2-3. Citation recency is good (80% within 5 years)."
+      );
+      setAiChecking(false);
+    }, 1500);
+  };
+
+  const getFullText = () => {
+    return activeStyle.components
+      .map((comp) => {
+        const content = componentContents[getContentKey(comp.id)] || "";
+        return content ? `## ${comp.label}\n\n${content}` : "";
+      })
+      .filter(Boolean)
+      .join("\n\n---\n\n");
+  };
+
+  const previewArtifact = allArtifacts.find((a) => a.id === previewArtifactId);
 
   return (
     <div className="space-y-5">
+      {/* Reporting Style Selector */}
+      <Card className="border-slate-200">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider shrink-0">
+              Reporting Style:
+            </span>
+            <div className="flex gap-2 flex-wrap">
+              {REPORTING_STYLES.map((style) => (
+                <Button
+                  key={style.id}
+                  size="sm"
+                  variant={selectedStyle === style.id ? "default" : "outline"}
+                  className={cn(
+                    "text-xs",
+                    selectedStyle === style.id && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                  )}
+                  onClick={() => {
+                    setSelectedStyle(style.id);
+                    setActiveComponentId(
+                      REPORTING_STYLES.find((s) => s.id === style.id)?.components[0]?.id || ""
+                    );
+                  }}
+                >
+                  {style.name}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1.5">{activeStyle.description}</p>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+        {/* Left Column: Available Artifacts */}
         <div className="space-y-3">
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-            Available Materials
+            Available Artifacts
           </h3>
-          {materials.map((artifact) => {
-            const typeMeta = ARTIFACT_TYPE_META[artifact.type];
-            return (
-              <div
-                key={artifact.id}
-                className="p-3 bg-white border border-slate-200 rounded-lg hover:border-[#1E3A5F] hover:shadow-sm transition-all cursor-pointer group"
-              >
-                <Badge
-                  variant="secondary"
-                  className={cn(
-                    "text-[10px] mb-1",
-                    typeMeta.bgColor,
-                    typeMeta.color
-                  )}
-                >
-                  {typeMeta.label}
-                </Badge>
-                <p className="text-xs font-medium text-slate-700 line-clamp-2 group-hover:text-[#1E3A5F]">
-                  {artifact.title}
-                </p>
-              </div>
-            );
-          })}
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full text-xs"
-          >
-            <Plus className="w-3 h-3 mr-1" />
-            Insert Permanent Note
-          </Button>
+          <ScrollArea className="max-h-[600px]">
+            <div className="space-y-2 pr-1">
+              {allArtifacts.map((artifact) => {
+                const typeMeta = ARTIFACT_TYPE_META[artifact.type];
+                return (
+                  <div
+                    key={artifact.id}
+                    className="p-3 bg-white border border-slate-200 rounded-lg hover:border-[#1E3A5F] hover:shadow-sm transition-all group"
+                  >
+                    <Badge
+                      variant="secondary"
+                      className={cn("text-[10px] mb-1", typeMeta.bgColor, typeMeta.color)}
+                    >
+                      {typeMeta.label}
+                    </Badge>
+                    <p className="text-xs font-medium text-slate-700 line-clamp-2 group-hover:text-[#1E3A5F]">
+                      {artifact.title}
+                    </p>
+                    <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-[10px] h-6 px-2"
+                        onClick={() => setPreviewArtifactId(artifact.id)}
+                      >
+                        <Eye className="w-2.5 h-2.5 mr-0.5" />
+                        Preview
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-[10px] h-6 px-2 border-[#1E3A5F]/30 text-[#1E3A5F]"
+                        onClick={() => {
+                          setInsertTarget(activeComponentId);
+                          handleInsertArtifact(artifact.id);
+                        }}
+                      >
+                        <Plus className="w-2.5 h-2.5 mr-0.5" />
+                        Insert
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
         </div>
 
-        <div className="lg:col-span-2">
+        {/* Middle Column: Writing Block */}
+        <div className="lg:col-span-2 space-y-3">
           <Card className="border-slate-200">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold">
-                  Writing Block
+                  Writing Block — {activeStyle.name}
                 </CardTitle>
-                <div className="flex gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  {lastSaved && (
+                    <span className="text-[10px] text-emerald-500 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Saved {lastSaved}
+                    </span>
+                  )}
+                  <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleManualSave}>
+                    <Save className="w-3 h-3 mr-1" />
+                    Save
+                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
                     className="text-xs h-7"
+                    onClick={() => setShowPreview(true)}
                   >
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    Generate Skeleton
+                    <Eye className="w-3 h-3 mr-1" />
+                    Preview
                   </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <Textarea
-                value={draftContent}
-                onChange={(e) => setDraftContent(e.target.value)}
-                rows={20}
-                className="text-sm font-mono leading-relaxed"
-              />
+            <CardContent className="space-y-3">
+              {/* Component Tabs */}
+              <div className="flex gap-1 overflow-x-auto pb-1">
+                {activeStyle.components.map((comp) => (
+                  <button
+                    key={comp.id}
+                    onClick={() => setActiveComponentId(comp.id)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-md text-[11px] whitespace-nowrap transition-all border shrink-0",
+                      activeComponentId === comp.id
+                        ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
+                        : componentContents[getContentKey(comp.id)]
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    {comp.label}
+                    {componentContents[getContentKey(comp.id)] && activeComponentId !== comp.id && (
+                      <CheckCircle2 className="w-2.5 h-2.5 ml-1 inline" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Active Component Editor */}
+              {activeStyle.components
+                .filter((c) => c.id === activeComponentId)
+                .map((comp) => (
+                  <div key={comp.id} className="space-y-2">
+                    <div className="p-2.5 bg-blue-50/50 border border-blue-100 rounded-lg">
+                      <p className="text-xs font-medium text-[#1E3A5F] mb-0.5">{comp.label}</p>
+                      <p className="text-[10px] text-slate-500">{comp.description}</p>
+                    </div>
+                    <Textarea
+                      value={componentContents[getContentKey(comp.id)] || ""}
+                      onChange={(e) => handleContentChange(comp.id, e.target.value)}
+                      rows={14}
+                      placeholder={comp.placeholder}
+                      className="text-sm font-mono leading-relaxed"
+                    />
+                    {insertTarget === comp.id && (
+                      <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-700">
+                        Select an artifact from the left panel to insert here.
+                      </div>
+                    )}
+                  </div>
+                ))}
             </CardContent>
           </Card>
         </div>
 
+        {/* Right Column: Structure Check */}
         <div className="space-y-3">
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
             Structure Check
           </h3>
 
-          <Card className="border-slate-200">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold text-slate-600">
-                Macro Level
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-xs space-y-1.5">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Introduction present</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Research question stated</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3.5 h-3.5 rounded-full border border-amber-400" />
-                <span className="text-slate-400">
-                  Literature review needed
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Check Level Tabs */}
+          <div className="flex gap-1">
+            {(["macro", "meso", "micro"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setCheckTab(tab)}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all capitalize",
+                  checkTab === tab
+                    ? "bg-[#1E3A5F] text-white"
+                    : "text-slate-500 hover:bg-slate-100"
+                )}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
 
-          <Card className="border-slate-200">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold text-slate-600">
-                Meso Level
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-xs space-y-1.5">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Gap identified</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3.5 h-3.5 rounded-full border border-amber-400" />
-                <span className="text-slate-400">
-                  Argument flow incomplete
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Macro Level */}
+          {checkTab === "macro" && (
+            <Card className="border-slate-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-semibold text-slate-600">
+                  Macro Level — Overall Structure
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="max-h-[350px]">
+                  <div className="space-y-1.5">
+                    {MACRO_CHECKLIST.map((item) => (
+                      <label
+                        key={item.id}
+                        className="flex items-start gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={!!macroChecked[item.id]}
+                          onCheckedChange={(checked) =>
+                            setMacroChecked((prev) => ({ ...prev, [item.id]: !!checked }))
+                          }
+                          className="mt-0.5"
+                        />
+                        <span className={cn("text-xs", macroChecked[item.id] ? "text-emerald-700 line-through" : "text-slate-600")}>
+                          {item.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </ScrollArea>
+                <Separator className="my-2" />
+                <Button
+                  size="sm"
+                  className="w-full text-xs h-7 bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={handleAiCheck}
+                  disabled={aiChecking}
+                >
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  {aiChecking ? "Checking..." : "AI Check (Premium)"}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
-          <Card className="border-slate-200">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold text-slate-600">
-                Micro Level
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-xs space-y-1.5">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Citations included</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Academic tone</span>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Meso Level — Toulmin Argumentation */}
+          {checkTab === "meso" && (
+            <Card className="border-slate-200">
+              <CardHeader className="pb-2">
+                <div>
+                  <CardTitle className="text-xs font-semibold text-slate-600">
+                    Meso Level — Toulmin Argumentation
+                  </CardTitle>
+                  <p className="text-[9px] text-slate-400 mt-0.5">
+                    Claim → Data → Warrant → Backing → Qualifier → Rebuttal
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="max-h-[300px]">
+                  <div className="space-y-1.5">
+                    {MESO_TOULMIN_CHECKLIST.map((item) => (
+                      <label
+                        key={item.id}
+                        className="flex items-start gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={!!mesoChecked[item.id]}
+                          onCheckedChange={(checked) =>
+                            setMesoChecked((prev) => ({ ...prev, [item.id]: !!checked }))
+                          }
+                          className="mt-0.5"
+                        />
+                        <div>
+                          <span className={cn("text-xs", mesoChecked[item.id] ? "text-emerald-700 line-through" : "text-slate-600")}>
+                            {item.label}
+                          </span>
+                          <Badge variant="outline" className="text-[8px] ml-1.5 px-1 py-0">
+                            {item.category}
+                          </Badge>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </ScrollArea>
+                <Separator className="my-2" />
+                <Button
+                  size="sm"
+                  className="w-full text-xs h-7 bg-purple-600 hover:bg-purple-700 text-white"
+                  onClick={handleAiCheck}
+                  disabled={aiChecking}
+                >
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  {aiChecking ? "Checking..." : "AI Toulmin Check (Premium)"}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
-          <Button variant="outline" size="sm" className="w-full text-xs">
-            <Zap className="w-3 h-3 mr-1" />
-            Check Argument Flow
-          </Button>
+          {/* Micro Level */}
+          {checkTab === "micro" && (
+            <Card className="border-slate-200">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-semibold text-slate-600">
+                  Micro Level — Language & Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="max-h-[380px]">
+                  <div className="space-y-3">
+                    {/* Basic Errors */}
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                        🔍 Eliminate Basic Errors
+                      </p>
+                      <div className="space-y-1">
+                        {MICRO_CHECKLIST_BASIC.map((item) => (
+                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                            <Checkbox
+                              checked={!!microBasicChecked[item.id]}
+                              onCheckedChange={(checked) =>
+                                setMicroBasicChecked((prev) => ({ ...prev, [item.id]: !!checked }))
+                              }
+                              className="mt-0.5"
+                            />
+                            <span className={cn("text-[11px]", microBasicChecked[item.id] ? "text-emerald-700 line-through" : "text-slate-600")}>
+                              {item.label}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Readability */}
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                        📖 Improve Readability
+                      </p>
+                      <div className="space-y-1">
+                        {MICRO_CHECKLIST_READABILITY.map((item) => (
+                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                            <Checkbox
+                              checked={!!microReadChecked[item.id]}
+                              onCheckedChange={(checked) =>
+                                setMicroReadChecked((prev) => ({ ...prev, [item.id]: !!checked }))
+                              }
+                              className="mt-0.5"
+                            />
+                            <span className={cn("text-[11px]", microReadChecked[item.id] ? "text-emerald-700 line-through" : "text-slate-600")}>
+                              {item.label}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Credibility */}
+                    <div>
+                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                        🏛️ Establish Credibility
+                      </p>
+                      <div className="space-y-1">
+                        {MICRO_CHECKLIST_CREDIBILITY.map((item) => (
+                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                            <Checkbox
+                              checked={!!microCredChecked[item.id]}
+                              onCheckedChange={(checked) =>
+                                setMicroCredChecked((prev) => ({ ...prev, [item.id]: !!checked }))
+                              }
+                              className="mt-0.5"
+                            />
+                            <span className={cn("text-[11px]", microCredChecked[item.id] ? "text-emerald-700 line-through" : "text-slate-600")}>
+                              {item.label}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </ScrollArea>
+                <Separator className="my-2" />
+                <div className="space-y-1.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-xs h-7"
+                    onClick={() => window.open("https://www.grammarly.com", "_blank")}
+                  >
+                    <Zap className="w-3 h-3 mr-1" />
+                    Open Grammarly (Grammar AI Check)
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="w-full text-xs h-7 bg-purple-600 hover:bg-purple-700 text-white"
+                    onClick={handleAiCheck}
+                    disabled={aiChecking}
+                  >
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    {aiChecking ? "Checking..." : "AI Grammar Check (Premium)"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* AI Check Result */}
+          {aiCheckResult && (
+            <Card className="border-purple-200 bg-purple-50/30">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    AI Analysis Result
+                  </CardTitle>
+                  <button onClick={() => setAiCheckResult(null)} className="hover:bg-purple-100 rounded p-0.5">
+                    <X className="w-3 h-3 text-purple-400" />
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <pre className="text-[10px] text-purple-800 whitespace-pre-wrap leading-relaxed">
+                  {aiCheckResult}
+                </pre>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
+
+      {/* Artifact Preview Modal */}
+      {previewArtifact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[70vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b">
+              <div>
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "text-[10px] mb-1",
+                    ARTIFACT_TYPE_META[previewArtifact.type].bgColor,
+                    ARTIFACT_TYPE_META[previewArtifact.type].color
+                  )}
+                >
+                  {ARTIFACT_TYPE_META[previewArtifact.type].label}
+                </Badge>
+                <h3 className="text-sm font-semibold text-slate-800">{previewArtifact.title}</h3>
+              </div>
+              <button onClick={() => setPreviewArtifactId(null)} className="p-1 hover:bg-slate-100 rounded">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+            <div className="p-4">
+              <p className="text-xs text-slate-500 mb-2">{previewArtifact.description}</p>
+              {previewArtifact.content && (
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <pre className="text-xs text-slate-700 whitespace-pre-wrap">{previewArtifact.content}</pre>
+                </div>
+              )}
+              <div className="flex gap-1.5 mt-3">
+                <Button
+                  size="sm"
+                  className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                  onClick={() => {
+                    handleInsertArtifact(previewArtifact.id);
+                    setPreviewArtifactId(null);
+                  }}
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Insert into {activeStyle.components.find((c) => c.id === activeComponentId)?.label || "Current Section"}
+                </Button>
+                <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setPreviewArtifactId(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
+              <h3 className="text-sm font-semibold text-slate-800">
+                Full Preview — {activeStyle.name}
+              </h3>
+              <button onClick={() => setShowPreview(false)} className="p-1 hover:bg-slate-100 rounded">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="prose prose-sm max-w-none">
+                {activeStyle.components.map((comp) => {
+                  const content = componentContents[getContentKey(comp.id)];
+                  if (!content) return null;
+                  return (
+                    <div key={comp.id} className="mb-6">
+                      <h2 className="text-base font-bold text-slate-800 mb-2 border-b pb-1">
+                        {comp.label}
+                      </h2>
+                      <div className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                        {content}
+                      </div>
+                    </div>
+                  );
+                })}
+                {!getFullText() && (
+                  <p className="text-sm text-slate-400 text-center py-8">
+                    No content written yet. Start writing in the component tabs above.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-2">
         <Button variant="outline">

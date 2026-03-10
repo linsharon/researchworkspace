@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import {
   Target,
   Search,
@@ -19,13 +20,18 @@ import {
   Map,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Sparkles,
   ArrowRight,
   CheckCircle2,
   Circle,
   Bot,
+  FolderOpen,
+  Plus,
+  X,
+  Crown,
 } from "lucide-react";
-import { DUMMY_PROJECT, STEP_META, type WorkflowStep } from "@/lib/data";
+import { DUMMY_PROJECT, DUMMY_PROJECTS, STEP_META, type WorkflowStep, type ProjectItem } from "@/lib/data";
 
 const NAV_ITEMS = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -67,6 +73,33 @@ export default function AppLayout({
   const project = DUMMY_PROJECT;
   const progressPercent = ((project.currentStep - 1) / 5) * 100;
 
+  // Project switcher state
+  const [showProjectSwitcher, setShowProjectSwitcher] = useState(false);
+  const [projects, setProjects] = useState<ProjectItem[]>([...DUMMY_PROJECTS]);
+  const [activeProjectId, setActiveProjectId] = useState("proj-1");
+  const [showNewProject, setShowNewProject] = useState(false);
+  const [newProjectTitle, setNewProjectTitle] = useState("");
+  const [newProjectGoal, setNewProjectGoal] = useState("");
+
+  const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0];
+
+  const handleCreateProject = () => {
+    if (!newProjectTitle.trim()) return;
+    const newProj: ProjectItem = {
+      id: `proj-${Date.now()}`,
+      title: newProjectTitle.trim(),
+      goal: newProjectGoal.trim(),
+      currentStep: 1,
+      updatedAt: new Date().toISOString().split("T")[0],
+    };
+    setProjects([...projects, newProj]);
+    setActiveProjectId(newProj.id);
+    setNewProjectTitle("");
+    setNewProjectGoal("");
+    setShowNewProject(false);
+    setShowProjectSwitcher(false);
+  };
+
   return (
     <div className="flex h-screen bg-white overflow-hidden">
       {/* Left Sidebar */}
@@ -102,14 +135,14 @@ export default function AppLayout({
               Current Project
             </p>
             <p className="text-sm font-medium text-slate-800 truncate">
-              {project.title}
+              {activeProject.title}
             </p>
             <div className="mt-2">
               <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                <span>Step {project.currentStep} of 6</span>
-                <span>{Math.round(progressPercent)}%</span>
+                <span>Step {activeProject.currentStep} of 6</span>
+                <span>{Math.round(((activeProject.currentStep - 1) / 5) * 100)}%</span>
               </div>
-              <Progress value={progressPercent} className="h-1.5" />
+              <Progress value={((activeProject.currentStep - 1) / 5) * 100} className="h-1.5" />
             </div>
           </div>
         )}
@@ -209,8 +242,135 @@ export default function AppLayout({
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">{children}</main>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Bar with Project Switcher */}
+        <header className="h-12 border-b border-slate-200 bg-white flex items-center justify-end px-4 shrink-0">
+          <div className="relative">
+            <button
+              onClick={() => setShowProjectSwitcher(!showProjectSwitcher)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm"
+            >
+              <FolderOpen className="w-3.5 h-3.5 text-slate-500" />
+              <span className="text-slate-700 font-medium max-w-[180px] truncate">
+                {activeProject.title}
+              </span>
+              <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                Step {activeProject.currentStep}
+              </Badge>
+              <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 transition-transform", showProjectSwitcher && "rotate-180")} />
+            </button>
+
+            {/* Project Switcher Dropdown */}
+            {showProjectSwitcher && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => { setShowProjectSwitcher(false); setShowNewProject(false); }} />
+                <div className="absolute right-0 top-full mt-1 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
+                  <div className="p-3 border-b border-slate-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Switch Project
+                      </p>
+                      <Badge className="text-[9px] bg-amber-100 text-amber-700 border-amber-200">
+                        <Crown className="w-2.5 h-2.5 mr-0.5" />
+                        Premium
+                      </Badge>
+                    </div>
+                  </div>
+                  <ScrollArea className="max-h-[240px]">
+                    <div className="p-2 space-y-1">
+                      {projects.map((proj) => (
+                        <button
+                          key={proj.id}
+                          onClick={() => {
+                            setActiveProjectId(proj.id);
+                            setShowProjectSwitcher(false);
+                          }}
+                          className={cn(
+                            "w-full text-left p-3 rounded-lg transition-all",
+                            proj.id === activeProjectId
+                              ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20"
+                              : "hover:bg-slate-50 border border-transparent"
+                          )}
+                        >
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-sm font-medium text-slate-800 truncate">
+                              {proj.title}
+                            </span>
+                            {proj.id === activeProjectId && (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-[#1E3A5F] shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate">{proj.goal}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-[9px] px-1 py-0">
+                              Step {proj.currentStep}/6
+                            </Badge>
+                            <span className="text-[9px] text-slate-300">{proj.updatedAt}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                  <div className="p-2 border-t border-slate-100">
+                    {showNewProject ? (
+                      <div className="p-2 space-y-2">
+                        <Input
+                          value={newProjectTitle}
+                          onChange={(e) => setNewProjectTitle(e.target.value)}
+                          placeholder="Project title..."
+                          className="text-xs h-8"
+                          autoFocus
+                        />
+                        <Input
+                          value={newProjectGoal}
+                          onChange={(e) => setNewProjectGoal(e.target.value)}
+                          placeholder="Research goal (optional)..."
+                          className="text-xs h-8"
+                        />
+                        <div className="flex gap-1.5">
+                          <Button
+                            size="sm"
+                            className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white flex-1"
+                            onClick={handleCreateProject}
+                          >
+                            Create
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs h-7"
+                            onClick={() => {
+                              setShowNewProject(false);
+                              setNewProjectTitle("");
+                              setNewProjectGoal("");
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs h-8"
+                        onClick={() => setShowNewProject(true)}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        New Project
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-auto">{children}</main>
+      </div>
 
       {/* Right Panel */}
       {showRightPanel && (
