@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
@@ -19,48 +19,27 @@ import {
   FileText,
   Map,
   ChevronDown,
-  Sparkles,
-  ArrowRight,
   CheckCircle2,
-  Circle,
-  Bot,
   Plus,
   X,
   Crown,
   Globe,
   PanelLeftOpen,
   PanelLeftClose,
-  PanelRightOpen,
-  PanelRightClose,
-  MessageSquare,
+  Bot,
+  Send,
+  Minimize2,
 } from "lucide-react";
-import { DUMMY_PROJECT, DUMMY_PROJECTS, STEP_META, type WorkflowStep, type ProjectItem } from "@/lib/data";
-
-const STEP_ICONS: Record<WorkflowStep, typeof Target> = {
-  1: Target,
-  2: Search,
-  3: BookOpen,
-  4: Network,
-  5: Eye,
-  6: PenTool,
-};
+import { DUMMY_PROJECT, DUMMY_PROJECTS, type WorkflowStep, type ProjectItem } from "@/lib/data";
 
 interface AppLayoutProps {
   children: ReactNode;
-  showRightPanel?: boolean;
-  rightPanelContent?: ReactNode;
 }
 
-export default function AppLayout({
-  children,
-  showRightPanel = true,
-  rightPanelContent,
-}: AppLayoutProps) {
+export default function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const { t, lang, setLang } = useI18n();
-  // Default to collapsed
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(true);
   const project = DUMMY_PROJECT;
 
   // Project switcher state
@@ -73,6 +52,28 @@ export default function AppLayout({
 
   // Language switcher state
   const [showLangSwitcher, setShowLangSwitcher] = useState(false);
+
+  // AI Assistant chat state
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState<
+    Array<{ id: string; role: "user" | "assistant"; content: string }>
+  >([
+    {
+      id: "welcome",
+      role: "assistant",
+      content: lang === "zh"
+        ? "你好！我是 LitFlow AI 助手。我可以帮助你进行文献综述的各个环节，包括研究问题构建、文献检索策略、阅读笔记整理等。请问有什么可以帮你的？"
+        : "Hello! I'm the LitFlow AI Assistant. I can help you with various aspects of your literature review, including research question formulation, search strategies, reading notes, and more. How can I help you?",
+    },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showChat && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatMessages, showChat]);
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0];
 
@@ -91,6 +92,31 @@ export default function AppLayout({
     setNewProjectGoal("");
     setShowNewProject(false);
     setShowProjectSwitcher(false);
+  };
+
+  const handleSendMessage = () => {
+    const trimmed = chatInput.trim();
+    if (!trimmed) return;
+
+    const userMsg = {
+      id: `msg-${Date.now()}`,
+      role: "user" as const,
+      content: trimmed,
+    };
+    setChatMessages((prev) => [...prev, userMsg]);
+    setChatInput("");
+
+    // Simulate AI response
+    setTimeout(() => {
+      const aiResponse = {
+        id: `msg-${Date.now()}-ai`,
+        role: "assistant" as const,
+        content: lang === "zh"
+          ? "感谢你的提问！这是一个很好的研究方向。基于你当前的工作流进度，我建议你可以先完善关键词定义，然后在多个学术数据库中进行系统检索。如果你需要更具体的建议，请告诉我你的研究主题和当前遇到的困难。"
+          : "Thank you for your question! That's a great research direction. Based on your current workflow progress, I suggest refining your keyword definitions first, then conducting systematic searches across multiple academic databases. If you need more specific advice, please share your research topic and current challenges.",
+      };
+      setChatMessages((prev) => [...prev, aiResponse]);
+    }, 1200);
   };
 
   const NAV_ITEMS = [
@@ -133,7 +159,7 @@ export default function AppLayout({
           </div>
         </div>
 
-        {/* Project Info + Switcher in Sidebar */}
+        {/* Project Info + Switcher */}
         <div className="px-4 py-3 border-b border-slate-200 shrink-0">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
             {t("app.currentProject")}
@@ -155,7 +181,6 @@ export default function AppLayout({
             <Progress value={((activeProject.currentStep - 1) / 5) * 100} className="h-1.5" />
           </div>
 
-          {/* Project Switcher Dropdown (in sidebar) */}
           {showProjectSwitcher && (
             <div className="mt-2 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">
               <div className="p-2 border-b border-slate-100">
@@ -267,8 +292,7 @@ export default function AppLayout({
             {NAV_ITEMS.map((item, idx) => {
               const isActive =
                 location.pathname === item.path ||
-                (item.path !== "/" &&
-                  location.pathname.startsWith(item.path));
+                (item.path !== "/" && location.pathname.startsWith(item.path));
               const Icon = item.icon;
               const stepNum = idx;
               const isCompleted = stepNum > 0 && stepNum < project.currentStep;
@@ -304,7 +328,8 @@ export default function AppLayout({
               {t("nav.artifacts")}
             </p>
             {ARTIFACT_NAV_ITEMS.map((item) => {
-              const isActive = location.pathname + location.search === item.path ||
+              const isActive =
+                location.pathname + location.search === item.path ||
                 (location.pathname === "/artifacts" && item.path.includes("tab=all") && !location.search);
               const Icon = item.icon;
               return (
@@ -350,7 +375,7 @@ export default function AppLayout({
             <span>{sidebarCollapsed ? t("app.menu") : t("app.hideMenu")}</span>
           </button>
 
-          {/* Center spacer with app title when both collapsed */}
+          {/* Center: app title when sidebar collapsed */}
           <div className="flex-1 flex items-center justify-center min-w-0">
             {sidebarCollapsed && (
               <div className="flex items-center gap-2">
@@ -364,9 +389,8 @@ export default function AppLayout({
             )}
           </div>
 
-          {/* Right side: Language switcher + Right panel toggle */}
+          {/* Right: Language switcher */}
           <div className="flex items-center gap-2">
-            {/* Language Switcher */}
             <div className="relative">
               <button
                 onClick={() => setShowLangSwitcher(!showLangSwitcher)}
@@ -379,7 +403,6 @@ export default function AppLayout({
                 <ChevronDown className={cn("w-3 h-3 text-slate-400 transition-transform", showLangSwitcher && "rotate-180")} />
               </button>
 
-              {/* Language Switcher Dropdown */}
               {showLangSwitcher && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowLangSwitcher(false)} />
@@ -425,27 +448,6 @@ export default function AppLayout({
                 </>
               )}
             </div>
-
-            {/* Right Panel toggle */}
-            {showRightPanel && (
-              <button
-                onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-                className={cn(
-                  "flex items-center gap-1.5 h-9 px-3 rounded-lg border transition-all text-xs font-medium",
-                  rightPanelCollapsed
-                    ? "border-[#1E3A5F] bg-[#1E3A5F]/5 text-[#1E3A5F] hover:bg-[#1E3A5F]/10"
-                    : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
-                )}
-                title={rightPanelCollapsed ? t("app.expandAssistant") : t("app.collapseAssistant")}
-              >
-                <span>{rightPanelCollapsed ? t("app.assistant") : t("app.hideAssistant")}</span>
-                {rightPanelCollapsed ? (
-                  <PanelRightOpen className="w-4 h-4" />
-                ) : (
-                  <PanelRightClose className="w-4 h-4" />
-                )}
-              </button>
-            )}
           </div>
         </header>
 
@@ -453,192 +455,113 @@ export default function AppLayout({
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
 
-      {/* Right Panel */}
-      {showRightPanel && (
-        <aside
-          className={cn(
-            "border-l border-slate-200 bg-slate-50/50 transition-all duration-300 shrink-0 flex flex-col",
-            rightPanelCollapsed ? "w-0 overflow-hidden border-l-0" : "w-72"
-          )}
-        >
-          <div className="flex items-center justify-between px-3 h-12 border-b border-slate-200 shrink-0">
-            <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-              {t("panel.assistant")}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
-              onClick={() => setRightPanelCollapsed(true)}
+      {/* Floating AI Assistant */}
+      {/* Chat Dialog */}
+      {showChat && (
+        <div className="fixed bottom-20 right-5 z-50 w-[380px] max-h-[520px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
+          {/* Chat Header */}
+          <div className="flex items-center justify-between px-4 py-3 bg-[#1E3A5F] text-white shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                <Bot className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">
+                  {lang === "zh" ? "AI 助手" : "AI Assistant"}
+                </p>
+                <p className="text-[10px] text-white/60">
+                  {lang === "zh" ? "LitFlow 文献综述助手" : "LitFlow Literature Review"}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowChat(false)}
+              className="w-7 h-7 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
             >
-              <X className="w-3.5 h-3.5" />
-            </Button>
+              <Minimize2 className="w-4 h-4" />
+            </button>
           </div>
 
-          <ScrollArea className="flex-1">
-            {rightPanelContent || <DefaultRightPanel />}
+          {/* Chat Messages */}
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="p-4 space-y-3">
+              {chatMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={cn(
+                    "flex",
+                    msg.role === "user" ? "justify-end" : "justify-start"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed",
+                      msg.role === "user"
+                        ? "bg-[#1E3A5F] text-white rounded-br-md"
+                        : "bg-slate-100 text-slate-700 rounded-bl-md"
+                    )}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
           </ScrollArea>
-        </aside>
-      )}
-    </div>
-  );
-}
 
-function DefaultRightPanel() {
-  const { t } = useI18n();
-  const project = DUMMY_PROJECT;
-  const stepKey = project.currentStep as WorkflowStep;
-
-  const stepLabels: Record<WorkflowStep, string> = {
-    1: t("step.1.label"),
-    2: t("step.2.label"),
-    3: t("step.3.label"),
-    4: t("step.4.label"),
-    5: t("step.5.label"),
-    6: t("step.6.label"),
-  };
-
-  const stepShortLabels: Record<WorkflowStep, string> = {
-    1: t("step.1.short"),
-    2: t("step.2.short"),
-    3: t("step.3.short"),
-    4: t("step.4.short"),
-    5: t("step.5.short"),
-    6: t("step.6.short"),
-  };
-
-  const stepDescs: Record<WorkflowStep, string> = {
-    1: t("step.1.desc"),
-    2: t("step.2.desc"),
-    3: t("step.3.desc"),
-    4: t("step.4.desc"),
-    5: t("step.5.desc"),
-    6: t("step.6.desc"),
-  };
-
-  const stepMeta = STEP_META[stepKey];
-
-  return (
-    <div className="p-4 space-y-5">
-      {/* Current Goal */}
-      <div>
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          {t("panel.currentGoal")}
-        </h4>
-        <div className="p-3 bg-white rounded-lg border border-slate-200">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-base">{stepMeta.icon}</span>
-            <span className="text-sm font-medium text-slate-800">
-              {stepLabels[stepKey]}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500">{stepDescs[stepKey]}</p>
-        </div>
-      </div>
-
-      {/* Completion */}
-      <div>
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          {t("panel.progress")}
-        </h4>
-        <div className="space-y-2">
-          {([1, 2, 3, 4, 5, 6] as WorkflowStep[]).map((step) => {
-            const isCompleted = step < project.currentStep;
-            const isCurrent = step === project.currentStep;
-            return (
-              <div
-                key={step}
+          {/* Chat Input */}
+          <div className="p-3 border-t border-slate-200 shrink-0 bg-white">
+            <div className="flex items-center gap-2">
+              <Input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder={lang === "zh" ? "输入你的问题..." : "Type your question..."}
+                className="text-sm h-9 rounded-full px-4 border-slate-200 focus-visible:ring-[#1E3A5F]"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={!chatInput.trim()}
                 className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 rounded text-xs",
-                  isCompleted && "text-emerald-700",
-                  isCurrent && "text-[#1E3A5F] font-medium bg-blue-50",
-                  !isCompleted && !isCurrent && "text-slate-400"
+                  "w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all",
+                  chatInput.trim()
+                    ? "bg-[#1E3A5F] text-white hover:bg-[#162d4a]"
+                    : "bg-slate-100 text-slate-300 cursor-not-allowed"
                 )}
               >
-                {isCompleted ? (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                ) : isCurrent ? (
-                  <div className="w-3.5 h-3.5 rounded-full border-2 border-[#1E3A5F] flex items-center justify-center">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#1E3A5F]" />
-                  </div>
-                ) : (
-                  <Circle className="w-3.5 h-3.5" />
-                )}
-                <span>{stepShortLabels[step]}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Next Suggested Move */}
-      <div>
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          {t("panel.nextMove")}
-        </h4>
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <div className="flex items-start gap-2">
-            <Sparkles className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-xs font-medium text-amber-800">
-                {t("panel.completeKeyword")}
-              </p>
-              <p className="text-[11px] text-amber-600 mt-0.5">
-                {t("panel.addSearchRecords")}
-              </p>
+                <Send className="w-4 h-4" />
+              </button>
             </div>
           </div>
-          <Link to={`/workflow/${project.currentStep}`}>
-            <Button
-              size="sm"
-              className="w-full mt-2 h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              {t("panel.go")} <ArrowRight className="w-3 h-3 ml-1" />
-            </Button>
-          </Link>
         </div>
-      </div>
+      )}
 
-      {/* AI Copilot Placeholder */}
-      <div>
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          {t("panel.aiCopilot")}
-        </h4>
-        <div className="p-3 bg-white border border-dashed border-slate-300 rounded-lg text-center">
-          <Bot className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <p className="text-xs text-slate-400">
-            {t("panel.aiComingSoon")}
-          </p>
-          <p className="text-[10px] text-slate-300 mt-1">
-            {t("panel.aiDesc")}
-          </p>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div>
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          {t("panel.quickActions")}
-        </h4>
-        <div className="space-y-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start h-8 text-xs"
-          >
-            <FileText className="w-3.5 h-3.5 mr-2" />
-            {t("panel.importPapers")}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start h-8 text-xs"
-          >
-            <Archive className="w-3.5 h-3.5 mr-2" />
-            {t("panel.viewAllArtifacts")}
-          </Button>
-        </div>
-      </div>
+      {/* Floating Button */}
+      <button
+        onClick={() => setShowChat(!showChat)}
+        className={cn(
+          "fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 group",
+          showChat
+            ? "bg-slate-600 hover:bg-slate-700 rotate-0"
+            : "bg-[#1E3A5F] hover:bg-[#162d4a] hover:scale-105"
+        )}
+        title={lang === "zh" ? "AI 助手" : "AI Assistant"}
+      >
+        {showChat ? (
+          <X className="w-6 h-6 text-white" />
+        ) : (
+          <>
+            <Bot className="w-6 h-6 text-white" />
+            {/* Pulse indicator */}
+            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-white" />
+          </>
+        )}
+      </button>
     </div>
   );
 }

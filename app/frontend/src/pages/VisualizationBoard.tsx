@@ -26,61 +26,8 @@ export default function VisualizationBoard() {
     (a) => a.type === "permanent-note" || a.type === "literature-note"
   );
 
-  const rightPanelContent = (
-    <div className="p-4 space-y-4">
-      <div>
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          Source Notes
-        </h4>
-        <div className="space-y-2">
-          {permanentNotes.map((note) => (
-            <div
-              key={note.id}
-              className="p-2 bg-white border border-slate-200 rounded-lg text-xs cursor-pointer hover:border-[#1E3A5F] transition-colors"
-            >
-              <p className="font-medium text-slate-700 line-clamp-2">
-                {note.title}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-1">
-                Step {note.sourceStep}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div>
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-          Quick Actions
-        </h4>
-        <div className="space-y-1.5">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start text-xs h-8"
-          >
-            <Sparkles className="w-3 h-3 mr-2" />
-            Generate from Notes
-          </Button>
-          <Link to="/workflow/6">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-start text-xs h-8"
-            >
-              <ArrowRight className="w-3 h-3 mr-2" />
-              Push to Draft
-            </Button>
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <AppLayout
-      showRightPanel={!isFullscreen}
-      rightPanelContent={rightPanelContent}
-    >
+    <AppLayout>
       <div
         className={cn(
           "p-6 space-y-5",
