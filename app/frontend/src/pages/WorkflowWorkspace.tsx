@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
@@ -355,18 +355,31 @@ function PurposeWorkspace() {
 // Step 2: Entry Paper Workspace
 // ============================================================
 function EntryPaperWorkspace() {
+  const CONCEPTS_STORAGE_KEY = "rw-concepts";
   const [newKeyword, setNewKeyword] = useState("");
   const [keywords, setKeywords] = useState<Keyword[]>([...DUMMY_KEYWORDS]);
   const [searchRecords, setSearchRecords] = useState<SearchRecord[]>([...DUMMY_SEARCH_RECORDS]);
   const [entryPapers, setEntryPapers] = useState<string[]>(["paper-1"]);
 
   // Concepts state
-  const [concepts, setConcepts] = useState<Array<{ id: string; name: string; description: string; category: string; color: string }>>([]);
+  const [concepts, setConcepts] = useState<Array<{ id: string; name: string; description: string; category: string; color: string }>>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = window.localStorage.getItem(CONCEPTS_STORAGE_KEY);
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
   const [showConceptDialog, setShowConceptDialog] = useState(false);
   const [conceptName, setConceptName] = useState("");
   const [conceptDescription, setConceptDescription] = useState("");
   const [conceptCategory, setConceptCategory] = useState("Construct");
   const [conceptColor, setConceptColor] = useState("#6366f1");
+  const [editingConceptId, setEditingConceptId] = useState<string | null>(null);
+  const [showConceptDetailDialog, setShowConceptDetailDialog] = useState(false);
 
   const CONCEPT_COLORS = [
     { value: "#6366f1", label: "Indigo" },
@@ -381,16 +394,39 @@ function EntryPaperWorkspace() {
 
   const handleAddConcept = () => {
     if (!conceptName.trim()) return;
-    setConcepts([
-      ...concepts,
-      {
-        id: `concept-${Date.now()}`,
-        name: conceptName.trim(),
-        description: conceptDescription.trim(),
-        category: conceptCategory,
-        color: conceptColor,
-      },
-    ]);
+    const trimmed = conceptName.trim();
+    const existing = conceptByNameMap.get(trimmed.toLowerCase());
+
+    if (existing) {
+      setConcepts((prev) =>
+        prev.map((c) =>
+          c.id === existing.id
+            ? {
+                ...c,
+                description: conceptDescription.trim() || c.description,
+                category: conceptCategory,
+                color: conceptColor,
+              }
+            : c
+        )
+      );
+    } else {
+      setConcepts([
+        ...concepts,
+        {
+          id: `concept-${Date.now()}`,
+          name: trimmed,
+          description: conceptDescription.trim(),
+          category: conceptCategory,
+          color: conceptColor,
+        },
+      ]);
+    }
+
+    if (!srKeywords.includes(trimmed)) {
+      setSrKeywords((prev) => [...prev, trimmed]);
+    }
+    setSrNewKeyword("");
     setShowConceptDialog(false);
     setConceptName("");
     setConceptDescription("");
@@ -407,7 +443,6 @@ function EntryPaperWorkspace() {
   // Add Search Record Dialog
   const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [srKeywords, setSrKeywords] = useState<string[]>([]);
-  const [srNewKeyword, setSrNewKeyword] = useState("");
   const [srDatabase, setSrDatabase] = useState("Web of Science");
   const [srCustomDb, setSrCustomDb] = useState("");
   const [srBooleanString, setSrBooleanString] = useState("");
@@ -433,6 +468,93 @@ function EntryPaperWorkspace() {
   const [discoveryPathValue, setDiscoveryPathValue] = useState("Academic Database");
   const [discoveryNoteValue, setDiscoveryNoteValue] = useState("");
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify(concepts));
+  }, [concepts]);
+
+  const handleOpenAddConceptDialog = (prefill?: string) => {
+    setConceptName(prefill?.trim() || "");
+    setConceptDescription("");
+    setConceptCategory("Construct");
+    setConceptColor("#6366f1");
+    setShowConceptDialog(true);
+  };
+
+  const openConceptDetail = (conceptId: string) => {
+    setEditingConceptId(conceptId);
+    setShowConceptDetailDialog(true);
+  };
+
+  const currentEditingConcept = concepts.find((c) => c.id === editingConceptId) || null;
+
+  const updateEditingConcept = (
+    patch: Partial<{ name: string; description: string; category: string; color: string }>
+  ) => {
+    if (!editingConceptId) return;
+    setConcepts((prev) =>
+      prev.map((c) => (c.id === editingConceptId ? { ...c, ...patch } : c))
+    );
+  };
+
+  const conceptByNameMap = new Map(concepts.map((c) => [c.name.toLowerCase(), c]));
+
+  const renderQueryWithConceptLinks = (query: string) => {
+    const sortedConcepts = [...concepts].sort((a, b) => b.name.length - a.name.length);
+    if (!sortedConcepts.length || !query.trim()) {
+      return <span>{query}</span>;
+    }
+
+    let remaining = query;
+    const nodes: React.ReactNode[] = [];
+    let key = 0;
+
+    while (remaining.length > 0) {
+      let matchedConcept: (typeof sortedConcepts)[number] | null = null;
+      let matchedIndex = -1;
+
+      for (const concept of sortedConcepts) {
+        const idx = remaining.toLowerCase().indexOf(concept.name.toLowerCase());
+        if (idx !== -1 && (matchedIndex === -1 || idx < matchedIndex)) {
+          matchedConcept = concept;
+          matchedIndex = idx;
+        }
+      }
+
+      if (!matchedConcept || matchedIndex === -1) {
+        nodes.push(<span key={`q-${key++}`}>{remaining}</span>);
+        break;
+      }
+
+      if (matchedIndex > 0) {
+        nodes.push(
+          <span key={`q-${key++}`}>{remaining.slice(0, matchedIndex)}</span>
+        );
+      }
+
+      const matchedText = remaining.slice(
+        matchedIndex,
+        matchedIndex + matchedConcept.name.length
+      );
+      nodes.push(
+        <button
+          key={`q-${key++}`}
+          type="button"
+          onClick={() => openConceptDetail(matchedConcept.id)}
+          title={`${matchedConcept.name} (${matchedConcept.category})${matchedConcept.description ? `\n${matchedConcept.description}` : ""}`}
+          className="underline underline-offset-2 decoration-dotted hover:opacity-80"
+          style={{ color: matchedConcept.color }}
+        >
+          {matchedText}
+        </button>
+      );
+
+      remaining = remaining.slice(matchedIndex + matchedConcept.name.length);
+    }
+
+    return <>{nodes}</>;
+  };
+
   const handleAddSearchRecord = () => {
     // Add any new keywords to the global keywords list
     srKeywords.forEach((kw) => {
@@ -456,7 +578,6 @@ function EntryPaperWorkspace() {
     setSearchRecords([...searchRecords, newRecord]);
     setShowSearchDialog(false);
     setSrKeywords([]);
-    setSrNewKeyword("");
     setSrDatabase("Web of Science");
     setSrCustomDb("");
     setSrBooleanString("");
@@ -605,7 +726,7 @@ function EntryPaperWorkspace() {
                       Add as Keyword
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={() => setShowConceptDialog(true)}
+                      onClick={() => handleOpenAddConceptDialog(newKeyword)}
                     >
                       <Lightbulb className="w-3.5 h-3.5 mr-2 text-violet-500" />
                       Add as Concept
@@ -689,7 +810,7 @@ function EntryPaperWorkspace() {
                       </span>
                     </div>
                     <p className="text-xs font-mono text-slate-700 mb-2">
-                      {record.query}
+                      {renderQueryWithConceptLinks(record.query)}
                     </p>
                     <div className="flex gap-4 text-[11px] text-slate-500">
                       <span>{record.results} results</span>
@@ -1008,9 +1129,9 @@ function EntryPaperWorkspace() {
         title="Add Search Record"
       >
         <div className="space-y-4">
-          {/* Keywords selection */}
+          {/* Keywords & Concepts selection */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-600">Keywords</label>
+            <label className="text-xs font-medium text-slate-600">Keywords / Concepts</label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {keywords.map((kw) => (
                 <Badge
@@ -1033,51 +1154,34 @@ function EntryPaperWorkspace() {
                   {kw.term}
                 </Badge>
               ))}
-            </div>
-            <div className="flex gap-1.5">
-              <Input
-                value={srNewKeyword}
-                onChange={(e) => setSrNewKeyword(e.target.value)}
-                placeholder="Add new keyword..."
-                className="text-xs h-7"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    const trimmed = srNewKeyword.trim();
-                    if (trimmed && !srKeywords.includes(trimmed)) {
-                      setSrKeywords([...srKeywords, trimmed]);
-                      // Also add to global keywords if not present
-                      if (!keywords.find((k) => k.term === trimmed)) {
-                        setKeywords([
-                          ...keywords,
-                          { id: `kw-${Date.now()}`, term: trimmed, category: "Custom" },
-                        ]);
-                      }
-                      setSrNewKeyword("");
-                    }
+              {concepts.map((concept) => (
+                <Badge
+                  key={concept.id}
+                  variant={srKeywords.includes(concept.name) ? "default" : "outline"}
+                  className={cn(
+                    "text-[10px] cursor-pointer transition-all border",
+                    srKeywords.includes(concept.name)
+                      ? "text-white"
+                      : "hover:opacity-80"
+                  )}
+                  style={
+                    srKeywords.includes(concept.name)
+                      ? { backgroundColor: concept.color, borderColor: concept.color }
+                      : { color: concept.color, borderColor: `${concept.color}66`, backgroundColor: `${concept.color}12` }
                   }
-                }}
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-xs h-7 shrink-0"
-                onClick={() => {
-                  const trimmed = srNewKeyword.trim();
-                  if (trimmed && !srKeywords.includes(trimmed)) {
-                    setSrKeywords([...srKeywords, trimmed]);
-                    if (!keywords.find((k) => k.term === trimmed)) {
-                      setKeywords([
-                        ...keywords,
-                        { id: `kw-${Date.now()}`, term: trimmed, category: "Custom" },
-                      ]);
+                  title={`${concept.name} (${concept.category})${concept.description ? `\n${concept.description}` : ""}`}
+                  onClick={() => {
+                    if (srKeywords.includes(concept.name)) {
+                      setSrKeywords(srKeywords.filter((k) => k !== concept.name));
+                    } else {
+                      setSrKeywords([...srKeywords, concept.name]);
                     }
-                    setSrNewKeyword("");
-                  }
-                }}
-              >
-                <Plus className="w-3 h-3" />
-              </Button>
+                  }}
+                >
+                  <Lightbulb className="w-2.5 h-2.5 mr-1" />
+                  {concept.name}
+                </Badge>
+              ))}
             </div>
             {srKeywords.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
@@ -1232,6 +1336,101 @@ function EntryPaperWorkspace() {
             </button>
           ))}
         </div>
+      </ModalOverlay>
+
+      {/* Concept Detail Dialog */}
+      <ModalOverlay
+        open={showConceptDetailDialog}
+        onClose={() => {
+          setShowConceptDetailDialog(false);
+          setEditingConceptId(null);
+        }}
+        title="Concept Details"
+      >
+        {currentEditingConcept ? (
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-700">Concept Name</label>
+              <Input
+                value={currentEditingConcept.name}
+                onChange={(e) => updateEditingConcept({ name: e.target.value })}
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-700">Description</label>
+              <Textarea
+                value={currentEditingConcept.description}
+                onChange={(e) => updateEditingConcept({ description: e.target.value })}
+                rows={4}
+                className="text-sm resize-none"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-700">Category</label>
+                <Select
+                  value={currentEditingConcept.category}
+                  onValueChange={(value) => updateEditingConcept({ category: value })}
+                >
+                  <SelectTrigger className="text-sm h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Construct">Construct</SelectItem>
+                    <SelectItem value="Theory">Theory</SelectItem>
+                    <SelectItem value="Framework">Framework</SelectItem>
+                    <SelectItem value="Method">Method</SelectItem>
+                    <SelectItem value="Finding">Finding</SelectItem>
+                    <SelectItem value="Variable">Variable</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-700">Color</label>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {CONCEPT_COLORS.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      title={c.label}
+                      onClick={() => updateEditingConcept({ color: c.value })}
+                      className={cn(
+                        "w-6 h-6 rounded-full border-2 transition-all",
+                        currentEditingConcept.color === c.value
+                          ? "border-slate-700 scale-110"
+                          : "border-transparent hover:border-slate-400"
+                      )}
+                      style={{ backgroundColor: c.value }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button
+                className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+                onClick={() => {
+                  setShowConceptDetailDialog(false);
+                  setEditingConceptId(null);
+                }}
+              >
+                Save
+              </Button>
+              <Button
+                variant="ghost"
+                className="text-xs"
+                onClick={() => {
+                  setShowConceptDetailDialog(false);
+                  setEditingConceptId(null);
+                }}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </ModalOverlay>
 
       {/* Add Candidate Paper Dialog */}
