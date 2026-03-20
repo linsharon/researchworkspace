@@ -12,6 +12,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ArrowLeft,
   ArrowRight,
   BarChart3,
@@ -19,6 +32,7 @@ import {
   Brain,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Clock,
   Download,
@@ -346,6 +360,44 @@ function EntryPaperWorkspace() {
   const [searchRecords, setSearchRecords] = useState<SearchRecord[]>([...DUMMY_SEARCH_RECORDS]);
   const [entryPapers, setEntryPapers] = useState<string[]>(["paper-1"]);
 
+  // Concepts state
+  const [concepts, setConcepts] = useState<Array<{ id: string; name: string; description: string; category: string; color: string }>>([]);
+  const [showConceptDialog, setShowConceptDialog] = useState(false);
+  const [conceptName, setConceptName] = useState("");
+  const [conceptDescription, setConceptDescription] = useState("");
+  const [conceptCategory, setConceptCategory] = useState("Construct");
+  const [conceptColor, setConceptColor] = useState("#6366f1");
+
+  const CONCEPT_COLORS = [
+    { value: "#6366f1", label: "Indigo" },
+    { value: "#8b5cf6", label: "Violet" },
+    { value: "#ec4899", label: "Pink" },
+    { value: "#f97316", label: "Orange" },
+    { value: "#10b981", label: "Emerald" },
+    { value: "#0ea5e9", label: "Sky" },
+    { value: "#f59e0b", label: "Amber" },
+    { value: "#ef4444", label: "Red" },
+  ];
+
+  const handleAddConcept = () => {
+    if (!conceptName.trim()) return;
+    setConcepts([
+      ...concepts,
+      {
+        id: `concept-${Date.now()}`,
+        name: conceptName.trim(),
+        description: conceptDescription.trim(),
+        category: conceptCategory,
+        color: conceptColor,
+      },
+    ]);
+    setShowConceptDialog(false);
+    setConceptName("");
+    setConceptDescription("");
+    setConceptCategory("Construct");
+    setConceptColor("#6366f1");
+  };
+
   // Candidate papers state
   const [candidatePapers, setCandidatePapers] = useState<
     Array<Paper & { discoveryPath?: string; discoveryNote?: string }>
@@ -522,26 +574,44 @@ function EntryPaperWorkspace() {
                     }
                   }}
                 />
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (newKeyword.trim()) {
-                      setKeywords([
-                        ...keywords,
-                        {
-                          id: `kw-${Date.now()}`,
-                          term: newKeyword.trim(),
-                          category: "Custom",
-                        },
-                      ]);
-                      setNewKeyword("");
-                    }
-                  }}
-                  className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white shrink-0"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add Keyword
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="sm"
+                      className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white shrink-0"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Add
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (newKeyword.trim()) {
+                          setKeywords([
+                            ...keywords,
+                            {
+                              id: `kw-${Date.now()}`,
+                              term: newKeyword.trim(),
+                              category: "Custom",
+                            },
+                          ]);
+                          setNewKeyword("");
+                        }
+                      }}
+                    >
+                      <Hash className="w-3.5 h-3.5 mr-2 text-slate-500" />
+                      Add as Keyword
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setShowConceptDialog(true)}
+                    >
+                      <Lightbulb className="w-3.5 h-3.5 mr-2 text-violet-500" />
+                      Add as Concept
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <div className="flex flex-wrap gap-2">
                 {keywords.map((kw) => (
@@ -557,6 +627,24 @@ function EntryPaperWorkspace() {
                     <button
                       onClick={() => setKeywords(keywords.filter((k) => k.id !== kw.id))}
                       className="ml-1 hover:text-red-500"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </Badge>
+                ))}
+                {concepts.map((concept) => (
+                  <Badge
+                    key={concept.id}
+                    variant="secondary"
+                    className="text-xs px-3 py-1 gap-1 border"
+                    style={{ backgroundColor: `${concept.color}18`, borderColor: `${concept.color}55`, color: concept.color }}
+                  >
+                    <Lightbulb className="w-2.5 h-2.5 mr-0.5" />
+                    {concept.name}
+                    <span className="ml-1 text-[10px] opacity-70">{concept.category}</span>
+                    <button
+                      onClick={() => setConcepts(concepts.filter((c) => c.id !== concept.id))}
+                      className="ml-1 hover:opacity-60"
                     >
                       <X className="w-2.5 h-2.5" />
                     </button>
@@ -790,6 +878,128 @@ function EntryPaperWorkspace() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Add Concept Dialog */}
+      <ModalOverlay
+        open={showConceptDialog}
+        onClose={() => {
+          setShowConceptDialog(false);
+          setConceptName("");
+          setConceptDescription("");
+          setConceptCategory("Construct");
+          setConceptColor("#6366f1");
+        }}
+        title="Add as Concept"
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-700">
+              Concept Name <span className="text-red-500">*</span>
+            </label>
+            <Input
+              value={conceptName}
+              onChange={(e) => setConceptName(e.target.value)}
+              placeholder="Enter concept name..."
+              className="text-sm"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddConcept();
+                }
+              }}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-700">Description</label>
+            <Textarea
+              value={conceptDescription}
+              onChange={(e) => setConceptDescription(e.target.value)}
+              placeholder="What does this concept mean in your research context? Add details, definitions, or notes..."
+              rows={4}
+              className="text-sm resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-700">Category</label>
+              <Select value={conceptCategory} onValueChange={setConceptCategory}>
+                <SelectTrigger className="text-sm h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Construct">Construct</SelectItem>
+                  <SelectItem value="Theory">Theory</SelectItem>
+                  <SelectItem value="Framework">Framework</SelectItem>
+                  <SelectItem value="Method">Method</SelectItem>
+                  <SelectItem value="Finding">Finding</SelectItem>
+                  <SelectItem value="Variable">Variable</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-700">Color</label>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {CONCEPT_COLORS.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    title={c.label}
+                    onClick={() => setConceptColor(c.value)}
+                    className={cn(
+                      "w-6 h-6 rounded-full border-2 transition-all",
+                      conceptColor === c.value
+                        ? "border-slate-700 scale-110"
+                        : "border-transparent hover:border-slate-400"
+                    )}
+                    style={{ backgroundColor: c.value }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {conceptName.trim() && (
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">Preview</p>
+              <Badge
+                className="text-xs px-3 py-1 gap-1 border"
+                style={{ backgroundColor: `${conceptColor}18`, borderColor: `${conceptColor}55`, color: conceptColor }}
+              >
+                <Lightbulb className="w-2.5 h-2.5 mr-0.5" />
+                {conceptName}
+                <span className="ml-1 text-[10px] opacity-70">{conceptCategory}</span>
+              </Badge>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-1">
+            <Button
+              className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+              onClick={handleAddConcept}
+              disabled={!conceptName.trim()}
+            >
+              <Lightbulb className="w-3 h-3 mr-1" />
+              Add Concept
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-xs"
+              onClick={() => {
+                setShowConceptDialog(false);
+                setConceptName("");
+                setConceptDescription("");
+                setConceptCategory("Construct");
+                setConceptColor("#6366f1");
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </ModalOverlay>
 
       {/* Add Search Record Dialog */}
       <ModalOverlay
