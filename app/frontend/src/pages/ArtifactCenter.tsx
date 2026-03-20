@@ -9,14 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import {
   Archive,
   Clock,
+  Trash2,
   Edit,
   Eye,
-  FileText,
-  GitCompare,
-  Map,
-  PenTool,
+  Lightbulb,
   Search,
-  Sparkles,
 } from "lucide-react";
 import {
   DUMMY_ARTIFACTS,
@@ -28,10 +25,11 @@ import { cn } from "@/lib/utils";
 
 const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "purpose", label: "Purpose" },
-  { value: "search", label: "Search" },
+  { value: "purpose", label: "Purposes" },
+  { value: "concepts", label: "Concepts" },
+  { value: "search", label: "Searches" },
   { value: "notes", label: "Notes" },
-  { value: "visual", label: "Visual" },
+  { value: "visual", label: "Visuals" },
   { value: "drafts", label: "Drafts" },
 ];
 
@@ -45,11 +43,25 @@ const FILTER_MAP: Record<string, ArtifactType[]> = {
 };
 
 export default function ArtifactCenter() {
+  const CONCEPTS_STORAGE_KEY = "rw-concepts";
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab") || "all";
   const [filter, setFilter] = useState(tabFromUrl);
   const [searchQuery, setSearchQuery] = useState("");
+  const [artifacts, setArtifacts] = useState([...DUMMY_ARTIFACTS]);
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
+  const [concepts, setConcepts] = useState<
+    Array<{ id: string; name: string; description: string; category: string; color: string }>
+  >([]);
+  const [showConceptDialog, setShowConceptDialog] = useState(false);
+  const [conceptDialogMode, setConceptDialogMode] = useState<"view" | "edit">("view");
+  const [selectedConceptId, setSelectedConceptId] = useState<string | null>(null);
+  const [conceptForm, setConceptForm] = useState({
+    name: "",
+    description: "",
+    category: "",
+    color: "#6366f1",
+  });
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -58,7 +70,29 @@ export default function ArtifactCenter() {
     }
   }, [searchParams]);
 
-  const filteredArtifacts = DUMMY_ARTIFACTS.filter((a) => {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const loadConcepts = () => {
+      try {
+        const saved = window.localStorage.getItem(CONCEPTS_STORAGE_KEY);
+        if (!saved) {
+          setConcepts([]);
+          return;
+        }
+        const parsed = JSON.parse(saved);
+        setConcepts(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        setConcepts([]);
+      }
+    };
+
+    loadConcepts();
+    window.addEventListener("storage", loadConcepts);
+    return () => window.removeEventListener("storage", loadConcepts);
+  }, []);
+
+  const filteredArtifacts = artifacts.filter((a) => {
     const matchesFilter =
       filter === "all" || FILTER_MAP[filter]?.includes(a.type);
     const matchesSearch =
@@ -68,7 +102,93 @@ export default function ArtifactCenter() {
     return matchesFilter && matchesSearch;
   });
 
-  const selected = DUMMY_ARTIFACTS.find((a) => a.id === selectedArtifact);
+  const selected = artifacts.find((a) => a.id === selectedArtifact);
+  const selectedConcept = concepts.find((c) => c.id === selectedConceptId) || null;
+
+  const persistConcepts = (
+    updater:
+      | Array<{ id: string; name: string; description: string; category: string; color: string }>
+      | ((prev: Array<{ id: string; name: string; description: string; category: string; color: string }>) => Array<{ id: string; name: string; description: string; category: string; color: string }>)
+  ) => {
+    setConcepts((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
+  const openConceptDialog = (conceptId: string, mode: "view" | "edit") => {
+    const concept = concepts.find((c) => c.id === conceptId);
+    if (!concept) return;
+    setSelectedConceptId(conceptId);
+    setConceptDialogMode(mode);
+    setConceptForm({
+      name: concept.name,
+      description: concept.description,
+      category: concept.category,
+      color: concept.color,
+    });
+    setShowConceptDialog(true);
+  };
+
+  const handleDeleteConcept = (conceptId: string) => {
+    persistConcepts((prev) => prev.filter((c) => c.id !== conceptId));
+    if (selectedConceptId === conceptId) {
+      setShowConceptDialog(false);
+      setSelectedConceptId(null);
+    }
+  };
+
+  const handleSaveConcept = () => {
+    if (!selectedConceptId) return;
+    const trimmedName = conceptForm.name.trim();
+    if (!trimmedName) return;
+
+    persistConcepts((prev) =>
+      prev.map((c) =>
+        c.id === selectedConceptId
+          ? {
+              ...c,
+              name: trimmedName,
+              description: conceptForm.description.trim(),
+              category: conceptForm.category.trim() || "Concept",
+              color: conceptForm.color,
+            }
+          : c
+      )
+    );
+    setShowConceptDialog(false);
+    setSelectedConceptId(null);
+  };
+
+  const handleDeleteArtifact = (artifactId: string) => {
+    setArtifacts((prev) => prev.filter((a) => a.id !== artifactId));
+    if (selectedArtifact === artifactId) {
+      setSelectedArtifact(null);
+    }
+  };
+
+  const getFilterCount = (filterValue: string) => {
+    if (filterValue === "all") {
+      return artifacts.length + concepts.length;
+    }
+    if (filterValue === "concepts") {
+      return concepts.length;
+    }
+    return artifacts.filter((a) => FILTER_MAP[filterValue]?.includes(a.type)).length;
+  };
+
+  const filteredConcepts = concepts.filter((c) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.category.toLowerCase().includes(q) ||
+      c.description.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <AppLayout>
@@ -89,7 +209,7 @@ export default function ArtifactCenter() {
             </div>
           </div>
           <Badge variant="outline" className="text-xs">
-            {DUMMY_ARTIFACTS.length} artifacts
+            {filter === "concepts" ? `${filteredConcepts.length} artifacts` : `${filteredArtifacts.length} artifacts`}
           </Badge>
         </div>
 
@@ -117,15 +237,74 @@ export default function ArtifactCenter() {
                 )}
                 onClick={() => setFilter(opt.value)}
               >
-                {opt.label}
+                {opt.label} ({getFilterCount(opt.value)})
               </Button>
             ))}
           </div>
         </div>
 
-        {/* Artifact Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredArtifacts.map((artifact) => {
+        {/* Artifact/Concept Grid */}
+        {filter === "concepts" ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredConcepts.map((concept) => (
+              <Card key={concept.id} className="border-slate-200 hover:shadow-md transition-all group">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] border"
+                      style={{
+                        color: concept.color,
+                        backgroundColor: `${concept.color}12`,
+                        borderColor: `${concept.color}66`,
+                      }}
+                    >
+                      <Lightbulb className="w-3 h-3 mr-1" />
+                      {concept.category}
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-sm mt-2">{concept.name}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-xs text-slate-600 whitespace-pre-wrap line-clamp-4">
+                    {concept.description || "No description yet."}
+                  </p>
+                  <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 w-7 p-0"
+                      title="Browse"
+                      onClick={() => openConceptDialog(concept.id, "view")}
+                    >
+                      <Eye className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 w-7 p-0"
+                      title="Edit"
+                      onClick={() => openConceptDialog(concept.id, "edit")}
+                    >
+                      <Edit className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                      title="Delete"
+                      onClick={() => handleDeleteConcept(concept.id)}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredArtifacts.map((artifact) => {
             const typeMeta = ARTIFACT_TYPE_META[artifact.type];
             const stepMeta = STEP_META[artifact.sourceStep];
             return (
@@ -166,6 +345,7 @@ export default function ArtifactCenter() {
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
+                          title="View"
                         >
                           <Eye className="w-3 h-3" />
                         </Button>
@@ -173,8 +353,21 @@ export default function ArtifactCenter() {
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
+                          title="Edit"
                         >
                           <Edit className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+                          title="Delete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteArtifact(artifact.id);
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
                     </div>
@@ -217,54 +410,114 @@ export default function ArtifactCenter() {
                       Last edited: {artifact.updatedAt}
                     </div>
                     <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200">
-                      <Button size="sm" variant="outline" className="text-xs">
-                        <Eye className="w-3 h-3 mr-1" />
-                        View
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="View">
+                        <Eye className="w-3 h-3" />
                       </Button>
-                      <Button size="sm" variant="outline" className="text-xs">
-                        <Edit className="w-3 h-3 mr-1" />
-                        Edit
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Edit">
+                        <Edit className="w-3 h-3" />
                       </Button>
-                      <Button size="sm" variant="outline" className="text-xs">
-                        <GitCompare className="w-3 h-3 mr-1" />
-                        Compare
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                        title="Delete"
+                        onClick={() => handleDeleteArtifact(artifact.id)}
+                      >
+                        <Trash2 className="w-3 h-3" />
                       </Button>
-                      {(artifact.type === "literature-note") && (
-                        <Button size="sm" variant="outline" className="text-xs">
-                          <Sparkles className="w-3 h-3 mr-1" />
-                          Convert to Permanent Note
-                        </Button>
-                      )}
-                      {(artifact.type === "permanent-note" ||
-                        artifact.type === "literature-note") && (
-                        <Button size="sm" variant="outline" className="text-xs">
-                          <Map className="w-3 h-3 mr-1" />
-                          Add to Visualization
-                        </Button>
-                      )}
-                      {(artifact.type === "permanent-note" ||
-                        artifact.type === "rq-draft") && (
-                        <Button size="sm" variant="outline" className="text-xs">
-                          <PenTool className="w-3 h-3 mr-1" />
-                          Insert into Writing
-                        </Button>
-                      )}
                     </div>
                   </div>
                 </DialogContent>
               </Dialog>
             );
           })}
-        </div>
+          </div>
+        )}
 
-        {filteredArtifacts.length === 0 && (
+        {((filter === "concepts" && filteredConcepts.length === 0) ||
+          (filter !== "concepts" && filteredArtifacts.length === 0)) && (
           <div className="text-center py-16">
             <Archive className="w-12 h-12 text-slate-200 mx-auto mb-3" />
             <p className="text-sm text-slate-400">
-              No artifacts found matching your criteria
+              {filter === "concepts"
+                ? "No concepts found matching your criteria"
+                : "No artifacts found matching your criteria"}
             </p>
           </div>
         )}
+
+        <Dialog open={showConceptDialog} onOpenChange={setShowConceptDialog}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-base">
+                {conceptDialogMode === "edit" ? "Edit Concept" : "Concept Details"}
+              </DialogTitle>
+            </DialogHeader>
+            {selectedConcept ? (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-700">Concept Name</label>
+                  <Input
+                    value={conceptForm.name}
+                    onChange={(e) => setConceptForm((prev) => ({ ...prev, name: e.target.value }))}
+                    disabled={conceptDialogMode === "view"}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-slate-700">Description</label>
+                  <Input
+                    value={conceptForm.description}
+                    onChange={(e) => setConceptForm((prev) => ({ ...prev, description: e.target.value }))}
+                    disabled={conceptDialogMode === "view"}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-700">Category</label>
+                    <Input
+                      value={conceptForm.category}
+                      onChange={(e) => setConceptForm((prev) => ({ ...prev, category: e.target.value }))}
+                      disabled={conceptDialogMode === "view"}
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-700">Color</label>
+                    <input
+                      type="color"
+                      value={conceptForm.color}
+                      onChange={(e) => setConceptForm((prev) => ({ ...prev, color: e.target.value }))}
+                      disabled={conceptDialogMode === "view"}
+                      className="w-full h-9 rounded border border-slate-300"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  {conceptDialogMode === "edit" ? (
+                    <Button
+                      className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+                      onClick={handleSaveConcept}
+                    >
+                      Save
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="ghost"
+                    className="text-xs"
+                    onClick={() => {
+                      setShowConceptDialog(false);
+                      setSelectedConceptId(null);
+                    }}
+                  >
+                    {conceptDialogMode === "edit" ? "Cancel" : "Close"}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
