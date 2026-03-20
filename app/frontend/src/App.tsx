@@ -10,6 +10,7 @@ import PaperWorkspace from './pages/PaperWorkspace';
 import PdfViewer from './pages/PdfViewer';
 import VisualizationBoard from './pages/VisualizationBoard';
 import DraftStudio from './pages/DraftStudio';
+import PaperReadPage from './components/reading/PaperReadPage';
 import NotFound from './pages/NotFound';
 import AuthCallback from './pages/AuthCallback';
 import AuthError from './pages/AuthError';
@@ -28,9 +29,10 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/workflow/:step" element={<WorkflowWorkspace />} />
+            <Route path="/workflow/:projectId/:step" element={<WorkflowWorkspace />} />
             <Route path="/artifacts" element={<ArtifactCenter />} />
             <Route path="/paper/:paperId" element={<PaperWorkspace />} />
+            <Route path="/paper-read/:projectId/:paperId" element={<PaperReadPage />} />
             <Route path="/pdf/:paperId" element={<PdfViewer />} />
             <Route path="/visualization" element={<VisualizationBoard />} />
             <Route path="/draft" element={<DraftStudio />} />

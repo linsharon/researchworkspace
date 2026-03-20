@@ -3,6 +3,8 @@ import { useParams, Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { paperAPI, conceptAPI, projectAPI } from "@/lib/manuscript-api";
+import type { Paper as ApiPaper } from "@/lib/manuscript-api";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -59,6 +61,7 @@ import {
 import {
   STEP_META,
   ARTIFACT_TYPE_META,
+  DUMMY_PROJECT,
   DUMMY_PAPERS,
   DUMMY_KEYWORDS,
   DUMMY_SEARCH_RECORDS,
@@ -80,13 +83,22 @@ import {
   type SearchRecord,
 } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import Step3ReadFoundPapers from "@/components/workflow/Step3ReadFoundPapers";
 
 export default function WorkflowWorkspace() {
-  const { step } = useParams<{ step: string }>();
+  const { projectId = "proj-1", step } = useParams<{ projectId: string; step: string }>();
   const currentStep = (parseInt(step || "1") as WorkflowStep) || 1;
   const stepMeta = STEP_META[currentStep];
   const prevStep = currentStep > 1 ? currentStep - 1 : null;
   const nextStep = currentStep < 6 ? currentStep + 1 : null;
+
+  // Ensure the project row exists in DB on first visit
+  useEffect(() => {
+    if (!projectId) return;
+    projectAPI
+      .ensure({ id: projectId, title: DUMMY_PROJECT.title, description: DUMMY_PROJECT.goal })
+      .catch(() => {});
+  }, [projectId]);
 
   return (
     <AppLayout>
@@ -113,7 +125,7 @@ export default function WorkflowWorkspace() {
           </div>
           <div className="flex gap-2">
             {prevStep && (
-              <Link to={`/workflow/${prevStep}`}>
+              <Link to={`/workflow/${projectId}/${prevStep}`}>
                 <Button variant="outline" size="sm" className="text-xs">
                   <ArrowLeft className="w-3 h-3 mr-1" />
                   Step {prevStep}
@@ -121,7 +133,7 @@ export default function WorkflowWorkspace() {
               </Link>
             )}
             {nextStep && (
-              <Link to={`/workflow/${nextStep}`}>
+              <Link to={`/workflow/${projectId}/${nextStep}`}>
                 <Button
                   size="sm"
                   className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
@@ -139,7 +151,7 @@ export default function WorkflowWorkspace() {
           {([1, 2, 3, 4, 5, 6] as WorkflowStep[]).map((s, i) => (
             <div key={s} className="flex items-center gap-1 shrink-0">
               {i > 0 && <ChevronRight className="w-3 h-3 text-slate-300" />}
-              <Link to={`/workflow/${s}`}>
+              <Link to={`/workflow/${projectId}/${s}`}>
                 <span
                   className={cn(
                     "px-2 py-0.5 rounded-full transition-colors",
@@ -158,9 +170,9 @@ export default function WorkflowWorkspace() {
         </div>
 
         {/* Step Content */}
-        {currentStep === 1 && <PurposeWorkspace />}
-        {currentStep === 2 && <EntryPaperWorkspace />}
-        {currentStep === 3 && <ReadWorkspace />}
+        {currentStep === 1 && <PurposeWorkspace projectId={projectId} />}
+        {currentStep === 2 && <EntryPaperWorkspace projectId={projectId} />}
+        {currentStep === 3 && <Step3ReadFoundPapers projectId={projectId} />}
         {currentStep === 4 && <ExpandWorkspace />}
         {currentStep === 5 && <VisualizeWorkspace />}
         {currentStep === 6 && <DraftWorkspaceInline />}
@@ -202,7 +214,7 @@ function ModalOverlay({
 // ============================================================
 // Step 1: Purpose Workspace
 // ============================================================
-function PurposeWorkspace() {
+function PurposeWorkspace({ projectId }: { projectId: string }) {
   const [selected, setSelected] = useState<string[]>(["Find research questions"]);
   const [customPurposes, setCustomPurposes] = useState<string[]>([]);
   const [newCustomPurpose, setNewCustomPurpose] = useState("");
@@ -340,7 +352,7 @@ function PurposeWorkspace() {
           <Sparkles className="w-4 h-4 mr-2" />
           Generate Purpose Card
         </Button>
-        <Link to="/workflow/2">
+        <Link to={`/workflow/${projectId}/2`}>
           <Button variant="outline">
             Save and Continue
             <ArrowRight className="w-4 h-4 ml-2" />
@@ -354,12 +366,12 @@ function PurposeWorkspace() {
 // ============================================================
 // Step 2: Entry Paper Workspace
 // ============================================================
-function EntryPaperWorkspace() {
-  const CONCEPTS_STORAGE_KEY = "rw-concepts";
+function EntryPaperWorkspace({ projectId }: { projectId: string }) {
+  const CONCEPTS_STORAGE_KEY = `rw-concepts-${projectId}`;
   const [newKeyword, setNewKeyword] = useState("");
   const [keywords, setKeywords] = useState<Keyword[]>([...DUMMY_KEYWORDS]);
   const [searchRecords, setSearchRecords] = useState<SearchRecord[]>([...DUMMY_SEARCH_RECORDS]);
-  const [entryPapers, setEntryPapers] = useState<string[]>(["paper-1"]);
+  const [entryPapers, setEntryPapers] = useState<string[]>([]);
 
   // Concepts state
   const [concepts, setConcepts] = useState<Array<{ id: string; name: string; description: string; category: string; color: string }>>(() => {
@@ -435,10 +447,11 @@ function EntryPaperWorkspace() {
   };
 
   // Candidate papers state
+  const [papersLoading, setPapersLoading] = useState(false);
   const [candidatePapers, setCandidatePapers] = useState<
     Array<Paper & { discoveryPath?: string; discoveryNote?: string }>
-  >(DUMMY_PAPERS.map((p) => ({ ...p })));
-  const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
+  >([]);
+  const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]); 
 
   // Add Search Record Dialog
   const [showSearchDialog, setShowSearchDialog] = useState(false);
@@ -472,6 +485,39 @@ function EntryPaperWorkspace() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify(concepts));
   }, [concepts]);
+
+  // Helper: map API paper to local Paper type
+  const apiPaperToLocal = (p: ApiPaper): Paper & { discoveryPath?: string; discoveryNote?: string } => ({
+    id: p.id,
+    title: p.title,
+    authors: p.authors,
+    year: p.year ?? new Date().getFullYear(),
+    journal: p.journal ?? "Unknown",
+    abstract: p.abstract ?? "",
+    researchQuestion: "",
+    theory: "",
+    method: "",
+    findings: "",
+    relevance: (p.relevance ?? "medium") as "high" | "medium" | "low",
+    isEntryPaper: p.is_entry_paper,
+    annotations: [],
+    discoveryPath: p.discovery_path,
+    discoveryNote: p.discovery_note,
+  });
+
+  // Load papers from backend on mount
+  useEffect(() => {
+    if (!projectId) return;
+    setPapersLoading(true);
+    paperAPI
+      .list(projectId)
+      .then((apiPapers) => {
+        setCandidatePapers(apiPapers.map(apiPaperToLocal));
+        setEntryPapers(apiPapers.filter((p) => p.is_entry_paper).map((p) => p.id));
+      })
+      .catch(() => {})
+      .finally(() => setPapersLoading(false));
+  }, [projectId]);
 
   const handleOpenAddConceptDialog = (prefill?: string) => {
     setConceptName(prefill?.trim() || "");
@@ -587,6 +633,7 @@ function EntryPaperWorkspace() {
 
   const handleMarkRelevance = (level: "high" | "medium" | "low") => {
     if (relevancePaperId) {
+      paperAPI.update(relevancePaperId, { relevance: level }).catch(() => {});
       setCandidatePapers(
         candidatePapers.map((p) =>
           p.id === relevancePaperId ? { ...p, relevance: level } : p
@@ -597,29 +644,40 @@ function EntryPaperWorkspace() {
     setRelevancePaperId(null);
   };
 
-  const handleAddCandidatePaper = () => {
+  const handleAddCandidatePaper = async () => {
     if (!newPaperTitle.trim()) return;
-    const newPaper: Paper & { discoveryPath?: string; discoveryNote?: string } = {
-      id: `paper-${Date.now()}`,
-      title: newPaperTitle.trim(),
-      authors: newPaperAuthors
-        .split(",")
-        .map((a) => a.trim())
-        .filter(Boolean),
-      year: parseInt(newPaperYear) || new Date().getFullYear(),
-      journal: newPaperJournal.trim() || "Unknown",
-      abstract: "",
-      researchQuestion: "",
-      theory: "",
-      method: "",
-      findings: "",
-      relevance: "medium",
-      isEntryPaper: false,
-      annotations: [],
-      discoveryPath: newPaperDiscoveryPath,
-      discoveryNote: newPaperDiscoveryNote,
-    };
-    setCandidatePapers([...candidatePapers, newPaper]);
+    try {
+      const created = await paperAPI.create({
+        title: newPaperTitle.trim(),
+        authors: newPaperAuthors.split(",").map((a) => a.trim()).filter(Boolean),
+        year: parseInt(newPaperYear) || undefined,
+        journal: newPaperJournal.trim() || undefined,
+        discovery_path: newPaperDiscoveryPath,
+        discovery_note: newPaperDiscoveryNote || undefined,
+        project_id: projectId,
+      });
+      setCandidatePapers((prev) => [...prev, apiPaperToLocal(created)]);
+    } catch {
+      // fallback: add locally with temp id
+      const newPaper: Paper & { discoveryPath?: string; discoveryNote?: string } = {
+        id: `paper-${Date.now()}`,
+        title: newPaperTitle.trim(),
+        authors: newPaperAuthors.split(",").map((a) => a.trim()).filter(Boolean),
+        year: parseInt(newPaperYear) || new Date().getFullYear(),
+        journal: newPaperJournal.trim() || "Unknown",
+        abstract: "",
+        researchQuestion: "",
+        theory: "",
+        method: "",
+        findings: "",
+        relevance: "medium",
+        isEntryPaper: false,
+        annotations: [],
+        discoveryPath: newPaperDiscoveryPath,
+        discoveryNote: newPaperDiscoveryNote,
+      };
+      setCandidatePapers((prev) => [...prev, newPaper]);
+    }
     setShowAddPaperDialog(false);
     setNewPaperTitle("");
     setNewPaperAuthors("");
@@ -629,8 +687,25 @@ function EntryPaperWorkspace() {
     setNewPaperDiscoveryNote("");
   };
 
+  const handleToggleEntryPaper = (paperId: string) => {
+    const isEntry = entryPapers.includes(paperId);
+    const newValue = !isEntry;
+    paperAPI.update(paperId, { is_entry_paper: newValue }).catch(() => {});
+    if (newValue) {
+      setEntryPapers((prev) => [...prev, paperId]);
+    } else {
+      setEntryPapers((prev) => prev.filter((id) => id !== paperId));
+    }
+  };
+
   const handleSaveDiscoveryPath = () => {
     if (discoveryPaperId) {
+      paperAPI
+        .update(discoveryPaperId, {
+          discovery_path: discoveryPathValue,
+          discovery_note: discoveryNoteValue || undefined,
+        })
+        .catch(() => {});
       setCandidatePapers(
         candidatePapers.map((p) =>
           p.id === discoveryPaperId
@@ -907,7 +982,7 @@ function EntryPaperWorkspace() {
                             )}
                           </div>
                           {/* Title links to read page */}
-                          <Link to={`/workflow/3`}>
+                          <Link to={`/workflow/${projectId}/3`}>
                             <h4 className="text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline mb-1 cursor-pointer">
                               {paper.title}
                             </h4>
@@ -963,20 +1038,7 @@ function EntryPaperWorkspace() {
                               ? "bg-emerald-600 hover:bg-emerald-700 text-white"
                               : "bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
                           )}
-                          onClick={() => {
-                            if (entryPapers.includes(paper.id)) {
-                              setEntryPapers(
-                                entryPapers.filter(
-                                  (id) => id !== paper.id
-                                )
-                              );
-                            } else {
-                              setEntryPapers([
-                                ...entryPapers,
-                                paper.id,
-                              ]);
-                            }
-                          }}
+                          onClick={() => handleToggleEntryPaper(paper.id)}
                         >
                           {entryPapers.includes(paper.id) ? (
                             <>
@@ -1602,7 +1664,7 @@ function EntryPaperWorkspace() {
           <Save className="w-4 h-4 mr-2" />
           Save Artifacts
         </Button>
-        <Link to="/workflow/3">
+        <Link to={`/workflow/${projectId}/3`}>
           <Button className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white">
             Move to Reading
             <ArrowRight className="w-4 h-4 ml-2" />

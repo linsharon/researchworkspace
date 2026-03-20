@@ -75,7 +75,7 @@ export default function Dashboard() {
               <Import className="w-3.5 h-3.5 mr-1.5" />
               {t("dashboard.importPapers")}
             </Button>
-            <Link to={`/workflow/${project.currentStep}`}>
+            <Link to={`/workflow/${project.id}/${project.currentStep}`}>
               <Button
                 size="sm"
                 className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
@@ -116,7 +116,7 @@ export default function Dashboard() {
                 return (
                   <Link
                     key={step}
-                    to={`/workflow/${step}`}
+                    to={`/workflow/${project.id}/${step}`}
                     className="flex-1"
                   >
                     <div className="relative group cursor-pointer">
@@ -210,7 +210,7 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
-              <Link to={`/workflow/${project.currentStep}`}>
+              <Link to={`/workflow/${project.id}/${project.currentStep}`}>
                 <Button
                   size="sm"
                   className="w-full text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
@@ -248,7 +248,7 @@ export default function Dashboard() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <Link to="/workflow/2" className="flex-1">
+                <Link to={`/workflow/${project.id}/2`} className="flex-1">
                   <Button
                     variant="outline"
                     size="sm"

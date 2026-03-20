@@ -9,6 +9,7 @@ from logging.config import fileConfig
 
 import models
 from alembic import context
+from core.config import settings
 from core.database import Base
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -18,6 +19,9 @@ for _, module_name, _ in pkgutil.iter_modules(models.__path__):
     importlib.import_module(f"{models.__name__}.{module_name}")
 
 config = context.config
+
+if not config.get_main_option("sqlalchemy.url") or config.get_main_option("sqlalchemy.url") == '""':
+    config.set_main_option("sqlalchemy.url", settings.database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
