@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from models.base import Base
 from models.manuscript import Paper, Project
-from core.config import DATABASE_URL
+from core.config import settings
 
 # Sample PDF content (mock)
 SAMPLE_PDF_CONTENT = """
@@ -61,7 +61,12 @@ async def init_sample_papers():
     """Initialize two sample papers in the database."""
     
     # Create async engine and session
-    engine = create_async_engine(DATABASE_URL, echo=False)
+    engine = create_async_engine(settings.database_url, echo=False)
+    
+    # Create tables first
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
     async with async_session() as session:
@@ -92,7 +97,7 @@ async def init_sample_papers():
                     journal="Computers & Education",
                     abstract="This comprehensive review examines the current state of machine learning applications in higher education. We analyze 150+ studies, identifying key trends including personalization algorithms, adaptive learning systems, and automated assessment tools.",
                     url="https://example.com/paper1",
-                    pdf_path="/uploads/ml-in-education.pdf",  # Has PDF
+                    pdf_path="sample_research_paper.pdf",  # Has PDF
                     discovery_path="Google Scholar",
                     discovery_note="Found while searching for AI in education",
                     is_entry_paper=True,

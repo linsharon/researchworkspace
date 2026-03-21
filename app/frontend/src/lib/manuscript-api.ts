@@ -23,6 +23,7 @@ export interface Paper {
   relevance?: "high" | "medium" | "low";
   discovery_path?: string;
   discovery_note?: string;
+  pdf_path?: string;
   project_id: string;
 }
 

@@ -6,8 +6,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp, Upload, FileText } from "lucide-react";
+import { ChevronDown, ChevronUp, Upload, FileText, Download, Eye } from "lucide-react";
 import type { Paper, Highlight } from "@/lib/manuscript-api";
+import { paperAPI } from "@/lib/manuscript-api";
+import { pdfAPI } from "@/lib/pdf-api";
 import PDFHighlightReader from "./PDFHighlightReader";
 
 interface PaperReadingAreaProps {
@@ -38,6 +40,35 @@ export default function PaperReadingArea({
   useEffect(() => {
     setPdfContent(paper.pdf_path ? "dummy" : "");
   }, [paper.pdf_path, paper.id]);
+
+  const handleUploadPDF = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,application/pdf';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      try {
+        // Upload PDF to server
+        const uploadRes = await pdfAPI.upload(file);
+        // Update paper with PDF path
+        await paperAPI.update(paper.id, {
+          pdf_path: uploadRes.filename,
+        });
+        // Refresh paper data
+        const updated = await paperAPI.get(paper.id);
+        // Signal that paper changed
+        onChanged();
+        // Update local state to show PDF
+        setPdfContent("dummy");
+      } catch (error) {
+        console.error('PDF upload failed:', error);
+        alert('Failed to upload PDF. Please try again.');
+      }
+    };
+    input.click();
+  };
 
   const handleAddHighlight = (highlight: Highlight) => {
     setHighlights((prev) => [...prev, highlight]);
@@ -117,8 +148,39 @@ export default function PaperReadingArea({
         )}
       </div>
 
-      <div className="flex-1 overflow-auto">
-        {pdfContent ? (
+      <div className="flex-1 overflow-auto flex flex-col">
+        {pdfContent && paper.pdf_path ? (
+          <>
+            {/* PDF Toolbar */}
+            <div className="flex items-center gap-2 px-6 py-3 bg-gray-50 border-b border-gray-200 shrink-0">
+              <Eye className="h-4 w-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-600 flex-1">PDF Viewer</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => {
+                  const pdfUrl = pdfAPI.downloadUrl(paper.pdf_path!);
+                  const a = document.createElement('a');
+                  a.href = pdfUrl;
+                  a.download = paper.pdf_path!;
+                  a.click();
+                }}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download
+              </Button>
+            </div>
+            {/* PDF Viewer */}
+            <div className="flex-1 min-h-0">
+              <iframe
+                src={pdfAPI.viewUrl(paper.pdf_path)}
+                title={`${paper.title} PDF`}
+                className="w-full h-full border-0"
+              />
+            </div>
+          </>
+        ) : pdfContent ? (
           <PDFHighlightReader
             content={pdfContent}
             highlights={highlights}
@@ -139,7 +201,7 @@ export default function PaperReadingArea({
                   This paper does not have an attached PDF yet. Upload one to start annotation.
                 </p>
               </div>
-              <Button className="gap-2 mt-4">
+              <Button className="gap-2 mt-4" onClick={handleUploadPDF}>
                 <Upload className="h-4 w-4" />
                 Upload PDF
               </Button>

@@ -11,6 +11,7 @@ import PdfViewer from './pages/PdfViewer';
 import VisualizationBoard from './pages/VisualizationBoard';
 import DraftStudio from './pages/DraftStudio';
 import PaperReadPage from './components/reading/PaperReadPage';
+import PdfManager from './pages/PdfManager';
 import NotFound from './pages/NotFound';
 import AuthCallback from './pages/AuthCallback';
 import AuthError from './pages/AuthError';
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/paper/:paperId" element={<PaperWorkspace />} />
             <Route path="/paper-read/:projectId/:paperId" element={<PaperReadPage />} />
             <Route path="/pdf/:paperId" element={<PdfViewer />} />
+            <Route path="/pdf-manager" element={<PdfManager />} />
             <Route path="/visualization" element={<VisualizationBoard />} />
             <Route path="/draft" element={<DraftStudio />} />
             <Route path="/auth/callback" element={<AuthCallback />} />

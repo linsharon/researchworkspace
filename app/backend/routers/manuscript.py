@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Query
 from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -41,6 +42,7 @@ class PaperUpdate(BaseModel):
     relevance: Optional[str] = None
     discovery_path: Optional[str] = None
     discovery_note: Optional[str] = None
+    pdf_path: Optional[str] = None
 
 
 class PaperResponse(BaseModel):
@@ -56,6 +58,7 @@ class PaperResponse(BaseModel):
     relevance: Optional[str]
     discovery_path: Optional[str]
     discovery_note: Optional[str]
+    pdf_path: Optional[str]
     project_id: str
 
     class Config:
@@ -115,6 +118,13 @@ class NoteResponse(BaseModel):
     keywords: List[str]
     citations: List[str]
     content: Optional[str]
+   
+       @field_validator('created_at', 'updated_at', mode='before')
+       @classmethod
+       def convert_datetime(cls, v):
+           if hasattr(v, 'isoformat'):
+               return v.isoformat()
+           return v
     created_at: str
     updated_at: str
 
@@ -137,6 +147,13 @@ class HighlightResponse(BaseModel):
     page: Optional[int]
     color: str
     note: Optional[str]
+   
+       @field_validator('created_at', mode='before')
+       @classmethod
+       def convert_datetime(cls, v):
+           if hasattr(v, 'isoformat'):
+               return v.isoformat()
+           return v
     created_at: str
 
     class Config:

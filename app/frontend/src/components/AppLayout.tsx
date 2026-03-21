@@ -348,6 +348,23 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 </Link>
               );
             })}
+
+            <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 pt-4 pb-1">
+              {lang === "zh" ? "文件管理" : "Files"}
+            </p>
+            <Link to="/pdf-manager">
+              <div
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
+                  location.pathname === "/pdf-manager"
+                    ? "bg-[#1E3A5F] text-white"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                )}
+              >
+                <FileText className="w-4 h-4 shrink-0" />
+                <span className="truncate">{lang === "zh" ? "PDF 管理" : "PDF Manager"}</span>
+              </div>
+            </Link>
           </nav>
         </ScrollArea>
       </aside>
