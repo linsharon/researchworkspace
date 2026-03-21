@@ -68,7 +68,6 @@ import {
   DUMMY_SEARCH_RECORDS,
   DUMMY_ARTIFACTS,
   PURPOSE_OPTIONS,
-  EXPAND_PATHS,
   VIZ_VIEWS,
   DISCOVERY_PATH_OPTIONS,
   DATABASE_OPTIONS,
@@ -120,7 +119,7 @@ export default function WorkflowWorkspace() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold text-slate-900">
-                  Step {currentStep}: {stepMeta.label}
+                  {currentStep === 4 ? "4. Expand" : `Step ${currentStep}: ${stepMeta.label}`}
                 </h1>
                 <Badge variant="outline" className="text-xs">
                   {currentStep} / 6
@@ -156,7 +155,7 @@ export default function WorkflowWorkspace() {
         {currentStep === 1 && <PurposeWorkspace projectId={projectId} />}
         {currentStep === 2 && <EntryPaperWorkspace projectId={projectId} />}
         {currentStep === 3 && <Step3ReadFoundPapers projectId={projectId} />}
-        {currentStep === 4 && <ExpandWorkspace />}
+        {currentStep === 4 && <ExpandWorkspace projectId={projectId} />}
         {currentStep === 5 && <VisualizeWorkspace />}
         {currentStep === 6 && <DraftWorkspaceInline />}
       </div>
@@ -3284,411 +3283,617 @@ function ReadWorkspace() {
 // ============================================================
 // Step 4: Expand Workspace
 // ============================================================
-interface ExpandPaper {
+interface ExpandRecord {
   id: string;
   title: string;
-  authors: string;
-  year: number;
+  authors: string[];
+  year?: number;
+  journal?: string;
   source: "auto" | "manual";
+  direction: "backward" | "forward";
+  url?: string;
 }
 
-function ExpandWorkspace() {
-  const [activeTrail, setActiveTrail] = useState("references");
+interface ManualRecordForm {
+  title: string;
+  authors: string;
+  year: string;
+  journal: string;
+  url: string;
+}
 
-  // References
-  const [refPapers, setRefPapers] = useState<ExpandPaper[]>([
-    { id: "ref-1", title: "Self-Regulated Learning Theory (Zimmerman, 2002)", authors: "Zimmerman, B.J.", year: 2002, source: "auto" },
-    { id: "ref-2", title: "Technology Acceptance Model (Davis, 1989)", authors: "Davis, F.D.", year: 1989, source: "auto" },
-    { id: "ref-3", title: "Metacognition and Learning Technologies: An Overview", authors: "Azevedo, R., Aleven, V.", year: 2013, source: "auto" },
-    { id: "ref-4", title: "Adaptive Learning Systems: A Systematic Review", authors: "Martin, F., Chen, Y.", year: 2020, source: "auto" },
-  ]);
-  const [showAddRef, setShowAddRef] = useState(false);
-  const [newRefTitle, setNewRefTitle] = useState("");
-  const [newRefAuthors, setNewRefAuthors] = useState("");
-  const [newRefYear, setNewRefYear] = useState("");
+function ExpandWorkspace({ projectId }: { projectId: string }) {
+  const [candidatePapers, setCandidatePapers] = useState<ApiPaper[]>([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [selectedPaperId, setSelectedPaperId] = useState("");
+  const [directDoiUrl, setDirectDoiUrl] = useState("");
+  const [activePath, setActivePath] = useState<"backward" | "forward">("backward");
+  const [backwardRecords, setBackwardRecords] = useState<ExpandRecord[]>([]);
+  const [forwardRecords, setForwardRecords] = useState<ExpandRecord[]>([]);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+  const [expandError, setExpandError] = useState<string | null>(null);
+  const [showManualBackward, setShowManualBackward] = useState(false);
+  const [showManualForward, setShowManualForward] = useState(false);
+  const [manualBackwardForm, setManualBackwardForm] = useState<ManualRecordForm>({
+    title: "",
+    authors: "",
+    year: "",
+    journal: "",
+    url: "",
+  });
+  const [manualForwardForm, setManualForwardForm] = useState<ManualRecordForm>({
+    title: "",
+    authors: "",
+    year: "",
+    journal: "",
+    url: "",
+  });
 
-  // Cited By
-  const [citedByPapers, setCitedByPapers] = useState<ExpandPaper[]>([
-    { id: "cb-1", title: "AI Scaffolding and Learner Autonomy in Graduate Education", authors: "Park, J., Lee, S.", year: 2025, source: "auto" },
-    { id: "cb-2", title: "Measuring SRL in AI-Enhanced Classrooms", authors: "Wang, M., Chen, L.", year: 2025, source: "auto" },
-  ]);
-  const [showAddCitedBy, setShowAddCitedBy] = useState(false);
-  const [newCbTitle, setNewCbTitle] = useState("");
-  const [newCbAuthors, setNewCbAuthors] = useState("");
-  const [newCbYear, setNewCbYear] = useState("");
+  const selectedPaper = candidatePapers.find((paper) => paper.id === selectedPaperId) ?? null;
 
-  // Similar Topic
-  const [similarTopicPapers, setSimilarTopicPapers] = useState<ExpandPaper[]>(
-    DUMMY_PAPERS.slice(1, 3).map((p) => ({
-      id: p.id,
-      title: p.title,
-      authors: p.authors.join(", "),
-      year: p.year,
-      source: "auto" as const,
-    }))
-  );
-  const [showAddSimilarTopic, setShowAddSimilarTopic] = useState(false);
-  const [newStTitle, setNewStTitle] = useState("");
-  const [newStAuthors, setNewStAuthors] = useState("");
-  const [newStYear, setNewStYear] = useState("");
+  useEffect(() => {
+    if (!projectId) return;
+    setLoadingCandidates(true);
+    paperAPI
+      .list(projectId)
+      .then((papers) => {
+        setCandidatePapers(papers);
+        if (papers.length > 0) {
+          setSelectedPaperId((prev) => prev || papers[0].id);
+        }
+      })
+      .catch(() => {
+        toast.error("Failed to load candidate papers");
+      })
+      .finally(() => setLoadingCandidates(false));
+  }, [projectId]);
 
-  // Similar Method
-  const [similarMethodPapers, setSimilarMethodPapers] = useState<ExpandPaper[]>([
-    { id: "sm-1", title: "A Meta-Analysis of Intelligent Tutoring System Effectiveness", authors: "Kulik, J.A., Fletcher, J.D.", year: 2016, source: "auto" },
-  ]);
-  const [showAddSimilarMethod, setShowAddSimilarMethod] = useState(false);
-  const [newSmTitle, setNewSmTitle] = useState("");
-  const [newSmAuthors, setNewSmAuthors] = useState("");
-  const [newSmYear, setNewSmYear] = useState("");
+  useEffect(() => {
+    if (!candidatePapers.length) {
+      setSelectedPaperId("");
+      return;
+    }
+    if (!selectedPaperId || !candidatePapers.some((paper) => paper.id === selectedPaperId)) {
+      setSelectedPaperId(candidatePapers[0].id);
+    }
+  }, [candidatePapers, selectedPaperId]);
 
-  const handleAddPaper = (
-    type: "ref" | "citedBy" | "similarTopic" | "similarMethod"
-  ) => {
-    let title = "", authors = "", year = "";
-    if (type === "ref") { title = newRefTitle; authors = newRefAuthors; year = newRefYear; }
-    else if (type === "citedBy") { title = newCbTitle; authors = newCbAuthors; year = newCbYear; }
-    else if (type === "similarTopic") { title = newStTitle; authors = newStAuthors; year = newStYear; }
-    else { title = newSmTitle; authors = newSmAuthors; year = newSmYear; }
+  const extractDoi = (input?: string | null) => {
+    if (!input) return null;
+    const doiMatch = input.match(/\b10\.\d{4,9}\/[^\s"<>]+/i);
+    return doiMatch ? doiMatch[0].replace(/[.,;)>]+$/, "") : null;
+  };
 
-    if (!title.trim()) return;
+  const normalize = (value?: string | null) => (value || "").trim().toLowerCase();
 
-    const newPaper: ExpandPaper = {
-      id: `${type}-${Date.now()}`,
-      title: title.trim(),
-      authors: authors.trim(),
-      year: parseInt(year) || new Date().getFullYear(),
+  const getOpenAlexWork = async (identifier: string) => {
+    const response = await fetch(`https://api.openalex.org/works/${encodeURIComponent(identifier)}`);
+    if (!response.ok) {
+      throw new Error("openalex lookup failed");
+    }
+    return (await response.json()) as {
+      id?: string;
+      display_name?: string;
+      publication_year?: number;
+      authorships?: Array<{ author?: { display_name?: string } }>;
+      primary_location?: { source?: { display_name?: string } };
+      host_venue?: { display_name?: string };
+      doi?: string;
+      referenced_works?: string[];
+      cited_by_api_url?: string;
+    };
+  };
+
+  const getOpenAlexWorkByDoi = async (doi: string) => {
+    const normalizedDoi = doi.trim().toLowerCase();
+
+    // Primary path: /works/https://doi.org/<doi>
+    try {
+      return await getOpenAlexWork(`https://doi.org/${normalizedDoi}`);
+    } catch {
+      // Fallback path: /works?filter=doi:<doi>
+      const response = await fetch(
+        `https://api.openalex.org/works?filter=doi:${encodeURIComponent(normalizedDoi)}&per-page=1`
+      );
+      if (!response.ok) {
+        throw new Error("openalex doi filter lookup failed");
+      }
+      const payload = (await response.json()) as {
+        results?: Array<{
+          id?: string;
+          display_name?: string;
+          publication_year?: number;
+          authorships?: Array<{ author?: { display_name?: string } }>;
+          primary_location?: { source?: { display_name?: string } };
+          host_venue?: { display_name?: string };
+          doi?: string;
+          referenced_works?: string[];
+          cited_by_api_url?: string;
+        }>;
+      };
+      const first = payload.results?.[0];
+      if (!first) {
+        throw new Error("openalex doi filter returned empty");
+      }
+      return first;
+    }
+  };
+
+  const mapOpenAlexToRecord = (
+    work: {
+      id?: string;
+      display_name?: string;
+      publication_year?: number;
+      authorships?: Array<{ author?: { display_name?: string } }>;
+      primary_location?: { source?: { display_name?: string } };
+      host_venue?: { display_name?: string };
+      doi?: string;
+    },
+    direction: "backward" | "forward"
+  ): ExpandRecord | null => {
+    if (!work.display_name) return null;
+    return {
+      id: work.id || `${direction}-${Date.now()}-${Math.random()}`,
+      title: work.display_name,
+      authors: (work.authorships || [])
+        .map((entry) => entry.author?.display_name)
+        .filter((name): name is string => Boolean(name)),
+      year: work.publication_year,
+      journal: work.primary_location?.source?.display_name || work.host_venue?.display_name,
+      source: "auto",
+      direction,
+      url: work.doi || undefined,
+    };
+  };
+
+  const loadExpandRecordsByInput = async (sourceInput: string) => {
+    const normalizedInput = sourceInput.trim();
+    const doi = extractDoi(normalizedInput);
+
+    if (!normalizedInput && !doi) {
+      setBackwardRecords([]);
+      setForwardRecords([]);
+      setExpandError("Please enter a DOI/URL, or choose a candidate paper that has a DOI/URL.");
+      return;
+    }
+
+    if (!doi) {
+      setBackwardRecords([]);
+      setForwardRecords([]);
+      setExpandError("The selected URL does not contain a valid DOI. You can add records manually in Backward and Forward tabs.");
+      return;
+    }
+
+    setLoadingRecords(true);
+    setExpandError(null);
+
+    try {
+      const sourceWork = await getOpenAlexWorkByDoi(doi);
+
+      const referencedIds = (sourceWork.referenced_works || [])
+        .slice(0, 12)
+        .map((item) => item.split("/").pop() || item);
+
+      const backwardWorks = await Promise.all(
+        referencedIds.map(async (openAlexId) => {
+          try {
+            return await getOpenAlexWork(openAlexId);
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      let forwardWorks: Array<{
+        id?: string;
+        display_name?: string;
+        publication_year?: number;
+        authorships?: Array<{ author?: { display_name?: string } }>;
+        primary_location?: { source?: { display_name?: string } };
+        host_venue?: { display_name?: string };
+        doi?: string;
+      }> = [];
+
+      const sourceOpenAlexId = sourceWork.id?.split("/").pop();
+      if (sourceOpenAlexId) {
+        const response = await fetch(
+          `https://api.openalex.org/works?filter=cites:${encodeURIComponent(sourceOpenAlexId)}&per-page=12`
+        );
+        if (response.ok) {
+          const payload = (await response.json()) as {
+            results?: Array<{
+              id?: string;
+              display_name?: string;
+              publication_year?: number;
+              authorships?: Array<{ author?: { display_name?: string } }>;
+              primary_location?: { source?: { display_name?: string } };
+              host_venue?: { display_name?: string };
+              doi?: string;
+            }>;
+          };
+          forwardWorks = payload.results || [];
+        }
+      } else if (sourceWork.cited_by_api_url) {
+        const response = await fetch(`${sourceWork.cited_by_api_url}&per-page=12`);
+        if (response.ok) {
+          const payload = (await response.json()) as {
+            results?: Array<{
+              id?: string;
+              display_name?: string;
+              publication_year?: number;
+              authorships?: Array<{ author?: { display_name?: string } }>;
+              primary_location?: { source?: { display_name?: string } };
+              host_venue?: { display_name?: string };
+              doi?: string;
+            }>;
+          };
+          forwardWorks = payload.results || [];
+        }
+      }
+
+      setBackwardRecords(
+        backwardWorks
+          .map((work) => (work ? mapOpenAlexToRecord(work, "backward") : null))
+          .filter((record): record is ExpandRecord => Boolean(record))
+      );
+      setForwardRecords(
+        forwardWorks
+          .map((work) => mapOpenAlexToRecord(work, "forward"))
+          .filter((record): record is ExpandRecord => Boolean(record))
+      );
+    } catch {
+      setBackwardRecords([]);
+      setForwardRecords([]);
+      setExpandError("Unable to pull related literature from DOI/URL. You can still add records manually.");
+    } finally {
+      setLoadingRecords(false);
+    }
+  };
+
+  const loadExpandRecords = async (paper: ApiPaper) => {
+    const sourceUrl = (paper as ApiPaper & { url?: string }).url;
+    await loadExpandRecordsByInput(sourceUrl || "");
+  };
+
+  useEffect(() => {
+    if (!selectedPaper) return;
+    void loadExpandRecords(selectedPaper);
+  }, [selectedPaperId]);
+
+  const addManualRecord = (direction: "backward" | "forward") => {
+    const form = direction === "backward" ? manualBackwardForm : manualForwardForm;
+    if (!form.title.trim()) return;
+
+    const record: ExpandRecord = {
+      id: `${direction}-manual-${Date.now()}`,
+      title: form.title.trim(),
+      authors: form.authors
+        .split(",")
+        .map((author) => author.trim())
+        .filter(Boolean),
+      year: form.year ? parseInt(form.year, 10) || undefined : undefined,
+      journal: form.journal.trim() || undefined,
       source: "manual",
+      direction,
+      url: form.url.trim() || undefined,
     };
 
-    if (type === "ref") {
-      setRefPapers([...refPapers, newPaper]);
-      setShowAddRef(false);
-      setNewRefTitle(""); setNewRefAuthors(""); setNewRefYear("");
-    } else if (type === "citedBy") {
-      setCitedByPapers([...citedByPapers, newPaper]);
-      setShowAddCitedBy(false);
-      setNewCbTitle(""); setNewCbAuthors(""); setNewCbYear("");
-    } else if (type === "similarTopic") {
-      setSimilarTopicPapers([...similarTopicPapers, newPaper]);
-      setShowAddSimilarTopic(false);
-      setNewStTitle(""); setNewStAuthors(""); setNewStYear("");
-    } else {
-      setSimilarMethodPapers([...similarMethodPapers, newPaper]);
-      setShowAddSimilarMethod(false);
-      setNewSmTitle(""); setNewSmAuthors(""); setNewSmYear("");
+    if (direction === "backward") {
+      setBackwardRecords((prev) => [record, ...prev]);
+      setManualBackwardForm({ title: "", authors: "", year: "", journal: "", url: "" });
+      setShowManualBackward(false);
+      return;
+    }
+
+    setForwardRecords((prev) => [record, ...prev]);
+    setManualForwardForm({ title: "", authors: "", year: "", journal: "", url: "" });
+    setShowManualForward(false);
+  };
+
+  const findExistingCandidate = (record: ExpandRecord) => {
+    const recordDoi = extractDoi(record.url);
+    return candidatePapers.find((paper) => {
+      const paperUrl = (paper as ApiPaper & { url?: string }).url;
+      const paperDoi = extractDoi(paperUrl);
+      if (recordDoi && paperDoi && recordDoi === paperDoi) return true;
+      if (record.url && paperUrl && normalize(record.url) === normalize(paperUrl)) return true;
+      return normalize(paper.title) === normalize(record.title) && (paper.year || null) === (record.year || null);
+    });
+  };
+
+  const toggleCandidatePaper = async (record: ExpandRecord) => {
+    const existing = findExistingCandidate(record);
+
+    if (existing) {
+      try {
+        await paperAPI.delete(existing.id);
+        setCandidatePapers((prev) => prev.filter((paper) => paper.id !== existing.id));
+        toast.success("Removed from candidate papers");
+      } catch {
+        toast.error("Failed to remove this record from candidate papers");
+      }
+      return;
+    }
+
+    try {
+      const created = await paperAPI.create({
+        title: record.title,
+        authors: record.authors,
+        year: record.year,
+        journal: record.journal,
+        url: record.url,
+        discovery_path: record.direction === "backward" ? "Backward citation" : "Forward citation",
+        discovery_note: selectedPaper ? `Expanded from: ${selectedPaper.title}` : "Expanded from Step 4",
+        project_id: projectId,
+      });
+
+      try {
+        const updated = await paperAPI.update(created.id, { is_expanded_paper: true });
+        setCandidatePapers((prev) => [...prev, updated]);
+      } catch {
+        setCandidatePapers((prev) => [...prev, created]);
+      }
+      toast.success("Added to candidate papers");
+    } catch {
+      toast.error("Failed to add this record to candidate papers");
     }
   };
 
-  const getPapersForTrail = () => {
-    if (activeTrail === "references") return refPapers;
-    if (activeTrail === "cited-by") return citedByPapers;
-    if (activeTrail === "same-author") {
-      return DUMMY_PAPERS.slice(0, 2).map((p) => ({
-        id: p.id,
-        title: p.title,
-        authors: p.authors.join(", "),
-        year: p.year,
-        source: "auto" as const,
-      }));
-    }
-    if (activeTrail === "similar-topic") return similarTopicPapers;
-    if (activeTrail === "similar-method") return similarMethodPapers;
-    return [];
+  const renderManualForm = (direction: "backward" | "forward") => {
+    const form = direction === "backward" ? manualBackwardForm : manualForwardForm;
+    const setForm = direction === "backward" ? setManualBackwardForm : setManualForwardForm;
+
+    return (
+      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 space-y-2">
+        <Input
+          value={form.title}
+          onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+          placeholder="Paper title"
+          className="text-sm"
+        />
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            value={form.authors}
+            onChange={(event) => setForm((prev) => ({ ...prev, authors: event.target.value }))}
+            placeholder="Authors (comma separated)"
+            className="text-sm"
+          />
+          <Input
+            value={form.year}
+            onChange={(event) => setForm((prev) => ({ ...prev, year: event.target.value }))}
+            placeholder="Year"
+            type="number"
+            className="text-sm"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            value={form.journal}
+            onChange={(event) => setForm((prev) => ({ ...prev, journal: event.target.value }))}
+            placeholder="Journal"
+            className="text-sm"
+          />
+          <Input
+            value={form.url}
+            onChange={(event) => setForm((prev) => ({ ...prev, url: event.target.value }))}
+            placeholder="DOI or URL"
+            className="text-sm"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => addManualRecord(direction)} className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white">
+            <Plus className="w-3 h-3 mr-1" />
+            Add record
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              if (direction === "backward") setShowManualBackward(false);
+              else setShowManualForward(false);
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
   };
 
-  const getShowAdd = () => {
-    if (activeTrail === "references") return showAddRef;
-    if (activeTrail === "cited-by") return showAddCitedBy;
-    if (activeTrail === "similar-topic") return showAddSimilarTopic;
-    if (activeTrail === "similar-method") return showAddSimilarMethod;
-    return false;
-  };
-
-  const setShowAdd = (val: boolean) => {
-    if (activeTrail === "references") setShowAddRef(val);
-    else if (activeTrail === "cited-by") setShowAddCitedBy(val);
-    else if (activeTrail === "similar-topic") setShowAddSimilarTopic(val);
-    else if (activeTrail === "similar-method") setShowAddSimilarMethod(val);
-  };
-
-  const getNewTitle = () => {
-    if (activeTrail === "references") return newRefTitle;
-    if (activeTrail === "cited-by") return newCbTitle;
-    if (activeTrail === "similar-topic") return newStTitle;
-    if (activeTrail === "similar-method") return newSmTitle;
-    return "";
-  };
-  const setNewTitle = (val: string) => {
-    if (activeTrail === "references") setNewRefTitle(val);
-    else if (activeTrail === "cited-by") setNewCbTitle(val);
-    else if (activeTrail === "similar-topic") setNewStTitle(val);
-    else if (activeTrail === "similar-method") setNewSmTitle(val);
-  };
-  const getNewAuthors = () => {
-    if (activeTrail === "references") return newRefAuthors;
-    if (activeTrail === "cited-by") return newCbAuthors;
-    if (activeTrail === "similar-topic") return newStAuthors;
-    if (activeTrail === "similar-method") return newSmAuthors;
-    return "";
-  };
-  const setNewAuthors = (val: string) => {
-    if (activeTrail === "references") setNewRefAuthors(val);
-    else if (activeTrail === "cited-by") setNewCbAuthors(val);
-    else if (activeTrail === "similar-topic") setNewStAuthors(val);
-    else if (activeTrail === "similar-method") setNewSmAuthors(val);
-  };
-  const getNewYear = () => {
-    if (activeTrail === "references") return newRefYear;
-    if (activeTrail === "cited-by") return newCbYear;
-    if (activeTrail === "similar-topic") return newStYear;
-    if (activeTrail === "similar-method") return newSmYear;
-    return "";
-  };
-  const setNewYear = (val: string) => {
-    if (activeTrail === "references") setNewRefYear(val);
-    else if (activeTrail === "cited-by") setNewCbYear(val);
-    else if (activeTrail === "similar-topic") setNewStYear(val);
-    else if (activeTrail === "similar-method") setNewSmYear(val);
-  };
-  const getAddType = (): "ref" | "citedBy" | "similarTopic" | "similarMethod" => {
-    if (activeTrail === "references") return "ref";
-    if (activeTrail === "cited-by") return "citedBy";
-    if (activeTrail === "similar-topic") return "similarTopic";
-    return "similarMethod";
-  };
-
-  const papers = getPapersForTrail();
-  const canManualAdd = ["references", "cited-by", "similar-topic", "similar-method"].includes(activeTrail);
+  const renderRecordList = (direction: "backward" | "forward", records: ExpandRecord[]) => (
+    <div className="space-y-3">
+      {records.map((record) => {
+        const existing = findExistingCandidate(record);
+        return (
+          <div key={record.id} className="rounded-lg border border-slate-200 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-semibold text-slate-900">{record.title}</h4>
+                  <Badge variant="outline" className={cn("text-[10px]", record.source === "auto" ? "border-blue-300 text-blue-600" : "border-purple-300 text-purple-600")}>
+                    {record.source === "auto" ? "Auto" : "Manual"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-500">
+                  {record.authors.length ? record.authors.join(", ") : "Unknown authors"}
+                  {record.year ? ` (${record.year})` : ""}
+                </p>
+                {record.journal ? <p className="text-xs text-slate-500">{record.journal}</p> : null}
+                {record.url ? <p className="text-xs text-slate-400 break-all">{record.url}</p> : null}
+              </div>
+              <Button
+                size="sm"
+                variant={existing ? "outline" : "default"}
+                className={cn(existing ? "border-rose-300 text-rose-700" : "bg-[#1E3A5F] hover:bg-[#162d4a] text-white")}
+                onClick={() => void toggleCandidatePaper(record)}
+              >
+                {existing ? (
+                  <>
+                    <X className="w-3 h-3 mr-1" />
+                    Remove from candidate papers
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add to candidate papers
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        );
+      })}
+      {records.length === 0 && !loadingRecords ? (
+        <div className="text-center py-8 text-xs text-slate-400 border border-dashed rounded-lg">
+          No records yet. Pull from DOI/URL or add manually.
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <div className="space-y-5">
       <Card className="border-slate-200">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold">
-              Expansion Paths from Entry Paper
-            </CardTitle>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-xs h-7"
-              onClick={() => setShowAdd(true)}
-            >
-              <Plus className="w-3 h-3 mr-1" />
-              Add Manually
-            </Button>
-          </div>
+          <CardTitle className="text-base font-semibold">Step 4: Expand</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-5 gap-2">
-            {EXPAND_PATHS.map((path) => (
-              <button
-                key={path.id}
-                onClick={() => setActiveTrail(path.id)}
-                className={cn(
-                  "p-3 rounded-lg border text-center transition-all",
-                  activeTrail === path.id
-                    ? "border-[#1E3A5F] bg-blue-50/50"
-                    : "border-slate-200 hover:border-slate-300"
-                )}
-              >
-                <span className="text-xl block mb-1">{path.icon}</span>
-                <span className="text-xs font-medium text-slate-700">
-                  {path.label}
-                </span>
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  {path.description}
-                </p>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Expanded Papers */}
-      <Card className="border-slate-200">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold">
-              {EXPAND_PATHS.find((p) => p.id === activeTrail)?.label} ({papers.length})
-            </CardTitle>
-            <div className="flex gap-1.5">
-              {(activeTrail === "references" || activeTrail === "cited-by") && (
-                <Button size="sm" variant="outline" className="text-xs h-7">
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  Auto-Identify
-                </Button>
-              )}
-              {canManualAdd && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs h-7"
-                  onClick={() => setShowAdd(true)}
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Manually
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Manual Add Form */}
-          {getShowAdd() && canManualAdd && (
-            <div className="p-3 mb-3 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/30 space-y-2">
-              <Input
-                value={getNewTitle()}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Paper title..."
-                className="text-xs"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  value={getNewAuthors()}
-                  onChange={(e) => setNewAuthors(e.target.value)}
-                  placeholder="Authors..."
-                  className="text-xs"
-                />
-                <Input
-                  value={getNewYear()}
-                  onChange={(e) => setNewYear(e.target.value)}
-                  placeholder="Year"
-                  type="number"
-                  className="text-xs"
-                />
-              </div>
-              <div className="flex gap-1.5">
-                <Button
-                  size="sm"
-                  className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
-                  onClick={() => handleAddPaper(getAddType())}
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Paper
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-xs h-7"
-                  onClick={() => setShowAdd(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-3">
-            {papers.map((paper) => (
-              <div
-                key={paper.id}
-                className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition-all"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-[10px]",
-                          paper.source === "auto"
-                            ? "border-blue-300 text-blue-600"
-                            : "border-purple-300 text-purple-600"
-                        )}
-                      >
-                        {paper.source === "auto" ? "Auto-identified" : "Manually added"}
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-slate-700">1. Select one candidate paper to expand</p>
+            <div className="max-h-[280px] overflow-y-auto space-y-2 pr-1">
+              {candidatePapers.map((paper) => {
+                const paperUrl = (paper as ApiPaper & { url?: string }).url;
+                return (
+                  <button
+                    key={paper.id}
+                    type="button"
+                    onClick={() => setSelectedPaperId(paper.id)}
+                    className={cn(
+                      "w-full text-left rounded-lg border p-3 transition-all",
+                      selectedPaperId === paper.id
+                        ? "border-[#1E3A5F] bg-blue-50/60"
+                        : "border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-900">{paper.title}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {paper.authors.join(", ") || "Unknown authors"}
+                          {paper.year ? ` (${paper.year})` : ""}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className={cn("text-[10px]", paperUrl ? "border-emerald-300 text-emerald-700" : "border-amber-300 text-amber-700")}>
+                        {paperUrl ? "Has DOI/URL" : "Manual only"}
                       </Badge>
                     </div>
-                    <Link to="/workflow/3">
-                      <h4 className="text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline cursor-pointer mb-1">
-                        {paper.title}
-                      </h4>
-                    </Link>
-                    <p className="text-xs text-slate-500">
-                      {paper.authors} ({paper.year})
-                    </p>
-                  </div>
-                  <div className="flex gap-1.5 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs h-7"
-                    >
-                      <Zap className="w-3 h-3 mr-1" />
-                      Quick Check
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Add to Queue
-                    </Button>
-                  </div>
+                  </button>
+                );
+              })}
+              {!loadingCandidates && candidatePapers.length === 0 ? (
+                <div className="text-center py-8 text-xs text-slate-400 border border-dashed rounded-lg">
+                  No candidate papers in this project.
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-slate-700">2. Expansion Paths</p>
+            <Tabs value={activePath} onValueChange={(value) => setActivePath(value as "backward" | "forward")}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="backward">Backward (others cited by this paper)</TabsTrigger>
+                <TabsTrigger value="forward">Forward (others citing this paper)</TabsTrigger>
+              </TabsList>
+
+              <div className="mt-3 rounded-lg border border-slate-200 p-3 bg-slate-50/40">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-slate-600">
+                    {selectedPaper ? `Selected: ${selectedPaper.title}` : "Please select a candidate paper first."}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (selectedPaper) void loadExpandRecords(selectedPaper);
+                    }}
+                    disabled={!selectedPaper || loadingRecords}
+                  >
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    {loadingRecords ? "Pulling..." : "Pull from DOI/URL"}
+                  </Button>
+                </div>
+                {expandError ? (
+                  <p className="text-xs text-amber-700 mt-2">{expandError}</p>
+                ) : null}
+
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+                  <Input
+                    value={directDoiUrl}
+                    onChange={(event) => setDirectDoiUrl(event.target.value)}
+                    placeholder="Or enter a DOI/URL directly, e.g. 10.1038/nature12373 or https://doi.org/..."
+                    className="text-sm"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void loadExpandRecordsByInput(directDoiUrl);
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void loadExpandRecordsByInput(directDoiUrl)}
+                    disabled={loadingRecords || !directDoiUrl.trim()}
+                  >
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Pull from DOI/URL
+                  </Button>
                 </div>
               </div>
-            ))}
-            {papers.length === 0 && (
-              <div className="text-center py-6 text-slate-400 text-xs">
-                No papers found. Use &quot;Auto-Identify&quot; or add manually.
-              </div>
-            )}
+
+              <TabsContent value="backward" className="mt-4 space-y-3">
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowManualBackward((prev) => !prev)}
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add manually
+                  </Button>
+                </div>
+                {showManualBackward ? renderManualForm("backward") : null}
+                {renderRecordList("backward", backwardRecords)}
+              </TabsContent>
+
+              <TabsContent value="forward" className="mt-4 space-y-3">
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowManualForward((prev) => !prev)}
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Add manually
+                  </Button>
+                </div>
+                {showManualForward ? renderManualForm("forward") : null}
+                {renderRecordList("forward", forwardRecords)}
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          <div className="flex justify-end">
+            <Link to={`/workflow/${projectId}/5`}>
+              <Button className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white">
+                Save and Go to Visualization
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>
-
-      {/* Reading Queue */}
-      <Card className="border-slate-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">
-            Reading Queue (3 papers)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {DUMMY_PAPERS.slice(0, 3).map((paper, i) => (
-              <div
-                key={paper.id}
-                className="flex items-center gap-3 p-2 rounded-lg bg-slate-50"
-              >
-                <span className="text-xs font-mono text-slate-400 w-5">
-                  {i + 1}
-                </span>
-                <Link to="/workflow/3" className="flex-1 truncate">
-                  <span className="text-sm text-blue-700 hover:text-blue-900 hover:underline cursor-pointer">
-                    {paper.title}
-                  </span>
-                </Link>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-[10px]",
-                    i === 0
-                      ? "text-emerald-600 border-emerald-300"
-                      : "text-slate-400"
-                  )}
-                >
-                  {i === 0 ? "Reading" : "Queued"}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex gap-2">
-        <Button variant="outline">
-          <FileText className="w-4 h-4 mr-2" />
-          Generate Comparison Table
-        </Button>
-        <Link to="/workflow/5">
-          <Button className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white">
-            Save and Go to Visualization
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
-      </div>
     </div>
   );
 }
@@ -4375,10 +4580,10 @@ function VisualizeWorkspace() {
                                       type="text"
                                       value={synthData[pid]?.[col] || ""}
                                       onChange={(e) => {
-                                        setSynthData((prev) => ({
-                                          ...prev,
-                                          [pid]: { ...prev[pid], [col]: e.target.value },
-                                        }));
+                                        setSynthData({
+                                          ...synthData,
+                                          [pid]: { ...(synthData[pid] || {}), [col]: e.target.value },
+                                        });
                                       }}
                                       placeholder="Enter data..."
                                       className="w-full text-[10px] text-slate-600 bg-transparent outline-none"

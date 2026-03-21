@@ -17,6 +17,7 @@ export interface Paper {
   year?: number;
   journal?: string;
   abstract?: string;
+  url?: string;
   is_entry_paper: boolean;
   is_expanded_paper: boolean;
   reading_status: "Reading" | "Completed" | "To Read";

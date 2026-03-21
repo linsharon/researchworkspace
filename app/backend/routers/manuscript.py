@@ -34,6 +34,7 @@ class PaperUpdate(BaseModel):
     year: Optional[int] = None
     journal: Optional[str] = None
     abstract: Optional[str] = None
+    url: Optional[str] = None
     is_entry_paper: Optional[bool] = None
     is_expanded_paper: Optional[bool] = None
     reading_status: Optional[str] = None
@@ -50,6 +51,7 @@ class PaperResponse(BaseModel):
     year: Optional[int]
     journal: Optional[str]
     abstract: Optional[str]
+    url: Optional[str]
     is_entry_paper: bool
     is_expanded_paper: bool
     reading_status: str
@@ -80,6 +82,13 @@ class ProjectResponse(BaseModel):
     description: Optional[str]
     created_at: str
     updated_at: str
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def convert_datetime(cls, value):
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+        return value
 
     class Config:
         from_attributes = True
