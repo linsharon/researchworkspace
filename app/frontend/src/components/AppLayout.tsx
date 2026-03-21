@@ -121,12 +121,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const NAV_ITEMS = [
     { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
-    { path: "/workflow/1", label: t("nav.purpose"), icon: Target },
-    { path: "/workflow/2", label: t("nav.discover"), icon: Search },
-    { path: "/workflow/3", label: t("nav.read"), icon: BookOpen },
-    { path: "/workflow/4", label: t("nav.expand"), icon: Network },
-    { path: "/workflow/5", label: t("nav.visualize"), icon: Eye },
-    { path: "/workflow/6", label: t("nav.draft"), icon: PenTool },
+    { path: `/workflow/${activeProjectId}/1`, label: t("nav.purpose"), icon: Target },
+    { path: `/workflow/${activeProjectId}/2`, label: t("nav.discover"), icon: Search },
+    { path: `/workflow/${activeProjectId}/3`, label: t("nav.read"), icon: BookOpen },
+    { path: `/workflow/${activeProjectId}/4`, label: t("nav.expand"), icon: Network },
+    { path: `/workflow/${activeProjectId}/5`, label: t("nav.visualize"), icon: Eye },
+    { path: `/workflow/${activeProjectId}/6`, label: t("nav.draft"), icon: PenTool },
   ];
 
   const ARTIFACT_NAV_ITEMS = [

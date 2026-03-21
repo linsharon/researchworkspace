@@ -6,7 +6,23 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp, Upload, FileText, Download, Eye } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Upload,
+  FileText,
+  Download,
+  Eye,
+  MoreHorizontal,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Paper, Highlight } from "@/lib/manuscript-api";
 import { paperAPI } from "@/lib/manuscript-api";
 import { pdfAPI } from "@/lib/pdf-api";
@@ -56,8 +72,6 @@ export default function PaperReadingArea({
         await paperAPI.update(paper.id, {
           pdf_path: uploadRes.filename,
         });
-        // Refresh paper data
-        const updated = await paperAPI.get(paper.id);
         // Signal that paper changed
         onChanged();
         // Update local state to show PDF
@@ -68,6 +82,28 @@ export default function PaperReadingArea({
       }
     };
     input.click();
+  };
+
+  const handleReplacePDF = async () => {
+    await handleUploadPDF();
+  };
+
+  const handleDeletePDF = async () => {
+    if (!paper.pdf_path) return;
+    const confirmed = window.confirm("Delete current PDF file from this paper?");
+    if (!confirmed) return;
+
+    try {
+      await pdfAPI.delete(paper.pdf_path);
+      await paperAPI.update(paper.id, {
+        pdf_path: undefined,
+      });
+      onChanged();
+      setPdfContent("");
+    } catch (error) {
+      console.error("Failed to delete PDF:", error);
+      alert("Failed to delete PDF. Please try again.");
+    }
   };
 
   const handleAddHighlight = (highlight: Highlight) => {
@@ -150,28 +186,49 @@ export default function PaperReadingArea({
 
       <div className="flex-1 overflow-auto flex flex-col">
         {pdfContent && paper.pdf_path ? (
-          <>
-            {/* PDF Toolbar */}
-            <div className="flex items-center gap-2 px-6 py-3 bg-gray-50 border-b border-gray-200 shrink-0">
-              <Eye className="h-4 w-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-600 flex-1">PDF Viewer</span>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => {
-                  const pdfUrl = pdfAPI.downloadUrl(paper.pdf_path!);
-                  const a = document.createElement('a');
-                  a.href = pdfUrl;
-                  a.download = paper.pdf_path!;
-                  a.click();
-                }}
-              >
-                <Download className="h-3.5 w-3.5" />
-                Download
-              </Button>
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-100 px-3 py-2">
+              <div className="flex items-center gap-2 text-slate-700">
+                <Eye className="h-4 w-4" />
+                <span className="text-sm font-medium">PDF Viewer</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  className="gap-2"
+                  onClick={() => {
+                    const url = pdfAPI.downloadUrl(paper.pdf_path!);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = paper.pdf_path!;
+                    link.click();
+                  }}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem onClick={handleReplacePDF}>
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Replace PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-rose-600 focus:text-rose-600" onClick={handleDeletePDF}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete PDF
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
-            {/* PDF Viewer */}
+
             <div className="flex-1 min-h-0">
               <iframe
                 src={pdfAPI.viewUrl(paper.pdf_path)}
@@ -179,7 +236,7 @@ export default function PaperReadingArea({
                 className="w-full h-full border-0"
               />
             </div>
-          </>
+          </div>
         ) : pdfContent ? (
           <PDFHighlightReader
             content={pdfContent}

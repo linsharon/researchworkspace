@@ -145,7 +145,10 @@ export default function PaperToolsArea({
         description: note.contentGist.trim(),
         note_type: "literature-note",
         page: Number.isNaN(parsedPage) ? undefined : parsedPage,
-        keywords: note.doiOrUrl.trim() ? [note.doiOrUrl.trim()] : [],
+        keywords: [
+          ...(note.doiOrUrl.trim() ? [note.doiOrUrl.trim()] : []),
+          ...note.keywords,
+        ],
         citations: [],
         content: JSON.stringify(
           {
@@ -185,7 +188,10 @@ export default function PaperToolsArea({
         description: note.retrievalTrigger.trim() || note.mainArgument.trim().slice(0, 180),
         note_type: "permanent-note",
         page: undefined,
-        keywords: note.retrievalTrigger.trim() ? [note.retrievalTrigger.trim()] : [],
+        keywords: [
+          ...(note.retrievalTrigger.trim() ? [note.retrievalTrigger.trim()] : []),
+          ...note.keywords,
+        ],
         citations: citationIds,
         content: JSON.stringify(
           {

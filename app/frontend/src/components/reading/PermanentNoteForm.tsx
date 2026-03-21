@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import NoteTagInput from "./NoteTagInput";
 
 export type LinkRelationType = "Supports" | "Contradicts" | "Refines";
 
@@ -26,6 +27,7 @@ export interface PermanentNote {
   atomicTitle: string;
   mainArgument: string;
   retrievalTrigger: string;
+  keywords: string[];
   links: PermanentNoteLink[];
   evidenceLiteratureNoteId: string;
 }
@@ -46,6 +48,7 @@ const defaultPermanentNote: PermanentNote = {
   atomicTitle: "",
   mainArgument: "",
   retrievalTrigger: "",
+  keywords: [],
   links: [],
   evidenceLiteratureNoteId: "",
 };
@@ -125,6 +128,7 @@ export function PermanentNoteForm({
       atomicTitle: form.atomicTitle.trim(),
       mainArgument: form.mainArgument.trim(),
       retrievalTrigger: form.retrievalTrigger.trim(),
+      keywords: form.keywords,
       links: form.links.filter(link => link.targetNoteId.trim().length > 0),
     };
 
@@ -187,6 +191,15 @@ export function PermanentNoteForm({
               placeholder="What query, context, or problem should surface this note?"
               value={form.retrievalTrigger}
               onChange={event => setForm(prev => ({ ...prev, retrievalTrigger: event.target.value }))}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="perm-keywords">Keywords</Label>
+            <NoteTagInput
+              onChange={keywords => setForm(prev => ({ ...prev, keywords }))}
+              placeholder="Type keyword and press Enter"
+              tags={form.keywords}
             />
           </div>
 

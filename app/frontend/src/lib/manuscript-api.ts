@@ -150,6 +150,11 @@ export const noteAPI = {
     return response.data;
   },
 
+  listAll: async (): Promise<Note[]> => {
+    const response = await axios.get(`${API_BASE_URL}/notes`);
+    return response.data;
+  },
+
   listByProject: async (projectId: string): Promise<Note[]> => {
     const response = await axios.get(`${API_BASE_URL}/notes`, {
       params: { project_id: projectId },

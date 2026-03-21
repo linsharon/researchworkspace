@@ -317,12 +317,6 @@ async def list_notes(
     session: AsyncSession = Depends(get_db),
 ):
     """List notes for a paper or project."""
-    if not paper_id and not project_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Either paper_id or project_id must be provided",
-        )
-
     query = select(Note)
     if paper_id:
         query = query.where(Note.paper_id == paper_id)

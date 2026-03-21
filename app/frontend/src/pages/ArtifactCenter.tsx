@@ -22,7 +22,7 @@ import {
   type Artifact,
   type ArtifactType,
 } from "@/lib/data";
-import { noteAPI, projectAPI } from "@/lib/manuscript-api";
+import { noteAPI } from "@/lib/manuscript-api";
 import type { Note } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
 
@@ -121,16 +121,8 @@ export default function ArtifactCenter() {
   useEffect(() => {
     const loadSavedNotes = async () => {
       try {
-        const projects = await projectAPI.list();
-        if (projects.length === 0) {
-          setArtifacts([...STATIC_ARTIFACTS]);
-          return;
-        }
-
-        const notesByProject = await Promise.all(
-          projects.map((project) => noteAPI.listByProject(project.id).catch(() => []))
-        );
-        const savedNoteArtifacts = notesByProject.flat().map(noteToArtifact);
+        const savedNotes = await noteAPI.listAll();
+        const savedNoteArtifacts = savedNotes.map(noteToArtifact);
         setArtifacts([...STATIC_ARTIFACTS, ...savedNoteArtifacts]);
       } catch (error) {
         console.error("Failed to load notes for Artifact Center:", error);
@@ -285,7 +277,7 @@ export default function ArtifactCenter() {
         </div>
 
         {/* Search & Filters */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
@@ -295,7 +287,7 @@ export default function ArtifactCenter() {
               className="pl-9 text-sm"
             />
           </div>
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             {FILTER_OPTIONS.map((opt) => (
               <Button
                 key={opt.value}

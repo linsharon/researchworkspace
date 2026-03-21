@@ -6,11 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import NoteTagInput from "./NoteTagInput";
 
 export interface LiteratureNote {
   title: string;
   doiOrUrl: string;
   pageNumber: string;
+  keywords: string[];
   contentGist: string;
   originalQuote: string;
 }
@@ -24,6 +26,7 @@ const defaultNote: LiteratureNote = {
   title: "",
   doiOrUrl: "",
   pageNumber: "",
+  keywords: [],
   contentGist: "",
   originalQuote: "",
 };
@@ -119,6 +122,15 @@ export function LiteratureNoteForm({ initialValue, onSubmit }: LiteratureNoteFor
                     placeholder="e.g., 42"
                     value={form.pageNumber}
                     onChange={event => updateField("pageNumber", event.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="lit-keywords">Keywords</Label>
+                  <NoteTagInput
+                    onChange={keywords => updateField("keywords", keywords)}
+                    placeholder="Type keyword and press Enter"
+                    tags={form.keywords}
                   />
                 </div>
               </div>
