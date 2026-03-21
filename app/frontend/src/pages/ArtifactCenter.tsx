@@ -52,6 +52,7 @@ const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
   { value: "purpose", label: "Purposes" },
   { value: "concepts", label: "Concepts" },
+  { value: "literature", label: "Literature" },
   { value: "search", label: "Searches" },
   { value: "notes", label: "Notes" },
   { value: "visual", label: "Visuals" },
@@ -61,14 +62,18 @@ const FILTER_OPTIONS: { value: string; label: string }[] = [
 const FILTER_MAP: Record<string, ArtifactType[]> = {
   all: [],
   purpose: ["purpose"],
-  search: ["keyword", "search-log", "entry-paper"],
+  literature: ["entry-paper"],
+  search: ["keyword", "search-log"],
   notes: ["literature-note", "permanent-note"],
   visual: ["visualization"],
   drafts: ["rq-draft", "writing-block", "writing-draft"],
 };
 
 export default function ArtifactCenter() {
+  const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
+  const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
   const CONCEPTS_STORAGE_KEY = "rw-concepts";
+  const CONCEPTS_UPDATED_EVENT = "concepts-updated";
   const NOTES_UPDATED_EVENT = "notes-updated";
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab") || "all";
@@ -115,18 +120,38 @@ export default function ArtifactCenter() {
 
     loadConcepts();
     window.addEventListener("storage", loadConcepts);
-    return () => window.removeEventListener("storage", loadConcepts);
+    window.addEventListener(CONCEPTS_UPDATED_EVENT, loadConcepts);
+    return () => {
+      window.removeEventListener("storage", loadConcepts);
+      window.removeEventListener(CONCEPTS_UPDATED_EVENT, loadConcepts);
+    };
   }, []);
 
   useEffect(() => {
     const loadSavedNotes = async () => {
+      let savedEntryArtifacts: Artifact[] = [];
+
+      if (typeof window !== "undefined") {
+        try {
+          const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+          const parsed = saved ? JSON.parse(saved) : [];
+          savedEntryArtifacts = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          savedEntryArtifacts = [];
+        }
+      }
+
       try {
         const savedNotes = await noteAPI.listAll();
         const savedNoteArtifacts = savedNotes.map(noteToArtifact);
-        setArtifacts([...STATIC_ARTIFACTS, ...savedNoteArtifacts]);
+        const merged = [...STATIC_ARTIFACTS, ...savedEntryArtifacts, ...savedNoteArtifacts];
+        const deduped = Array.from(new Map(merged.map((artifact) => [artifact.id, artifact])).values());
+        setArtifacts(deduped);
       } catch (error) {
         console.error("Failed to load notes for Artifact Center:", error);
-        setArtifacts([...STATIC_ARTIFACTS]);
+        const merged = [...STATIC_ARTIFACTS, ...savedEntryArtifacts];
+        const deduped = Array.from(new Map(merged.map((artifact) => [artifact.id, artifact])).values());
+        setArtifacts(deduped);
       }
     };
 
@@ -136,8 +161,15 @@ export default function ArtifactCenter() {
       const onNotesUpdated = () => {
         loadSavedNotes();
       };
+      const onArtifactsUpdated = () => {
+        loadSavedNotes();
+      };
       window.addEventListener(NOTES_UPDATED_EVENT, onNotesUpdated);
-      return () => window.removeEventListener(NOTES_UPDATED_EVENT, onNotesUpdated);
+      window.addEventListener(ARTIFACTS_UPDATED_EVENT, onArtifactsUpdated);
+      return () => {
+        window.removeEventListener(NOTES_UPDATED_EVENT, onNotesUpdated);
+        window.removeEventListener(ARTIFACTS_UPDATED_EVENT, onArtifactsUpdated);
+      };
     }
   }, []);
 

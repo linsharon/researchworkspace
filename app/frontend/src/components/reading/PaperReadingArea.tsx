@@ -6,6 +6,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChevronDown,
   ChevronUp,
@@ -27,7 +28,6 @@ import type { Paper, Highlight } from "@/lib/manuscript-api";
 import { paperAPI } from "@/lib/manuscript-api";
 import { pdfAPI } from "@/lib/pdf-api";
 import PDFHighlightReader from "./PDFHighlightReader";
-import PdfViewer from "@/components/pdf/PdfViewer";
 
 interface PaperReadingAreaProps {
   paper: Paper;
@@ -187,64 +187,58 @@ export default function PaperReadingArea({
 
       <div className="flex-1 overflow-auto flex flex-col">
         {pdfContent && paper.pdf_path ? (
-          <div className="flex-1 min-h-0 flex flex-col">
-            <div className="flex items-center justify-between border-b border-slate-200 bg-slate-100 px-3 py-2">
-              <div className="flex items-center gap-2 text-slate-700">
+          <Card className="flex-1 flex flex-col min-h-0 border-slate-200 rounded-none">
+            <CardHeader className="pb-2 shrink-0">
+              <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                 <Eye className="h-4 w-4" />
-                <span className="text-sm font-medium">PDF Viewer</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  className="gap-2"
-                  onClick={() => {
-                    const url = pdfAPI.downloadUrl(paper.pdf_path!);
-                    const link = document.createElement("a");
-                    link.href = url;
-                    link.download = paper.pdf_path!;
-                    link.click();
-                  }}
-                  size="sm"
-                  variant="outline"
-                >
-                  <Download className="h-4 w-4" />
-                  Download
-                </Button>
+                <span className="truncate">{paper.pdf_path}</span>
+                <div className="ml-auto flex items-center gap-2">
+                  <Button
+                    className="gap-2 h-7 text-xs"
+                    onClick={() => {
+                      const url = pdfAPI.downloadUrl(paper.pdf_path!);
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = paper.pdf_path!;
+                      link.click();
+                    }}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Download className="h-3 w-3" />
+                    Download
+                  </Button>
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-44">
-                    <DropdownMenuItem onClick={handleReplacePDF}>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Replace PDF
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-rose-600 focus:text-rose-600" onClick={handleDeletePDF}>
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete PDF
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-
-            <div className="flex-1 min-h-0">
-              <PdfViewer
-                citationsText="Citations"
-                className="h-full rounded-none border-0"
-                doi={paper.discovery_note}
-                pdfUrl={pdfAPI.viewUrl(paper.pdf_path)}
-                scholarUrl={paper.discovery_path}
-                showTitleBar={false}
-                title={paper.title}
-                onAskAiSelection={(selectedText) => {
-                  onAskAI?.(selectedText);
-                }}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="outline" className="h-7 px-2">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem onClick={handleReplacePDF}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Replace PDF
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-rose-600 focus:text-rose-600" onClick={handleDeletePDF}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete PDF
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 p-2 min-h-0">
+              <iframe
+                key={paper.pdf_path}
+                src={pdfAPI.viewUrl(paper.pdf_path)}
+                title={paper.pdf_path}
+                className="w-full h-full rounded border border-slate-200 min-h-[500px]"
+                style={{ height: "calc(100vh - 260px)" }}
               />
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ) : pdfContent ? (
           <PDFHighlightReader
             content={pdfContent}

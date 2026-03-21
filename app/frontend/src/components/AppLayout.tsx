@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import {
@@ -120,7 +119,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   };
 
   const NAV_ITEMS = [
-    { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
     { path: `/workflow/${activeProjectId}/1`, label: t("nav.purpose"), icon: Target },
     { path: `/workflow/${activeProjectId}/2`, label: t("nav.discover"), icon: Search },
     { path: `/workflow/${activeProjectId}/3`, label: t("nav.read"), icon: BookOpen },
@@ -173,13 +171,38 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </p>
             <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform", showProjectSwitcher && "rotate-180")} />
           </button>
-          <div className="mt-2">
-            <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-              <span>{t("app.step")} {activeProject.currentStep} {t("app.of")} 6</span>
-              <span>{Math.round(((activeProject.currentStep - 1) / 5) * 100)}%</span>
+          <div className="mt-2 space-y-1.5">
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider">Steps</div>
+            <div className="grid grid-cols-6 gap-1">
+              {([1, 2, 3, 4, 5, 6] as WorkflowStep[]).map((step) => {
+                const isCurrent = step === activeProject.currentStep;
+                return (
+                  <div
+                    key={step}
+                    className={cn(
+                      "h-1.5 rounded-full transition-colors",
+                      isCurrent ? "bg-[#1E3A5F]" : "bg-slate-200"
+                    )}
+                    title={`Step ${step}`}
+                  />
+                );
+              })}
             </div>
-            <Progress value={((activeProject.currentStep - 1) / 5) * 100} className="h-1.5" />
           </div>
+
+          <Link to="/" className="mt-3 block">
+            <div
+              className={cn(
+                "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border",
+                location.pathname === "/"
+                  ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
+                  : "text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900"
+              )}
+            >
+              <LayoutDashboard className="w-4 h-4 shrink-0" />
+              <span className="truncate">{t("nav.dashboard")}</span>
+            </div>
+          </Link>
 
           {showProjectSwitcher && (
             <div className="mt-2 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,7 @@ import {
   MICRO_CHECKLIST_READABILITY,
   MICRO_CHECKLIST_CREDIBILITY,
   type WorkflowStep,
+  type Artifact,
   type Paper,
   type Keyword,
   type SearchRecord,
@@ -89,8 +91,14 @@ export default function WorkflowWorkspace() {
   const { projectId = "proj-1", step } = useParams<{ projectId: string; step: string }>();
   const currentStep = (parseInt(step || "1") as WorkflowStep) || 1;
   const stepMeta = STEP_META[currentStep];
-  const prevStep = currentStep > 1 ? currentStep - 1 : null;
-  const nextStep = currentStep < 6 ? currentStep + 1 : null;
+  const workflowMenuItems: Array<{ step: WorkflowStep; label: string }> = [
+    { step: 1, label: "Purpose" },
+    { step: 2, label: "Discover" },
+    { step: 3, label: "Read" },
+    { step: 4, label: "Expand" },
+    { step: 5, label: "Visualize" },
+    { step: 6, label: "Draft" },
+  ];
 
   // Ensure the project row exists in DB on first visit
   useEffect(() => {
@@ -123,50 +131,25 @@ export default function WorkflowWorkspace() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            {prevStep && (
-              <Link to={`/workflow/${projectId}/${prevStep}`}>
-                <Button variant="outline" size="sm" className="text-xs">
-                  <ArrowLeft className="w-3 h-3 mr-1" />
-                  Step {prevStep}
-                </Button>
-              </Link>
-            )}
-            {nextStep && (
-              <Link to={`/workflow/${projectId}/${nextStep}`}>
-                <Button
-                  size="sm"
-                  className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
-                >
-                  Step {nextStep}
-                  <ArrowRight className="w-3 h-3 ml-1" />
-                </Button>
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* Step Navigation Breadcrumb */}
-        <div className="flex items-center gap-1 text-xs overflow-x-auto pb-1">
-          {([1, 2, 3, 4, 5, 6] as WorkflowStep[]).map((s, i) => (
-            <div key={s} className="flex items-center gap-1 shrink-0">
-              {i > 0 && <ChevronRight className="w-3 h-3 text-slate-300" />}
-              <Link to={`/workflow/${projectId}/${s}`}>
-                <span
+          <div className="hidden md:flex items-center gap-1 text-xs whitespace-nowrap">
+            <span className="font-semibold text-slate-700 mr-1">Workflow:</span>
+            {workflowMenuItems.map((item, index) => (
+              <div key={item.step} className="flex items-center gap-1">
+                {index > 0 && <span className="text-slate-300">&gt;</span>}
+                <Link
+                  to={`/workflow/${projectId}/${item.step}`}
                   className={cn(
-                    "px-2 py-0.5 rounded-full transition-colors",
-                    s === currentStep
+                    "px-1.5 py-0.5 rounded transition-colors",
+                    item.step === currentStep
                       ? "bg-[#1E3A5F] text-white font-medium"
-                      : s < currentStep
-                        ? "text-emerald-600 hover:bg-emerald-50"
-                        : "text-slate-400 hover:bg-slate-100"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
                   )}
                 >
-                  {STEP_META[s].shortLabel}
-                </span>
-              </Link>
-            </div>
-          ))}
+                  {item.label}
+                </Link>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Step Content */}
@@ -232,6 +215,45 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
       setSelected([...selected, trimmed]);
       setNewCustomPurpose("");
     }
+  };
+
+  const handleGeneratePurposeCard = () => {
+    const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
+    const title =
+      selected.length
+        ? `Research Purpose: ${selected.slice(0, 2).join(", ")}${selected.length > 2 ? "..." : ""}`
+        : "Research Purpose";
+    const card: Artifact = {
+      id: `purpose-${Date.now()}`,
+      title,
+      type: "purpose",
+      projectId,
+      sourceStep: 1,
+      description: notes.trim() || selected.join(", ") || "Reading purpose",
+      updatedAt: new Date().toISOString().split("T")[0],
+      content: `Goals: ${selected.join(", ")}${notes.trim() ? `\n\nFocus: ${notes.trim()}` : ""}`,
+    };
+    try {
+      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+      const existing: Artifact[] = saved ? (JSON.parse(saved) as Artifact[]) : [];
+      window.localStorage.setItem(
+        ARTIFACTS_STORAGE_KEY,
+        JSON.stringify([...existing, card])
+      );
+      window.dispatchEvent(new CustomEvent("artifacts-updated"));
+    } catch {
+      // ignore storage errors
+    }
+    toast.success("Purpose Card 已生成", {
+      description: "已保存到 Artifact Center › Purposes",
+      duration: 3000,
+    });
+    // Reset page
+    setSelected([]);
+    setCustomPurposes([]);
+    setNewCustomPurpose("");
+    setNotes("");
+    setCardGenerated(false);
   };
 
   return (
@@ -346,8 +368,9 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
 
       <div className="flex gap-2">
         <Button
-          onClick={() => setCardGenerated(true)}
-          className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+          onClick={handleGeneratePurposeCard}
+          disabled={!selected.length && !notes.trim()}
+          className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white disabled:opacity-50"
         >
           <Sparkles className="w-4 h-4 mr-2" />
           Generate Purpose Card
@@ -367,7 +390,29 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
 // Step 2: Entry Paper Workspace
 // ============================================================
 function EntryPaperWorkspace({ projectId }: { projectId: string }) {
+  type CandidatePaper = Paper & {
+    discoveryPath?: string;
+    discoveryNote?: string;
+    searchRecordId?: string;
+  };
+
   const CONCEPTS_STORAGE_KEY = `rw-concepts-${projectId}`;
+  const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
+  const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
+  const [addedToCenterIds, setAddedToCenterIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set<string>();
+    try {
+      const saved = window.localStorage.getItem("rw-artifacts");
+      const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
+      return new Set(
+        (Array.isArray(parsed) ? parsed : [])
+          .filter((a) => a.type === "entry-paper")
+          .map((a) => a.id.replace("entry-paper-", ""))
+      );
+    } catch {
+      return new Set<string>();
+    }
+  });
   const [newKeyword, setNewKeyword] = useState("");
   const [keywords, setKeywords] = useState<Keyword[]>([...DUMMY_KEYWORDS]);
   const [searchRecords, setSearchRecords] = useState<SearchRecord[]>([...DUMMY_SEARCH_RECORDS]);
@@ -438,7 +483,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     if (!srKeywords.includes(trimmed)) {
       setSrKeywords((prev) => [...prev, trimmed]);
     }
-    setSrNewKeyword("");
+    setNewKeyword("");
     setShowConceptDialog(false);
     setConceptName("");
     setConceptDescription("");
@@ -448,13 +493,13 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
   // Candidate papers state
   const [papersLoading, setPapersLoading] = useState(false);
-  const [candidatePapers, setCandidatePapers] = useState<
-    Array<Paper & { discoveryPath?: string; discoveryNote?: string }>
-  >([]);
+  const [candidatePapers, setCandidatePapers] = useState<CandidatePaper[]>([]);
   const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]); 
 
   // Add Search Record Dialog
   const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [showEditSearchDialog, setShowEditSearchDialog] = useState(false);
+  const [editingSearchRecordId, setEditingSearchRecordId] = useState<string | null>(null);
   const [srKeywords, setSrKeywords] = useState<string[]>([]);
   const [srDatabase, setSrDatabase] = useState("Web of Science");
   const [srCustomDb, setSrCustomDb] = useState("");
@@ -468,12 +513,22 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
   // Add Candidate Paper Dialog
   const [showAddPaperDialog, setShowAddPaperDialog] = useState(false);
+  const [showAddMultiplePaperDialog, setShowAddMultiplePaperDialog] = useState(false);
+  const [showEditPaperDialog, setShowEditPaperDialog] = useState(false);
+  const [editingPaperId, setEditingPaperId] = useState<string | null>(null);
   const [newPaperTitle, setNewPaperTitle] = useState("");
   const [newPaperAuthors, setNewPaperAuthors] = useState("");
   const [newPaperYear, setNewPaperYear] = useState("");
   const [newPaperJournal, setNewPaperJournal] = useState("");
   const [newPaperDiscoveryPath, setNewPaperDiscoveryPath] = useState("Academic Database");
   const [newPaperDiscoveryNote, setNewPaperDiscoveryNote] = useState("");
+  const [newPaperDoiUrl, setNewPaperDoiUrl] = useState("");
+  const [doiFetching, setDoiFetching] = useState(false);
+  const [doiFetchError, setDoiFetchError] = useState<string | null>(null);
+  const [newPaperSearchRecordId, setNewPaperSearchRecordId] = useState("");
+  const [bulkDoiInput, setBulkDoiInput] = useState("");
+  const [bulkSearchRecordId, setBulkSearchRecordId] = useState("");
+  const [bulkImporting, setBulkImporting] = useState(false);
 
   // Discovery Path Dialog
   const [showDiscoveryDialog, setShowDiscoveryDialog] = useState(false);
@@ -487,7 +542,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   }, [concepts]);
 
   // Helper: map API paper to local Paper type
-  const apiPaperToLocal = (p: ApiPaper): Paper & { discoveryPath?: string; discoveryNote?: string } => ({
+  const apiPaperToLocal = (p: ApiPaper): CandidatePaper => ({
     id: p.id,
     title: p.title,
     authors: p.authors,
@@ -503,6 +558,38 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     annotations: [],
     discoveryPath: p.discovery_path,
     discoveryNote: p.discovery_note,
+  });
+
+  const persistArtifacts = (updater: (prev: Artifact[]) => Artifact[]) => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+    const parsed = saved ? JSON.parse(saved) : [];
+    const next = updater(Array.isArray(parsed) ? parsed : []);
+    window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+  };
+
+  const candidatePaperToArtifact = (paper: CandidatePaper): Artifact => ({
+    id: `entry-paper-${paper.id}`,
+    title: paper.title,
+    type: "entry-paper",
+    projectId,
+    sourceStep: 2,
+    description: paper.abstract || `${paper.authors.join(", ")} (${paper.year}) - ${paper.journal}`,
+    updatedAt: new Date().toISOString().split("T")[0],
+    content: JSON.stringify(
+      {
+        authors: paper.authors,
+        year: paper.year,
+        journal: paper.journal,
+        abstract: paper.abstract,
+        relevance: paper.relevance,
+        discoveryPath: paper.discoveryPath,
+        discoveryNote: paper.discoveryNote,
+      },
+      null,
+      2
+    ),
   });
 
   // Load papers from backend on mount
@@ -601,6 +688,51 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     return <>{nodes}</>;
   };
 
+  const resetSearchRecordForm = () => {
+    setSrKeywords([]);
+    setSrDatabase("Web of Science");
+    setSrCustomDb("");
+    setSrBooleanString("");
+    setSrTotalResults("");
+    setSrRelevantResults("");
+  };
+
+  const openAddSearchRecordDialog = () => {
+    resetSearchRecordForm();
+    setShowSearchDialog(true);
+  };
+
+  const openEditSearchRecordDialog = (record: SearchRecord) => {
+    setEditingSearchRecordId(record.id);
+    setSrBooleanString(record.query || "");
+    setSrTotalResults(String(record.results || ""));
+    setSrRelevantResults(String(record.relevant || ""));
+    if (DATABASE_OPTIONS.includes(record.database as (typeof DATABASE_OPTIONS)[number])) {
+      setSrDatabase(record.database);
+      setSrCustomDb("");
+    } else {
+      setSrDatabase("Other");
+      setSrCustomDb(record.database);
+    }
+    setSrKeywords([]);
+    setShowEditSearchDialog(true);
+  };
+
+  const linkedCandidateCount = (searchRecordId: string) =>
+    candidatePapers.filter((paper) => paper.searchRecordId === searchRecordId).length;
+
+  const handleDeleteSearchRecord = (searchRecordId: string) => {
+    const linkedCount = linkedCandidateCount(searchRecordId);
+    if (linkedCount > 0) {
+      toast.error("无法删除该 Search Record", {
+        description: `已关联 ${linkedCount} 篇 candidate paper，请先解除关联。`,
+      });
+      return;
+    }
+    setSearchRecords((prev) => prev.filter((r) => r.id !== searchRecordId));
+    toast.success("Search Record 已删除");
+  };
+
   const handleAddSearchRecord = () => {
     // Add any new keywords to the global keywords list
     srKeywords.forEach((kw) => {
@@ -623,12 +755,73 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     };
     setSearchRecords([...searchRecords, newRecord]);
     setShowSearchDialog(false);
-    setSrKeywords([]);
-    setSrDatabase("Web of Science");
-    setSrCustomDb("");
-    setSrBooleanString("");
-    setSrTotalResults("");
-    setSrRelevantResults("");
+    resetSearchRecordForm();
+  };
+
+  const handleSaveEditedSearchRecord = () => {
+    if (!editingSearchRecordId) return;
+    const db = srDatabase === "Other" ? srCustomDb || "Other" : srDatabase;
+    setSearchRecords((prev) =>
+      prev.map((record) =>
+        record.id === editingSearchRecordId
+          ? {
+              ...record,
+              database: db,
+              query: srBooleanString || record.query,
+              results: parseInt(srTotalResults) || 0,
+              relevant: parseInt(srRelevantResults) || 0,
+            }
+          : record
+      )
+    );
+    setShowEditSearchDialog(false);
+    setEditingSearchRecordId(null);
+    resetSearchRecordForm();
+  };
+
+  const extractDoiFromText = (input: string) => {
+    const doiMatch = input.match(/\b10\.\d{4,}\/[^\s]+/i);
+    return doiMatch ? doiMatch[0].replace(/[.,;)>]+$/, "") : null;
+  };
+
+  const handleFetchByDoiUrl = async () => {
+    const input = newPaperDoiUrl.trim();
+    if (!input) return;
+    const doi = extractDoiFromText(input);
+    if (!doi) {
+      setDoiFetchError("未找到有效的 DOI，请检查输入或手动填写");
+      return;
+    }
+    setDoiFetching(true);
+    setDoiFetchError(null);
+    try {
+      const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`);
+      if (!res.ok) throw new Error("Not found");
+      const json = (await res.json()) as {
+        message: {
+          title?: string[];
+          author?: Array<{ given?: string; family?: string }>;
+          published?: { "date-parts"?: number[][] };
+          "container-title"?: string[];
+          publisher?: string;
+        };
+      };
+      const work = json.message;
+      if (work.title?.[0]) setNewPaperTitle(work.title[0]);
+      const authors = (work.author ?? []).map((a) =>
+        [a.given, a.family].filter(Boolean).join(" ")
+      );
+      if (authors.length) setNewPaperAuthors(authors.join(", "));
+      const year = work.published?.["date-parts"]?.[0]?.[0];
+      if (year) setNewPaperYear(String(year));
+      const journal = work["container-title"]?.[0] ?? work.publisher;
+      if (journal) setNewPaperJournal(journal);
+      setDoiFetchError(null);
+    } catch {
+      setDoiFetchError("获取信息失败，请检查 DOI 是否正确或手动填写");
+    } finally {
+      setDoiFetching(false);
+    }
   };
 
   const handleMarkRelevance = (level: "high" | "medium" | "low") => {
@@ -646,20 +839,25 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
   const handleAddCandidatePaper = async () => {
     if (!newPaperTitle.trim()) return;
+    const selectedRecord = searchRecords.find((r) => r.id === newPaperSearchRecordId);
+    const resolvedDiscoveryPath = selectedRecord?.database || newPaperDiscoveryPath;
+    const resolvedDiscoveryNote = newPaperDiscoveryNote || (selectedRecord ? `From Search Record: ${selectedRecord.query}` : undefined);
+
     try {
       const created = await paperAPI.create({
         title: newPaperTitle.trim(),
         authors: newPaperAuthors.split(",").map((a) => a.trim()).filter(Boolean),
         year: parseInt(newPaperYear) || undefined,
         journal: newPaperJournal.trim() || undefined,
-        discovery_path: newPaperDiscoveryPath,
-        discovery_note: newPaperDiscoveryNote || undefined,
+        discovery_path: resolvedDiscoveryPath,
+        discovery_note: resolvedDiscoveryNote,
         project_id: projectId,
       });
-      setCandidatePapers((prev) => [...prev, apiPaperToLocal(created)]);
+      const localPaper = apiPaperToLocal(created);
+      setCandidatePapers((prev) => [...prev, { ...localPaper, searchRecordId: newPaperSearchRecordId || undefined }]);
     } catch {
       // fallback: add locally with temp id
-      const newPaper: Paper & { discoveryPath?: string; discoveryNote?: string } = {
+      const newPaper: CandidatePaper = {
         id: `paper-${Date.now()}`,
         title: newPaperTitle.trim(),
         authors: newPaperAuthors.split(",").map((a) => a.trim()).filter(Boolean),
@@ -673,8 +871,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         relevance: "medium",
         isEntryPaper: false,
         annotations: [],
-        discoveryPath: newPaperDiscoveryPath,
-        discoveryNote: newPaperDiscoveryNote,
+        discoveryPath: resolvedDiscoveryPath,
+        discoveryNote: resolvedDiscoveryNote,
+        searchRecordId: newPaperSearchRecordId || undefined,
       };
       setCandidatePapers((prev) => [...prev, newPaper]);
     }
@@ -685,6 +884,201 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     setNewPaperJournal("");
     setNewPaperDiscoveryPath("Academic Database");
     setNewPaperDiscoveryNote("");
+    setNewPaperDoiUrl("");
+    setDoiFetchError(null);
+    setNewPaperSearchRecordId("");
+  };
+
+  const handleAddMultipleCandidatePapers = async () => {
+    const lines = bulkDoiInput
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (!lines.length) return;
+
+    const selectedRecord = searchRecords.find((r) => r.id === bulkSearchRecordId);
+    const resolvedDiscoveryPath = selectedRecord?.database || "Academic Database";
+    const resolvedDiscoveryNote = selectedRecord ? `From Search Record: ${selectedRecord.query}` : undefined;
+
+    setBulkImporting(true);
+    const imported: CandidatePaper[] = [];
+    let failedCount = 0;
+
+    for (const line of lines) {
+      const doi = extractDoiFromText(line);
+      if (!doi) {
+        failedCount += 1;
+        continue;
+      }
+
+      try {
+        const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`);
+        if (!res.ok) {
+          failedCount += 1;
+          continue;
+        }
+        const json = (await res.json()) as {
+          message: {
+            title?: string[];
+            author?: Array<{ given?: string; family?: string }>;
+            published?: { "date-parts"?: number[][] };
+            "container-title"?: string[];
+            publisher?: string;
+          };
+        };
+        const work = json.message;
+        const title = work.title?.[0]?.trim();
+        if (!title) {
+          failedCount += 1;
+          continue;
+        }
+        const authors = (work.author ?? []).map((a) => [a.given, a.family].filter(Boolean).join(" ")).filter(Boolean);
+        const year = work.published?.["date-parts"]?.[0]?.[0];
+        const journal = work["container-title"]?.[0] ?? work.publisher;
+
+        try {
+          const created = await paperAPI.create({
+            title,
+            authors,
+            year: year || undefined,
+            journal: journal || undefined,
+            discovery_path: resolvedDiscoveryPath,
+            discovery_note: resolvedDiscoveryNote,
+            project_id: projectId,
+          });
+          imported.push({
+            ...apiPaperToLocal(created),
+            searchRecordId: bulkSearchRecordId || undefined,
+          });
+        } catch {
+          imported.push({
+            id: `paper-${Date.now()}-${Math.random()}`,
+            title,
+            authors,
+            year: year || new Date().getFullYear(),
+            journal: journal || "Unknown",
+            abstract: "",
+            researchQuestion: "",
+            theory: "",
+            method: "",
+            findings: "",
+            relevance: "medium",
+            isEntryPaper: false,
+            annotations: [],
+            discoveryPath: resolvedDiscoveryPath,
+            discoveryNote: resolvedDiscoveryNote,
+            searchRecordId: bulkSearchRecordId || undefined,
+          });
+        }
+      } catch {
+        failedCount += 1;
+      }
+    }
+
+    if (imported.length > 0) {
+      setCandidatePapers((prev) => [...prev, ...imported]);
+    }
+
+    setBulkImporting(false);
+    if (imported.length > 0) {
+      toast.success(`已导入 ${imported.length} 篇 candidate papers`, {
+        description: failedCount > 0 ? `${failedCount} 条 DOI 识别失败` : undefined,
+      });
+      setShowAddMultiplePaperDialog(false);
+      setBulkDoiInput("");
+      setBulkSearchRecordId("");
+    } else {
+      toast.error("未能导入论文，请检查 DOI 链接格式");
+    }
+  };
+
+  const openEditPaperDialog = (paper: Paper & { discoveryPath?: string; discoveryNote?: string }) => {
+    setEditingPaperId(paper.id);
+    setNewPaperTitle(paper.title);
+    setNewPaperAuthors(paper.authors.join(", "));
+    setNewPaperYear(String(paper.year || ""));
+    setNewPaperJournal(paper.journal || "");
+    setNewPaperDiscoveryPath(paper.discoveryPath || "Academic Database");
+    setNewPaperDiscoveryNote(paper.discoveryNote || "");
+    setShowEditPaperDialog(true);
+  };
+
+  const handleSaveEditedPaper = async () => {
+    if (!editingPaperId || !newPaperTitle.trim()) return;
+
+    const nextPatch = {
+      title: newPaperTitle.trim(),
+      authors: newPaperAuthors.split(",").map((a) => a.trim()).filter(Boolean),
+      year: parseInt(newPaperYear) || undefined,
+      journal: newPaperJournal.trim() || undefined,
+      discovery_path: newPaperDiscoveryPath,
+      discovery_note: newPaperDiscoveryNote || undefined,
+    };
+
+    try {
+      const updated = await paperAPI.update(editingPaperId, nextPatch);
+      setCandidatePapers((prev) => prev.map((paper) => (paper.id === editingPaperId ? apiPaperToLocal(updated) : paper)));
+    } catch {
+      setCandidatePapers((prev) =>
+        prev.map((paper) =>
+          paper.id === editingPaperId
+            ? {
+                ...paper,
+                title: nextPatch.title,
+                authors: nextPatch.authors || [],
+                year: nextPatch.year || paper.year,
+                journal: nextPatch.journal || "Unknown",
+                discoveryPath: nextPatch.discovery_path,
+                discoveryNote: nextPatch.discovery_note,
+              }
+            : paper
+        )
+      );
+    }
+
+    setShowEditPaperDialog(false);
+    setEditingPaperId(null);
+    setNewPaperTitle("");
+    setNewPaperAuthors("");
+    setNewPaperYear("");
+    setNewPaperJournal("");
+    setNewPaperDiscoveryPath("Academic Database");
+    setNewPaperDiscoveryNote("");
+  };
+
+  const handleDeleteCandidatePaper = async (paperId: string) => {
+    try {
+      await paperAPI.delete(paperId);
+    } catch {
+      // Allow local removal if backend delete fails for temporary items.
+    }
+
+    setCandidatePapers((prev) => prev.filter((paper) => paper.id !== paperId));
+    setEntryPapers((prev) => prev.filter((id) => id !== paperId));
+    setSelectedPaperIds((prev) => prev.filter((id) => id !== paperId));
+    setAddedToCenterIds((prev) => { const next = new Set(prev); next.delete(paperId); return next; });
+
+    persistArtifacts((prev) => prev.filter((artifact) => artifact.id !== `entry-paper-${paperId}`));
+  };
+
+  const handleTogglePaperArtifact = (paper: Paper & { discoveryPath?: string; discoveryNote?: string }) => {
+    if (addedToCenterIds.has(paper.id)) {
+      persistArtifacts((prev) => prev.filter((a) => a.id !== `entry-paper-${paper.id}`));
+      setAddedToCenterIds((prev) => {
+        const next = new Set(prev);
+        next.delete(paper.id);
+        return next;
+      });
+      toast.success("已从 Artifact Center 移除", { description: paper.title, duration: 2000 });
+    } else {
+      const artifact = candidatePaperToArtifact(paper);
+      persistArtifacts((prev) => {
+        const filtered = prev.filter((item) => item.id !== artifact.id);
+        return [...filtered, artifact];
+      });
+      setAddedToCenterIds((prev) => new Set([...prev, paper.id]));
+      toast.success("已添加到 Artifact Center", { description: paper.title, duration: 2500 });
+    }
   };
 
   const handleToggleEntryPaper = (paperId: string) => {
@@ -725,8 +1119,17 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   };
 
   const handleBatchAddArtifacts = () => {
-    // In a real app this would add to artifacts store
-    alert(`Added ${selectedPaperIds.length} paper(s) as artifacts.`);
+    const selectedPapers = candidatePapers.filter((paper) => selectedPaperIds.includes(paper.id));
+    persistArtifacts((prev) => {
+      const artifactMap = new Map(prev.map((artifact) => [artifact.id, artifact]));
+      selectedPapers.forEach((paper) => {
+        const artifact = candidatePaperToArtifact(paper);
+        artifactMap.set(artifact.id, artifact);
+      });
+      return Array.from(artifactMap.values());
+    });
+    setAddedToCenterIds((prev) => new Set([...prev, ...selectedPaperIds]));
+    toast.success(`已添加 ${selectedPapers.length} 篇论文到 Artifact Center`);
     setSelectedPaperIds([]);
   };
 
@@ -862,7 +1265,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   size="sm"
                   variant="outline"
                   className="text-xs h-7"
-                  onClick={() => setShowSearchDialog(true)}
+                  onClick={openAddSearchRecordDialog}
                 >
                   <Plus className="w-3 h-3 mr-1" />
                   Add Search Record
@@ -871,28 +1274,60 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {searchRecords.map((record) => (
-                  <div
-                    key={record.id}
-                    className="p-3 bg-slate-50 rounded-lg border border-slate-200"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <Badge variant="outline" className="text-[10px]">
-                        {record.database}
-                      </Badge>
-                      <span className="text-[10px] text-slate-400">
-                        {record.date}
-                      </span>
+                {searchRecords.map((record) => {
+                  const linkedCount = linkedCandidateCount(record.id);
+                  const cannotDeleteReason = linkedCount > 0
+                    ? `已关联 ${linkedCount} 篇 candidate paper，无法删除`
+                    : null;
+
+                  return (
+                    <div
+                      key={record.id}
+                      className="p-3 bg-slate-50 rounded-lg border border-slate-200"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <Badge variant="outline" className="text-[10px]">
+                          {record.database}
+                        </Badge>
+                        <span className="text-[10px] text-slate-400">
+                          {record.date}
+                        </span>
+                      </div>
+                      <p className="text-xs font-mono text-slate-700 mb-2">
+                        {renderQueryWithConceptLinks(record.query)}
+                      </p>
+                      <div className="flex gap-4 text-[11px] text-slate-500">
+                        <span>{record.results} results</span>
+                        <span>{record.relevant} relevant</span>
+                      </div>
+                      {cannotDeleteReason && (
+                        <p className="text-[11px] text-amber-600 mt-1.5">{cannotDeleteReason}</p>
+                      )}
+                      <div className="flex gap-2 mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7"
+                          onClick={() => openEditSearchRecordDialog(record)}
+                        >
+                          <PenTool className="w-3 h-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                          onClick={() => handleDeleteSearchRecord(record.id)}
+                          disabled={Boolean(cannotDeleteReason)}
+                          title={cannotDeleteReason || "Delete search record"}
+                        >
+                          <X className="w-3 h-3 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
                     </div>
-                    <p className="text-xs font-mono text-slate-700 mb-2">
-                      {renderQueryWithConceptLinks(record.query)}
-                    </p>
-                    <div className="flex gap-4 text-[11px] text-slate-500">
-                      <span>{record.results} results</span>
-                      <span>{record.relevant} relevant</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -916,15 +1351,35 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                       Add {selectedPaperIds.length} as Artifacts
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs h-7"
-                    onClick={() => setShowAddPaperDialog(true)}
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add Paper
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add Paper
+                        <ChevronDown className="w-3 h-3 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setShowAddPaperDialog(true);
+                        }}
+                      >
+                        Add One
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setShowAddMultiplePaperDialog(true);
+                        }}
+                      >
+                        Add Multiple
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </CardHeader>
@@ -942,8 +1397,8 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           : "border-slate-200 hover:border-slate-300"
                     )}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                    <div>
+                      <div className="flex items-start gap-2 mb-3">
                         {/* Multi-select checkbox */}
                         <div className="pt-1">
                           <Checkbox
@@ -1003,7 +1458,49 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-col gap-1.5 shrink-0">
+                      {/* Action buttons — horizontal row below paper info */}
+                      <div className="flex flex-wrap gap-1.5 pl-6">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className={cn(
+                            "text-xs h-7",
+                            addedToCenterIds.has(paper.id)
+                              ? "border-emerald-400 text-emerald-700 bg-emerald-50 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+                              : ""
+                          )}
+                          onClick={() => handleTogglePaperArtifact(paper)}
+                        >
+                          {addedToCenterIds.has(paper.id) ? (
+                            <>
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              已添加
+                            </>
+                          ) : (
+                            <>
+                              <FolderUp className="w-3 h-3 mr-1" />
+                              Add to Artifact Center
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7"
+                          onClick={() => openEditPaperDialog(paper)}
+                        >
+                          <PenTool className="w-3 h-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 text-rose-600 hover:text-rose-700"
+                          onClick={() => handleDeleteCandidatePaper(paper.id)}
+                        >
+                          <X className="w-3 h-3 mr-1" />
+                          Delete
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1184,6 +1681,39 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         </div>
       </ModalOverlay>
 
+      <ModalOverlay
+        open={showEditPaperDialog}
+        onClose={() => {
+          setShowEditPaperDialog(false);
+          setEditingPaperId(null);
+        }}
+        title="Edit Candidate Paper"
+      >
+        <div className="space-y-3">
+          <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder="Paper title" />
+          <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder="Authors (comma separated)" />
+          <div className="grid grid-cols-2 gap-3">
+            <Input value={newPaperYear} onChange={(e) => setNewPaperYear(e.target.value)} placeholder="Year" />
+            <Input value={newPaperJournal} onChange={(e) => setNewPaperJournal(e.target.value)} placeholder="Journal" />
+          </div>
+          <Select value={newPaperDiscoveryPath} onValueChange={setNewPaperDiscoveryPath}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DISCOVERY_PATH_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} placeholder="Discovery note" rows={3} />
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowEditPaperDialog(false)} type="button" variant="outline">Cancel</Button>
+            <Button onClick={handleSaveEditedPaper} type="button">Save Changes</Button>
+          </div>
+        </div>
+      </ModalOverlay>
+
       {/* Add Search Record Dialog */}
       <ModalOverlay
         open={showSearchDialog}
@@ -1356,6 +1886,102 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         </div>
       </ModalOverlay>
 
+      <ModalOverlay
+        open={showEditSearchDialog}
+        onClose={() => {
+          setShowEditSearchDialog(false);
+          setEditingSearchRecordId(null);
+        }}
+        title="Edit Search Record"
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-slate-600">Academic Database</label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[...DATABASE_OPTIONS, "Other" as const].map((db) => (
+                <label
+                  key={db}
+                  className={cn(
+                    "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
+                    srDatabase === db
+                      ? "border-[#1E3A5F] bg-blue-50/50"
+                      : "border-slate-200 hover:border-slate-300"
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="edit-sr-database"
+                    checked={srDatabase === db}
+                    onChange={() => setSrDatabase(db)}
+                    className="accent-[#1E3A5F]"
+                  />
+                  {db}
+                </label>
+              ))}
+            </div>
+            {srDatabase === "Other" && (
+              <Input
+                value={srCustomDb}
+                onChange={(e) => setSrCustomDb(e.target.value)}
+                placeholder="Enter database name..."
+                className="text-xs h-7 mt-1"
+              />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-slate-600">Boolean Search String</label>
+            <Textarea
+              value={srBooleanString}
+              onChange={(e) => setSrBooleanString(e.target.value)}
+              rows={3}
+              className="text-xs font-mono"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Total Results</label>
+              <Input
+                type="number"
+                value={srTotalResults}
+                onChange={(e) => setSrTotalResults(e.target.value)}
+                className="text-xs h-8"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Relevant Results</label>
+              <Input
+                type="number"
+                value={srRelevantResults}
+                onChange={(e) => setSrRelevantResults(e.target.value)}
+                className="text-xs h-8"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+              onClick={handleSaveEditedSearchRecord}
+            >
+              <Save className="w-3 h-3 mr-1" />
+              Save Changes
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-xs"
+              onClick={() => {
+                setShowEditSearchDialog(false);
+                setEditingSearchRecordId(null);
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </ModalOverlay>
+
       {/* Mark Relevance Dialog */}
       <ModalOverlay
         open={showRelevanceDialog}
@@ -1498,10 +2124,83 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       {/* Add Candidate Paper Dialog */}
       <ModalOverlay
         open={showAddPaperDialog}
-        onClose={() => setShowAddPaperDialog(false)}
+        onClose={() => {
+          setShowAddPaperDialog(false);
+          setNewPaperDoiUrl("");
+          setDoiFetchError(null);
+          setNewPaperSearchRecordId("");
+        }}
         title="Add Candidate Paper"
       >
         <div className="space-y-3">
+          {/* DOI / URL Auto-extract */}
+          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+            <label className="text-xs font-semibold text-slate-700">通过 DOI 或 URL 自动提取信息</label>
+            <div className="flex gap-2">
+              <Input
+                value={newPaperDoiUrl}
+                onChange={(e) => { setNewPaperDoiUrl(e.target.value); setDoiFetchError(null); }}
+                placeholder="例如：10.1145/1234567 或 https://doi.org/10.xxxx/xxxx"
+                className="text-xs h-8 flex-1"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleFetchByDoiUrl(); } }}
+              />
+              <Button
+                size="sm"
+                className="h-8 text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white shrink-0"
+                onClick={() => void handleFetchByDoiUrl()}
+                disabled={doiFetching || !newPaperDoiUrl.trim()}
+              >
+                {doiFetching ? (
+                  <span className="flex items-center gap-1"><span className="animate-spin">⟳</span> 提取中</span>
+                ) : (
+                  <span className="flex items-center gap-1"><Sparkles className="w-3 h-3" /> 提取信息</span>
+                )}
+              </Button>
+            </div>
+            {doiFetchError && (
+              <p className="text-xs text-red-500">{doiFetchError}</p>
+            )}
+          </div>
+
+          {/* Source Search Record */}
+          {searchRecords.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">来自 Search Log（可选）</label>
+              <Select
+                value={newPaperSearchRecordId || "__none__"}
+                onValueChange={(v) => {
+                  const id = v === "__none__" ? "" : v;
+                  setNewPaperSearchRecordId(id);
+                  if (id) {
+                    const rec = searchRecords.find((r) => r.id === id);
+                    if (rec) setNewPaperDiscoveryPath(rec.database);
+                  }
+                }}
+              >
+                <SelectTrigger className="text-xs h-8">
+                  <SelectValue placeholder="选择对应的 Search Record..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— 不关联 Search Record —</SelectItem>
+                  {searchRecords.map((rec) => (
+                    <SelectItem key={rec.id} value={rec.id}>
+                      <span className="font-medium">{rec.database}</span>
+                      <span className="text-slate-400 ml-2 text-[10px]">{rec.date} · {rec.results} results</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {newPaperSearchRecordId && (() => {
+                const rec = searchRecords.find((r) => r.id === newPaperSearchRecordId);
+                return rec ? (
+                  <p className="text-[10px] text-slate-500 font-mono bg-slate-50 p-1.5 rounded border">
+                    {rec.query}
+                  </p>
+                ) : null;
+              })()}
+            </div>
+          )}
+
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate-600">Title *</label>
             <Input
@@ -1595,6 +2294,66 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         </div>
       </ModalOverlay>
 
+      <ModalOverlay
+        open={showAddMultiplePaperDialog}
+        onClose={() => {
+          setShowAddMultiplePaperDialog(false);
+          setBulkDoiInput("");
+          setBulkSearchRecordId("");
+        }}
+        title="Add Multiple Candidate Papers"
+      >
+        <div className="space-y-3">
+          {searchRecords.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">关联 Search Record（可选）</label>
+              <Select value={bulkSearchRecordId || "__none__"} onValueChange={(v) => setBulkSearchRecordId(v === "__none__" ? "" : v)}>
+                <SelectTrigger className="text-xs h-8">
+                  <SelectValue placeholder="选择对应的 Search Record..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— 不关联 Search Record —</SelectItem>
+                  {searchRecords.map((rec) => (
+                    <SelectItem key={rec.id} value={rec.id}>
+                      {rec.database} · {rec.date}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-600">DOI 链接（每行一个）</label>
+            <Textarea
+              value={bulkDoiInput}
+              onChange={(e) => setBulkDoiInput(e.target.value)}
+              rows={8}
+              placeholder={"https://doi.org/10.xxxx/xxxx\n10.1145/1234567\nhttps://example.org/path/10.1000/xyz"}
+              className="text-xs font-mono"
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+              onClick={() => void handleAddMultipleCandidatePapers()}
+              disabled={bulkImporting || !bulkDoiInput.trim()}
+            >
+              <Sparkles className="w-3 h-3 mr-1" />
+              {bulkImporting ? "Importing..." : "Import All"}
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-xs"
+              onClick={() => setShowAddMultiplePaperDialog(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </ModalOverlay>
+
       {/* Discovery Path Dialog */}
       <ModalOverlay
         open={showDiscoveryDialog}
@@ -1659,18 +2418,6 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         </div>
       </ModalOverlay>
 
-      <div className="flex gap-2">
-        <Button variant="outline">
-          <Save className="w-4 h-4 mr-2" />
-          Save Artifacts
-        </Button>
-        <Link to={`/workflow/${projectId}/3`}>
-          <Button className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white">
-            Move to Reading
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
-      </div>
     </div>
   );
 }
@@ -2950,21 +3697,8 @@ function ExpandWorkspace() {
 // Step 5: Visualize Workspace
 // ============================================================
 function VisualizeWorkspace() {
-  const [vizSection, setVizSection] = useState<"workspace" | "research" | "viztools">("workspace");
+  const [vizSection, setVizSection] = useState<"research" | "viztools">("research");
   const [researchSubTab, setResearchSubTab] = useState<"papers" | "files" | "ai-summary" | "perm-notes" | "synthesis">("papers");
-
-  // Workspace stats
-  const workspaceStats = {
-    projects: 3,
-    totalArtifacts: DUMMY_ARTIFACTS.length,
-    annotations: DUMMY_ARTIFACTS.filter((a) => a.type === "highlight").length + 3,
-    litNotes: DUMMY_ARTIFACTS.filter((a) => a.type === "literature-note").length + 2,
-    permNotes: DUMMY_ARTIFACTS.filter((a) => a.type === "permanent-note").length + 1,
-    drafts: DUMMY_ARTIFACTS.filter((a) => a.type === "rq-draft").length,
-    purposeCards: DUMMY_ARTIFACTS.filter((a) => a.type === "purpose").length + 1,
-    onlineHours: 24.5,
-    totalWords: 12840,
-  };
 
   // Research content stats
   const papers = DUMMY_PAPERS;
@@ -3133,15 +3867,6 @@ function VisualizeWorkspace() {
     }, 1500);
   };
 
-  const artifactBreakdown = [
-    { label: "Annotations/Highlights", count: workspaceStats.annotations, color: "bg-yellow-400" },
-    { label: "Literature Notes", count: workspaceStats.litNotes, color: "bg-blue-400" },
-    { label: "Permanent Notes", count: workspaceStats.permNotes, color: "bg-rose-400" },
-    { label: "Drafts", count: workspaceStats.drafts, color: "bg-emerald-400" },
-    { label: "Purpose Cards", count: workspaceStats.purposeCards, color: "bg-purple-400" },
-  ];
-  const maxArtifactCount = Math.max(...artifactBreakdown.map((a) => a.count), 1);
-
   // Visualization Tools state
   interface VizTool {
     id: string;
@@ -3199,15 +3924,6 @@ function VisualizeWorkspace() {
           <div className="flex gap-2">
             <Button
               size="sm"
-              variant={vizSection === "workspace" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "workspace" && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white")}
-              onClick={() => setVizSection("workspace")}
-            >
-              <BarChart3 className="w-3 h-3 mr-1" />
-              Workspace Analytics
-            </Button>
-            <Button
-              size="sm"
               variant={vizSection === "research" ? "default" : "outline"}
               className={cn("text-xs", vizSection === "research" && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white")}
               onClick={() => setVizSection("research")}
@@ -3227,52 +3943,6 @@ function VisualizeWorkspace() {
           </div>
         </CardContent>
       </Card>
-
-      {/* ===== WORKSPACE ANALYTICS ===== */}
-      {vizSection === "workspace" && (
-        <div className="space-y-5">
-          {/* Overview Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: "Projects", value: workspaceStats.projects, icon: "📁" },
-              { label: "Total Artifacts", value: workspaceStats.totalArtifacts, icon: "📦" },
-              { label: "Online Hours", value: `${workspaceStats.onlineHours}h`, icon: "⏱️" },
-              { label: "Total Words", value: workspaceStats.totalWords.toLocaleString(), icon: "✍️" },
-            ].map((stat) => (
-              <Card key={stat.label} className="border-slate-200">
-                <CardContent className="p-4 text-center">
-                  <span className="text-2xl block mb-1">{stat.icon}</span>
-                  <p className="text-xl font-bold text-slate-800">{stat.value}</p>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider">{stat.label}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Artifact Breakdown */}
-          <Card className="border-slate-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">Artifact Breakdown by Type</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {artifactBreakdown.map((item) => (
-                  <div key={item.label} className="flex items-center gap-3">
-                    <span className="text-xs text-slate-600 w-36 shrink-0">{item.label}</span>
-                    <div className="flex-1 bg-slate-100 rounded-full h-5 overflow-hidden">
-                      <div
-                        className={cn("h-full rounded-full transition-all", item.color)}
-                        style={{ width: `${(item.count / maxArtifactCount) * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-semibold text-slate-700 w-8 text-right">{item.count}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* ===== RESEARCH CONTENT with Sub-Tabs ===== */}
       {vizSection === "research" && (
