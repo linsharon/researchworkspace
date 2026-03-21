@@ -3,7 +3,7 @@
  * Notes list, Highlighted text editor, and AI Chat functionality
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,7 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, Trash2, HelpCircle, BookOpen, Lightbulb, Send, X } from "lucide-react";
+import { Plus, Trash2, HelpCircle, Pencil } from "lucide-react";
 import { noteAPI } from "@/lib/manuscript-api";
 import type { Paper, Note } from "@/lib/manuscript-api";
 
@@ -38,9 +38,6 @@ interface PaperToolsAreaProps {
   projectId?: string;
   highlightedText?: string;
   onChanged: () => void;
-  aiChatVisible?: boolean;
-  onAiChatVisibleChange?: (visible: boolean) => void;
-  aiChatInitialText?: string;
 }
 
 export default function PaperToolsArea({
@@ -48,14 +45,11 @@ export default function PaperToolsArea({
   projectId = "proj-1",
   highlightedText = "",
   onChanged,
-  aiChatVisible = false,
-  onAiChatVisibleChange,
-  aiChatInitialText = "",
 }: PaperToolsAreaProps) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"notes" | "highlight" | "chat">("notes");
+  const [activeTab, setActiveTab] = useState<"notes" | "highlight">("notes");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedCitations, setSelectedCitations] = useState<string[]>([]);
   const [noteType, setNoteType] = useState<"literature-note" | "permanent-note">(
@@ -72,11 +66,17 @@ export default function PaperToolsArea({
   const [showHighlightNote, setShowHighlightNote] = useState(false);
   const [highlightNoteTitle, setHighlightNoteTitle] = useState("");
   const [highlightNoteContent, setHighlightNoteContent] = useState("");
-  
-  // For AI Chat
-  const [chatMessages, setChatMessages] = useState<{role: string, content: string}[]>([]);
-  const [chatInput, setChatInput] = useState(aiChatInitialText);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // For editing existing notes
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    description: "",
+    content: "",
+    page: "",
+    keywords: "",
+    note_type: "literature-note" as "literature-note" | "permanent-note",
+  });
 
   // Show highlight tab when text is selected
   useEffect(() => {
@@ -85,19 +85,6 @@ export default function PaperToolsArea({
       setHighlightNoteContent("");
     }
   }, [highlightedText]);
-
-  // Update chat input when initial text changes
-  useEffect(() => {
-    if (aiChatInitialText && aiChatVisible) {
-      setChatInput(aiChatInitialText);
-      setActiveTab("chat");
-    }
-  }, [aiChatInitialText, aiChatVisible]);
-
-  // Scroll to bottom of chat
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
 
   useEffect(() => {
     loadNotes();
@@ -189,21 +176,37 @@ export default function PaperToolsArea({
     }
   };
 
-  const handleSendChat = () => {
-    if (!chatInput.trim()) return;
-    
-    // Add user message
-    setChatMessages([...chatMessages, { role: "user", content: chatInput }]);
-    
-    // Simulate AI response
-    setTimeout(() => {
-      setChatMessages(prev => [...prev, {
-        role: "assistant",
-        content: "This is a demo response. In production, this would be connected to your AI assistant service."
-      }]);
-    }, 500);
-    
-    setChatInput("");
+  const openEditNote = (note: Note) => {
+    setEditingNote(note);
+    setEditForm({
+      title: note.title,
+      description: note.description || "",
+      content: note.content || "",
+      page: note.page !== undefined ? String(note.page) : "",
+      keywords: (note.keywords || []).join(", "),
+      note_type: note.note_type,
+    });
+  };
+
+  const handleEditNote = async () => {
+    if (!editingNote || !editForm.title.trim()) return;
+    try {
+      setNoteError(null);
+      const updated = await noteAPI.update(editingNote.id, {
+        title: editForm.title.trim(),
+        description: editForm.description.trim() || undefined,
+        content: editForm.content.trim() || undefined,
+        page: editForm.page ? parseInt(editForm.page) : undefined,
+        keywords: editForm.keywords.split(",").map((k) => k.trim()).filter(Boolean),
+        note_type: editForm.note_type,
+      });
+      setNotes(notes.map((n) => (n.id === updated.id ? updated : n)));
+      setEditingNote(null);
+      onChanged();
+    } catch (error) {
+      console.error("Failed to update note:", error);
+      setNoteError("Failed to update note. Please try again.");
+    }
   };
 
   const resetForm = () => {
@@ -244,16 +247,6 @@ export default function PaperToolsArea({
               Highlight
             </button>
           )}
-          <button
-            onClick={() => setActiveTab("chat")}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === "chat"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            AI Chat
-          </button>
         </div>
       </div>
 
@@ -421,12 +414,22 @@ export default function PaperToolsArea({
                             )}
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleDeleteNote(note.id)}
-                          className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                        <div className="flex gap-1 flex-shrink-0">
+                          <button
+                            onClick={() => openEditNote(note)}
+                            className="text-gray-400 hover:text-blue-500 transition-colors"
+                            title="Edit note"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteNote(note.id)}
+                            className="text-gray-400 hover:text-red-500 transition-colors"
+                            title="Delete note"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
                     </CardHeader>
                     {note.description && (
@@ -511,74 +514,89 @@ export default function PaperToolsArea({
               <p className="font-semibold mb-2">Highlight tools used:</p>
               <ul className="list-disc list-inside space-y-1 text-xs">
                 <li>✓ Add Note - Done! (above)</li>
-                <li>✓ Translate - Check AI Chat tab</li>
-                <li>✓ Explain - Send to AI Chat</li>
+                <li>✓ Translate - Use AI Assistant (bottom-right)</li>
+                <li>✓ Explain - Use AI Assistant (bottom-right)</li>
                 <li>✓ Save Concept - Done via toolbar</li>
               </ul>
             </div>
           </div>
         )}
+      </div>
 
-        {/* AI Chat Tab */}
-        {activeTab === "chat" && (
-          <div className="flex flex-col h-full">
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-auto p-3 space-y-3">
-              {chatMessages.length === 0 && !chatInput ? (
-                <div className="text-center py-6 text-gray-500">
-                  <Lightbulb className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-xs">AI Chat initialized</p>
-                  <p className="text-xs mt-1">Paste text or ask questions</p>
-                </div>
-              ) : (
-                <>
-                  {chatMessages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-xs px-3 py-2 rounded-lg text-sm ${
-                          msg.role === "user"
-                            ? "bg-blue-500 text-white"
-                            : "bg-gray-200 text-gray-900"
-                        }`}
-                      >
-                        {msg.content}
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={messagesEndRef} />
-                </>
-              )}
+      {/* Edit Note Dialog */}
+      <Dialog open={!!editingNote} onOpenChange={(open) => { if (!open) setEditingNote(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Note</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-semibold">Title *</label>
+              <Input
+                placeholder="Note title"
+                value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                className="mt-1"
+              />
             </div>
-
-            {/* Chat Input */}
-            <div className="border-t p-3 flex-shrink-0 space-y-2">
-              <div className="flex gap-2">
+            <div>
+              <label className="text-sm font-semibold">Description</label>
+              <Textarea
+                placeholder="Note description / quote"
+                value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                className="mt-1 h-16 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">Content / Comment</label>
+              <Textarea
+                placeholder="Your analysis or thoughts"
+                value={editForm.content}
+                onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
+                className="mt-1 h-16 text-xs"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-semibold">Page</label>
                 <Input
-                  placeholder="Ask AI..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleSendChat()}
-                  className="text-sm h-8"
+                  type="number"
+                  placeholder="Page number"
+                  value={editForm.page}
+                  onChange={(e) => setEditForm({ ...editForm, page: e.target.value })}
+                  className="mt-1 text-sm"
                 />
-                <Button
-                  size="sm"
-                  onClick={handleSendChat}
-                  disabled={!chatInput.trim()}
-                  className="px-2"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
               </div>
-              <p className="text-xs text-gray-500">
-                💡 Tip: Text from "Explain" tool will be auto-pasted here
-              </p>
+              <div>
+                <label className="text-sm font-semibold">Keywords</label>
+                <Input
+                  placeholder="Comma separated"
+                  value={editForm.keywords}
+                  onChange={(e) => setEditForm({ ...editForm, keywords: e.target.value })}
+                  className="mt-1 text-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-semibold">Note Type</label>
+              <Select value={editForm.note_type} onValueChange={(v: any) => setEditForm({ ...editForm, note_type: v })}>
+                <SelectTrigger className="text-sm mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="literature-note">Literature Note</SelectItem>
+                  <SelectItem value="permanent-note">Permanent Note</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" size="sm" onClick={() => setEditingNote(null)}>Cancel</Button>
+              <Button size="sm" onClick={handleEditNote} disabled={!editForm.title.trim()}>Save Changes</Button>
             </div>
           </div>
-        )}
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

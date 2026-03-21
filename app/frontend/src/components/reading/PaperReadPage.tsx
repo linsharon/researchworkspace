@@ -1,14 +1,16 @@
 /**
  * Paper Reading Page - Main component
- * 3:1 layout: 2/3 for reading area, 1/3 for tools area (collapsible)
+ * PDF-first layout: large reading area + collapsible notes panel + floating AI chat
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ChevronRight, ChevronLeft } from "lucide-react";
+import { ArrowLeft, ChevronRight, ChevronLeft, Bot, X, Minimize2, Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import { paperAPI } from "@/lib/manuscript-api";
 import type { Paper } from "@/lib/manuscript-api";
 import {
@@ -34,8 +36,35 @@ export default function PaperReadPage() {
   const [toolsExpanded, setToolsExpanded] = useState(true);
   const [highlightedText, setHighlightedText] = useState<string>("");
   const [highlights, setHighlights] = useState<any[]>([]);
-  const [aiChatVisible, setAiChatVisible] = useState(false);
-  const [aiChatText, setAiChatText] = useState<string>("");
+
+  // Floating AI chat
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ id: string; role: "user" | "assistant"; content: string }>>([
+    { id: "welcome", role: "assistant", content: "Hello! I'm the LitFlow AI Assistant. Ask me anything about this paper or your research." },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showChat && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatMessages, showChat]);
+
+  const handleSendMessage = () => {
+    const trimmed = chatInput.trim();
+    if (!trimmed) return;
+    const userMsg = { id: `msg-${Date.now()}`, role: "user" as const, content: trimmed };
+    setChatMessages((prev) => [...prev, userMsg]);
+    setChatInput("");
+    setTimeout(() => {
+      setChatMessages((prev) => [...prev, {
+        id: `msg-${Date.now()}-ai`,
+        role: "assistant" as const,
+        content: "Thank you for your question! In a production environment I would analyze the paper and respond accordingly. For now, try refining your research question or exploring related concepts.",
+      }]);
+    }, 1000);
+  };
 
   useEffect(() => {
     loadPaper();
@@ -164,8 +193,8 @@ export default function PaperReadPage() {
 
       {/* Main Content - reader-first layout */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Left: Reading Area (2/3 - 66.67%) */}
-        <div className="flex-2 border-r overflow-auto flex flex-col">
+        {/* Left: Reading Area - takes all remaining space */}
+        <div className="flex-1 border-r overflow-auto flex flex-col min-w-0">
           <PaperReadingArea
             paper={paper}
             projectId={projectId}
@@ -177,14 +206,14 @@ export default function PaperReadPage() {
             onNoteCreated={() => loadPaper()}
             onConceptCreated={() => loadPaper()}
             onAskAI={(text) => {
-              setAiChatText(text);
-              setAiChatVisible(true);
+              setChatInput(text);
+              setShowChat(true);
             }}
           />
         </div>
 
-        {/* Right: Tools Area - narrower drawer */}
-        <div className={`transition-all duration-300 overflow-hidden border-l bg-white flex flex-col ${toolsExpanded ? 'w-[360px]' : 'w-12'}`}>
+        {/* Right: Notes panel - collapsible */}
+        <div className={`transition-all duration-300 overflow-hidden border-l bg-white flex flex-col ${toolsExpanded ? 'w-[300px]' : 'w-12'}`}>
           {/* Toggle Button */}
           <div className="flex-shrink-0 h-12 border-b flex items-center justify-start px-2">
             <Button
@@ -210,9 +239,6 @@ export default function PaperReadPage() {
                 projectId={projectId}
                 highlightedText={highlightedText}
                 onChanged={() => setHasChanged(true)}
-                aiChatVisible={aiChatVisible}
-                onAiChatVisibleChange={setAiChatVisible}
-                aiChatInitialText={aiChatText}
               />
             </div>
           )}
@@ -247,6 +273,96 @@ export default function PaperReadPage() {
           </div>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Floating AI Assistant */}
+      {showChat && (
+        <div className="fixed bottom-20 right-5 z-50 w-[380px] max-h-[520px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
+          {/* Chat Header */}
+          <div className="flex items-center justify-between px-4 py-3 bg-[#1E3A5F] text-white shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                <Bot className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">AI Assistant</p>
+                <p className="text-[10px] text-white/60">LitFlow Literature Review</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowChat(false)}
+              className="w-7 h-7 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
+            >
+              <Minimize2 className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Chat Messages */}
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="p-4 space-y-3">
+              {chatMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}
+                >
+                  <div
+                    className={cn(
+                      "max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed",
+                      msg.role === "user"
+                        ? "bg-[#1E3A5F] text-white rounded-br-md"
+                        : "bg-slate-100 text-slate-700 rounded-bl-md"
+                    )}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+          </ScrollArea>
+
+          {/* Chat Input */}
+          <div className="p-3 border-t border-slate-200 shrink-0 bg-white">
+            <div className="flex items-center gap-2">
+              <Input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Ask about this paper..."
+                className="text-sm h-9 rounded-full px-4 border-slate-200 focus-visible:ring-[#1E3A5F]"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSendMessage(); } }}
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={!chatInput.trim()}
+                className={cn(
+                  "w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all",
+                  chatInput.trim() ? "bg-[#1E3A5F] text-white hover:bg-[#162d4a]" : "bg-slate-100 text-slate-300 cursor-not-allowed"
+                )}
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Chat Button */}
+      <button
+        onClick={() => setShowChat(!showChat)}
+        className={cn(
+          "fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200",
+          showChat ? "bg-slate-600 hover:bg-slate-700" : "bg-[#1E3A5F] hover:bg-[#162d4a] hover:scale-105"
+        )}
+        title="AI Assistant"
+      >
+        {showChat ? (
+          <X className="w-6 h-6 text-white" />
+        ) : (
+          <>
+            <Bot className="w-6 h-6 text-white" />
+            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-white" />
+          </>
+        )}
+      </button>
     </div>
   );
 }
