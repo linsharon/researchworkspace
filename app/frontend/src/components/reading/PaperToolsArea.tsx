@@ -1,9 +1,9 @@
 /**
  * Paper Tools Area - Right side
- * Notes list, Highlighted text editor, and AI Chat functionality
+ * Notes list + Highlights list + AI-related forms
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,8 +29,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Trash2, Pencil } from "lucide-react";
-import { noteAPI } from "@/lib/manuscript-api";
-import type { Paper, Note } from "@/lib/manuscript-api";
+import { highlightAPI, noteAPI } from "@/lib/manuscript-api";
+import type { Highlight, Paper, Note } from "@/lib/manuscript-api";
 import { LiteratureNoteForm } from "./LiteratureNoteForm";
 import type { LiteratureNote } from "./LiteratureNoteForm";
 import { PermanentNoteForm } from "./PermanentNoteForm";
@@ -39,28 +39,45 @@ import type { NoteOption, PermanentNote } from "./PermanentNoteForm";
 interface PaperToolsAreaProps {
   paper: Paper;
   projectId?: string;
-  highlightedText?: string;
+  highlightPulse?: number;
   onChanged: () => void;
+}
+
+const NOTES_UPDATED_EVENT = "notes-updated";
+const HIGHLIGHTS_UPDATED_EVENT = "highlights-updated";
+const HIGHLIGHT_SUMMARY_FORM_TYPE = "HighlightSummaryNote";
+const HIGHLIGHT_SUMMARY_TITLE = "Highlight Note";
+
+function formatHighlightDate(value: string) {
+  return value.includes("T") ? value.split("T")[0] : value;
+}
+
+function parseFormType(content?: string): string | null {
+  if (!content) return null;
+  try {
+    const parsed = JSON.parse(content);
+    return typeof parsed?.formType === "string" ? parsed.formType : null;
+  } catch {
+    return null;
+  }
 }
 
 export default function PaperToolsArea({
   paper,
   projectId = "proj-1",
-  highlightedText = "",
+  highlightPulse = 0,
   onChanged,
 }: PaperToolsAreaProps) {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
+  const [highlightsLoading, setHighlightsLoading] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"notes" | "highlight">("notes");
+  const [highlightError, setHighlightError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"notes" | "highlights">("notes");
   const [showAddLiteratureDialog, setShowAddLiteratureDialog] = useState(false);
   const [showAddPermanentDialog, setShowAddPermanentDialog] = useState(false);
   const [projectNotes, setProjectNotes] = useState<Note[]>([]);
-  
-  // For highlighted text note editing
-  const [showHighlightNote, setShowHighlightNote] = useState(false);
-  const [highlightNoteTitle, setHighlightNoteTitle] = useState("");
-  const [highlightNoteContent, setHighlightNoteContent] = useState("");
 
   // For editing existing notes
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -73,19 +90,9 @@ export default function PaperToolsArea({
     note_type: "literature-note" as "literature-note" | "permanent-note",
   });
 
-  // Show highlight tab when text is selected
-  useEffect(() => {
-    if (highlightedText) {
-      setActiveTab("highlight");
-      setHighlightNoteContent("");
-    }
-  }, [highlightedText]);
+  const syncingSummaryRef = useRef(false);
 
-  useEffect(() => {
-    loadNotes();
-  }, [paper.id]);
-
-  const loadNotes = async () => {
+  const loadNotes = useCallback(async () => {
     try {
       setNotesLoading(true);
       setNoteError(null);
@@ -101,37 +108,166 @@ export default function PaperToolsArea({
     } finally {
       setNotesLoading(false);
     }
-  };
+  }, [paper.id, projectId]);
 
-  const handleAddHighlightNote = async () => {
-    if (!highlightNoteTitle.trim()) return;
-    
+  const loadHighlights = useCallback(async () => {
     try {
-      setNoteError(null);
-      await noteAPI.create({
-        paper_id: paper.id,
-        project_id: projectId,
-        title: highlightNoteTitle.trim(),
-        description: highlightedText,
-        content: highlightNoteContent.trim() || undefined,
-        page: undefined,
-        keywords: [],
-        citations: [],
-        note_type: "literature-note",
+      setHighlightsLoading(true);
+      setHighlightError(null);
+      const saved = await highlightAPI.list(paper.id);
+      const sorted = [...saved].sort((a, b) => {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       });
-
-      await loadNotes();
-      setShowHighlightNote(false);
-      setHighlightNoteTitle("");
-      setHighlightNoteContent("");
-      setActiveTab("notes");
-      onChanged();
-      window.dispatchEvent(new CustomEvent("notes-updated"));
+      setHighlights(sorted);
     } catch (error) {
-      console.error("Failed to create note:", error);
-      setNoteError("Failed to save note from highlight. Please try again.");
+      console.error("Failed to load highlights:", error);
+      setHighlightError("Failed to load highlights.");
+    } finally {
+      setHighlightsLoading(false);
     }
-  };
+  }, [paper.id]);
+
+  useEffect(() => {
+    loadNotes();
+    loadHighlights();
+  }, [loadNotes, loadHighlights]);
+
+  useEffect(() => {
+    const handleNotesUpdated = () => {
+      loadNotes();
+    };
+
+    const handleHighlightsUpdated = () => {
+      loadHighlights();
+      setActiveTab("highlights");
+    };
+
+    window.addEventListener(NOTES_UPDATED_EVENT, handleNotesUpdated);
+    window.addEventListener(HIGHLIGHTS_UPDATED_EVENT, handleHighlightsUpdated);
+    return () => {
+      window.removeEventListener(NOTES_UPDATED_EVENT, handleNotesUpdated);
+      window.removeEventListener(HIGHLIGHTS_UPDATED_EVENT, handleHighlightsUpdated);
+    };
+  }, [loadNotes, loadHighlights]);
+
+  useEffect(() => {
+    if (highlightPulse > 0) {
+      setActiveTab("highlights");
+      loadHighlights();
+    }
+  }, [highlightPulse, loadHighlights]);
+
+  const findHighlightSummaryNote = useCallback(
+    (items: Note[]) => {
+      return items.find((note) => {
+        if (note.title === HIGHLIGHT_SUMMARY_TITLE) return true;
+        if ((note.keywords || []).includes("highlight-summary")) return true;
+        return parseFormType(note.content) === HIGHLIGHT_SUMMARY_FORM_TYPE;
+      });
+    },
+    []
+  );
+
+  const syncHighlightSummaryNote = useCallback(async () => {
+    if (syncingSummaryRef.current || notesLoading || highlightsLoading) {
+      return;
+    }
+
+    const existingSummary = findHighlightSummaryNote(notes);
+
+    if (highlights.length === 0) {
+      if (existingSummary) {
+        syncingSummaryRef.current = true;
+        try {
+          await noteAPI.delete(existingSummary.id);
+          window.dispatchEvent(new CustomEvent(NOTES_UPDATED_EVENT));
+        } catch (error) {
+          console.error("Failed to remove highlight summary note:", error);
+        } finally {
+          syncingSummaryRef.current = false;
+        }
+      }
+      return;
+    }
+
+    const summaryLines = highlights.map((item, index) => {
+      const pageText = item.page ? `p.${item.page}` : "p.-";
+      return `${index + 1}. [${pageText}] ${item.text}`;
+    });
+
+    const summaryDescription = `${highlights.length} highlights from ${paper.title}`;
+    const summaryPayload = {
+      formType: HIGHLIGHT_SUMMARY_FORM_TYPE,
+      title: HIGHLIGHT_SUMMARY_TITLE,
+      paperId: paper.id,
+      highlightCount: highlights.length,
+      items: highlights.map((item) => ({
+        id: item.id,
+        text: item.text,
+        page: item.page,
+        color: item.color,
+        created_at: item.created_at,
+      })),
+      mergedText: summaryLines.join("\n\n"),
+    };
+    const summaryContent = JSON.stringify(summaryPayload, null, 2);
+    const summaryPage = highlights.find((item) => typeof item.page === "number")?.page;
+
+    syncingSummaryRef.current = true;
+    try {
+      if (existingSummary) {
+        const existingKeywords = existingSummary.keywords || [];
+        const nextKeywords = Array.from(new Set(["highlights", "highlight-summary", ...existingKeywords]));
+        const needsUpdate =
+          existingSummary.description !== summaryDescription ||
+          existingSummary.content !== summaryContent ||
+          existingSummary.page !== summaryPage ||
+          JSON.stringify(existingKeywords) !== JSON.stringify(nextKeywords);
+
+        if (needsUpdate) {
+          await noteAPI.update(existingSummary.id, {
+            title: HIGHLIGHT_SUMMARY_TITLE,
+            description: summaryDescription,
+            content: summaryContent,
+            page: summaryPage,
+            keywords: nextKeywords,
+            note_type: "literature-note",
+          });
+          window.dispatchEvent(new CustomEvent(NOTES_UPDATED_EVENT));
+        }
+      } else {
+        await noteAPI.create({
+          paper_id: paper.id,
+          project_id: projectId,
+          title: HIGHLIGHT_SUMMARY_TITLE,
+          description: summaryDescription,
+          content: summaryContent,
+          page: summaryPage,
+          keywords: ["highlights", "highlight-summary"],
+          citations: [],
+          note_type: "literature-note",
+        });
+        window.dispatchEvent(new CustomEvent(NOTES_UPDATED_EVENT));
+      }
+    } catch (error) {
+      console.error("Failed to sync highlight summary note:", error);
+    } finally {
+      syncingSummaryRef.current = false;
+    }
+  }, [
+    findHighlightSummaryNote,
+    highlights,
+    highlightsLoading,
+    notes,
+    notesLoading,
+    paper.id,
+    paper.title,
+    projectId,
+  ]);
+
+  useEffect(() => {
+    syncHighlightSummaryNote();
+  }, [syncHighlightSummaryNote]);
 
   const handleAddLiteratureFormNote = async (note: LiteratureNote) => {
     try {
@@ -164,7 +300,7 @@ export default function PaperToolsArea({
       setShowAddLiteratureDialog(false);
       setActiveTab("notes");
       onChanged();
-      window.dispatchEvent(new CustomEvent("notes-updated"));
+      window.dispatchEvent(new CustomEvent(NOTES_UPDATED_EVENT));
     } catch (error) {
       console.error("Failed to create literature note:", error);
       setNoteError("Failed to save literature note. Please try again.");
@@ -177,7 +313,7 @@ export default function PaperToolsArea({
 
       const citationIds = Array.from(
         new Set(
-          [...note.links.map(link => link.targetNoteId), note.evidenceLiteratureNoteId].filter(Boolean)
+          [...note.links.map((link) => link.targetNoteId), note.evidenceLiteratureNoteId].filter(Boolean)
         )
       );
 
@@ -207,7 +343,7 @@ export default function PaperToolsArea({
       setShowAddPermanentDialog(false);
       setActiveTab("notes");
       onChanged();
-      window.dispatchEvent(new CustomEvent("notes-updated"));
+      window.dispatchEvent(new CustomEvent(NOTES_UPDATED_EVENT));
     } catch (error) {
       console.error("Failed to create permanent note:", error);
       setNoteError("Failed to save permanent note. Please try again.");
@@ -220,10 +356,23 @@ export default function PaperToolsArea({
       await noteAPI.delete(noteId);
       setNotes(notes.filter((n) => n.id !== noteId));
       onChanged();
-      window.dispatchEvent(new CustomEvent("notes-updated"));
+      window.dispatchEvent(new CustomEvent(NOTES_UPDATED_EVENT));
     } catch (error) {
       console.error("Failed to delete note:", error);
       setNoteError("Failed to delete note. Please try again.");
+    }
+  };
+
+  const handleDeleteHighlight = async (highlightId: string) => {
+    try {
+      setHighlightError(null);
+      await highlightAPI.delete(highlightId);
+      setHighlights((prev) => prev.filter((item) => item.id !== highlightId));
+      onChanged();
+      window.dispatchEvent(new CustomEvent(HIGHLIGHTS_UPDATED_EVENT));
+    } catch (error) {
+      console.error("Failed to delete highlight:", error);
+      setHighlightError("Failed to delete highlight. Please try again.");
     }
   };
 
@@ -254,7 +403,7 @@ export default function PaperToolsArea({
       setNotes(notes.map((n) => (n.id === updated.id ? updated : n)));
       setEditingNote(null);
       onChanged();
-      window.dispatchEvent(new CustomEvent("notes-updated"));
+      window.dispatchEvent(new CustomEvent(NOTES_UPDATED_EVENT));
     } catch (error) {
       console.error("Failed to update note:", error);
       setNoteError("Failed to update note. Please try again.");
@@ -288,18 +437,16 @@ export default function PaperToolsArea({
           >
             Notes ({notes.length})
           </button>
-          {highlightedText && (
-            <button
-              onClick={() => setActiveTab("highlight")}
-              className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-                activeTab === "highlight"
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Highlight
-            </button>
-          )}
+          <button
+            onClick={() => setActiveTab("highlights")}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === "highlights"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            Highlights ({highlights.length})
+          </button>
         </div>
       </div>
 
@@ -346,130 +493,106 @@ export default function PaperToolsArea({
                 </div>
               )}
               {notes.map((note) => (
-                  <Card key={note.id} className="hover:shadow-sm transition-shadow">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <CardTitle className="text-xs">{note.title}</CardTitle>
-                          <div className="flex gap-1 mt-1">
-                            <Badge
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {note.note_type === "literature-note" ? "Lit" : "Perm"}
+                <Card key={note.id} className="hover:shadow-sm transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-xs">{note.title}</CardTitle>
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          <Badge variant="secondary" className="text-xs">
+                            {note.note_type === "literature-note" ? "Lit" : "Perm"}
+                          </Badge>
+                          {note.page && (
+                            <Badge variant="outline" className="text-xs">
+                              p.{note.page}
                             </Badge>
-                            {note.page && (
-                              <Badge variant="outline" className="text-xs">
-                                p.{note.page}
+                          )}
+                          {(note.keywords || [])
+                            .filter((keyword) => keyword.toLowerCase() === "highlights")
+                            .map((keyword) => (
+                              <Badge
+                                key={`${note.id}-${keyword}`}
+                                variant="default"
+                                className="text-xs bg-amber-500 hover:bg-amber-500"
+                              >
+                                {keyword}
                               </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex gap-1 flex-shrink-0">
-                          <button
-                            onClick={() => openEditNote(note)}
-                            className="text-gray-400 hover:text-blue-500 transition-colors"
-                            title="Edit note"
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteNote(note.id)}
-                            className="text-gray-400 hover:text-red-500 transition-colors"
-                            title="Delete note"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                            ))}
                         </div>
                       </div>
-                    </CardHeader>
-                    {note.description && (
-                      <CardContent className="pb-2">
-                        <p className="text-xs text-gray-700 line-clamp-2">
-                          {note.description}
-                        </p>
-                      </CardContent>
-                    )}
-                  </Card>
-                ))}
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => openEditNote(note)}
+                          className="text-gray-400 hover:text-blue-500 transition-colors"
+                          title="Edit note"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteNote(note.id)}
+                          className="text-gray-400 hover:text-red-500 transition-colors"
+                          title="Delete note"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  {note.description && (
+                    <CardContent className="pb-2">
+                      <p className="text-xs text-gray-700 line-clamp-2">{note.description}</p>
+                    </CardContent>
+                  )}
+                </Card>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Highlight Tab */}
-        {activeTab === "highlight" && highlightedText && (
-          <div className="p-4 space-y-3 h-full overflow-auto">
-            {/* Selected Text Display */}
-            <div className="p-3 bg-blue-50 rounded-lg border-2 border-blue-200">
-              <p className="text-xs font-semibold text-blue-700 mb-2">Selected Text</p>
-              <p className="text-sm text-blue-900 italic line-clamp-4">"{highlightedText}"</p>
-            </div>
-
-            {/* Save as Note */}
-            <Dialog open={showHighlightNote} onOpenChange={setShowHighlightNote}>
-              <DialogTrigger asChild>
-                <Button className="w-full gap-2 h-8 text-sm">
-                  <Plus className="h-4 w-4" />
-                  Save as Note
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create Note from Highlight</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="p-3 bg-blue-50 rounded border border-blue-200">
-                    <p className="text-xs font-semibold text-blue-700 mb-1">Quote:</p>
-                    <p className="text-xs text-blue-900 italic">"{highlightedText}"</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold">Note Title *</label>
-                    <Input
-                      placeholder="Give this note a title"
-                      value={highlightNoteTitle}
-                      onChange={(e) => setHighlightNoteTitle(e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold">Your Comment</label>
-                    <Textarea
-                      placeholder="Add your thoughts or commentary..."
-                      value={highlightNoteContent}
-                      onChange={(e) => setHighlightNoteContent(e.target.value)}
-                      className="mt-1 h-16 text-sm"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowHighlightNote(false)}
+        {/* Highlights Tab */}
+        {activeTab === "highlights" && (
+          <div className="p-3 space-y-2">
+            {highlightError && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+                {highlightError}
+              </div>
+            )}
+            {highlightsLoading && (
+              <div className="rounded-md bg-slate-100 border border-slate-200 p-2 text-xs text-slate-600">
+                Loading highlights...
+              </div>
+            )}
+            {!highlightsLoading && highlights.length === 0 && !highlightError && (
+              <div className="rounded-md bg-slate-100 border border-slate-200 p-2 text-xs text-slate-600">
+                No highlights yet. Select text in PDF and click Highlight.
+              </div>
+            )}
+            {highlights.map((item) => (
+              <Card key={item.id} className="hover:shadow-sm transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap gap-1 mb-1">
+                        <Badge variant="outline" className="text-[10px]">
+                          {item.page ? `p.${item.page}` : "p.-"}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {formatHighlightDate(item.created_at)}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-slate-700 line-clamp-5">{item.text}</p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteHighlight(item.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors"
+                      title="Delete highlight"
                     >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleAddHighlightNote}
-                      disabled={!highlightNoteTitle.trim()}
-                    >
-                      Save Note
-                    </Button>
+                      <Trash2 className="h-3 w-3" />
+                    </button>
                   </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            {/* Quick Actions */}
-            <div className="text-xs text-gray-600 p-3 bg-gray-100 rounded-lg">
-              <p className="font-semibold mb-2">Highlight tools used:</p>
-              <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>✓ Add Note - Done! (above)</li>
-                <li>✓ Translate - Use AI Assistant (bottom-right)</li>
-                <li>✓ Explain - Use AI Assistant (bottom-right)</li>
-                <li>✓ Save Concept - Done via toolbar</li>
-              </ul>
-            </div>
+                </CardHeader>
+              </Card>
+            ))}
           </div>
         )}
       </div>
@@ -499,7 +622,12 @@ export default function PaperToolsArea({
       </Dialog>
 
       {/* Edit Note Dialog */}
-      <Dialog open={!!editingNote} onOpenChange={(open) => { if (!open) setEditingNote(null); }}>
+      <Dialog
+        open={!!editingNote}
+        onOpenChange={(open) => {
+          if (!open) setEditingNote(null);
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Note</DialogTitle>
@@ -555,7 +683,10 @@ export default function PaperToolsArea({
             </div>
             <div>
               <label className="text-sm font-semibold">Note Type</label>
-              <Select value={editForm.note_type} onValueChange={(v: any) => setEditForm({ ...editForm, note_type: v })}>
+              <Select
+                value={editForm.note_type}
+                onValueChange={(v: any) => setEditForm({ ...editForm, note_type: v })}
+              >
                 <SelectTrigger className="text-sm mt-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -566,8 +697,12 @@ export default function PaperToolsArea({
               </Select>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" size="sm" onClick={() => setEditingNote(null)}>Cancel</Button>
-              <Button size="sm" onClick={handleEditNote} disabled={!editForm.title.trim()}>Save Changes</Button>
+              <Button variant="outline" size="sm" onClick={() => setEditingNote(null)}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleEditNote} disabled={!editForm.title.trim()}>
+                Save Changes
+              </Button>
             </div>
           </div>
         </DialogContent>

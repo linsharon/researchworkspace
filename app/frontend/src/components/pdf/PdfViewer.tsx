@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import axios from "axios";
 import { Sparkles } from "lucide-react";
-import { ScrollMode, type Plugin, Viewer, ViewMode, Worker } from "@react-pdf-viewer/core";
+import { toast } from "sonner";
+import { ScrollMode, type Plugin, Viewer, Worker } from "@react-pdf-viewer/core";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 
 import { cn } from "@/lib/utils";
@@ -73,6 +75,7 @@ interface SelectionState {
 const PDF_WORKER_URL = "/pdf.worker.min.js";
 const CONCEPTS_STORAGE_KEY = "rw-concepts";
 const CONCEPTS_UPDATED_EVENT = "concepts-updated";
+const HIGHLIGHTS_UPDATED_EVENT = "highlights-updated";
 
 export default function PdfViewer({
   pdfUrl,
@@ -264,8 +267,15 @@ export default function PdfViewer({
           color: "yellow",
         });
         onHighlightCreated?.(savedHighlight);
+        window.dispatchEvent(new CustomEvent(HIGHLIGHTS_UPDATED_EVENT));
+        toast.success("Highlight saved", {
+          description: "Added to Highlights tab.",
+        });
       } catch (error) {
         console.error("Failed to save highlight:", error);
+        toast.error("Save failed", {
+          description: "Unable to save this highlight.",
+        });
       }
     }
 
@@ -315,13 +325,40 @@ export default function PdfViewer({
     clearSelectionState();
   };
 
-  const handleTranslate = () => {
+  const handleTranslate = async () => {
     if (!selectionState.text.trim()) {
       return;
     }
 
     setViewerState(prev => ({ ...prev, annotationMode: "translate" }));
-    setTranslatedText(`翻译结果（占位）\n\n${selectionState.text}\n\n这段文本的中文解释将在这里展示。`);
+    setTranslatedText("正在翻译为中文...");
+
+    try {
+      const response = await axios.post("/api/v1/aihub/gentxt", {
+        model: "gpt-5-chat",
+        stream: false,
+        temperature: 0.2,
+        max_tokens: 1200,
+        messages: [
+          {
+            role: "system",
+            content: "You are a translation assistant. Translate the user's English text to natural simplified Chinese only.",
+          },
+          {
+            role: "user",
+            content: selectionState.text,
+          },
+        ],
+      });
+
+      const translated = response?.data?.content?.trim();
+      setTranslatedText(translated || "翻译失败：未返回有效内容。");
+    } catch (error) {
+      console.error("Failed to translate text:", error);
+      setTranslatedText("翻译失败，请稍后重试。");
+    }
+
+    clearSelectionState();
   };
 
   const handleExplain = () => {
@@ -330,8 +367,7 @@ export default function PdfViewer({
     }
 
     setViewerState(prev => ({ ...prev, annotationMode: "explain" }));
-    const prompt = `Explain this text: ${selectionState.text}`;
-    onAskAiSelection?.(prompt, selectionState.page);
+    onAskAiSelection?.(selectionState.text, selectionState.page);
     clearSelectionState();
   };
 
@@ -363,20 +399,25 @@ export default function PdfViewer({
     }
 
     if (typeof window !== "undefined") {
-      const saved = window.localStorage.getItem(CONCEPTS_STORAGE_KEY);
-      const concepts = saved ? JSON.parse(saved) : [];
-      const next = [
-        ...concepts,
-        {
-          id: `concept-${Date.now()}`,
-          name: conceptTitle.trim(),
-          description: conceptDescription.trim() || selectionState.text,
-          category: "Concept",
-          color: "#f59e0b",
-        },
-      ];
-      window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify(next));
+      const savedGlobal = window.localStorage.getItem(CONCEPTS_STORAGE_KEY);
+      const globalConcepts = savedGlobal ? JSON.parse(savedGlobal) : [];
+      const savedProject = window.localStorage.getItem(`rw-concepts-${projectId}`);
+      const projectConcepts = savedProject ? JSON.parse(savedProject) : [];
+
+      const conceptItem = {
+        id: `concept-${Date.now()}`,
+        name: conceptTitle.trim(),
+        description: conceptDescription.trim() || selectionState.text,
+        category: "Concept",
+        color: "#f59e0b",
+      };
+
+      window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify([...globalConcepts, conceptItem]));
+      window.localStorage.setItem(`rw-concepts-${projectId}`, JSON.stringify([...projectConcepts, conceptItem]));
       window.dispatchEvent(new CustomEvent(CONCEPTS_UPDATED_EVENT));
+      toast.success("Concept saved", {
+        description: "Added to Artifact Center concepts.",
+      });
     }
 
     onConceptCreated?.();
@@ -408,7 +449,7 @@ export default function PdfViewer({
 
   return (
     <section
-      className={cn("flex h-full min-h-[420px] flex-col overflow-hidden rounded-md border border-slate-200 bg-white", className)}
+      className={cn("flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-slate-200 bg-white", className)}
       ref={containerRef}
     >
       {showTitleBar ? (
@@ -425,7 +466,7 @@ export default function PdfViewer({
 
       <div className="relative flex-1 bg-white">
         {pdfUrl ? (
-          <div className="h-full min-h-0 overflow-y-auto overflow-x-auto bg-white p-2">
+          <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden bg-white p-2">
             <Worker workerUrl={PDF_WORKER_URL}>
               <Viewer
                 fileUrl={viewerUrl}
@@ -433,7 +474,6 @@ export default function PdfViewer({
                 pageLayout={pageLayout}
                 plugins={[selectionPlugin]}
                 scrollMode={ScrollMode.Vertical}
-                viewMode={ViewMode.SinglePage}
                 onDocumentLoad={() => {
                   setIsDocumentLoaded(true);
                   setLoadError(null);
@@ -444,7 +484,7 @@ export default function PdfViewer({
                   applyZoom(Math.round(scale * 100));
                 }}
                 renderLoader={(percentages: number) => (
-                  <div className="flex h-full min-h-[420px] items-center justify-center bg-slate-50 px-6 text-center">
+                  <div className="flex h-full min-h-0 items-center justify-center bg-slate-50 px-6 text-center">
                     <div className="space-y-3">
                       <div className="text-sm font-medium text-slate-700">Loading PDF...</div>
                       <div className="text-xs text-slate-500">{Math.round(percentages)}%</div>
@@ -454,7 +494,7 @@ export default function PdfViewer({
                 renderError={() => {
                   window.setTimeout(() => setLoadError("Failed to render PDF preview."), 0);
                   return (
-                    <div className="flex h-full min-h-[420px] items-center justify-center px-6 text-center text-sm text-slate-500">
+                    <div className="flex h-full min-h-0 items-center justify-center px-6 text-center text-sm text-slate-500">
                       Failed to render PDF preview.
                     </div>
                   );

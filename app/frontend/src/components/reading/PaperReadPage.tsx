@@ -34,8 +34,7 @@ export default function PaperReadPage() {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<"Reading" | "Completed" | "To Read">("Reading");
   const [toolsExpanded, setToolsExpanded] = useState(true);
-  const [highlightedText, setHighlightedText] = useState<string>("");
-  const [highlights, setHighlights] = useState<any[]>([]);
+  const [highlightPulse, setHighlightPulse] = useState(0);
 
   // Floating AI chat
   const [showChat, setShowChat] = useState(false);
@@ -194,19 +193,16 @@ export default function PaperReadPage() {
       {/* Main Content - reader-first layout */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left: Reading Area - takes all remaining space */}
-        <div className="flex-1 border-r overflow-auto flex flex-col min-w-0">
+        <div className="flex-1 border-r overflow-hidden flex flex-col min-w-0">
           <PaperReadingArea
             paper={paper}
             projectId={projectId}
             onChanged={() => setHasChanged(true)}
-            onHighlightCreated={(highlight) => {
-              setHighlights([...highlights, highlight]);
-              setHighlightedText(highlight.text);
-            }}
+            onHighlightCreated={() => setHighlightPulse((prev) => prev + 1)}
             onNoteCreated={() => loadPaper()}
             onConceptCreated={() => loadPaper()}
-            onAskAI={(text) => {
-              setChatInput(text);
+            onAskAI={text => {
+              setChatInput(`Selected text:\n"${text}"\n\nQuestion: `);
               setShowChat(true);
             }}
           />
@@ -237,7 +233,7 @@ export default function PaperReadPage() {
               <PaperToolsArea
                 paper={paper}
                 projectId={projectId}
-                highlightedText={highlightedText}
+                highlightPulse={highlightPulse}
                 onChanged={() => setHasChanged(true)}
               />
             </div>
