@@ -27,6 +27,7 @@ import type { Paper, Highlight } from "@/lib/manuscript-api";
 import { paperAPI } from "@/lib/manuscript-api";
 import { pdfAPI } from "@/lib/pdf-api";
 import PDFHighlightReader from "./PDFHighlightReader";
+import PdfViewer from "@/components/pdf/PdfViewer";
 
 interface PaperReadingAreaProps {
   paper: Paper;
@@ -230,10 +231,17 @@ export default function PaperReadingArea({
             </div>
 
             <div className="flex-1 min-h-0">
-              <iframe
-                src={pdfAPI.viewUrl(paper.pdf_path)}
-                title={`${paper.title} PDF`}
-                className="w-full h-full border-0"
+              <PdfViewer
+                citationsText="Citations"
+                className="h-full rounded-none border-0"
+                doi={paper.discovery_note}
+                pdfUrl={pdfAPI.viewUrl(paper.pdf_path)}
+                scholarUrl={paper.discovery_path}
+                showTitleBar={false}
+                title={paper.title}
+                onAskAiSelection={(selectedText) => {
+                  onAskAI?.(selectedText);
+                }}
               />
             </div>
           </div>
