@@ -5,26 +5,19 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Upload,
   FileText,
   Download,
-  Eye,
-  X,
-  MoreHorizontal,
+  ChevronDown,
+  ChevronUp,
   RefreshCw,
   Trash2,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import type { Paper, Highlight } from "@/lib/manuscript-api";
 import { paperAPI } from "@/lib/manuscript-api";
 import { pdfAPI } from "@/lib/pdf-api";
+import PdfViewer from "@/components/pdf/PdfViewer";
 
 interface PaperReadingAreaProps {
   paper: Paper;
@@ -41,15 +34,16 @@ export default function PaperReadingArea({
   paper,
   projectId = "proj-1",
   onChanged,
+  onTextSelected,
   onHighlightCreated,
   onNoteCreated,
   onConceptCreated,
   onAskAI,
 }: PaperReadingAreaProps) {
-  const [viewerOpen, setViewerOpen] = useState(true);
+  const [titleExpanded, setTitleExpanded] = useState(false);
 
   useEffect(() => {
-    setViewerOpen(!!paper.pdf_path);
+    setTitleExpanded(false);
   }, [paper.pdf_path]);
 
   const handleUploadPDF = async () => {
@@ -65,7 +59,6 @@ export default function PaperReadingArea({
         await paperAPI.update(paper.id, {
           pdf_path: uploadRes.filename,
         });
-        setViewerOpen(true);
         onChanged();
       } catch (error) {
         console.error("PDF upload failed:", error);
@@ -89,7 +82,6 @@ export default function PaperReadingArea({
       await paperAPI.update(paper.id, {
         pdf_path: undefined,
       });
-      setViewerOpen(false);
       onChanged();
     } catch (error) {
       console.error("Failed to delete PDF:", error);
@@ -99,85 +91,103 @@ export default function PaperReadingArea({
 
   return (
     <div className="h-full bg-white flex flex-col">
+      {/* Title section temporarily hidden to maximize PDF display area */}
+      <>
+        {/* Hidden title section - uncomment to restore */}
+        {/* <div className="border-b bg-white px-4 py-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start rounded px-0 h-auto"
+            onClick={() => setTitleExpanded(!titleExpanded)}
+          >
+            <div className="flex-1 text-left">
+              <div className="font-medium text-slate-800 line-clamp-1">{paper.title}</div>
+              {!titleExpanded ? (
+                <div className="text-xs text-slate-500 mt-1">Show paper details</div>
+              ) : null}
+            </div>
+            {titleExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+
+          {titleExpanded ? (
+            <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1.5">
+              <p><span className="font-semibold">Authors:</span> {paper.authors?.join(", ") || "N/A"}</p>
+              <p><span className="font-semibold">Year:</span> {paper.year || "N/A"}</p>
+              <p><span className="font-semibold">Journal:</span> {paper.journal || "N/A"}</p>
+            </div>
+          ) : null}
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {paper.pdf_path ? (
+              <>
+                <Button
+                  className="h-8 text-xs"
+                  onClick={() => {
+                    const url = pdfAPI.downloadUrl(paper.pdf_path!);
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = paper.pdf_path!;
+                    link.click();
+                  }}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Download className="w-3 h-3 mr-1" />
+                  Download
+                </Button>
+
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleReplacePDF}>
+                  <RefreshCw className="mr-1 h-3 w-3" />
+                  Replace
+                </Button>
+
+                <Button size="sm" variant="outline" className="h-8 text-xs text-rose-600" onClick={handleDeletePDF}>
+                  <Trash2 className="mr-1 h-3 w-3" />
+                  Delete
+                </Button>
+              </>
+            ) : (
+              <Button className="gap-2 h-8 text-xs" onClick={handleUploadPDF}>
+                <Upload className="h-3.5 w-3.5" />
+                Upload PDF
+              </Button>
+            )}
+          </div>
+        </div> */}
+      </>
+
       <div className="flex-1 overflow-hidden flex flex-col">
         {paper.pdf_path ? (
-          <Card className="flex-1 flex flex-col min-h-0 border-slate-200">
-            <CardHeader className="pb-2 shrink-0">
-              <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                <Eye className="w-4 h-4" />
-                <span className="truncate">{paper.pdf_path}</span>
-                <div className="ml-auto flex items-center gap-2">
-                  <Button
-                    className="h-7 text-xs"
-                    onClick={() => {
-                      const url = pdfAPI.downloadUrl(paper.pdf_path!);
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = paper.pdf_path!;
-                      link.click();
-                    }}
-                    size="sm"
-                    variant="outline"
-                  >
-                    <Download className="w-3 h-3 mr-1" />
-                    Download
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 text-xs"
-                    onClick={() => setViewerOpen(false)}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="sm" variant="outline" className="h-7 px-2">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44">
-                      <DropdownMenuItem onClick={handleReplacePDF}>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Replace PDF
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-rose-600 focus:text-rose-600" onClick={handleDeletePDF}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete PDF
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-1 p-2 min-h-0">
-              {viewerOpen ? (
-                <iframe
-                  key={paper.pdf_path}
-                  src={pdfAPI.viewUrl(paper.pdf_path)}
-                  title={paper.pdf_path}
-                  className="w-full h-full rounded border border-slate-200 min-h-[500px]"
-                  style={{ height: "calc(100vh - 260px)" }}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400 py-20 border border-slate-200 rounded">
-                  <FileText className="w-16 h-16 mb-4 opacity-20" />
-                  <p className="text-sm">Select a file from the list to view it here</p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="mt-4 h-8 text-xs"
-                    onClick={() => setViewerOpen(true)}
-                  >
-                    <Eye className="w-3 h-3 mr-1" />
-                    Open PDF
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="flex-1 min-h-0 p-2">
+            <PdfViewer
+              className="h-full rounded-lg border border-slate-200"
+              onAskAiSelection={text => {
+                onTextSelected?.(text);
+                onAskAI?.(text);
+              }}
+              onConceptCreated={() => {
+                onChanged();
+                onConceptCreated?.();
+              }}
+              onHighlightCreated={highlight => {
+                onChanged();
+                onTextSelected?.(highlight.text);
+                onHighlightCreated?.(highlight);
+              }}
+              onNoteCreated={() => {
+                onChanged();
+                onNoteCreated?.();
+              }}
+              onSelectionChange={text => onTextSelected?.(text)}
+              paperId={paper.id}
+              pdfUrl={pdfAPI.viewUrl(paper.pdf_path)}
+              projectId={projectId}
+              showTitleBar={false}
+              showToolbar={false}
+              title={paper.pdf_path}
+            />
+          </div>
         ) : (
           <div className="h-full flex items-center justify-center">
             <div className="text-center space-y-4 px-6">

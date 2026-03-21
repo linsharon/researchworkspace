@@ -45,6 +45,7 @@ export interface PdfViewerProps {
   onNoteCreated?: () => void;
   onConceptCreated?: () => void;
   onAskAiSelection?: (text: string, page: number) => void;
+  onSelectionChange?: (text: string, page: number) => void;
 }
 
 export type AnnotationMode = "idle" | "highlight" | "note" | "translate" | "explain" | "concept";
@@ -101,6 +102,7 @@ export default function PdfViewer({
   onNoteCreated,
   onConceptCreated,
   onAskAiSelection,
+  onSelectionChange,
 }: PdfViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [viewerState, setViewerState] = useState<PdfViewerState>({
@@ -231,9 +233,10 @@ export default function PdfViewer({
           selectedText: selectedText,
           annotationMode: "idle",
         }));
+        onSelectionChange?.(selectedText, detectedPage);
       }, 0);
     },
-    [closeSelectionMenu, resolvedPage]
+    [closeSelectionMenu, onSelectionChange, resolvedPage]
   );
 
   const selectionPlugin = useMemo<Plugin>(
@@ -466,7 +469,7 @@ export default function PdfViewer({
 
       <div className="relative flex-1 bg-white">
         {pdfUrl ? (
-          <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden bg-white p-2">
+          <div className="pdf-scroll-host h-full min-h-0 overflow-hidden bg-white p-2">
             <Worker workerUrl={PDF_WORKER_URL}>
               <Viewer
                 fileUrl={viewerUrl}
