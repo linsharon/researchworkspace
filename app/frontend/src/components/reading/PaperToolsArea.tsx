@@ -30,37 +30,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Plus, Trash2, HelpCircle, BookOpen, Lightbulb, Send, X } from "lucide-react";
-import { noteAPI, paperAPI } from "@/lib/manuscript-api";
+import { noteAPI } from "@/lib/manuscript-api";
 import type { Paper, Note } from "@/lib/manuscript-api";
-
-const DEMO_NOTES: Note[] = [
-  {
-    id: "demo-note-1",
-    paper_id: "demo-paper",
-    title: "Method insight: SRL scaffold timing",
-    description: "The paper suggests prompts are most effective during planning and monitoring phases.",
-    note_type: "literature-note",
-    page: 3,
-    keywords: ["SRL", "Scaffold", "Timing"],
-    citations: [],
-    content: "Use this for Step 4 evidence synthesis.",
-    created_at: "2026-03-20T08:00:00Z",
-    updated_at: "2026-03-20T08:00:00Z",
-  },
-  {
-    id: "demo-note-2",
-    paper_id: "demo-paper",
-    title: "Potential research gap",
-    description: "Long-term transfer effects of AI feedback remain under-reported.",
-    note_type: "permanent-note",
-    page: 8,
-    keywords: ["Research Gap", "Transfer"],
-    citations: [],
-    content: "Candidate hypothesis for introduction section.",
-    created_at: "2026-03-20T08:05:00Z",
-    updated_at: "2026-03-20T08:05:00Z",
-  },
-];
 
 interface PaperToolsAreaProps {
   paper: Paper;
@@ -82,6 +53,8 @@ export default function PaperToolsArea({
   aiChatInitialText = "",
 }: PaperToolsAreaProps) {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"notes" | "highlight" | "chat">("notes");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedCitations, setSelectedCitations] = useState<string[]>([]);
@@ -132,20 +105,29 @@ export default function PaperToolsArea({
 
   const loadNotes = async () => {
     try {
+      setNotesLoading(true);
+      setNoteError(null);
       const data = await noteAPI.list(paper.id);
       setNotes(data);
     } catch (error) {
       console.error("Failed to load notes:", error);
+      setNoteError("Failed to load saved notes.");
+    } finally {
+      setNotesLoading(false);
     }
   };
 
   const handleAddNote = async () => {
+    if (!formData.title.trim()) return;
+
     try {
-      const newNote = await noteAPI.create({
+      setNoteError(null);
+      await noteAPI.create({
         paper_id: paper.id,
         project_id: projectId,
-        title: formData.title,
-        description: formData.description,
+        title: formData.title.trim(),
+        description: formData.description.trim() || undefined,
+        content: formData.description.trim() || undefined,
         page: formData.page ? parseInt(formData.page) : undefined,
         keywords: formData.keywords
           .split(",")
@@ -155,12 +137,14 @@ export default function PaperToolsArea({
         note_type: noteType,
       });
 
-      setNotes([...notes, newNote]);
+      await loadNotes();
       setShowAddDialog(false);
       resetForm();
+      setActiveTab("notes");
       onChanged();
     } catch (error) {
       console.error("Failed to create note:", error);
+      setNoteError("Failed to save note. Please try again.");
     }
   };
 
@@ -168,35 +152,40 @@ export default function PaperToolsArea({
     if (!highlightNoteTitle.trim()) return;
     
     try {
-      const newNote = await noteAPI.create({
+      setNoteError(null);
+      await noteAPI.create({
         paper_id: paper.id,
         project_id: projectId,
-        title: highlightNoteTitle,
+        title: highlightNoteTitle.trim(),
         description: highlightedText,
-        content: highlightNoteContent,
+        content: highlightNoteContent.trim() || undefined,
         page: undefined,
         keywords: [],
         citations: [],
         note_type: "literature-note",
       });
 
-      setNotes([...notes, newNote]);
+      await loadNotes();
       setShowHighlightNote(false);
       setHighlightNoteTitle("");
       setHighlightNoteContent("");
+      setActiveTab("notes");
       onChanged();
     } catch (error) {
       console.error("Failed to create note:", error);
+      setNoteError("Failed to save note from highlight. Please try again.");
     }
   };
 
   const handleDeleteNote = async (noteId: string) => {
     try {
+      setNoteError(null);
       await noteAPI.delete(noteId);
       setNotes(notes.filter((n) => n.id !== noteId));
       onChanged();
     } catch (error) {
       console.error("Failed to delete note:", error);
+      setNoteError("Failed to delete note. Please try again.");
     }
   };
 
@@ -227,13 +216,6 @@ export default function PaperToolsArea({
     setSelectedCitations([]);
     setNoteType("literature-note");
   };
-
-  const noteCounts = {
-    literature: notes.filter((n) => n.note_type === "literature-note").length,
-    permanent: notes.filter((n) => n.note_type === "permanent-note").length,
-  };
-
-  const notesToRender = notes.length > 0 ? notes : DEMO_NOTES;
 
   return (
     <div className="h-full bg-gray-50 flex flex-col">
@@ -404,12 +386,22 @@ export default function PaperToolsArea({
 
             {/* Notes List */}
             <div className="flex-1 overflow-auto p-3 space-y-2">
-              {notes.length === 0 && (
-                <div className="rounded-md bg-slate-100 border border-slate-200 p-2 text-xs text-slate-600">
-                  Demo notes are shown below until you create real notes.
+              {noteError && (
+                <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+                  {noteError}
                 </div>
               )}
-              {notesToRender.map((note) => (
+              {notesLoading && (
+                <div className="rounded-md bg-slate-100 border border-slate-200 p-2 text-xs text-slate-600">
+                  Loading saved notes...
+                </div>
+              )}
+              {!notesLoading && notes.length === 0 && !noteError && (
+                <div className="rounded-md bg-slate-100 border border-slate-200 p-2 text-xs text-slate-600">
+                  No saved notes for this paper yet.
+                </div>
+              )}
+              {notes.map((note) => (
                   <Card key={note.id} className="hover:shadow-sm transition-shadow">
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between gap-2">
@@ -422,9 +414,6 @@ export default function PaperToolsArea({
                             >
                               {note.note_type === "literature-note" ? "Lit" : "Perm"}
                             </Badge>
-                            {notes.length === 0 && (
-                              <Badge variant="outline" className="text-xs">Demo</Badge>
-                            )}
                             {note.page && (
                               <Badge variant="outline" className="text-xs">
                                 p.{note.page}
@@ -432,14 +421,12 @@ export default function PaperToolsArea({
                             )}
                           </div>
                         </div>
-                        {notes.length > 0 && (
-                          <button
-                            onClick={() => handleDeleteNote(note.id)}
-                            className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDeleteNote(note.id)}
+                          className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
                       </div>
                     </CardHeader>
                     {note.description && (

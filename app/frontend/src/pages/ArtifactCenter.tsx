@@ -19,9 +19,34 @@ import {
   DUMMY_ARTIFACTS,
   ARTIFACT_TYPE_META,
   STEP_META,
+  type Artifact,
   type ArtifactType,
 } from "@/lib/data";
+import { noteAPI, projectAPI } from "@/lib/manuscript-api";
+import type { Note } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
+
+const STATIC_ARTIFACTS = DUMMY_ARTIFACTS.filter(
+  (artifact) =>
+    artifact.type !== "literature-note" && artifact.type !== "permanent-note"
+);
+
+function formatArtifactDate(value: string) {
+  return value.includes("T") ? value.split("T")[0] : value;
+}
+
+function noteToArtifact(note: Note): Artifact {
+  return {
+    id: note.id,
+    title: note.title,
+    type: note.note_type,
+    projectId: note.project_id,
+    sourceStep: 3,
+    description: note.description || note.content || "Saved note",
+    updatedAt: formatArtifactDate(note.updated_at),
+    content: note.content || note.description,
+  };
+}
 
 const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
@@ -48,7 +73,7 @@ export default function ArtifactCenter() {
   const tabFromUrl = searchParams.get("tab") || "all";
   const [filter, setFilter] = useState(tabFromUrl);
   const [searchQuery, setSearchQuery] = useState("");
-  const [artifacts, setArtifacts] = useState([...DUMMY_ARTIFACTS]);
+  const [artifacts, setArtifacts] = useState<Artifact[]>([...STATIC_ARTIFACTS]);
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
   const [concepts, setConcepts] = useState<
     Array<{ id: string; name: string; description: string; category: string; color: string }>
@@ -90,6 +115,29 @@ export default function ArtifactCenter() {
     loadConcepts();
     window.addEventListener("storage", loadConcepts);
     return () => window.removeEventListener("storage", loadConcepts);
+  }, []);
+
+  useEffect(() => {
+    const loadSavedNotes = async () => {
+      try {
+        const projects = await projectAPI.list();
+        if (projects.length === 0) {
+          setArtifacts([...STATIC_ARTIFACTS]);
+          return;
+        }
+
+        const notesByProject = await Promise.all(
+          projects.map((project) => noteAPI.listByProject(project.id).catch(() => []))
+        );
+        const savedNoteArtifacts = notesByProject.flat().map(noteToArtifact);
+        setArtifacts([...STATIC_ARTIFACTS, ...savedNoteArtifacts]);
+      } catch (error) {
+        console.error("Failed to load notes for Artifact Center:", error);
+        setArtifacts([...STATIC_ARTIFACTS]);
+      }
+    };
+
+    loadSavedNotes();
   }, []);
 
   const filteredArtifacts = artifacts.filter((a) => {
@@ -163,7 +211,21 @@ export default function ArtifactCenter() {
     setSelectedConceptId(null);
   };
 
-  const handleDeleteArtifact = (artifactId: string) => {
+  const handleDeleteArtifact = async (artifactId: string) => {
+    const artifact = artifacts.find((item) => item.id === artifactId);
+
+    if (
+      artifact &&
+      (artifact.type === "literature-note" || artifact.type === "permanent-note")
+    ) {
+      try {
+        await noteAPI.delete(artifactId);
+      } catch (error) {
+        console.error("Failed to delete note artifact:", error);
+        return;
+      }
+    }
+
     setArtifacts((prev) => prev.filter((a) => a.id !== artifactId));
     if (selectedArtifact === artifactId) {
       setSelectedArtifact(null);
@@ -364,7 +426,7 @@ export default function ArtifactCenter() {
                           title="Delete"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteArtifact(artifact.id);
+                            void handleDeleteArtifact(artifact.id);
                           }}
                         >
                           <Trash2 className="w-3 h-3" />
@@ -421,7 +483,7 @@ export default function ArtifactCenter() {
                         variant="outline"
                         className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
                         title="Delete"
-                        onClick={() => handleDeleteArtifact(artifact.id)}
+                        onClick={() => void handleDeleteArtifact(artifact.id)}
                       >
                         <Trash2 className="w-3 h-3" />
                       </Button>

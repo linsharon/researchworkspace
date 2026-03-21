@@ -1,11 +1,9 @@
-"""
-Manuscript API router - papers, notes, highlights, concepts management
-"""
+"""Manuscript API router - papers, notes, highlights, concepts management."""
+
 from typing import List, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Query
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -111,6 +109,7 @@ class NoteUpdate(BaseModel):
 class NoteResponse(BaseModel):
     id: str
     paper_id: str
+    project_id: str
     title: str
     description: Optional[str]
     note_type: str
@@ -118,15 +117,15 @@ class NoteResponse(BaseModel):
     keywords: List[str]
     citations: List[str]
     content: Optional[str]
-   
-       @field_validator('created_at', 'updated_at', mode='before')
-       @classmethod
-       def convert_datetime(cls, v):
-           if hasattr(v, 'isoformat'):
-               return v.isoformat()
-           return v
     created_at: str
     updated_at: str
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def convert_datetime(cls, value):
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+        return value
 
     class Config:
         from_attributes = True
@@ -147,14 +146,14 @@ class HighlightResponse(BaseModel):
     page: Optional[int]
     color: str
     note: Optional[str]
-   
-       @field_validator('created_at', mode='before')
-       @classmethod
-       def convert_datetime(cls, v):
-           if hasattr(v, 'isoformat'):
-               return v.isoformat()
-           return v
     created_at: str
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def convert_datetime(cls, value):
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+        return value
 
     class Config:
         from_attributes = True
@@ -313,13 +312,25 @@ async def create_note(note: NoteCreate, session: AsyncSession = Depends(get_db))
 
 @router.get("/notes", response_model=List[NoteResponse])
 async def list_notes(
-    paper_id: str = Query(...),
+    paper_id: Optional[str] = Query(None),
+    project_id: Optional[str] = Query(None),
     session: AsyncSession = Depends(get_db),
 ):
-    """List all notes for a paper"""
-    result = await session.execute(
-        select(Note).where(Note.paper_id == paper_id)
-    )
+    """List notes for a paper or project."""
+    if not paper_id and not project_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Either paper_id or project_id must be provided",
+        )
+
+    query = select(Note)
+    if paper_id:
+        query = query.where(Note.paper_id == paper_id)
+    if project_id:
+        query = query.where(Note.project_id == project_id)
+
+    query = query.order_by(Note.updated_at.desc(), Note.created_at.desc())
+    result = await session.execute(query)
     notes = result.scalars().all()
     return notes
 

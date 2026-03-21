@@ -38,6 +38,7 @@ export interface Project {
 export interface Note {
   id: string;
   paper_id: string;
+  project_id: string;
   title: string;
   description?: string;
   note_type: "literature-note" | "permanent-note";
@@ -145,6 +146,13 @@ export const noteAPI = {
   list: async (paperId: string): Promise<Note[]> => {
     const response = await axios.get(`${API_BASE_URL}/notes`, {
       params: { paper_id: paperId },
+    });
+    return response.data;
+  },
+
+  listByProject: async (projectId: string): Promise<Note[]> => {
+    const response = await axios.get(`${API_BASE_URL}/notes`, {
+      params: { project_id: projectId },
     });
     return response.data;
   },
