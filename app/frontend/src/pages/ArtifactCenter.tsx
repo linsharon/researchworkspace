@@ -69,6 +69,7 @@ const FILTER_MAP: Record<string, ArtifactType[]> = {
 
 export default function ArtifactCenter() {
   const CONCEPTS_STORAGE_KEY = "rw-concepts";
+  const NOTES_UPDATED_EVENT = "notes-updated";
   const [searchParams] = useSearchParams();
   const tabFromUrl = searchParams.get("tab") || "all";
   const [filter, setFilter] = useState(tabFromUrl);
@@ -138,6 +139,14 @@ export default function ArtifactCenter() {
     };
 
     loadSavedNotes();
+
+    if (typeof window !== "undefined") {
+      const onNotesUpdated = () => {
+        loadSavedNotes();
+      };
+      window.addEventListener(NOTES_UPDATED_EVENT, onNotesUpdated);
+      return () => window.removeEventListener(NOTES_UPDATED_EVENT, onNotesUpdated);
+    }
   }, []);
 
   const filteredArtifacts = artifacts.filter((a) => {

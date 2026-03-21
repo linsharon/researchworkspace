@@ -14,8 +14,13 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -23,15 +28,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Plus, Trash2, HelpCircle, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { noteAPI } from "@/lib/manuscript-api";
 import type { Paper, Note } from "@/lib/manuscript-api";
+import { LiteratureNoteForm } from "./LiteratureNoteForm";
+import type { LiteratureNote } from "./LiteratureNoteForm";
+import { PermanentNoteForm } from "./PermanentNoteForm";
+import type { NoteOption, PermanentNote } from "./PermanentNoteForm";
 
 interface PaperToolsAreaProps {
   paper: Paper;
@@ -50,17 +53,9 @@ export default function PaperToolsArea({
   const [notesLoading, setNotesLoading] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"notes" | "highlight">("notes");
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [selectedCitations, setSelectedCitations] = useState<string[]>([]);
-  const [noteType, setNoteType] = useState<"literature-note" | "permanent-note">(
-    "literature-note"
-  );
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    page: "",
-    keywords: "",
-  });
+  const [showAddLiteratureDialog, setShowAddLiteratureDialog] = useState(false);
+  const [showAddPermanentDialog, setShowAddPermanentDialog] = useState(false);
+  const [projectNotes, setProjectNotes] = useState<Note[]>([]);
   
   // For highlighted text note editing
   const [showHighlightNote, setShowHighlightNote] = useState(false);
@@ -94,44 +89,17 @@ export default function PaperToolsArea({
     try {
       setNotesLoading(true);
       setNoteError(null);
-      const data = await noteAPI.list(paper.id);
-      setNotes(data);
+      const [paperNotes, allProjectNotes] = await Promise.all([
+        noteAPI.list(paper.id),
+        noteAPI.listByProject(projectId).catch(() => []),
+      ]);
+      setNotes(paperNotes);
+      setProjectNotes(allProjectNotes);
     } catch (error) {
       console.error("Failed to load notes:", error);
       setNoteError("Failed to load saved notes.");
     } finally {
       setNotesLoading(false);
-    }
-  };
-
-  const handleAddNote = async () => {
-    if (!formData.title.trim()) return;
-
-    try {
-      setNoteError(null);
-      await noteAPI.create({
-        paper_id: paper.id,
-        project_id: projectId,
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        content: formData.description.trim() || undefined,
-        page: formData.page ? parseInt(formData.page) : undefined,
-        keywords: formData.keywords
-          .split(",")
-          .map((k) => k.trim())
-          .filter(Boolean),
-        citations: selectedCitations,
-        note_type: noteType,
-      });
-
-      await loadNotes();
-      setShowAddDialog(false);
-      resetForm();
-      setActiveTab("notes");
-      onChanged();
-    } catch (error) {
-      console.error("Failed to create note:", error);
-      setNoteError("Failed to save note. Please try again.");
     }
   };
 
@@ -158,9 +126,85 @@ export default function PaperToolsArea({
       setHighlightNoteContent("");
       setActiveTab("notes");
       onChanged();
+      window.dispatchEvent(new CustomEvent("notes-updated"));
     } catch (error) {
       console.error("Failed to create note:", error);
       setNoteError("Failed to save note from highlight. Please try again.");
+    }
+  };
+
+  const handleAddLiteratureFormNote = async (note: LiteratureNote) => {
+    try {
+      setNoteError(null);
+      const parsedPage = Number.parseInt(note.pageNumber, 10);
+
+      await noteAPI.create({
+        paper_id: paper.id,
+        project_id: projectId,
+        title: note.title.trim(),
+        description: note.contentGist.trim(),
+        note_type: "literature-note",
+        page: Number.isNaN(parsedPage) ? undefined : parsedPage,
+        keywords: note.doiOrUrl.trim() ? [note.doiOrUrl.trim()] : [],
+        citations: [],
+        content: JSON.stringify(
+          {
+            formType: "LiteratureNoteForm",
+            ...note,
+          },
+          null,
+          2
+        ),
+      });
+
+      await loadNotes();
+      setShowAddLiteratureDialog(false);
+      setActiveTab("notes");
+      onChanged();
+      window.dispatchEvent(new CustomEvent("notes-updated"));
+    } catch (error) {
+      console.error("Failed to create literature note:", error);
+      setNoteError("Failed to save literature note. Please try again.");
+    }
+  };
+
+  const handleAddPermanentFormNote = async (note: PermanentNote) => {
+    try {
+      setNoteError(null);
+
+      const citationIds = Array.from(
+        new Set(
+          [...note.links.map(link => link.targetNoteId), note.evidenceLiteratureNoteId].filter(Boolean)
+        )
+      );
+
+      await noteAPI.create({
+        paper_id: paper.id,
+        project_id: projectId,
+        title: note.atomicTitle.trim(),
+        description: note.retrievalTrigger.trim() || note.mainArgument.trim().slice(0, 180),
+        note_type: "permanent-note",
+        page: undefined,
+        keywords: note.retrievalTrigger.trim() ? [note.retrievalTrigger.trim()] : [],
+        citations: citationIds,
+        content: JSON.stringify(
+          {
+            formType: "PermanentNoteForm",
+            ...note,
+          },
+          null,
+          2
+        ),
+      });
+
+      await loadNotes();
+      setShowAddPermanentDialog(false);
+      setActiveTab("notes");
+      onChanged();
+      window.dispatchEvent(new CustomEvent("notes-updated"));
+    } catch (error) {
+      console.error("Failed to create permanent note:", error);
+      setNoteError("Failed to save permanent note. Please try again.");
     }
   };
 
@@ -170,6 +214,7 @@ export default function PaperToolsArea({
       await noteAPI.delete(noteId);
       setNotes(notes.filter((n) => n.id !== noteId));
       onChanged();
+      window.dispatchEvent(new CustomEvent("notes-updated"));
     } catch (error) {
       console.error("Failed to delete note:", error);
       setNoteError("Failed to delete note. Please try again.");
@@ -203,22 +248,24 @@ export default function PaperToolsArea({
       setNotes(notes.map((n) => (n.id === updated.id ? updated : n)));
       setEditingNote(null);
       onChanged();
+      window.dispatchEvent(new CustomEvent("notes-updated"));
     } catch (error) {
       console.error("Failed to update note:", error);
       setNoteError("Failed to update note. Please try again.");
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      description: "",
-      page: "",
-      keywords: "",
-    });
-    setSelectedCitations([]);
-    setNoteType("literature-note");
-  };
+  const linkableNoteOptions: NoteOption[] = projectNotes.map((note) => ({
+    id: note.id,
+    label: `${note.id} - ${note.title}`,
+  }));
+
+  const evidenceNoteOptions: NoteOption[] = projectNotes
+    .filter((note) => note.note_type === "literature-note")
+    .map((note) => ({
+      id: note.id,
+      label: `${note.id} - ${note.title}`,
+    }));
 
   return (
     <div className="h-full bg-gray-50 flex flex-col">
@@ -257,124 +304,22 @@ export default function PaperToolsArea({
           <div className="flex flex-col h-full">
             {/* Add Note Button */}
             <div className="p-3 border-b flex-shrink-0">
-              <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-                <DialogTrigger asChild>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button className="w-full gap-2 h-8 text-sm">
                     <Plus className="h-4 w-4" />
                     Add Note
                   </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>Add Note</DialogTitle>
-                  </DialogHeader>
-
-                  <div className="space-y-4">
-                    {/* Title */}
-                    <div>
-                      <label className="text-sm font-semibold">Title *</label>
-                      <Input
-                        placeholder="Note title"
-                        value={formData.title}
-                        onChange={(e) =>
-                          setFormData({ ...formData, title: e.target.value })
-                        }
-                        className="mt-1"
-                      />
-                    </div>
-
-                    {/* Description */}
-                    <div>
-                      <label className="text-sm font-semibold">Description</label>
-                      <Textarea
-                        placeholder="Note content"
-                        value={formData.description}
-                        onChange={(e) =>
-                          setFormData({ ...formData, description: e.target.value })
-                        }
-                        className="mt-1 h-20 text-xs"
-                      />
-                    </div>
-
-                    {/* Page & Keywords */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-semibold">Page</label>
-                        <Input
-                          type="number"
-                          placeholder="Page number"
-                          value={formData.page}
-                          onChange={(e) =>
-                            setFormData({ ...formData, page: e.target.value })
-                          }
-                          className="mt-1 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-semibold">Keywords</label>
-                        <Input
-                          placeholder="Comma separated"
-                          value={formData.keywords}
-                          onChange={(e) =>
-                            setFormData({ ...formData, keywords: e.target.value })
-                          }
-                          className="mt-1 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Note Type */}
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <label className="text-sm font-semibold">Note Type *</label>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <HelpCircle className="h-4 w-4 text-gray-500 cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <p className="font-semibold mb-1">Literature Note:</p>
-                              <p className="text-xs mb-3">Notes from this paper</p>
-                              <p className="font-semibold mb-1">Permanent Note:</p>
-                              <p className="text-xs">Synthesis from multiple sources</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      <Select value={noteType} onValueChange={(v: any) => setNoteType(v)}>
-                        <SelectTrigger className="text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="literature-note">Literature Note</SelectItem>
-                          <SelectItem value="permanent-note">Permanent Note</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex justify-end gap-2 pt-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setShowAddDialog(false);
-                          resetForm();
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleAddNote}
-                        disabled={!formData.title.trim()}
-                      >
-                        Save Note
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-56">
+                  <DropdownMenuItem onClick={() => setShowAddLiteratureDialog(true)}>
+                    Literature Note
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowAddPermanentDialog(true)}>
+                    Permanent Note
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Notes List */}
@@ -522,6 +467,30 @@ export default function PaperToolsArea({
           </div>
         )}
       </div>
+
+      {/* Add Literature Note Dialog */}
+      <Dialog open={showAddLiteratureDialog} onOpenChange={setShowAddLiteratureDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add Literature Note</DialogTitle>
+          </DialogHeader>
+          <LiteratureNoteForm onSubmit={handleAddLiteratureFormNote} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Permanent Note Dialog */}
+      <Dialog open={showAddPermanentDialog} onOpenChange={setShowAddPermanentDialog}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Add Permanent Note</DialogTitle>
+          </DialogHeader>
+          <PermanentNoteForm
+            existingNoteOptions={linkableNoteOptions}
+            literatureNoteOptions={evidenceNoteOptions}
+            onSubmit={handleAddPermanentFormNote}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Note Dialog */}
       <Dialog open={!!editingNote} onOpenChange={(open) => { if (!open) setEditingNote(null); }}>
