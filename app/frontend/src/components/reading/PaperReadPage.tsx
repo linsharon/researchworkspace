@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronRight, ChevronLeft, Bot, X, Minimize2, Send } from "lucide-react";
+import { ArrowLeft, ChevronRight, ChevronLeft, Bot, X, Minimize2, Send, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -136,6 +136,37 @@ export default function PaperReadPage() {
     navigate(`/workflow/${projectId}/3`);
   };
 
+  const extractDoi = (input?: string | null) => {
+    if (!input) return null;
+    const doiMatch = input.match(/\b10\.\d{4,9}\/[^\s"<>]+/i);
+    return doiMatch ? doiMatch[0].replace(/[.,;)>]+$/, "") : null;
+  };
+
+  const buildAccessiblePaperLookupUrl = (title?: string, doi?: string | null) => {
+    const raw = (doi || title || "").trim();
+    if (!raw) return undefined;
+    return `https://scholar.google.com/scholar?q=${encodeURIComponent(raw)}`;
+  };
+
+  const isRestrictedIndexerUrl = (url?: string | null) => {
+    if (!url) return false;
+    return /webofscience\.com|webofknowledge\.com|scopus\.com/i.test(url);
+  };
+
+  const resolveOriginalPaperUrl = (input?: string | null, title?: string) => {
+    const normalizedInput = (input || "").trim();
+    const doi = extractDoi(normalizedInput);
+    if (doi) {
+      return `https://doi.org/${encodeURIComponent(doi)}`;
+    }
+
+    if (/^https?:\/\//i.test(normalizedInput) && !isRestrictedIndexerUrl(normalizedInput)) {
+      return normalizedInput;
+    }
+
+    return buildAccessiblePaperLookupUrl(title, doi);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -152,10 +183,12 @@ export default function PaperReadPage() {
     );
   }
 
+  const originalPaperUrl = resolveOriginalPaperUrl(paper.url, paper.title);
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="border-b bg-white flex-shrink-0">
+      <div className="border-b bg-[#0d1b30] flex-shrink-0">
         <div className="max-w-full px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
@@ -168,7 +201,19 @@ export default function PaperReadPage() {
               Back
             </Button>
             <div>
-              <h1 className="text-xl font-bold line-clamp-1">{paper.title}</h1>
+              {originalPaperUrl ? (
+                <a
+                  href={originalPaperUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xl font-bold line-clamp-1 text-slate-100 hover:text-blue-700 hover:underline"
+                >
+                  <span className="line-clamp-1">{paper.title}</span>
+                  <ExternalLink className="h-4 w-4 shrink-0" />
+                </a>
+              ) : (
+                <h1 className="text-xl font-bold line-clamp-1">{paper.title}</h1>
+              )}
               <p className="text-sm text-gray-600">{paper.authors?.join(", ")}</p>
             </div>
           </div>
@@ -211,7 +256,7 @@ export default function PaperReadPage() {
         </div>
 
         {/* Right: Notes panel - collapsible */}
-        <div className={`transition-all duration-300 overflow-hidden border-l bg-white flex flex-col ${toolsExpanded ? 'w-[300px]' : 'w-12'}`}>
+        <div className={`transition-all duration-300 overflow-hidden border-l bg-[#0d1b30] flex flex-col ${toolsExpanded ? 'w-[300px]' : 'w-12'}`}>
           {/* Toggle Button */}
           <div className="flex-shrink-0 h-12 border-b flex items-center justify-start px-2">
             <Button
@@ -275,11 +320,11 @@ export default function PaperReadPage() {
 
       {/* Floating AI Assistant */}
       {showChat && (
-        <div className="fixed bottom-20 right-5 z-50 w-[380px] max-h-[520px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
+        <div className="fixed bottom-20 right-5 z-50 w-[380px] max-h-[520px] bg-[#0d1b30] rounded-2xl shadow-2xl border border-slate-700/50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
           {/* Chat Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-[#1E3A5F] text-white shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 bg-violet-700 text-white shrink-0">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-full bg-[#0d1b30]/20 flex items-center justify-center">
                 <Bot className="w-4 h-4" />
               </div>
               <div>
@@ -289,7 +334,7 @@ export default function PaperReadPage() {
             </div>
             <button
               onClick={() => setShowChat(false)}
-              className="w-7 h-7 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
+              className="w-7 h-7 rounded-full hover:bg-[#0d1b30]/10 flex items-center justify-center transition-colors"
             >
               <Minimize2 className="w-4 h-4" />
             </button>
@@ -307,8 +352,8 @@ export default function PaperReadPage() {
                     className={cn(
                       "max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed",
                       msg.role === "user"
-                        ? "bg-[#1E3A5F] text-white rounded-br-md"
-                        : "bg-slate-100 text-slate-700 rounded-bl-md"
+                        ? "bg-violet-700 text-white rounded-br-md"
+                        : "bg-slate-800 text-slate-700 rounded-bl-md"
                     )}
                   >
                     {msg.content}
@@ -320,13 +365,13 @@ export default function PaperReadPage() {
           </ScrollArea>
 
           {/* Chat Input */}
-          <div className="p-3 border-t border-slate-200 shrink-0 bg-white">
+          <div className="p-3 border-t border-slate-700/50 shrink-0 bg-[#0d1b30]">
             <div className="flex items-center gap-2">
               <Input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder="Ask about this paper..."
-                className="text-sm h-9 rounded-full px-4 border-slate-200 focus-visible:ring-[#1E3A5F]"
+                className="text-sm h-9 rounded-full px-4 border-slate-700/50 focus-visible:ring-[#1E3A5F]"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSendMessage(); } }}
               />
               <button
@@ -334,7 +379,7 @@ export default function PaperReadPage() {
                 disabled={!chatInput.trim()}
                 className={cn(
                   "w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all",
-                  chatInput.trim() ? "bg-[#1E3A5F] text-white hover:bg-[#162d4a]" : "bg-slate-100 text-slate-300 cursor-not-allowed"
+                  chatInput.trim() ? "bg-violet-700 text-white hover:bg-violet-800" : "bg-slate-800 text-slate-300 cursor-not-allowed"
                 )}
               >
                 <Send className="w-4 h-4" />
@@ -349,7 +394,7 @@ export default function PaperReadPage() {
         onClick={() => setShowChat(!showChat)}
         className={cn(
           "fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200",
-          showChat ? "bg-slate-600 hover:bg-slate-700" : "bg-[#1E3A5F] hover:bg-[#162d4a] hover:scale-105"
+          showChat ? "bg-slate-600 hover:bg-slate-700" : "bg-violet-700 hover:bg-violet-800 hover:scale-105"
         )}
         title="AI Assistant"
       >

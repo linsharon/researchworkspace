@@ -73,7 +73,7 @@ export default function PdfToolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-slate-300 bg-[#f1f3f4] px-3 py-2">
-      <div className="flex items-center rounded-md border border-slate-300 bg-white">
+      <div className="flex items-center rounded-md border border-slate-300 bg-[#0d1b30]">
         <Button
           className="h-8 w-8 p-0"
           disabled={currentPage <= 1}
@@ -113,7 +113,7 @@ export default function PdfToolbar({
         </Button>
       </div>
 
-      <div className="flex items-center rounded-md border border-slate-300 bg-white px-1">
+      <div className="flex items-center rounded-md border border-slate-300 bg-[#0d1b30] px-1">
         <Button className="h-8 w-8 p-0" onClick={onZoomOut} size="sm" type="button" variant="ghost">
           <ZoomOut className="h-4 w-4" />
         </Button>
@@ -129,7 +129,7 @@ export default function PdfToolbar({
       <Separator className="mx-1 hidden h-6 md:block" orientation="vertical" />
 
       <a
-        className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+        className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-[#0d1b30] px-2 py-1 text-xs text-slate-700 hover:bg-slate-800/40"
         href={resolvedScholarUrl}
         rel="noreferrer"
         target="_blank"
@@ -139,12 +139,12 @@ export default function PdfToolbar({
         <ExternalLink className="h-3 w-3" />
       </a>
 
-      <div className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700">
+      <div className="rounded-md border border-slate-300 bg-[#0d1b30] px-2 py-1 text-xs text-slate-700">
         {citationsText}
       </div>
 
       <Button
-        className="h-8 rounded-md border border-slate-300 bg-white px-2 text-xs text-slate-700 hover:bg-slate-50"
+        className="h-8 rounded-md border border-slate-300 bg-[#0d1b30] px-2 text-xs text-slate-700 hover:bg-slate-800/40"
         onClick={onReferencesClick}
         size="sm"
         type="button"

@@ -152,7 +152,7 @@ export default function PDFHighlightReader({
   };
 
   return (
-    <div className="h-full bg-white relative">
+    <div className="h-full bg-[#0d1b30] relative">
       <div
         ref={contentRef}
         className="h-full overflow-auto select-text prose prose-sm max-w-none px-8 py-6"
@@ -162,7 +162,7 @@ export default function PDFHighlightReader({
 
       {selectedText && toolbarPosition && (
         <div
-          className="fixed bg-white rounded-lg shadow-2xl border border-gray-300 p-2.5 flex gap-1 z-50"
+          className="fixed bg-[#0d1b30] rounded-lg shadow-2xl border border-gray-300 p-2.5 flex gap-1 z-50"
           style={{
             top: `${toolbarPosition.top}px`,
             left: `${Math.min(toolbarPosition.left, window.innerWidth - 390)}px`,
@@ -275,7 +275,7 @@ export default function PDFHighlightReader({
       )}
 
       {translation && (
-        <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-sm z-40">
+        <div className="fixed bottom-4 right-4 bg-[#0d1b30] rounded-lg shadow-lg border border-gray-200 p-4 max-w-sm z-40">
           <div className="flex justify-between items-start mb-2">
             <h3 className="font-semibold text-sm">Translation</h3>
             <button onClick={() => setTranslation(null)} className="text-gray-400 hover:text-gray-600">

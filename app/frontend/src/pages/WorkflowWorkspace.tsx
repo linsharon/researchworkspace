@@ -54,6 +54,9 @@ import {
   Sparkles,
   Star,
   RefreshCw,
+  ArrowUpDown,
+  CheckSquare,
+  Trash2,
   Table2,
   Tag,
   Target,
@@ -115,13 +118,13 @@ export default function WorkflowWorkspace() {
         {/* Step Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#1E3A5F] flex items-center justify-center text-xl">
+            <div className="w-10 h-10 rounded-xl bg-violet-700 flex items-center justify-center text-xl">
               {stepMeta.icon}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-slate-900">
-                  {currentStep === 4 ? "4. Expand" : `Step ${currentStep}: ${stepMeta.label}`}
+                <h1 className="text-xl font-bold text-slate-100">
+                  {`Step ${currentStep}: ${stepMeta.label}`}
                 </h1>
                 <Badge variant="outline" className="text-xs">
                   {currentStep} / 6
@@ -133,17 +136,17 @@ export default function WorkflowWorkspace() {
             </div>
           </div>
           <div className="hidden md:flex items-center gap-1 text-xs whitespace-nowrap">
-            <span className="font-semibold text-slate-700 mr-1">Workflow:</span>
+            <span className="font-semibold text-slate-400 mr-1">Workflow:</span>
             {workflowMenuItems.map((item, index) => (
               <div key={item.step} className="flex items-center gap-1">
-                {index > 0 && <span className="text-slate-300">&gt;</span>}
+                {index > 0 && <span className="text-slate-600">&gt;</span>}
                 <Link
                   to={`/workflow/${projectId}/${item.step}`}
                   className={cn(
                     "px-1.5 py-0.5 rounded transition-colors",
                     item.step === currentStep
-                      ? "bg-[#1E3A5F] text-white font-medium"
-                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                      ? "bg-violet-700 text-white font-medium"
+                      : "text-slate-500 hover:text-slate-200 hover:bg-slate-700/60"
                   )}
                 >
                   {item.label}
@@ -181,12 +184,12 @@ function ModalOverlay({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded">
-            <X className="w-4 h-4 text-slate-500" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-[#0d1b30] rounded-xl shadow-2xl border border-slate-700/50 w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-slate-700/40">
+          <h3 className="text-sm font-semibold text-slate-200">{title}</h3>
+          <button onClick={onClose} className="p-1 hover:bg-slate-700/60 rounded">
+            <X className="w-4 h-4 text-slate-400" />
           </button>
         </div>
         <div className="p-4">{children}</div>
@@ -259,7 +262,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-5">
-      <Card className="border-slate-200">
+      <Card className="border-slate-700/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">
             What is your reading purpose?
@@ -276,8 +279,8 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
                     className={cn(
                       "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all text-sm",
                       selected.includes(option)
-                        ? "border-[#1E3A5F] bg-blue-50/50"
-                        : "border-slate-200 hover:border-slate-300"
+                        ? "border-violet-700 bg-blue-50/50"
+                        : "border-slate-700/50 hover:border-slate-300"
                     )}
                   >
                     <Checkbox
@@ -316,7 +319,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
                 <Button
                   size="sm"
                   onClick={handleAddCustomPurpose}
-                  className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white shrink-0"
+                  className="bg-violet-700 hover:bg-violet-800 text-white shrink-0"
                 >
                   <Plus className="w-4 h-4 mr-1" />
                   Add Purpose
@@ -331,7 +334,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
           <Separator />
 
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-slate-900">Additional Notes</p>
+            <p className="text-sm font-semibold text-slate-100">Additional Notes</p>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -352,8 +355,8 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="p-4 bg-white rounded-lg border border-emerald-200">
-              <h4 className="font-medium text-sm text-slate-800 mb-2">
+            <div className="p-4 bg-[#0d1b30] rounded-lg border border-emerald-200">
+              <h4 className="font-medium text-sm text-slate-200 mb-2">
                 Research Purpose: AI & SRL in Higher Ed
               </h4>
               <p className="text-xs text-slate-600 mb-2">
@@ -371,7 +374,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
         <Button
           onClick={handleGeneratePurposeCard}
           disabled={!selected.length && !notes.trim()}
-          className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white disabled:opacity-50"
+          className="bg-violet-700 hover:bg-violet-800 text-white disabled:opacity-50"
         >
           <Sparkles className="w-4 h-4 mr-2" />
           Generate Purpose Card
@@ -512,6 +515,8 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const [papersLoading, setPapersLoading] = useState(false);
   const [candidatePapers, setCandidatePapers] = useState<CandidatePaper[]>([]);
   const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]); 
+  const [candidateSortKey, setCandidateSortKey] = useState<"title" | "year" | "type" | "relevance">("relevance");
+  const [candidateSortOrder, setCandidateSortOrder] = useState<"asc" | "desc">("desc");
 
   // Add Search Record Dialog
   const [showSearchDialog, setShowSearchDialog] = useState(false);
@@ -822,12 +827,24 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     return `https://scholar.google.com/scholar?q=${encoded}`;
   };
 
+  const buildAccessiblePaperLookupUrl = (title?: string, doi?: string) => {
+    const raw = (doi || title || "").trim();
+    if (!raw) return undefined;
+    return `https://scholar.google.com/scholar?q=${encodeURIComponent(raw)}`;
+  };
+
+  const isRestrictedIndexerUrl = (url?: string) => {
+    if (!url) return false;
+    return /webofscience\.com|webofknowledge\.com|scopus\.com/i.test(url);
+  };
+
   const resolveCandidateExternalUrl = (paper: CandidatePaper) => {
     if (paper.doiUrl) return paper.doiUrl;
     if (paper.doi) return `https://doi.org/${encodeURIComponent(paper.doi)}`;
-    if (paper.externalSourceUrl) return paper.externalSourceUrl;
-    const db = paper.discoveryPath || "Google Scholar";
-    return buildDatabaseSearchUrl(db, paper.title, paper.doi, paper.title);
+    if (paper.externalSourceUrl && !isRestrictedIndexerUrl(paper.externalSourceUrl)) {
+      return paper.externalSourceUrl;
+    }
+    return buildAccessiblePaperLookupUrl(paper.title, paper.doi) || paper.externalSourceUrl;
   };
 
   const getCrossrefYear = (item: {
@@ -1074,6 +1091,13 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     setShowSearchDialog(false);
     resetSearchRecordForm();
     await pullReferencesForSearchRecord(newRecord, "first");
+
+    // After pulling, send users directly to Candidate Papers for quick triage.
+    setActiveTab("candidates");
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("tab", "candidates");
+    nextParams.delete("searchQuery");
+    setSearchParams(nextParams, { replace: true });
   };
 
   const handleSaveEditedSearchRecord = () => {
@@ -1436,6 +1460,81 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     );
   };
 
+  const inferPublicationType = (paper: CandidatePaper) => {
+    const source = `${paper.journal || ""} ${paper.title || ""}`.toLowerCase();
+    if (/proceedings|conference|symposium|workshop|acm|ieee/.test(source)) return "conference";
+    if (/book|handbook|monograph|press/.test(source)) return "book";
+    if (/arxiv|preprint|biorxiv|medrxiv/.test(source)) return "preprint";
+    if (/journal|transactions|letters|review/.test(source)) return "journal article";
+    return "other";
+  };
+
+  const relevanceRank = (level: CandidatePaper["relevance"]) => {
+    if (level === "high") return 3;
+    if (level === "medium") return 2;
+    return 1;
+  };
+
+  const sortedCandidatePapers = [...candidatePapers].sort((a, b) => {
+    const direction = candidateSortOrder === "asc" ? 1 : -1;
+
+    if (candidateSortKey === "title") {
+      return direction * a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+    }
+    if (candidateSortKey === "year") {
+      return direction * ((a.year || 0) - (b.year || 0));
+    }
+    if (candidateSortKey === "type") {
+      return direction * inferPublicationType(a).localeCompare(inferPublicationType(b));
+    }
+
+    return direction * (relevanceRank(a.relevance) - relevanceRank(b.relevance));
+  });
+
+  const allVisibleSelected =
+    sortedCandidatePapers.length > 0 &&
+    sortedCandidatePapers.every((paper) => selectedPaperIds.includes(paper.id));
+
+  const handleToggleSelectAllVisible = () => {
+    const visibleIds = sortedCandidatePapers.map((paper) => paper.id);
+    if (allVisibleSelected) {
+      setSelectedPaperIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
+      return;
+    }
+
+    setSelectedPaperIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+  };
+
+  const handleBatchDeleteSelected = async () => {
+    if (!selectedPaperIds.length) return;
+
+    const idsToDelete = [...selectedPaperIds];
+    await Promise.allSettled(
+      idsToDelete.map(async (paperId) => {
+        try {
+          await paperAPI.delete(paperId);
+        } catch {
+          // Keep local removal for temporary papers.
+        }
+      })
+    );
+
+    setCandidatePapers((prev) => prev.filter((paper) => !idsToDelete.includes(paper.id)));
+    setEntryPapers((prev) => prev.filter((id) => !idsToDelete.includes(id)));
+    setAddedToCenterIds((prev) => {
+      const next = new Set(prev);
+      idsToDelete.forEach((id) => next.delete(id));
+      return next;
+    });
+    setSelectedPaperIds([]);
+
+    persistArtifacts((prev) =>
+      prev.filter((artifact) => !idsToDelete.some((paperId) => artifact.id === `entry-paper-${paperId}`))
+    );
+
+    toast.success(`Deleted ${idsToDelete.length} candidate paper(s)`);
+  };
+
   const handleBatchAddArtifacts = () => {
     const selectedPapers = candidatePapers.filter((paper) => selectedPaperIds.includes(paper.id));
     persistArtifacts((prev) => {
@@ -1474,7 +1573,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         </TabsList>
 
         <TabsContent value="keywords" className="mt-4 space-y-4">
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold">
                 Keyword Builder
@@ -1508,7 +1607,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   <DropdownMenuTrigger asChild>
                     <Button
                       size="sm"
-                      className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white shrink-0"
+                      className="bg-violet-700 hover:bg-violet-800 text-white shrink-0"
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Add
@@ -1548,7 +1647,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   <Badge
                     key={kw.id}
                     variant="secondary"
-                    className="text-xs px-3 py-1 bg-slate-100 gap-1"
+                    className="text-xs px-3 py-1 bg-slate-800 gap-1"
                   >
                     {kw.term}
                     <span className="ml-1.5 text-[10px] text-slate-400">
@@ -1586,7 +1685,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         </TabsContent>
 
         <TabsContent value="search" className="mt-4 space-y-4">
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold">
@@ -1607,7 +1706,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="rounded-lg border border-slate-200 p-3 bg-slate-50/70 space-y-3">
+                <div className="rounded-lg border border-slate-700/50 p-3 bg-slate-800/40/70 space-y-3">
                   <p className="text-xs font-semibold text-slate-700">Build Boolean Search String</p>
                   <div className="space-y-2">
                     <p className="text-[11px] text-slate-500">Select existing keywords / concepts:</p>
@@ -1619,8 +1718,8 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           className={cn(
                             "text-[10px] cursor-pointer transition-all",
                             srKeywords.includes(kw.term)
-                              ? "bg-[#1E3A5F] text-white"
-                              : "hover:bg-slate-100"
+                              ? "bg-violet-700 text-white"
+                              : "hover:bg-slate-800"
                           )}
                           onClick={() => {
                             if (srKeywords.includes(kw.term)) {
@@ -1673,7 +1772,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           variant={srConnector === connector ? "default" : "outline"}
                           className={cn(
                             "h-7 text-[11px]",
-                            srConnector === connector ? "bg-[#1E3A5F] hover:bg-[#162d4a] text-white" : ""
+                            srConnector === connector ? "bg-violet-700 hover:bg-violet-800 text-white" : ""
                           )}
                           onClick={() => setSrConnector(connector)}
                         >
@@ -1763,7 +1862,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   <div className="flex flex-wrap gap-2 pt-1">
                     <Button
                       size="sm"
-                      className="h-8 text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                      className="h-8 text-xs bg-violet-700 hover:bg-violet-800 text-white"
                       onClick={handleAddSearchRecord}
                     >
                       <Save className="w-3 h-3 mr-1" />
@@ -1792,9 +1891,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                       key={record.id}
                       id={`search-record-${encodeURIComponent(record.query)}`}
                       className={cn(
-                        "p-3 bg-slate-50 rounded-lg border border-slate-200",
+                        "p-3 bg-slate-800/40 rounded-lg border border-slate-700/50",
                         highlightedSearchQuery && record.query === highlightedSearchQuery
-                          ? "border-[#1E3A5F] bg-blue-50/40 shadow-sm"
+                          ? "border-violet-700 bg-blue-50/40 shadow-sm"
                           : ""
                       )}
                     >
@@ -1878,23 +1977,37 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         </TabsContent>
 
         <TabsContent value="candidates" className="mt-4 space-y-4">
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold">
                   Candidate Papers ({candidatePapers.length})
                 </CardTitle>
                 <div className="flex gap-1.5">
-                  {selectedPaperIds.length > 0 && (
-                    <Button
-                      size="sm"
-                      className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={handleBatchAddArtifacts}
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Add {selectedPaperIds.length} as Artifacts
-                    </Button>
-                  )}
+                  <Select
+                    value={candidateSortKey}
+                    onValueChange={(value) => setCandidateSortKey(value as "title" | "year" | "type" | "relevance")}
+                  >
+                    <SelectTrigger className="h-7 text-xs w-[140px]">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="title">Sort: Title</SelectItem>
+                      <SelectItem value="year">Sort: Year</SelectItem>
+                      <SelectItem value="type">Sort: Type</SelectItem>
+                      <SelectItem value="relevance">Sort: Relevance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-7"
+                    onClick={() => setCandidateSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+                    title="Toggle sort order"
+                  >
+                    <ArrowUpDown className="w-3 h-3 mr-1" />
+                    {candidateSortOrder === "asc" ? "Asc" : "Desc"}
+                  </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -1928,17 +2041,70 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               </div>
             </CardHeader>
             <CardContent>
+              {/* Select-all bar — only rendered when there are papers */}
+              {sortedCandidatePapers.length > 0 && (
+                <div className={cn(
+                  "flex items-center gap-3 mb-3 px-3 py-2 rounded-lg border transition-all",
+                  selectedPaperIds.length > 0
+                    ? "bg-slate-800/40 border-slate-300"
+                    : "border-transparent"
+                )}>
+                  <Checkbox
+                    id="select-all-candidates"
+                    checked={allVisibleSelected}
+                    onCheckedChange={handleToggleSelectAllVisible}
+                  />
+                  <label
+                    htmlFor="select-all-candidates"
+                    className="text-xs text-slate-500 cursor-pointer select-none"
+                  >
+                    {selectedPaperIds.length === 0
+                      ? "Select all"
+                      : `${selectedPaperIds.length} selected`}
+                  </label>
+                  {selectedPaperIds.length > 0 && (
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <Button
+                        size="sm"
+                        className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={handleBatchAddArtifacts}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add as Artifacts
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7 text-rose-600 hover:text-rose-700 border-rose-200"
+                        onClick={() => void handleBatchDeleteSelected()}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Delete
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs h-7 text-slate-400 hover:text-slate-600"
+                        onClick={() => setSelectedPaperIds([])}
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Clear
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="space-y-3">
-                {candidatePapers.map((paper) => (
+                {sortedCandidatePapers.map((paper) => (
                   <div
                     key={paper.id}
                     className={cn(
                       "p-4 rounded-lg border transition-all",
                       entryPapers.includes(paper.id)
-                        ? "border-[#1E3A5F] bg-blue-50/30"
+                        ? "border-violet-700 bg-blue-50/30"
                         : selectedPaperIds.includes(paper.id)
                           ? "border-emerald-400 bg-emerald-50/20"
-                          : "border-slate-200 hover:border-slate-300"
+                          : "border-slate-700/50 hover:border-slate-300"
                     )}
                   >
                     <div>
@@ -1953,7 +2119,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             {entryPapers.includes(paper.id) && (
-                              <Badge className="text-[10px] bg-[#1E3A5F] text-white">
+                              <Badge className="text-[10px] bg-violet-700 text-white">
                                 Entry Paper
                               </Badge>
                             )}
@@ -1971,6 +2137,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                             >
                               {paper.relevance} relevance
                             </Badge>
+                            <Badge variant="outline" className="text-[10px] border-slate-300 text-slate-600">
+                              {inferPublicationType(paper)}
+                            </Badge>
                             {paper.discoveryPath && (
                               <Badge
                                 variant="outline"
@@ -1985,12 +2154,10 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                             href={resolveCandidateExternalUrl(paper)}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 mb-1"
+                            className="inline-flex max-w-full items-center gap-1 mb-1 text-sm font-medium text-slate-100 hover:text-blue-700 hover:underline"
                           >
-                            <h4 className="text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline cursor-pointer">
-                              {paper.title}
-                            </h4>
-                            <ExternalLink className="w-3 h-3 text-blue-600" />
+                            <span className="min-w-0 truncate">{paper.title}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
                           </a>
                           <p className="text-xs text-slate-500 mb-2">
                             {paper.authors.join(", ")} ({paper.year}) —{" "}
@@ -2071,7 +2238,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                             "text-xs h-7",
                             entryPapers.includes(paper.id)
                               ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                              : "bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                              : "bg-violet-700 hover:bg-violet-800 text-white"
                           )}
                           onClick={() => handleToggleEntryPaper(paper.id)}
                         >
@@ -2180,7 +2347,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           </div>
 
           {conceptName.trim() && (
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
               <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">Preview</p>
               <Badge
                 className="text-xs px-3 py-1 gap-1 border"
@@ -2195,7 +2362,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           <div className="flex gap-2 pt-1">
             <Button
-              className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
               onClick={handleAddConcept}
               disabled={!conceptName.trim()}
             >
@@ -2270,8 +2437,8 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   className={cn(
                     "text-[10px] cursor-pointer transition-all",
                     srKeywords.includes(kw.term)
-                      ? "bg-[#1E3A5F] text-white"
-                      : "hover:bg-slate-100"
+                      ? "bg-violet-700 text-white"
+                      : "hover:bg-slate-800"
                   )}
                   onClick={() => {
                     if (srKeywords.includes(kw.term)) {
@@ -2342,8 +2509,8 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   className={cn(
                     "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
                     srDatabase === db
-                      ? "border-[#1E3A5F] bg-blue-50/50"
-                      : "border-slate-200 hover:border-slate-300"
+                      ? "border-violet-700 bg-blue-50/50"
+                      : "border-slate-700/50 hover:border-slate-300"
                   )}
                 >
                   <input
@@ -2407,7 +2574,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           <div className="flex gap-2 pt-2">
             <Button
-              className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
               onClick={handleAddSearchRecord}
             >
               <Save className="w-3 h-3 mr-1" />
@@ -2442,8 +2609,8 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   className={cn(
                     "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
                     srDatabase === db
-                      ? "border-[#1E3A5F] bg-blue-50/50"
-                      : "border-slate-200 hover:border-slate-300"
+                      ? "border-violet-700 bg-blue-50/50"
+                      : "border-slate-700/50 hover:border-slate-300"
                   )}
                 >
                   <input
@@ -2500,7 +2667,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           <div className="flex gap-2 pt-2">
             <Button
-              className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
               onClick={handleSaveEditedSearchRecord}
             >
               <Save className="w-3 h-3 mr-1" />
@@ -2541,7 +2708,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 "w-full p-3 rounded-lg border text-left transition-all text-sm",
                 level === "high" && "border-emerald-300 hover:bg-emerald-50",
                 level === "medium" && "border-amber-300 hover:bg-amber-50",
-                level === "low" && "border-slate-300 hover:bg-slate-50"
+                level === "low" && "border-slate-300 hover:bg-slate-800/40"
               )}
             >
               <span
@@ -2636,7 +2803,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             </div>
             <div className="flex gap-2 pt-1">
               <Button
-                className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+                className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
                 onClick={() => {
                   setShowConceptDetailDialog(false);
                   setEditingConceptId(null);
@@ -2672,7 +2839,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       >
         <div className="space-y-3">
           {/* DOI / URL Auto-extract */}
-          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+          <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50 space-y-2">
             <label className="text-xs font-semibold text-slate-700">通过 DOI 或 URL 自动提取信息</label>
             <div className="flex gap-2">
               <Input
@@ -2684,7 +2851,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               />
               <Button
                 size="sm"
-                className="h-8 text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white shrink-0"
+                className="h-8 text-xs bg-violet-700 hover:bg-violet-800 text-white shrink-0"
                 onClick={() => void handleFetchByDoiUrl()}
                 disabled={doiFetching || !newPaperDoiUrl.trim()}
               >
@@ -2731,7 +2898,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               {newPaperSearchRecordId && (() => {
                 const rec = searchRecords.find((r) => r.id === newPaperSearchRecordId);
                 return rec ? (
-                  <p className="text-[10px] text-slate-500 font-mono bg-slate-50 p-1.5 rounded border">
+                  <p className="text-[10px] text-slate-500 font-mono bg-slate-800/40 p-1.5 rounded border">
                     {rec.query}
                   </p>
                 ) : null;
@@ -2788,7 +2955,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
                     newPaperDiscoveryPath === path
                       ? "border-purple-400 bg-purple-50/50"
-                      : "border-slate-200 hover:border-slate-300"
+                      : "border-slate-700/50 hover:border-slate-300"
                   )}
                 >
                   <input
@@ -2815,7 +2982,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           </div>
           <div className="flex gap-2 pt-2">
             <Button
-              className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
               onClick={handleAddCandidatePaper}
             >
               <Plus className="w-3 h-3 mr-1" />
@@ -2874,7 +3041,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           <div className="flex gap-2 pt-2">
             <Button
-              className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
               onClick={() => void handleAddMultipleCandidatePapers()}
               disabled={bulkImporting || !bulkDoiInput.trim()}
             >
@@ -2910,7 +3077,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
                   discoveryPathValue === path
                     ? "border-purple-400 bg-purple-50/50"
-                    : "border-slate-200 hover:border-slate-300"
+                    : "border-slate-700/50 hover:border-slate-300"
                 )}
               >
                 <input
@@ -2989,7 +3156,7 @@ function TagInput({
           <Badge
             key={tag}
             variant="secondary"
-            className="text-[10px] px-2 py-0.5 bg-slate-100 hover:bg-slate-200 cursor-pointer gap-1"
+            className="text-[10px] px-2 py-0.5 bg-slate-800 hover:bg-slate-200 cursor-pointer gap-1"
           >
             <Tag className="w-2.5 h-2.5" />
             {tag}
@@ -3196,14 +3363,14 @@ function ReadWorkspace() {
   return (
     <div className="space-y-5">
       {/* Paper Metadata */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-700/50">
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <Badge className="text-[10px] bg-[#1E3A5F] text-white mb-2">
+              <Badge className="text-[10px] bg-violet-700 text-white mb-2">
                 Entry Paper
               </Badge>
-              <h3 className="text-base font-semibold text-slate-800 mb-1">
+              <h3 className="text-base font-semibold text-slate-200 mb-1">
                 {paper.title}
               </h3>
               <p className="text-xs text-slate-500">
@@ -3229,7 +3396,7 @@ function ReadWorkspace() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Annotations & Highlights */}
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold">
@@ -3282,13 +3449,13 @@ function ReadWorkspace() {
                   onTagsChange={setNewAnnTags}
                   placeholder="Add tags (e.g., gap, method, key-finding)..."
                 />
-                <div className="p-1.5 bg-slate-50 rounded text-[10px] text-slate-500">
+                <div className="p-1.5 bg-slate-800/40 rounded text-[10px] text-slate-500">
                   📎 Auto-citation: {citation}
                 </div>
                 <div className="flex gap-1.5">
                   <Button
                     size="sm"
-                    className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                    className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
                     onClick={handleAddAnnotation}
                   >
                     <Plus className="w-3 h-3 mr-1" />
@@ -3316,7 +3483,7 @@ function ReadWorkspace() {
                 {annotations.map((ann) => (
                   <div
                     key={ann.id}
-                    className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition-all group"
+                    className="p-3 rounded-lg border border-slate-700/50 hover:border-slate-300 transition-all group"
                   >
                     <div
                       className={cn(
@@ -3338,7 +3505,7 @@ function ReadWorkspace() {
                           <Badge
                             key={tag}
                             variant="secondary"
-                            className="text-[9px] px-1.5 py-0 bg-slate-100 text-slate-500"
+                            className="text-[9px] px-1.5 py-0 bg-slate-800 text-slate-500"
                           >
                             <Tag className="w-2 h-2 mr-0.5" />
                             {tag}
@@ -3384,7 +3551,7 @@ function ReadWorkspace() {
         </Card>
 
         {/* Notes Panel */}
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex gap-1">
@@ -3393,8 +3560,8 @@ function ReadWorkspace() {
                   className={cn(
                     "px-3 py-1 rounded-md text-xs font-medium transition-all",
                     noteTab === "literature"
-                      ? "bg-[#1E3A5F] text-white"
-                      : "text-slate-500 hover:bg-slate-100"
+                      ? "bg-violet-700 text-white"
+                      : "text-slate-500 hover:bg-slate-800"
                   )}
                 >
                   Literature Notes ({litNotes.length})
@@ -3405,7 +3572,7 @@ function ReadWorkspace() {
                     "px-3 py-1 rounded-md text-xs font-medium transition-all",
                     noteTab === "permanent"
                       ? "bg-rose-600 text-white"
-                      : "text-slate-500 hover:bg-slate-100"
+                      : "text-slate-500 hover:bg-slate-800"
                   )}
                 >
                   Permanent Notes ({permNotes.length})
@@ -3414,7 +3581,7 @@ function ReadWorkspace() {
               {noteTab === "literature" ? (
                 <Button
                   size="sm"
-                  className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                  className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
                   onClick={() => {
                     setShowNewNote(true);
                     setShowNewPermNote(false);
@@ -3452,8 +3619,8 @@ function ReadWorkspace() {
                       className={cn(
                         "px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-all border",
                         activeNoteId === note.id && !showNewNote
-                          ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                          ? "bg-violet-700 text-white border-violet-700"
+                          : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-slate-300"
                       )}
                     >
                       {note.title}
@@ -3486,13 +3653,13 @@ function ReadWorkspace() {
                       onTagsChange={setNewNoteTags}
                       placeholder="Add tags (e.g., gap, theory, method)..."
                     />
-                    <div className="p-1.5 bg-slate-50 rounded text-[10px] text-slate-500">
+                    <div className="p-1.5 bg-slate-800/40 rounded text-[10px] text-slate-500">
                       📎 Auto-citation: {citation}
                     </div>
                     <div className="flex gap-1.5">
                       <Button
                         size="sm"
-                        className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                        className="text-xs bg-violet-700 hover:bg-violet-800 text-white"
                         onClick={handleAddNote}
                       >
                         <Save className="w-3 h-3 mr-1" />
@@ -3516,7 +3683,7 @@ function ReadWorkspace() {
                 ) : activeNote ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-medium text-slate-800">
+                      <h4 className="text-sm font-medium text-slate-200">
                         {activeNote.title}
                       </h4>
                       <span className="text-[10px] text-slate-400">
@@ -3543,7 +3710,7 @@ function ReadWorkspace() {
                         <Badge
                           key={tag}
                           variant="secondary"
-                          className="text-[10px] px-2 py-0.5 bg-slate-100"
+                          className="text-[10px] px-2 py-0.5 bg-slate-800"
                         >
                           <Tag className="w-2.5 h-2.5 mr-0.5" />
                           {tag}
@@ -3706,7 +3873,7 @@ function ReadWorkspace() {
                           className="p-3 rounded-lg border border-rose-200 bg-rose-50/30"
                         >
                           <div className="flex items-center justify-between mb-1">
-                            <h4 className="text-sm font-medium text-slate-800">
+                            <h4 className="text-sm font-medium text-slate-200">
                               {note.title}
                             </h4>
                             <span className="text-[10px] text-slate-400">
@@ -3776,7 +3943,7 @@ function ReadWorkspace() {
       </div>
 
       {/* Relevance & Value */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-700/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">
             Relevance & Value Assessment
@@ -3792,7 +3959,7 @@ function ReadWorkspace() {
                     "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all text-xs",
                     i === 0
                       ? "border-emerald-300 bg-emerald-50/50"
-                      : "border-slate-200 hover:border-slate-300"
+                      : "border-slate-700/50 hover:border-slate-300"
                   )}
                 >
                   <input
@@ -3829,7 +3996,7 @@ interface ExpandRecord {
   year?: number;
   journal?: string;
   source: "auto" | "manual";
-  direction: "backward" | "forward";
+  direction: "references" | "citations";
   url?: string;
 }
 
@@ -3842,25 +4009,26 @@ interface ManualRecordForm {
 }
 
 function ExpandWorkspace({ projectId }: { projectId: string }) {
-  const [candidatePapers, setCandidatePapers] = useState<ApiPaper[]>([]);
-  const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [projectPapers, setProjectPapers] = useState<ApiPaper[]>([]);
+  const [loadingPapers, setLoadingPapers] = useState(false);
   const [selectedPaperId, setSelectedPaperId] = useState("");
-  const [directDoiUrl, setDirectDoiUrl] = useState("");
-  const [activePath, setActivePath] = useState<"backward" | "forward">("backward");
-  const [backwardRecords, setBackwardRecords] = useState<ExpandRecord[]>([]);
-  const [forwardRecords, setForwardRecords] = useState<ExpandRecord[]>([]);
+  const [activePath, setActivePath] = useState<"references" | "citations">("references");
+  const [referenceRecords, setReferenceRecords] = useState<ExpandRecord[]>([]);
+  const [citationRecords, setCitationRecords] = useState<ExpandRecord[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [expandError, setExpandError] = useState<string | null>(null);
-  const [showManualBackward, setShowManualBackward] = useState(false);
-  const [showManualForward, setShowManualForward] = useState(false);
-  const [manualBackwardForm, setManualBackwardForm] = useState<ManualRecordForm>({
+  const [showManualReferences, setShowManualReferences] = useState(false);
+  const [showManualCitations, setShowManualCitations] = useState(false);
+  const [referenceLookupInput, setReferenceLookupInput] = useState("");
+  const [citationLookupInput, setCitationLookupInput] = useState("");
+  const [manualReferenceForm, setManualReferenceForm] = useState<ManualRecordForm>({
     title: "",
     authors: "",
     year: "",
     journal: "",
     url: "",
   });
-  const [manualForwardForm, setManualForwardForm] = useState<ManualRecordForm>({
+  const [manualCitationForm, setManualCitationForm] = useState<ManualRecordForm>({
     title: "",
     authors: "",
     year: "",
@@ -3868,34 +4036,49 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
     url: "",
   });
 
-  const selectedPaper = candidatePapers.find((paper) => paper.id === selectedPaperId) ?? null;
+  const entryPapers = projectPapers.filter((paper) => paper.is_entry_paper);
+  const selectedPaper = entryPapers.find((paper) => paper.id === selectedPaperId) ?? null;
+
+  interface OpenAlexWork {
+    id?: string;
+    display_name?: string;
+    publication_year?: number;
+    authorships?: Array<{ author?: { display_name?: string } }>;
+    primary_location?: { source?: { display_name?: string } };
+    host_venue?: { display_name?: string };
+    doi?: string;
+    ids?: { doi?: string; openalex?: string };
+    referenced_works?: string[];
+    cited_by_api_url?: string;
+  }
 
   useEffect(() => {
     if (!projectId) return;
-    setLoadingCandidates(true);
+    setLoadingPapers(true);
     paperAPI
       .list(projectId)
       .then((papers) => {
-        setCandidatePapers(papers);
-        if (papers.length > 0) {
-          setSelectedPaperId((prev) => prev || papers[0].id);
+        setProjectPapers(papers);
+        const existingEntryPapers = papers.filter((paper) => paper.is_entry_paper);
+        if (existingEntryPapers.length > 0) {
+          setSelectedPaperId((prev) => prev || existingEntryPapers[0].id);
         }
       })
       .catch(() => {
-        toast.error("Failed to load candidate papers");
+        toast.error("Failed to load entry papers");
       })
-      .finally(() => setLoadingCandidates(false));
+      .finally(() => setLoadingPapers(false));
   }, [projectId]);
 
   useEffect(() => {
-    if (!candidatePapers.length) {
+    if (!entryPapers.length) {
       setSelectedPaperId("");
       return;
     }
-    if (!selectedPaperId || !candidatePapers.some((paper) => paper.id === selectedPaperId)) {
-      setSelectedPaperId(candidatePapers[0].id);
+    if (!selectedPaperId || !entryPapers.some((paper) => paper.id === selectedPaperId)) {
+      setSelectedPaperId(entryPapers[0].id);
     }
-  }, [candidatePapers, selectedPaperId]);
+  }, [entryPapers, selectedPaperId]);
 
   const extractDoi = (input?: string | null) => {
     if (!input) return null;
@@ -3904,73 +4087,97 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
   };
 
   const normalize = (value?: string | null) => (value || "").trim().toLowerCase();
+  const buildAccessibleExternalLookupUrl = (title?: string, doi?: string | null) => {
+    const raw = (doi || title || "").trim();
+    if (!raw) return undefined;
+    return `https://scholar.google.com/scholar?q=${encodeURIComponent(raw)}`;
+  };
 
-  const getOpenAlexWork = async (identifier: string) => {
+  const isRestrictedExternalUrl = (url?: string | null) => {
+    if (!url) return false;
+    return /webofscience\.com|webofknowledge\.com|scopus\.com/i.test(url);
+  };
+
+  const resolveExternalPaperUrl = (input?: string | null, title?: string) => {
+    const normalizedInput = (input || "").trim();
+    const doi = extractDoi(normalizedInput);
+    if (doi) {
+      return `https://doi.org/${encodeURIComponent(doi)}`;
+    }
+
+    if (/^https?:\/\//i.test(normalizedInput) && !isRestrictedExternalUrl(normalizedInput)) {
+      return normalizedInput;
+    }
+
+    return buildAccessibleExternalLookupUrl(title, doi);
+  };
+
+  const buildOpenAlexUrl = (workId?: string) => {
+    if (!workId) return undefined;
+    const normalized = workId.replace("https://openalex.org/", "");
+    return `https://openalex.org/${encodeURIComponent(normalized)}`;
+  };
+
+  const getOpenAlexWork = async (identifier: string): Promise<OpenAlexWork> => {
     const response = await fetch(`https://api.openalex.org/works/${encodeURIComponent(identifier)}`);
     if (!response.ok) {
       throw new Error("openalex lookup failed");
     }
-    return (await response.json()) as {
-      id?: string;
-      display_name?: string;
-      publication_year?: number;
-      authorships?: Array<{ author?: { display_name?: string } }>;
-      primary_location?: { source?: { display_name?: string } };
-      host_venue?: { display_name?: string };
-      doi?: string;
-      referenced_works?: string[];
-      cited_by_api_url?: string;
-    };
+    return (await response.json()) as OpenAlexWork;
   };
 
-  const getOpenAlexWorkByDoi = async (doi: string) => {
-    const normalizedDoi = doi.trim().toLowerCase();
+  const resolveOpenAlexWork = async (
+    sourceInput: string,
+    fallbackTitle?: string
+  ): Promise<OpenAlexWork> => {
+    const normalizedInput = sourceInput.trim();
+    const doi = extractDoi(normalizedInput);
 
-    // Primary path: /works/https://doi.org/<doi>
-    try {
-      return await getOpenAlexWork(`https://doi.org/${normalizedDoi}`);
-    } catch {
-      // Fallback path: /works?filter=doi:<doi>
-      const response = await fetch(
-        `https://api.openalex.org/works?filter=doi:${encodeURIComponent(normalizedDoi)}&per-page=1`
-      );
-      if (!response.ok) {
-        throw new Error("openalex doi filter lookup failed");
+    if (doi) {
+      try {
+        return await getOpenAlexWork(`https://doi.org/${doi.trim().toLowerCase()}`);
+      } catch {
+        const byDoiResponse = await fetch(
+          `https://api.openalex.org/works?filter=doi:${encodeURIComponent(doi.trim().toLowerCase())}&per-page=1`
+        );
+        if (byDoiResponse.ok) {
+          const payload = (await byDoiResponse.json()) as { results?: OpenAlexWork[] };
+          const first = payload.results?.[0];
+          if (first) return first;
+        }
       }
-      const payload = (await response.json()) as {
-        results?: Array<{
-          id?: string;
-          display_name?: string;
-          publication_year?: number;
-          authorships?: Array<{ author?: { display_name?: string } }>;
-          primary_location?: { source?: { display_name?: string } };
-          host_venue?: { display_name?: string };
-          doi?: string;
-          referenced_works?: string[];
-          cited_by_api_url?: string;
-        }>;
-      };
-      const first = payload.results?.[0];
-      if (!first) {
-        throw new Error("openalex doi filter returned empty");
-      }
-      return first;
     }
+
+    const query = (fallbackTitle || normalizedInput).trim();
+    if (!query) {
+      throw new Error("missing source query");
+    }
+
+    const response = await fetch(
+      `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=1`
+    );
+    if (!response.ok) {
+      throw new Error("openalex title search failed");
+    }
+    const payload = (await response.json()) as { results?: OpenAlexWork[] };
+    const first = payload.results?.[0];
+    if (!first) {
+      throw new Error("openalex title search returned empty");
+    }
+    return first;
   };
 
   const mapOpenAlexToRecord = (
-    work: {
-      id?: string;
-      display_name?: string;
-      publication_year?: number;
-      authorships?: Array<{ author?: { display_name?: string } }>;
-      primary_location?: { source?: { display_name?: string } };
-      host_venue?: { display_name?: string };
-      doi?: string;
-    },
-    direction: "backward" | "forward"
+    work: OpenAlexWork,
+    direction: "references" | "citations"
   ): ExpandRecord | null => {
     if (!work.display_name) return null;
+
+    const doi = work.ids?.doi || work.doi;
+    const resolvedUrl = doi
+      ? `https://doi.org/${encodeURIComponent(doi.replace("https://doi.org/", ""))}`
+      : buildOpenAlexUrl(work.id);
+
     return {
       id: work.id || `${direction}-${Date.now()}-${Math.random()}`,
       title: work.display_name,
@@ -3981,25 +4188,85 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
       journal: work.primary_location?.source?.display_name || work.host_venue?.display_name,
       source: "auto",
       direction,
-      url: work.doi || undefined,
+      url: resolvedUrl,
     };
   };
+  const fetchOpenAlexRecords = async (
+    sourceWork: OpenAlexWork,
+    direction: "references" | "citations"
+  ) => {
+    if (direction === "references") {
+      const referencedIds = (sourceWork.referenced_works || [])
+        .slice(0, 20)
+        .map((item) => item.split("/").pop() || item);
 
-  const loadExpandRecordsByInput = async (sourceInput: string) => {
-    const normalizedInput = sourceInput.trim();
-    const doi = extractDoi(normalizedInput);
+      const works = await Promise.all(
+        referencedIds.map(async (workId) => {
+          try {
+            return await getOpenAlexWork(workId);
+          } catch {
+            return null;
+          }
+        })
+      );
 
-    if (!normalizedInput && !doi) {
-      setBackwardRecords([]);
-      setForwardRecords([]);
-      setExpandError("Please enter a DOI/URL, or choose a candidate paper that has a DOI/URL.");
-      return;
+      return works
+        .map((work) => (work ? mapOpenAlexToRecord(work, direction) : null))
+        .filter((record): record is ExpandRecord => Boolean(record));
     }
 
-    if (!doi) {
-      setBackwardRecords([]);
-      setForwardRecords([]);
-      setExpandError("The selected URL does not contain a valid DOI. You can add records manually in Backward and Forward tabs.");
+    const openAlexId = sourceWork.id?.split("/").pop();
+    const citedByUrl = openAlexId
+      ? `https://api.openalex.org/works?filter=cites:${encodeURIComponent(openAlexId)}&per-page=20`
+      : sourceWork.cited_by_api_url
+        ? `${sourceWork.cited_by_api_url}&per-page=20`
+        : null;
+
+    if (!citedByUrl) {
+      throw new Error("openalex cited-by url unavailable");
+    }
+
+    const response = await fetch(citedByUrl);
+    if (!response.ok) {
+      throw new Error("openalex citations lookup failed");
+    }
+
+    const payload = (await response.json()) as { results?: OpenAlexWork[] };
+    return (payload.results || [])
+      .map((work) => mapOpenAlexToRecord(work, direction))
+      .filter((record): record is ExpandRecord => Boolean(record));
+  };
+
+  const loadExpandRecordsFromPaper = async (paper: ApiPaper) => {
+    setLoadingRecords(true);
+    setExpandError(null);
+
+    try {
+      const sourceWork = await resolveOpenAlexWork(paper.url || "", paper.title);
+      const [references, citations] = await Promise.all([
+        fetchOpenAlexRecords(sourceWork, "references"),
+        fetchOpenAlexRecords(sourceWork, "citations"),
+      ]);
+      setReferenceRecords(references);
+      setCitationRecords(citations);
+    } catch {
+      setReferenceRecords([]);
+      setCitationRecords([]);
+      setExpandError(
+        "Unable to pull references or citations from OpenAlex for this entry paper. You can still use the DOI/URL pull inside each tab or add records manually."
+      );
+    } finally {
+      setLoadingRecords(false);
+    }
+  };
+
+  const loadDirectionRecordsByInput = async (
+    direction: "references" | "citations",
+    sourceInput: string
+  ) => {
+    const normalizedInput = sourceInput.trim();
+    if (!normalizedInput) {
+      setExpandError(`Please enter a DOI or URL to pull ${direction}.`);
       return;
     }
 
@@ -4007,100 +4274,27 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
     setExpandError(null);
 
     try {
-      const sourceWork = await getOpenAlexWorkByDoi(doi);
-
-      const referencedIds = (sourceWork.referenced_works || [])
-        .slice(0, 12)
-        .map((item) => item.split("/").pop() || item);
-
-      const backwardWorks = await Promise.all(
-        referencedIds.map(async (openAlexId) => {
-          try {
-            return await getOpenAlexWork(openAlexId);
-          } catch {
-            return null;
-          }
-        })
-      );
-
-      let forwardWorks: Array<{
-        id?: string;
-        display_name?: string;
-        publication_year?: number;
-        authorships?: Array<{ author?: { display_name?: string } }>;
-        primary_location?: { source?: { display_name?: string } };
-        host_venue?: { display_name?: string };
-        doi?: string;
-      }> = [];
-
-      const sourceOpenAlexId = sourceWork.id?.split("/").pop();
-      if (sourceOpenAlexId) {
-        const response = await fetch(
-          `https://api.openalex.org/works?filter=cites:${encodeURIComponent(sourceOpenAlexId)}&per-page=12`
-        );
-        if (response.ok) {
-          const payload = (await response.json()) as {
-            results?: Array<{
-              id?: string;
-              display_name?: string;
-              publication_year?: number;
-              authorships?: Array<{ author?: { display_name?: string } }>;
-              primary_location?: { source?: { display_name?: string } };
-              host_venue?: { display_name?: string };
-              doi?: string;
-            }>;
-          };
-          forwardWorks = payload.results || [];
-        }
-      } else if (sourceWork.cited_by_api_url) {
-        const response = await fetch(`${sourceWork.cited_by_api_url}&per-page=12`);
-        if (response.ok) {
-          const payload = (await response.json()) as {
-            results?: Array<{
-              id?: string;
-              display_name?: string;
-              publication_year?: number;
-              authorships?: Array<{ author?: { display_name?: string } }>;
-              primary_location?: { source?: { display_name?: string } };
-              host_venue?: { display_name?: string };
-              doi?: string;
-            }>;
-          };
-          forwardWorks = payload.results || [];
-        }
+      const sourceWork = await resolveOpenAlexWork(normalizedInput, selectedPaper?.title);
+      const records = await fetchOpenAlexRecords(sourceWork, direction);
+      if (direction === "references") {
+        setReferenceRecords(records);
+      } else {
+        setCitationRecords(records);
       }
-
-      setBackwardRecords(
-        backwardWorks
-          .map((work) => (work ? mapOpenAlexToRecord(work, "backward") : null))
-          .filter((record): record is ExpandRecord => Boolean(record))
-      );
-      setForwardRecords(
-        forwardWorks
-          .map((work) => mapOpenAlexToRecord(work, "forward"))
-          .filter((record): record is ExpandRecord => Boolean(record))
-      );
     } catch {
-      setBackwardRecords([]);
-      setForwardRecords([]);
-      setExpandError("Unable to pull related literature from DOI/URL. You can still add records manually.");
+      setExpandError(`Unable to pull ${direction} from OpenAlex with the provided DOI/URL.`);
     } finally {
       setLoadingRecords(false);
     }
   };
 
-  const loadExpandRecords = async (paper: ApiPaper) => {
-    const sourceUrl = (paper as ApiPaper & { url?: string }).url;
-    await loadExpandRecordsByInput(sourceUrl || "");
-  };
-
   useEffect(() => {
     if (!selectedPaper) return;
-    void loadExpandRecords(selectedPaper);
-  }, [selectedPaperId]);
+    void loadExpandRecordsFromPaper(selectedPaper);
+  }, [selectedPaperId, selectedPaper?.title, selectedPaper?.url]);
 
-  const addManualRecord = (direction: "backward" | "forward") => {
-    const form = direction === "backward" ? manualBackwardForm : manualForwardForm;
+  const addManualRecord = (direction: "references" | "citations") => {
+    const form = direction === "references" ? manualReferenceForm : manualCitationForm;
     if (!form.title.trim()) return;
 
     const record: ExpandRecord = {
@@ -4117,21 +4311,21 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
       url: form.url.trim() || undefined,
     };
 
-    if (direction === "backward") {
-      setBackwardRecords((prev) => [record, ...prev]);
-      setManualBackwardForm({ title: "", authors: "", year: "", journal: "", url: "" });
-      setShowManualBackward(false);
+    if (direction === "references") {
+      setReferenceRecords((prev) => [record, ...prev]);
+      setManualReferenceForm({ title: "", authors: "", year: "", journal: "", url: "" });
+      setShowManualReferences(false);
       return;
     }
 
-    setForwardRecords((prev) => [record, ...prev]);
-    setManualForwardForm({ title: "", authors: "", year: "", journal: "", url: "" });
-    setShowManualForward(false);
+    setCitationRecords((prev) => [record, ...prev]);
+    setManualCitationForm({ title: "", authors: "", year: "", journal: "", url: "" });
+    setShowManualCitations(false);
   };
 
-  const findExistingCandidate = (record: ExpandRecord) => {
+  const findExistingProjectPaper = (record: ExpandRecord) => {
     const recordDoi = extractDoi(record.url);
-    return candidatePapers.find((paper) => {
+    return projectPapers.find((paper) => {
       const paperUrl = (paper as ApiPaper & { url?: string }).url;
       const paperDoi = extractDoi(paperUrl);
       if (recordDoi && paperDoi && recordDoi === paperDoi) return true;
@@ -4140,16 +4334,24 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
     });
   };
 
-  const toggleCandidatePaper = async (record: ExpandRecord) => {
-    const existing = findExistingCandidate(record);
+  const toggleExpandedPaper = async (record: ExpandRecord) => {
+    const existing = findExistingProjectPaper(record);
 
     if (existing) {
       try {
-        await paperAPI.delete(existing.id);
-        setCandidatePapers((prev) => prev.filter((paper) => paper.id !== existing.id));
-        toast.success("Removed from candidate papers");
+        const nextExpandedValue = !existing.is_expanded_paper;
+        const updated = await paperAPI.update(existing.id, {
+          is_expanded_paper: nextExpandedValue,
+          url: existing.url || record.url,
+          discovery_path: existing.discovery_path || "OpenAlex",
+          discovery_note:
+            existing.discovery_note ||
+            (selectedPaper ? `Expanded from: ${selectedPaper.title}` : "Expanded from Step 4"),
+        });
+        setProjectPapers((prev) => prev.map((paper) => (paper.id === existing.id ? updated : paper)));
+        toast.success(nextExpandedValue ? "Added to expanded papers" : "Removed from expanded papers");
       } catch {
-        toast.error("Failed to remove this record from candidate papers");
+        toast.error("Failed to update this paper in expanded papers");
       }
       return;
     }
@@ -4161,29 +4363,29 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
         year: record.year,
         journal: record.journal,
         url: record.url,
-        discovery_path: record.direction === "backward" ? "Backward citation" : "Forward citation",
+        discovery_path: "OpenAlex",
         discovery_note: selectedPaper ? `Expanded from: ${selectedPaper.title}` : "Expanded from Step 4",
         project_id: projectId,
       });
 
       try {
         const updated = await paperAPI.update(created.id, { is_expanded_paper: true });
-        setCandidatePapers((prev) => [...prev, updated]);
+        setProjectPapers((prev) => [...prev, updated]);
       } catch {
-        setCandidatePapers((prev) => [...prev, created]);
+        setProjectPapers((prev) => [...prev, created]);
       }
-      toast.success("Added to candidate papers");
+      toast.success("Added to expanded papers");
     } catch {
-      toast.error("Failed to add this record to candidate papers");
+      toast.error("Failed to add this record to expanded papers");
     }
   };
 
-  const renderManualForm = (direction: "backward" | "forward") => {
-    const form = direction === "backward" ? manualBackwardForm : manualForwardForm;
-    const setForm = direction === "backward" ? setManualBackwardForm : setManualForwardForm;
+  const renderManualForm = (direction: "references" | "citations") => {
+    const form = direction === "references" ? manualReferenceForm : manualCitationForm;
+    const setForm = direction === "references" ? setManualReferenceForm : setManualCitationForm;
 
     return (
-      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 space-y-2">
+      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-800/40 p-3 space-y-2">
         <Input
           value={form.title}
           onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
@@ -4220,7 +4422,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
           />
         </div>
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => addManualRecord(direction)} className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white">
+          <Button size="sm" onClick={() => addManualRecord(direction)} className="bg-violet-700 hover:bg-violet-800 text-white">
             <Plus className="w-3 h-3 mr-1" />
             Add record
           </Button>
@@ -4228,8 +4430,8 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
             size="sm"
             variant="outline"
             onClick={() => {
-              if (direction === "backward") setShowManualBackward(false);
-              else setShowManualForward(false);
+              if (direction === "references") setShowManualReferences(false);
+              else setShowManualCitations(false);
             }}
           >
             Cancel
@@ -4239,16 +4441,29 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
     );
   };
 
-  const renderRecordList = (direction: "backward" | "forward", records: ExpandRecord[]) => (
+  const renderRecordList = (direction: "references" | "citations", records: ExpandRecord[]) => (
     <div className="space-y-3">
       {records.map((record) => {
-        const existing = findExistingCandidate(record);
+        const existing = findExistingProjectPaper(record);
+        const isExpanded = Boolean(existing?.is_expanded_paper);
+        const externalUrl = resolveExternalPaperUrl(record.url, record.title);
         return (
-          <div key={record.id} className="rounded-lg border border-slate-200 p-3">
+          <div key={record.id} className="rounded-lg border border-slate-700/50 p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-semibold text-slate-900">{record.title}</h4>
+                  {externalUrl ? (
+                    <a
+                      href={externalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-semibold text-slate-100 hover:text-blue-700 hover:underline"
+                    >
+                      {record.title}
+                    </a>
+                  ) : (
+                    <h4 className="text-sm font-semibold text-slate-100">{record.title}</h4>
+                  )}
                   <Badge variant="outline" className={cn("text-[10px]", record.source === "auto" ? "border-blue-300 text-blue-600" : "border-purple-300 text-purple-600")}>
                     {record.source === "auto" ? "Auto" : "Manual"}
                   </Badge>
@@ -4262,19 +4477,19 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
               </div>
               <Button
                 size="sm"
-                variant={existing ? "outline" : "default"}
-                className={cn(existing ? "border-rose-300 text-rose-700" : "bg-[#1E3A5F] hover:bg-[#162d4a] text-white")}
-                onClick={() => void toggleCandidatePaper(record)}
+                variant={isExpanded ? "outline" : "default"}
+                className={cn(isExpanded ? "border-rose-300 text-rose-700" : "bg-violet-700 hover:bg-violet-800 text-white")}
+                onClick={() => void toggleExpandedPaper(record)}
               >
-                {existing ? (
+                {isExpanded ? (
                   <>
                     <X className="w-3 h-3 mr-1" />
-                    Remove from candidate papers
+                    Remove from expanded papers
                   </>
                 ) : (
                   <>
                     <Plus className="w-3 h-3 mr-1" />
-                    Add to candidate papers
+                    Add to expanded papers
                   </>
                 )}
               </Button>
@@ -4284,7 +4499,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
       })}
       {records.length === 0 && !loadingRecords ? (
         <div className="text-center py-8 text-xs text-slate-400 border border-dashed rounded-lg">
-          No records yet. Pull from DOI/URL or add manually.
+          No records yet. Pull from OpenAlex or add manually.
         </div>
       ) : null}
     </div>
@@ -4292,46 +4507,73 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-5">
-      <Card className="border-slate-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Step 4: Expand</CardTitle>
-        </CardHeader>
+      <Card className="border-slate-700/50">
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <p className="text-sm font-medium text-slate-700">1. Select one candidate paper to expand</p>
+            <p className="text-sm font-medium text-slate-700">1. Select one entry paper to expand</p>
             <div className="max-h-[280px] overflow-y-auto space-y-2 pr-1">
-              {candidatePapers.map((paper) => {
+              {entryPapers.map((paper) => {
                 const paperUrl = (paper as ApiPaper & { url?: string }).url;
+                const externalUrl = resolveExternalPaperUrl(paperUrl, paper.title);
                 return (
-                  <button
+                  <div
                     key={paper.id}
-                    type="button"
                     onClick={() => setSelectedPaperId(paper.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedPaperId(paper.id);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
                     className={cn(
                       "w-full text-left rounded-lg border p-3 transition-all",
                       selectedPaperId === paper.id
-                        ? "border-[#1E3A5F] bg-blue-50/60"
-                        : "border-slate-200 hover:border-slate-300"
+                        ? "border-violet-700 bg-blue-50/60"
+                        : "border-slate-700/50 hover:border-slate-300"
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-900">{paper.title}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            to={`/paper-read/${projectId}/${paper.id}`}
+                            onClick={(event) => event.stopPropagation()}
+                            className="text-sm font-semibold text-slate-100 hover:text-blue-700 hover:underline"
+                          >
+                            {paper.title}
+                          </Link>
+                          {externalUrl ? (
+                            <a
+                              href={externalUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(event) => event.stopPropagation()}
+                              className="inline-flex items-center rounded-md border border-slate-700/50 px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:border-blue-300 hover:text-blue-700"
+                            >
+                              <ExternalLink className="mr-1 h-3 w-3" />
+                              Open original
+                            </a>
+                          ) : null}
+                        </div>
                         <p className="text-xs text-slate-500 mt-1">
                           {paper.authors.join(", ") || "Unknown authors"}
                           {paper.year ? ` (${paper.year})` : ""}
                         </p>
                       </div>
-                      <Badge variant="outline" className={cn("text-[10px]", paperUrl ? "border-emerald-300 text-emerald-700" : "border-amber-300 text-amber-700")}>
-                        {paperUrl ? "Has DOI/URL" : "Manual only"}
-                      </Badge>
+                      {selectedPaperId === paper.id ? (
+                        <Badge variant="outline" className="text-[10px] border-violet-700 text-violet-400">
+                          Selected
+                        </Badge>
+                      ) : null}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
-              {!loadingCandidates && candidatePapers.length === 0 ? (
+              {!loadingPapers && entryPapers.length === 0 ? (
                 <div className="text-center py-8 text-xs text-slate-400 border border-dashed rounded-lg">
-                  No candidate papers in this project.
+                  No entry papers in this project.
                 </div>
               ) : null}
             </div>
@@ -4339,93 +4581,111 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
 
           <div className="space-y-3">
             <p className="text-sm font-medium text-slate-700">2. Expansion Paths</p>
-            <Tabs value={activePath} onValueChange={(value) => setActivePath(value as "backward" | "forward")}>
+            <Tabs value={activePath} onValueChange={(value) => setActivePath(value as "references" | "citations")}>
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="backward">Backward (others cited by this paper)</TabsTrigger>
-                <TabsTrigger value="forward">Forward (others citing this paper)</TabsTrigger>
+                <TabsTrigger value="references">References</TabsTrigger>
+                <TabsTrigger value="citations">Citations</TabsTrigger>
               </TabsList>
 
-              <div className="mt-3 rounded-lg border border-slate-200 p-3 bg-slate-50/40">
+              <div className="mt-3 rounded-lg border border-slate-700/50 p-3 bg-slate-800/40/40">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs text-slate-600">
-                    {selectedPaper ? `Selected: ${selectedPaper.title}` : "Please select a candidate paper first."}
+                    {selectedPaper ? `Selected: ${selectedPaper.title}` : "Please select an entry paper first."}
                   </p>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() => {
-                      if (selectedPaper) void loadExpandRecords(selectedPaper);
+                      if (selectedPaper) void loadExpandRecordsFromPaper(selectedPaper);
                     }}
                     disabled={!selectedPaper || loadingRecords}
                   >
                     <Sparkles className="w-3 h-3 mr-1" />
-                    {loadingRecords ? "Pulling..." : "Pull from DOI/URL"}
+                    {loadingRecords ? "Pulling..." : "Pull from OpenAlex"}
                   </Button>
                 </div>
                 {expandError ? (
                   <p className="text-xs text-amber-700 mt-2">{expandError}</p>
                 ) : null}
+              </div>
 
-                <div className="mt-3 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+              <TabsContent value="references" className="mt-4 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2">
                   <Input
-                    value={directDoiUrl}
-                    onChange={(event) => setDirectDoiUrl(event.target.value)}
-                    placeholder="Or enter a DOI/URL directly, e.g. 10.1038/nature12373 or https://doi.org/..."
+                    value={referenceLookupInput}
+                    onChange={(event) => setReferenceLookupInput(event.target.value)}
+                    placeholder="Provide a DOI or URL to pull references"
                     className="text-sm"
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
                         event.preventDefault();
-                        void loadExpandRecordsByInput(directDoiUrl);
+                        void loadDirectionRecordsByInput("references", referenceLookupInput);
                       }
                     }}
                   />
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => void loadExpandRecordsByInput(directDoiUrl)}
-                    disabled={loadingRecords || !directDoiUrl.trim()}
+                    onClick={() => void loadDirectionRecordsByInput("references", referenceLookupInput)}
+                    disabled={loadingRecords || !referenceLookupInput.trim()}
                   >
                     <Sparkles className="w-3 h-3 mr-1" />
-                    Pull from DOI/URL
+                    Pull References
                   </Button>
-                </div>
-              </div>
-
-              <TabsContent value="backward" className="mt-4 space-y-3">
-                <div className="flex justify-end">
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setShowManualBackward((prev) => !prev)}
+                    onClick={() => setShowManualReferences((prev) => !prev)}
                   >
                     <Plus className="w-3 h-3 mr-1" />
                     Add manually
                   </Button>
                 </div>
-                {showManualBackward ? renderManualForm("backward") : null}
-                {renderRecordList("backward", backwardRecords)}
+                {showManualReferences ? renderManualForm("references") : null}
+                {renderRecordList("references", referenceRecords)}
               </TabsContent>
 
-              <TabsContent value="forward" className="mt-4 space-y-3">
-                <div className="flex justify-end">
+              <TabsContent value="citations" className="mt-4 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2">
+                  <Input
+                    value={citationLookupInput}
+                    onChange={(event) => setCitationLookupInput(event.target.value)}
+                    placeholder="Provide a DOI or URL to pull citations"
+                    className="text-sm"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void loadDirectionRecordsByInput("citations", citationLookupInput);
+                      }
+                    }}
+                  />
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setShowManualForward((prev) => !prev)}
+                    onClick={() => void loadDirectionRecordsByInput("citations", citationLookupInput)}
+                    disabled={loadingRecords || !citationLookupInput.trim()}
+                  >
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Pull Citations
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowManualCitations((prev) => !prev)}
                   >
                     <Plus className="w-3 h-3 mr-1" />
                     Add manually
                   </Button>
                 </div>
-                {showManualForward ? renderManualForm("forward") : null}
-                {renderRecordList("forward", forwardRecords)}
+                {showManualCitations ? renderManualForm("citations") : null}
+                {renderRecordList("citations", citationRecords)}
               </TabsContent>
             </Tabs>
           </div>
 
           <div className="flex justify-end">
             <Link to={`/workflow/${projectId}/5`}>
-              <Button className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white">
+              <Button className="bg-violet-700 hover:bg-violet-800 text-white">
                 Save and Go to Visualization
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
@@ -4663,13 +4923,13 @@ function VisualizeWorkspace() {
   return (
     <div className="space-y-5">
       {/* Section Tabs */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-700/50">
         <CardContent className="p-3">
           <div className="flex gap-2">
             <Button
               size="sm"
               variant={vizSection === "research" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "research" && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white")}
+              className={cn("text-xs", vizSection === "research" && "bg-violet-700 hover:bg-violet-800 text-white")}
               onClick={() => setVizSection("research")}
             >
               <BookOpen className="w-3 h-3 mr-1" />
@@ -4678,7 +4938,7 @@ function VisualizeWorkspace() {
             <Button
               size="sm"
               variant={vizSection === "viztools" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "viztools" && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white")}
+              className={cn("text-xs", vizSection === "viztools" && "bg-violet-700 hover:bg-violet-800 text-white")}
               onClick={() => setVizSection("viztools")}
             >
               <Zap className="w-3 h-3 mr-1" />
@@ -4693,19 +4953,19 @@ function VisualizeWorkspace() {
         <div className="space-y-5">
           {/* Paper Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-slate-800">{papers.length}</p>
+                <p className="text-2xl font-bold text-slate-200">{papers.length}</p>
                 <p className="text-[10px] text-slate-500 uppercase">Total Papers</p>
               </CardContent>
             </Card>
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold text-emerald-600">{readPapers.length}</p>
                 <p className="text-[10px] text-slate-500 uppercase">Papers Read</p>
               </CardContent>
             </Card>
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold text-amber-600">{papers.length - readPapers.length}</p>
                 <p className="text-[10px] text-slate-500 uppercase">Unread</p>
@@ -4728,8 +4988,8 @@ function VisualizeWorkspace() {
                 className={cn(
                   "px-3 py-1.5 rounded-md text-xs font-medium transition-all border whitespace-nowrap",
                   researchSubTab === tab.key
-                    ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                    ? "bg-violet-700 text-white border-violet-700"
+                    : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-slate-300"
                 )}
               >
                 {tab.icon} {tab.label}
@@ -4739,7 +4999,7 @@ function VisualizeWorkspace() {
 
           {/* Sub-Tab: Papers Overview */}
           {researchSubTab === "papers" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold">Papers Overview</CardTitle>
@@ -4747,7 +5007,7 @@ function VisualizeWorkspace() {
                     <Button
                       size="sm"
                       variant={paperSort === "year" ? "default" : "outline"}
-                      className={cn("text-[10px] h-6", paperSort === "year" && "bg-[#1E3A5F] text-white")}
+                      className={cn("text-[10px] h-6", paperSort === "year" && "bg-violet-700 text-white")}
                       onClick={() => setPaperSort("year")}
                     >
                       <Clock className="w-2.5 h-2.5 mr-0.5" />
@@ -4756,7 +5016,7 @@ function VisualizeWorkspace() {
                     <Button
                       size="sm"
                       variant={paperSort === "access" ? "default" : "outline"}
-                      className={cn("text-[10px] h-6", paperSort === "access" && "bg-[#1E3A5F] text-white")}
+                      className={cn("text-[10px] h-6", paperSort === "access" && "bg-violet-700 text-white")}
                       onClick={() => setPaperSort("access")}
                     >
                       <Eye className="w-2.5 h-2.5 mr-0.5" />
@@ -4769,10 +5029,10 @@ function VisualizeWorkspace() {
                 <ScrollArea className="max-h-[400px]">
                   <div className="space-y-2">
                     {sortedPapers.map((paper) => (
-                      <div key={paper.id} className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition-all">
+                      <div key={paper.id} className="p-3 rounded-lg border border-slate-700/50 hover:border-slate-300 transition-all">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-xs font-medium text-slate-800 line-clamp-1">{paper.title}</h4>
+                            <h4 className="text-xs font-medium text-slate-200 line-clamp-1">{paper.title}</h4>
                             <p className="text-[10px] text-slate-500">{paper.authors.join(", ")} ({paper.year})</p>
                           </div>
                           <div className="flex gap-2 shrink-0">
@@ -4800,7 +5060,7 @@ function VisualizeWorkspace() {
 
           {/* Sub-Tab: External Files */}
           {researchSubTab === "files" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
@@ -4818,7 +5078,7 @@ function VisualizeWorkspace() {
                   <div className="p-4 mb-3 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/30 text-center">
                     <Upload className="w-8 h-8 text-blue-300 mx-auto mb-2" />
                     <p className="text-xs text-slate-500 mb-2">Drag & drop files here, or click to browse</p>
-                    <Button size="sm" className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white" onClick={handleUploadFile}>
+                    <Button size="sm" className="text-xs bg-violet-700 hover:bg-violet-800 text-white" onClick={handleUploadFile}>
                       <Plus className="w-3 h-3 mr-1" />
                       Simulate Upload
                     </Button>
@@ -4827,7 +5087,7 @@ function VisualizeWorkspace() {
                 {uploadedFiles.length > 0 ? (
                   <div className="space-y-2">
                     {uploadedFiles.map((file, i) => (
-                      <div key={i} className="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
+                      <div key={i} className="flex items-center gap-3 p-2 bg-slate-800/40 rounded-lg">
                         <FileText className="w-4 h-4 text-slate-400" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-slate-700 truncate">{file.name}</p>
@@ -4868,7 +5128,7 @@ function VisualizeWorkspace() {
 
           {/* Sub-Tab: AI Summarize Notes */}
           {researchSubTab === "ai-summary" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-purple-500" />
@@ -4905,7 +5165,7 @@ function VisualizeWorkspace() {
 
           {/* Sub-Tab: Permanent Notes */}
           {researchSubTab === "perm-notes" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
@@ -4954,7 +5214,7 @@ function VisualizeWorkspace() {
                     {addedPermNotes.map((note) => (
                       <div key={note.id} className="p-2 rounded-lg border border-rose-200 bg-rose-50/20">
                         <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-xs font-medium text-slate-800">{note.title}</h4>
+                          <h4 className="text-xs font-medium text-slate-200">{note.title}</h4>
                           <span className="text-[9px] text-slate-400">{note.date}</span>
                         </div>
                         <p className="text-[10px] text-slate-600 line-clamp-2">{note.content}</p>
@@ -4971,7 +5231,7 @@ function VisualizeWorkspace() {
 
           {/* Sub-Tab: Synthesis Tables */}
           {researchSubTab === "synthesis" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
@@ -5002,8 +5262,8 @@ function VisualizeWorkspace() {
                           className={cn(
                             "px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-all border",
                             activeSynthTableId === table.id
-                              ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
-                              : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                              ? "bg-violet-700 text-white border-violet-700"
+                              : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-slate-300"
                           )}
                         >
                           {table.name}
@@ -5016,7 +5276,7 @@ function VisualizeWorkspace() {
                     <p className="text-xs font-medium text-slate-600 mb-2">Select Papers (Rows):</p>
                     <div className="space-y-1 max-h-[150px] overflow-y-auto">
                       {papers.map((paper) => (
-                        <label key={paper.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer">
+                        <label key={paper.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-800/40 cursor-pointer">
                           <Checkbox
                             checked={synthSelectedPapers.includes(paper.id)}
                             onCheckedChange={(checked) => {
@@ -5035,7 +5295,7 @@ function VisualizeWorkspace() {
                     <p className="text-xs font-medium text-slate-600 mb-2">Columns (Attributes):</p>
                     <div className="flex flex-wrap gap-1.5 mb-2">
                       {synthColumns.map((col) => (
-                        <Badge key={col} variant="secondary" className="text-[10px] px-2 py-0.5 bg-slate-100 gap-1">
+                        <Badge key={col} variant="secondary" className="text-[10px] px-2 py-0.5 bg-slate-800 gap-1">
                           {col}
                           <button onClick={() => setSynthColumns(synthColumns.filter((c) => c !== col))} className="hover:text-red-500">
                             <X className="w-2.5 h-2.5" />
@@ -5094,11 +5354,11 @@ function VisualizeWorkspace() {
                       <table className="w-full text-xs border-collapse">
                         <thead>
                           <tr>
-                            <th className="text-left p-2 border border-slate-200 bg-slate-50 font-semibold text-slate-600 min-w-[150px]">
+                            <th className="text-left p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-600 min-w-[150px]">
                               Paper
                             </th>
                             {synthColumns.map((col) => (
-                              <th key={col} className="text-left p-2 border border-slate-200 bg-slate-50 font-semibold text-slate-600 min-w-[120px]">
+                              <th key={col} className="text-left p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-600 min-w-[120px]">
                                 {col}
                               </th>
                             ))}
@@ -5110,11 +5370,11 @@ function VisualizeWorkspace() {
                             if (!paper) return null;
                             return (
                               <tr key={pid}>
-                                <td className="p-2 border border-slate-200 font-medium text-slate-700">
+                                <td className="p-2 border border-slate-700/50 font-medium text-slate-700">
                                   {paper.authors[0]} ({paper.year})
                                 </td>
                                 {synthColumns.map((col) => (
-                                  <td key={col} className="p-2 border border-slate-200">
+                                  <td key={col} className="p-2 border border-slate-700/50">
                                     <input
                                       type="text"
                                       value={synthData[pid]?.[col] || ""}
@@ -5146,7 +5406,7 @@ function VisualizeWorkspace() {
       {/* ===== VISUALIZATION TOOLS ===== */}
       {vizSection === "viztools" && (
         <div className="space-y-5">
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -5160,7 +5420,7 @@ function VisualizeWorkspace() {
                 </div>
                 <Button
                   size="sm"
-                  className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                  className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
                   onClick={() => setShowAddVizTool(!showAddVizTool)}
                 >
                   <Plus className="w-3 h-3 mr-1" />
@@ -5217,7 +5477,7 @@ function VisualizeWorkspace() {
                                 ? p === "free" ? "bg-emerald-500 text-white border-emerald-500"
                                   : p === "freemium" ? "bg-amber-500 text-white border-amber-500"
                                   : "bg-red-500 text-white border-red-500"
-                                : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                                : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-slate-300"
                             )}
                           >
                             {p}
@@ -5252,11 +5512,11 @@ function VisualizeWorkspace() {
                 {vizTools.map((tool) => (
                   <div
                     key={tool.id}
-                    className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all group"
+                    className="p-3 rounded-lg border border-slate-700/50 hover:border-slate-300 hover:shadow-sm transition-all group"
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-semibold text-slate-800">{tool.name}</h4>
+                        <h4 className="text-xs font-semibold text-slate-200">{tool.name}</h4>
                         {tool.source === "user" && (
                           <Badge variant="outline" className="text-[8px] px-1 py-0 border-purple-300 text-purple-600">
                             Custom
@@ -5319,7 +5579,7 @@ function VisualizeWorkspace() {
           Synthesize into Permanent Note
         </Button>
         <Link to="/workflow/6">
-          <Button className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white">
+          <Button className="bg-violet-700 hover:bg-violet-800 text-white">
             Push to Research Question Draft
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
@@ -5595,7 +5855,7 @@ function DraftWorkspaceInline() {
   return (
     <div className="space-y-5">
       {/* Pre-Writing Block */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-700/50">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -5626,7 +5886,7 @@ function DraftWorkspaceInline() {
                       "px-3 py-1.5 rounded-md text-xs font-medium transition-all border",
                       preWriteTab === key
                         ? "bg-amber-500 text-white border-amber-500"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-amber-300"
+                        : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-amber-300"
                     )}
                   >
                     {strategy.icon} {strategy.label}
@@ -5657,7 +5917,7 @@ function DraftWorkspaceInline() {
                         href={tool.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50 transition-all text-[10px] text-slate-600 hover:text-amber-700"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-700/50 bg-[#0d1b30] hover:border-amber-300 hover:bg-amber-50 transition-all text-[10px] text-slate-600 hover:text-amber-700"
                         title={tool.desc}
                       >
                         🔗 {tool.name}
@@ -5716,7 +5976,7 @@ function DraftWorkspaceInline() {
                             "px-2 py-0.5 rounded text-[10px] border transition-all",
                             newPreWriteTool === tool.name
                               ? "bg-amber-500 text-white border-amber-500"
-                              : "bg-white text-slate-600 border-slate-200 hover:border-amber-300"
+                              : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-amber-300"
                           )}
                         >
                           {tool.name}
@@ -5771,7 +6031,7 @@ function DraftWorkspaceInline() {
                   {(preWriteNotes[preWriteTab] || []).map((note) => (
                     <div key={note.id} className="p-3 rounded-lg border border-amber-200 bg-amber-50/20 group">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className="text-xs font-medium text-slate-800">{note.title}</h4>
+                        <h4 className="text-xs font-medium text-slate-200">{note.title}</h4>
                         <div className="flex items-center gap-1.5">
                           <span className="text-[9px] text-slate-400">{note.date}</span>
                           <Badge variant="outline" className="text-[8px] px-1 py-0 border-amber-300 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
@@ -5790,7 +6050,7 @@ function DraftWorkspaceInline() {
       </Card>
 
       {/* Reporting Style Selector */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-700/50">
         <CardContent className="p-3">
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider shrink-0">
@@ -5804,7 +6064,7 @@ function DraftWorkspaceInline() {
                   variant={selectedStyle === style.id ? "default" : "outline"}
                   className={cn(
                     "text-xs",
-                    selectedStyle === style.id && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                    selectedStyle === style.id && "bg-violet-700 hover:bg-violet-800 text-white"
                   )}
                   onClick={() => {
                     setSelectedStyle(style.id);
@@ -5843,7 +6103,7 @@ function DraftWorkspaceInline() {
                 return (
                   <div
                     key={artifact.id}
-                    className="p-3 bg-white border border-slate-200 rounded-lg hover:border-[#1E3A5F] hover:shadow-sm transition-all group"
+                    className="p-3 bg-[#0d1b30] border border-slate-700/50 rounded-lg hover:border-violet-700 hover:shadow-sm transition-all group"
                   >
                     <Badge
                       variant="secondary"
@@ -5851,7 +6111,7 @@ function DraftWorkspaceInline() {
                     >
                       {typeMeta.label}
                     </Badge>
-                    <p className="text-xs font-medium text-slate-700 line-clamp-2 group-hover:text-[#1E3A5F]">
+                    <p className="text-xs font-medium text-slate-700 line-clamp-2 group-hover:text-violet-400">
                       {artifact.title}
                     </p>
                     <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -5867,7 +6127,7 @@ function DraftWorkspaceInline() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-[10px] h-6 px-2 border-[#1E3A5F]/30 text-[#1E3A5F]"
+                        className="text-[10px] h-6 px-2 border-violet-700/30 text-violet-400"
                         onClick={() => {
                           setInsertTarget(activeComponentId);
                           handleInsertArtifact(artifact.id);
@@ -5886,7 +6146,7 @@ function DraftWorkspaceInline() {
 
         {/* Middle Column: Writing Block */}
         <div className="lg:col-span-2 space-y-3">
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold">
@@ -5946,9 +6206,9 @@ function DraftWorkspaceInline() {
                   ) : (
                     <div className="space-y-2 max-h-[250px] overflow-y-auto">
                       {writingDrafts.map((draft) => (
-                        <div key={draft.id} className="p-2 rounded-lg border border-orange-200 bg-white">
+                        <div key={draft.id} className="p-2 rounded-lg border border-orange-200 bg-[#0d1b30]">
                           <div className="flex items-center justify-between mb-1">
-                            <h4 className="text-xs font-medium text-slate-800">{draft.name}</h4>
+                            <h4 className="text-xs font-medium text-slate-200">{draft.name}</h4>
                             <Badge variant="outline" className="text-[9px] px-1 py-0">
                               {draft.versions.length} version{draft.versions.length > 1 ? "s" : ""}
                             </Badge>
@@ -5963,7 +6223,7 @@ function DraftWorkspaceInline() {
                                   "w-full text-left p-1.5 rounded text-[10px] transition-all border",
                                   selectedDraftId === draft.id && selectedVersionId === version.id
                                     ? "bg-orange-100 border-orange-300 text-orange-800"
-                                    : "bg-slate-50 border-slate-200 hover:border-orange-200 text-slate-600"
+                                    : "bg-slate-800/40 border-slate-700/50 hover:border-orange-200 text-slate-600"
                                 )}
                               >
                                 <span className="flex items-center gap-1">
@@ -5992,10 +6252,10 @@ function DraftWorkspaceInline() {
                     className={cn(
                       "px-2.5 py-1 rounded-md text-[11px] whitespace-nowrap transition-all border shrink-0",
                       activeComponentId === comp.id
-                        ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
+                        ? "bg-violet-700 text-white border-violet-700"
                         : componentContents[getContentKey(comp.id)]
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                          : "bg-[#0d1b30] text-slate-500 border-slate-700/50 hover:border-slate-300"
                     )}
                   >
                     {comp.label}
@@ -6012,7 +6272,7 @@ function DraftWorkspaceInline() {
                 .map((comp) => (
                   <div key={comp.id} className="space-y-2">
                     <div className="p-2.5 bg-blue-50/50 border border-blue-100 rounded-lg">
-                      <p className="text-xs font-medium text-[#1E3A5F] mb-0.5">{comp.label}</p>
+                      <p className="text-xs font-medium text-violet-400 mb-0.5">{comp.label}</p>
                       <p className="text-[10px] text-slate-500">{comp.description}</p>
                     </div>
                     <Textarea
@@ -6048,8 +6308,8 @@ function DraftWorkspaceInline() {
                 className={cn(
                   "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all capitalize",
                   checkTab === tab
-                    ? "bg-[#1E3A5F] text-white"
-                    : "text-slate-500 hover:bg-slate-100"
+                    ? "bg-violet-700 text-white"
+                    : "text-slate-500 hover:bg-slate-800"
                 )}
               >
                 {tab}
@@ -6059,7 +6319,7 @@ function DraftWorkspaceInline() {
 
           {/* Macro Level */}
           {checkTab === "macro" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-semibold text-slate-600">
                   Macro Level — Overall Structure
@@ -6071,7 +6331,7 @@ function DraftWorkspaceInline() {
                     {MACRO_CHECKLIST.map((item) => (
                       <label
                         key={item.id}
-                        className="flex items-start gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer"
+                        className="flex items-start gap-2 p-1.5 rounded hover:bg-slate-800/40 cursor-pointer"
                       >
                         <Checkbox
                           checked={!!macroChecked[item.id]}
@@ -6103,7 +6363,7 @@ function DraftWorkspaceInline() {
 
           {/* Meso Level — Toulmin Argumentation */}
           {checkTab === "meso" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-2">
                 <div>
                   <CardTitle className="text-xs font-semibold text-slate-600">
@@ -6120,7 +6380,7 @@ function DraftWorkspaceInline() {
                     {MESO_TOULMIN_CHECKLIST.map((item) => (
                       <label
                         key={item.id}
-                        className="flex items-start gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer"
+                        className="flex items-start gap-2 p-1.5 rounded hover:bg-slate-800/40 cursor-pointer"
                       >
                         <Checkbox
                           checked={!!mesoChecked[item.id]}
@@ -6157,7 +6417,7 @@ function DraftWorkspaceInline() {
 
           {/* Micro Level */}
           {checkTab === "micro" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-semibold text-slate-600">
                   Micro Level — Language & Details
@@ -6173,7 +6433,7 @@ function DraftWorkspaceInline() {
                       </p>
                       <div className="space-y-1">
                         {MICRO_CHECKLIST_BASIC.map((item) => (
-                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-800/40 cursor-pointer">
                             <Checkbox
                               checked={!!microBasicChecked[item.id]}
                               onCheckedChange={(checked) =>
@@ -6196,7 +6456,7 @@ function DraftWorkspaceInline() {
                       </p>
                       <div className="space-y-1">
                         {MICRO_CHECKLIST_READABILITY.map((item) => (
-                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-800/40 cursor-pointer">
                             <Checkbox
                               checked={!!microReadChecked[item.id]}
                               onCheckedChange={(checked) =>
@@ -6219,7 +6479,7 @@ function DraftWorkspaceInline() {
                       </p>
                       <div className="space-y-1">
                         {MICRO_CHECKLIST_CREDIBILITY.map((item) => (
-                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-800/40 cursor-pointer">
                             <Checkbox
                               checked={!!microCredChecked[item.id]}
                               onCheckedChange={(checked) =>
@@ -6288,7 +6548,7 @@ function DraftWorkspaceInline() {
       {/* Artifact Preview Modal */}
       {previewArtifact && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[70vh] overflow-y-auto">
+          <div className="bg-[#0d1b30] rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[70vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b">
               <div>
                 <Badge
@@ -6301,23 +6561,23 @@ function DraftWorkspaceInline() {
                 >
                   {ARTIFACT_TYPE_META[previewArtifact.type].label}
                 </Badge>
-                <h3 className="text-sm font-semibold text-slate-800">{previewArtifact.title}</h3>
+                <h3 className="text-sm font-semibold text-slate-200">{previewArtifact.title}</h3>
               </div>
-              <button onClick={() => setPreviewArtifactId(null)} className="p-1 hover:bg-slate-100 rounded">
+              <button onClick={() => setPreviewArtifactId(null)} className="p-1 hover:bg-slate-800 rounded">
                 <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
             <div className="p-4">
               <p className="text-xs text-slate-500 mb-2">{previewArtifact.description}</p>
               {previewArtifact.content && (
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
                   <pre className="text-xs text-slate-700 whitespace-pre-wrap">{previewArtifact.content}</pre>
                 </div>
               )}
               <div className="flex gap-1.5 mt-3">
                 <Button
                   size="sm"
-                  className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                  className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
                   onClick={() => {
                     handleInsertArtifact(previewArtifact.id);
                     setPreviewArtifactId(null);
@@ -6338,12 +6598,12 @@ function DraftWorkspaceInline() {
       {/* Full Preview Modal */}
       {showPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
-              <h3 className="text-sm font-semibold text-slate-800">
+          <div className="bg-[#0d1b30] rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-[#0d1b30] z-10">
+              <h3 className="text-sm font-semibold text-slate-200">
                 Full Preview — {activeStyle.name}
               </h3>
-              <button onClick={() => setShowPreview(false)} className="p-1 hover:bg-slate-100 rounded">
+              <button onClick={() => setShowPreview(false)} className="p-1 hover:bg-slate-800 rounded">
                 <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
@@ -6354,7 +6614,7 @@ function DraftWorkspaceInline() {
                   if (!content) return null;
                   return (
                     <div key={comp.id} className="mb-6">
-                      <h2 className="text-base font-bold text-slate-800 mb-2 border-b pb-1">
+                      <h2 className="text-base font-bold text-slate-200 mb-2 border-b pb-1">
                         {comp.label}
                       </h2>
                       <div className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">

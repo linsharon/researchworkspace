@@ -150,7 +150,7 @@ export function PermanentNoteForm({
               Distill an atomic claim, then wire it into your note network.
             </CardDescription>
           </div>
-          <div className="rounded-lg border border-emerald-300 bg-white p-2">
+          <div className="rounded-lg border border-emerald-300 bg-[#0d1b30] p-2">
             <GitBranchPlus className="h-5 w-5 text-emerald-700" />
           </div>
         </div>
@@ -203,9 +203,9 @@ export function PermanentNoteForm({
             />
           </div>
 
-          <section className="space-y-3 rounded-lg border border-emerald-200 bg-white p-4">
+          <section className="space-y-3 rounded-lg border border-emerald-200 bg-[#0d1b30] p-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-900">Bidirectional Links</h3>
+              <h3 className="text-sm font-semibold text-slate-100">Bidirectional Links</h3>
               <Button className="gap-1" onClick={addLink} size="sm" type="button" variant="outline">
                 <Plus className="h-4 w-4" /> Add Link
               </Button>
@@ -217,7 +217,7 @@ export function PermanentNoteForm({
 
             <div className="space-y-3">
               {form.links.map((link, index) => (
-                <div className="grid gap-2 rounded-md border border-slate-200 p-3 md:grid-cols-[1fr_180px_auto]" key={`${index}-${link.targetNoteId}`}>
+                <div className="grid gap-2 rounded-md border border-slate-700/50 p-3 md:grid-cols-[1fr_180px_auto]" key={`${index}-${link.targetNoteId}`}>
                   <Combobox
                     options={noteIdOptions}
                     placeholder="Search note ID..."
@@ -257,10 +257,10 @@ export function PermanentNoteForm({
             </div>
           </section>
 
-          <section className="space-y-2 rounded-lg border border-slate-200 bg-white p-4">
+          <section className="space-y-2 rounded-lg border border-slate-700/50 bg-[#0d1b30] p-4">
             <div className="flex items-center gap-2">
               <Link2 className="h-4 w-4 text-slate-600" />
-              <h3 className="text-sm font-semibold text-slate-900">Evidence Link</h3>
+              <h3 className="text-sm font-semibold text-slate-100">Evidence Link</h3>
             </div>
 
             <Combobox

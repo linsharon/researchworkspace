@@ -90,11 +90,11 @@ export default function PaperReadingArea({
   };
 
   return (
-    <div className="h-full bg-white flex flex-col">
+    <div className="h-full bg-[#0d1b30] flex flex-col">
       {/* Title section temporarily hidden to maximize PDF display area */}
       <>
         {/* Hidden title section - uncomment to restore */}
-        {/* <div className="border-b bg-white px-4 py-3">
+        {/* <div className="border-b bg-[#0d1b30] px-4 py-3">
           <Button
             variant="ghost"
             size="sm"
@@ -102,7 +102,7 @@ export default function PaperReadingArea({
             onClick={() => setTitleExpanded(!titleExpanded)}
           >
             <div className="flex-1 text-left">
-              <div className="font-medium text-slate-800 line-clamp-1">{paper.title}</div>
+              <div className="font-medium text-slate-200 line-clamp-1">{paper.title}</div>
               {!titleExpanded ? (
                 <div className="text-xs text-slate-500 mt-1">Show paper details</div>
               ) : null}
@@ -111,7 +111,7 @@ export default function PaperReadingArea({
           </Button>
 
           {titleExpanded ? (
-            <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1.5">
+            <div className="mt-2 rounded border border-slate-700/50 bg-slate-800/40 p-3 text-xs text-slate-600 space-y-1.5">
               <p><span className="font-semibold">Authors:</span> {paper.authors?.join(", ") || "N/A"}</p>
               <p><span className="font-semibold">Year:</span> {paper.year || "N/A"}</p>
               <p><span className="font-semibold">Journal:</span> {paper.journal || "N/A"}</p>
@@ -161,7 +161,7 @@ export default function PaperReadingArea({
         {paper.pdf_path ? (
           <div className="flex-1 min-h-0 p-2">
             <PdfViewer
-              className="h-full rounded-lg border border-slate-200"
+              className="h-full rounded-lg border border-slate-700/50"
               onAskAiSelection={text => {
                 onTextSelected?.(text);
                 onAskAI?.(text);

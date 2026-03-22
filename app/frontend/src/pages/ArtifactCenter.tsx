@@ -325,7 +325,7 @@ export default function ArtifactCenter() {
               <Archive className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900">
+              <h1 className="text-xl font-bold text-slate-100">
                 Artifact Center
               </h1>
               <p className="text-sm text-slate-500">
@@ -358,7 +358,7 @@ export default function ArtifactCenter() {
                 className={cn(
                   "text-xs",
                   filter === opt.value &&
-                    "bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                    "bg-violet-700 hover:bg-violet-800 text-white"
                 )}
                 onClick={() => setFilter(opt.value)}
               >
@@ -372,7 +372,7 @@ export default function ArtifactCenter() {
         {filter === "concepts" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredConcepts.map((concept) => (
-              <Card key={concept.id} className="border-slate-200 hover:shadow-md transition-all group">
+              <Card key={concept.id} className="border-slate-700/50 hover:shadow-md transition-all group">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2">
                     <Badge
@@ -436,7 +436,7 @@ export default function ArtifactCenter() {
               <Dialog key={artifact.id}>
                 <DialogTrigger asChild>
                   <div
-                    className="p-4 bg-white border border-slate-200 rounded-xl hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group"
+                    className="p-4 bg-[#0d1b30] border border-slate-700/50 rounded-xl hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group"
                     onClick={() => setSelectedArtifact(artifact.id)}
                   >
                     <div className="flex items-start justify-between mb-2">
@@ -454,7 +454,7 @@ export default function ArtifactCenter() {
                         {stepMeta.icon} Step {artifact.sourceStep}
                       </span>
                     </div>
-                    <h4 className="text-sm font-medium text-slate-800 mb-1 group-hover:text-[#1E3A5F] transition-colors line-clamp-2">
+                    <h4 className="text-sm font-medium text-slate-200 mb-1 group-hover:text-violet-400 transition-colors line-clamp-2">
                       {artifact.title}
                     </h4>
                     <p className="text-xs text-slate-500 line-clamp-2 mb-3">
@@ -465,7 +465,7 @@ export default function ArtifactCenter() {
                       artifact.type === "permanent-note") && (
                       <button
                         type="button"
-                        className="mb-3 text-xs text-[#1E3A5F] hover:underline"
+                        className="mb-3 text-xs text-violet-400 hover:underline"
                         onClick={(e) => {
                           e.stopPropagation();
                           void handleOpenArtifactSource(artifact);
@@ -556,7 +556,7 @@ export default function ArtifactCenter() {
                       {artifact.description}
                     </p>
                     {artifact.content && (
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                      <div className="p-4 bg-slate-800/40 rounded-lg border border-slate-700/50">
                         <p className="text-sm text-slate-700 whitespace-pre-wrap">
                           {artifact.content}
                         </p>
@@ -566,7 +566,7 @@ export default function ArtifactCenter() {
                       <Clock className="w-3.5 h-3.5" />
                       Last edited: {artifact.updatedAt}
                     </div>
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200">
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-700/50">
                       {(artifact.type === "entry-paper" ||
                         artifact.type === "literature-note" ||
                         artifact.type === "permanent-note") && (
@@ -669,7 +669,7 @@ export default function ArtifactCenter() {
                 <div className="flex gap-2 pt-1">
                   {conceptDialogMode === "edit" ? (
                     <Button
-                      className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+                      className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
                       onClick={handleSaveConcept}
                     >
                       Save

@@ -441,7 +441,7 @@ export default function PaperToolsArea({
   return (
     <div className="h-full bg-gray-50 flex flex-col">
       {/* Tabs */}
-      <div className="border-b bg-white flex-shrink-0">
+      <div className="border-b bg-[#0d1b30] flex-shrink-0">
         <div className="flex divide-x">
           <button
             onClick={() => setActiveTab("notes")}
@@ -499,12 +499,12 @@ export default function PaperToolsArea({
                 </div>
               )}
               {notesLoading && (
-                <div className="rounded-md bg-slate-100 border border-slate-200 p-2 text-xs text-slate-600">
+                <div className="rounded-md bg-slate-800 border border-slate-700/50 p-2 text-xs text-slate-600">
                   Loading saved notes...
                 </div>
               )}
               {!notesLoading && notes.length === 0 && !noteError && (
-                <div className="rounded-md bg-slate-100 border border-slate-200 p-2 text-xs text-slate-600">
+                <div className="rounded-md bg-slate-800 border border-slate-700/50 p-2 text-xs text-slate-600">
                   No saved notes for this paper yet.
                 </div>
               )}
@@ -581,12 +581,12 @@ export default function PaperToolsArea({
               </div>
             )}
             {highlightsLoading && (
-              <div className="rounded-md bg-slate-100 border border-slate-200 p-2 text-xs text-slate-600">
+              <div className="rounded-md bg-slate-800 border border-slate-700/50 p-2 text-xs text-slate-600">
                 Loading highlights...
               </div>
             )}
             {!highlightsLoading && highlights.length === 0 && !highlightError && (
-              <div className="rounded-md bg-slate-100 border border-slate-200 p-2 text-xs text-slate-600">
+              <div className="rounded-md bg-slate-800 border border-slate-700/50 p-2 text-xs text-slate-600">
                 No highlights yet. Select text in PDF and click Highlight.
               </div>
             )}

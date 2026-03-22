@@ -62,8 +62,8 @@ export default function DraftStudio() {
     <AppLayout>
       <div className="flex h-[calc(100vh-0px)]">
         {/* Left: Materials Sidebar */}
-        <div className="w-64 border-r border-slate-200 bg-slate-50/50 shrink-0 flex flex-col">
-          <div className="p-4 border-b border-slate-200">
+        <div className="w-64 border-r border-slate-700/50 bg-slate-800/40/50 shrink-0 flex flex-col">
+          <div className="p-4 border-b border-slate-700/50">
             <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Materials Library
             </h3>
@@ -97,7 +97,7 @@ export default function DraftStudio() {
                       "p-3 rounded-lg border transition-all cursor-pointer group",
                       isInserted
                         ? "border-emerald-200 bg-emerald-50/50"
-                        : "border-slate-200 bg-white hover:border-[#1E3A5F] hover:shadow-sm"
+                        : "border-slate-700/50 bg-[#0d1b30] hover:border-violet-700 hover:shadow-sm"
                     )}
                   >
                     <div className="flex items-start gap-2">
@@ -118,7 +118,7 @@ export default function DraftStudio() {
                             "text-xs font-medium line-clamp-2",
                             isInserted
                               ? "text-emerald-700"
-                              : "text-slate-700 group-hover:text-[#1E3A5F]"
+                              : "text-slate-700 group-hover:text-violet-400"
                           )}
                         >
                           {artifact.title}
@@ -136,7 +136,7 @@ export default function DraftStudio() {
               })}
             </div>
           </ScrollArea>
-          <div className="p-3 border-t border-slate-200 space-y-1.5">
+          <div className="p-3 border-t border-slate-700/50 space-y-1.5">
             <Button
               variant="outline"
               size="sm"
@@ -151,13 +151,13 @@ export default function DraftStudio() {
         {/* Center: Writing Editor */}
         <div className="flex-1 flex flex-col">
           {/* Editor Header */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200">
+          <div className="flex items-center justify-between px-6 py-3 border-b border-slate-700/50">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-[#1E3A5F] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-violet-700 flex items-center justify-center">
                 <PenTool className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-slate-800">
+                <h2 className="text-sm font-semibold text-slate-200">
                   Draft Studio
                 </h2>
                 <p className="text-[10px] text-slate-400">
@@ -194,7 +194,7 @@ export default function DraftStudio() {
           </div>
 
           {/* Editor Footer */}
-          <div className="flex items-center justify-between px-6 py-2 border-t border-slate-200 bg-slate-50/50">
+          <div className="flex items-center justify-between px-6 py-2 border-t border-slate-700/50 bg-slate-800/40/50">
             <div className="flex items-center gap-4 text-[10px] text-slate-400">
               <span>{draftContent.split(/\s+/).length} words</span>
               <span>{draftContent.split("\n").length} lines</span>

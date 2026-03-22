@@ -52,7 +52,7 @@ function TagInput({
           <Badge
             key={tag}
             variant="secondary"
-            className="text-[10px] px-2 py-0.5 bg-slate-100 hover:bg-slate-200 cursor-pointer gap-1"
+            className="text-[10px] px-2 py-0.5 bg-slate-800 hover:bg-slate-200 cursor-pointer gap-1"
           >
             <Tag className="w-2.5 h-2.5" />
             {tag}
@@ -230,7 +230,7 @@ export default function PaperWorkspace() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             {paper.isEntryPaper && (
-              <Badge className="text-xs bg-[#1E3A5F] text-white">
+              <Badge className="text-xs bg-violet-700 text-white">
                 Entry Paper
               </Badge>
             )}
@@ -249,7 +249,7 @@ export default function PaperWorkspace() {
               {paper.relevance} relevance
             </Badge>
           </div>
-          <h1 className="text-xl font-bold text-slate-900">{paper.title}</h1>
+          <h1 className="text-xl font-bold text-slate-100">{paper.title}</h1>
           <p className="text-sm text-slate-500">
             {paper.authors.join(", ")} ({paper.year}) — {paper.journal}
           </p>
@@ -268,7 +268,7 @@ export default function PaperWorkspace() {
             </Button>
             <Button
               size="sm"
-              className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+              className="text-xs bg-violet-700 hover:bg-violet-800 text-white"
               onClick={() => {
                 setShowNewLitNote(true);
                 setShowNewPermNote(false);
@@ -294,7 +294,7 @@ export default function PaperWorkspace() {
         <Separator />
 
         {/* Abstract */}
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-slate-700">
               Abstract
@@ -309,7 +309,7 @@ export default function PaperWorkspace() {
 
         {/* Structured Blocks */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-semibold text-blue-700 uppercase tracking-wider">
                 Research Question
@@ -322,7 +322,7 @@ export default function PaperWorkspace() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-semibold text-purple-700 uppercase tracking-wider">
                 Theory / Framework
@@ -333,7 +333,7 @@ export default function PaperWorkspace() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">
                 Method
@@ -344,7 +344,7 @@ export default function PaperWorkspace() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-semibold text-amber-700 uppercase tracking-wider">
                 Key Findings
@@ -357,7 +357,7 @@ export default function PaperWorkspace() {
         </div>
 
         {/* Annotations & Highlights */}
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold">
@@ -431,7 +431,7 @@ export default function PaperWorkspace() {
                 <div className="flex gap-1.5">
                   <Button
                     size="sm"
-                    className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                    className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
                     onClick={handleAddAnnotation}
                   >
                     <Plus className="w-3 h-3 mr-1" />
@@ -460,7 +460,7 @@ export default function PaperWorkspace() {
                   {annotations.map((ann) => (
                     <div
                       key={ann.id}
-                      className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition-all group"
+                      className="p-3 rounded-lg border border-slate-700/50 hover:border-slate-300 transition-all group"
                     >
                       <div
                         className={cn(
@@ -479,7 +479,7 @@ export default function PaperWorkspace() {
                             <Badge
                               key={tag}
                               variant="secondary"
-                              className="text-[9px] px-1.5 py-0 bg-slate-100 text-slate-500"
+                              className="text-[9px] px-1.5 py-0 bg-slate-800 text-slate-500"
                             >
                               <Tag className="w-2 h-2 mr-0.5" />
                               {tag}
@@ -519,7 +519,7 @@ export default function PaperWorkspace() {
         </Card>
 
         {/* Relationship to Project */}
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">
               Relationship to Current Project
@@ -540,7 +540,7 @@ export default function PaperWorkspace() {
         </Card>
 
         {/* Literature Notes */}
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold">
@@ -548,7 +548,7 @@ export default function PaperWorkspace() {
               </CardTitle>
               <Button
                 size="sm"
-                className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
                 onClick={() => {
                   setShowNewLitNote(true);
                   setShowNewPermNote(false);
@@ -583,7 +583,7 @@ export default function PaperWorkspace() {
                 <div className="flex gap-1.5">
                   <Button
                     size="sm"
-                    className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                    className="text-xs bg-violet-700 hover:bg-violet-800 text-white"
                     onClick={handleAddLitNote}
                   >
                     <Save className="w-3 h-3 mr-1" />
@@ -609,10 +609,10 @@ export default function PaperWorkspace() {
             {litNotes.map((note) => (
               <div
                 key={note.id}
-                className="p-3 rounded-lg border border-slate-200"
+                className="p-3 rounded-lg border border-slate-700/50"
               >
                 <div className="flex items-center justify-between mb-1">
-                  <h4 className="text-sm font-medium text-slate-800">
+                  <h4 className="text-sm font-medium text-slate-200">
                     {note.title}
                   </h4>
                   <span className="text-[10px] text-slate-400">
@@ -626,7 +626,7 @@ export default function PaperWorkspace() {
                       <Badge
                         key={tag}
                         variant="secondary"
-                        className="text-[9px] px-1.5 py-0 bg-slate-100 text-slate-500"
+                        className="text-[9px] px-1.5 py-0 bg-slate-800 text-slate-500"
                       >
                         <Tag className="w-2 h-2 mr-0.5" />
                         {tag}
@@ -672,7 +672,7 @@ export default function PaperWorkspace() {
         </Card>
 
         {/* Permanent Notes */}
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold">
@@ -745,7 +745,7 @@ export default function PaperWorkspace() {
                   className="p-3 rounded-lg border border-rose-200 bg-rose-50/30"
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-sm font-medium text-slate-800">
+                    <h4 className="text-sm font-medium text-slate-200">
                       {note.title}
                     </h4>
                     <span className="text-[10px] text-slate-400">

@@ -137,28 +137,28 @@ export default function AppLayout({ children }: AppLayoutProps) {
   ];
 
   return (
-    <div className="flex h-screen bg-white overflow-hidden">
+    <div className="flex h-screen bg-[#070f1e] overflow-hidden">
       {/* Left Sidebar */}
       <aside
         className={cn(
-          "flex flex-col border-r border-slate-200 bg-slate-50/80 transition-all duration-300 shrink-0",
+          "flex flex-col border-r border-slate-700/30 bg-[#050b18] transition-all duration-300 shrink-0",
           sidebarCollapsed ? "w-0 overflow-hidden border-r-0" : "w-60"
         )}
       >
         {/* Logo */}
-        <div className="flex items-center gap-2 px-4 h-12 border-b border-slate-200 shrink-0">
+        <div className="flex items-center gap-2 px-4 h-12 border-b border-slate-700/30 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-[#1E3A5F] flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center shrink-0 glow-sm">
               <BookOpen className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-sm text-slate-800 truncate">
+            <span className="font-semibold text-sm text-slate-200 truncate">
               {t("app.title")}
             </span>
           </div>
         </div>
 
         {/* Project Info + Switcher */}
-        <div className="px-4 py-3 border-b border-slate-200 shrink-0">
+        <div className="px-4 py-3 border-b border-slate-700/30 shrink-0">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
             {t("app.currentProject")}
           </p>
@@ -166,7 +166,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             onClick={() => setShowProjectSwitcher(!showProjectSwitcher)}
             className="w-full text-left flex items-center justify-between gap-1 group"
           >
-            <p className="text-sm font-medium text-slate-800 truncate group-hover:text-[#1E3A5F] transition-colors">
+            <p className="text-sm font-medium text-slate-200 truncate group-hover:text-violet-400 transition-colors">
               {activeProject.title}
             </p>
             <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform", showProjectSwitcher && "rotate-180")} />
@@ -181,7 +181,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     key={step}
                     className={cn(
                       "h-1.5 rounded-full transition-colors",
-                      isCurrent ? "bg-[#1E3A5F]" : "bg-slate-200"
+                      isCurrent ? "bg-violet-600" : "bg-slate-700/60"
                     )}
                     title={`Step ${step}`}
                   />
@@ -195,8 +195,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
               className={cn(
                 "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border",
                 location.pathname === "/"
-                  ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
-                  : "text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900"
+                  ? "bg-violet-600/20 text-violet-300 border-violet-600/40"
+                  : "text-slate-400 border-slate-700/40 hover:bg-slate-800/60 hover:text-slate-200"
               )}
             >
               <LayoutDashboard className="w-4 h-4 shrink-0" />
@@ -205,8 +205,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </Link>
 
           {showProjectSwitcher && (
-            <div className="mt-2 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden">
-              <div className="p-2 border-b border-slate-100">
+            <div className="mt-2 bg-[#0a1528] rounded-lg shadow-xl border border-slate-700/50 overflow-hidden">
+              <div className="p-2 border-b border-slate-700/40">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                     {t("app.switchProject")}
@@ -229,16 +229,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       className={cn(
                         "w-full text-left p-2 rounded-md transition-all",
                         proj.id === activeProjectId
-                          ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20"
-                          : "hover:bg-slate-50 border border-transparent"
+                          ? "bg-violet-600/10 border border-violet-600/30"
+                          : "hover:bg-slate-800/60 border border-transparent"
                       )}
                     >
                       <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-xs font-medium text-slate-800 truncate">
+                        <span className="text-xs font-medium text-slate-200 truncate">
                           {proj.title}
                         </span>
                         {proj.id === activeProjectId && (
-                          <CheckCircle2 className="w-3 h-3 text-[#1E3A5F] shrink-0" />
+                          <CheckCircle2 className="w-3 h-3 text-violet-400 shrink-0" />
                         )}
                       </div>
                       <p className="text-[9px] text-slate-400 truncate">{proj.goal}</p>
@@ -252,26 +252,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   ))}
                 </div>
               </ScrollArea>
-              <div className="p-1.5 border-t border-slate-100">
+              <div className="p-1.5 border-t border-slate-700/40">
                 {showNewProject ? (
                   <div className="p-1.5 space-y-1.5">
                     <Input
                       value={newProjectTitle}
                       onChange={(e) => setNewProjectTitle(e.target.value)}
                       placeholder={t("app.projectTitle")}
-                      className="text-xs h-7"
+                      className="text-xs h-7 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
                       autoFocus
                     />
                     <Input
                       value={newProjectGoal}
                       onChange={(e) => setNewProjectGoal(e.target.value)}
                       placeholder={t("app.researchGoal")}
-                      className="text-xs h-7"
+                      className="text-xs h-7 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
                     />
                     <div className="flex gap-1">
                       <Button
                         size="sm"
-                        className="text-[10px] h-6 bg-[#1E3A5F] hover:bg-[#162d4a] text-white flex-1"
+                        className="text-[10px] h-6 bg-violet-600 hover:bg-violet-700 text-white flex-1"
                         onClick={handleCreateProject}
                       >
                         {t("app.create")}
@@ -309,7 +309,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Navigation */}
         <ScrollArea className="flex-1">
           <nav className="p-2 space-y-0.5">
-            <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 pt-2 pb-1">
+            <p className="text-[10px] uppercase tracking-wider text-slate-500 px-2 pt-2 pb-1">
               {t("nav.workflow")}
             </p>
             {NAV_ITEMS.map((item, idx) => {
@@ -327,8 +327,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     className={cn(
                       "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
                       isActive
-                        ? "bg-[#1E3A5F] text-white"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        ? "bg-violet-600/20 text-violet-300 border border-violet-600/30"
+                        : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent"
                     )}
                   >
                     {isCompleted && !isActive ? (
@@ -347,7 +347,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               );
             })}
 
-            <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 pt-4 pb-1">
+            <p className="text-[10px] uppercase tracking-wider text-slate-500 px-2 pt-4 pb-1">
               {t("nav.artifacts")}
             </p>
             {ARTIFACT_NAV_ITEMS.map((item) => {
@@ -359,10 +359,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <Link key={item.path} to={item.path}>
                   <div
                     className={cn(
-                      "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
+                      "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border",
                       isActive
-                        ? "bg-[#1E3A5F] text-white"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        ? "bg-violet-600/20 text-violet-300 border-violet-600/30"
+                        : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border-transparent"
                     )}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
@@ -372,16 +372,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
               );
             })}
 
-            <p className="text-[10px] uppercase tracking-wider text-slate-400 px-2 pt-4 pb-1">
+            <p className="text-[10px] uppercase tracking-wider text-slate-500 px-2 pt-4 pb-1">
               {lang === "zh" ? "文件管理" : "Files"}
             </p>
             <Link to="/pdf-manager">
               <div
                 className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
+                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border",
                   location.pathname === "/pdf-manager"
-                    ? "bg-[#1E3A5F] text-white"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    ? "bg-violet-600/20 text-violet-300 border-violet-600/30"
+                    : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border-transparent"
                 )}
               >
                 <FileText className="w-4 h-4 shrink-0" />
@@ -395,15 +395,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top Bar */}
-        <header className="h-12 border-b border-slate-200 bg-white flex items-center px-2 shrink-0">
+        <header className="h-12 border-b border-slate-700/30 bg-[#050b18] flex items-center px-2 shrink-0">
           {/* Left toggle button */}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className={cn(
               "flex items-center gap-1.5 h-9 px-3 rounded-lg border transition-all text-xs font-medium",
               sidebarCollapsed
-                ? "border-[#1E3A5F] bg-[#1E3A5F]/5 text-[#1E3A5F] hover:bg-[#1E3A5F]/10"
-                : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100"
+                ? "border-violet-600/40 bg-violet-600/10 text-violet-400 hover:bg-violet-600/20"
+                : "border-slate-700/50 bg-slate-800/40 text-slate-400 hover:bg-slate-800/70"
             )}
             title={sidebarCollapsed ? t("app.expandSidebar") : t("app.collapseSidebar")}
           >
@@ -419,10 +419,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="flex-1 flex items-center justify-center min-w-0">
             {sidebarCollapsed && (
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-[#1E3A5F] flex items-center justify-center">
+                <div className="w-6 h-6 rounded-md bg-violet-600 flex items-center justify-center">
                   <BookOpen className="w-3.5 h-3.5 text-white" />
                 </div>
-                <span className="text-sm font-semibold text-slate-700 hidden sm:inline">
+                <span className="text-sm font-semibold text-slate-200 hidden sm:inline">
                   {t("app.title")}
                 </span>
               </div>
@@ -434,10 +434,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <div className="relative">
               <button
                 onClick={() => setShowLangSwitcher(!showLangSwitcher)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all text-sm"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-700/50 hover:border-slate-500/60 hover:bg-slate-800/50 transition-all text-sm"
               >
                 <Globe className="w-3.5 h-3.5 text-slate-500" />
-                <span className="text-slate-700 font-medium text-xs">
+                <span className="text-slate-300 font-medium text-xs">
                   {lang === "en" ? "EN" : "中"}
                 </span>
                 <ChevronDown className={cn("w-3 h-3 text-slate-400 transition-transform", showLangSwitcher && "rotate-180")} />
@@ -446,8 +446,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
               {showLangSwitcher && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowLangSwitcher(false)} />
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
-                    <div className="p-2 border-b border-slate-100">
+                  <div className="absolute right-0 top-full mt-1 w-44 bg-[#0a1528] rounded-xl shadow-2xl border border-slate-700/50 z-50 overflow-hidden">
+                    <div className="p-2 border-b border-slate-700/40">
                       <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                         {t("app.language")}
                       </p>
@@ -458,30 +458,30 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         className={cn(
                           "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between",
                           lang === "en"
-                            ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20 font-medium"
-                            : "hover:bg-slate-50 border border-transparent"
+                            ? "bg-violet-600/10 border border-violet-600/30 font-medium"
+                            : "hover:bg-slate-800/60 border border-transparent"
                         )}
                       >
                         <span className="flex items-center gap-2">
                           <span className="text-base">🇺🇸</span>
-                          <span className="text-slate-700">English</span>
+                          <span className="text-slate-300">English</span>
                         </span>
-                        {lang === "en" && <CheckCircle2 className="w-3.5 h-3.5 text-[#1E3A5F]" />}
+                        {lang === "en" && <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />}
                       </button>
                       <button
                         onClick={() => { setLang("zh"); setShowLangSwitcher(false); }}
                         className={cn(
                           "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between",
                           lang === "zh"
-                            ? "bg-[#1E3A5F]/5 border border-[#1E3A5F]/20 font-medium"
-                            : "hover:bg-slate-50 border border-transparent"
+                            ? "bg-violet-600/10 border border-violet-600/30 font-medium"
+                            : "hover:bg-slate-800/60 border border-transparent"
                         )}
                       >
                         <span className="flex items-center gap-2">
                           <span className="text-base">🇨🇳</span>
-                          <span className="text-slate-700">中文</span>
+                          <span className="text-slate-300">中文</span>
                         </span>
-                        {lang === "zh" && <CheckCircle2 className="w-3.5 h-3.5 text-[#1E3A5F]" />}
+                        {lang === "zh" && <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />}
                       </button>
                     </div>
                   </div>
@@ -498,9 +498,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Floating AI Assistant */}
       {/* Chat Dialog */}
       {showChat && (
-        <div className="fixed bottom-20 right-5 z-50 w-[380px] max-h-[520px] bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
+        <div className="fixed bottom-20 right-5 z-50 w-[380px] max-h-[520px] bg-[#0a1528] rounded-2xl shadow-2xl border border-slate-700/50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
           {/* Chat Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-[#1E3A5F] text-white shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 bg-violet-700 text-white shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
                 <Bot className="w-4 h-4" />
@@ -537,8 +537,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     className={cn(
                       "max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed",
                       msg.role === "user"
-                        ? "bg-[#1E3A5F] text-white rounded-br-md"
-                        : "bg-slate-100 text-slate-700 rounded-bl-md"
+                        ? "bg-violet-600 text-white rounded-br-md"
+                        : "bg-slate-800 text-slate-200 rounded-bl-md"
                     )}
                   >
                     {msg.content}
@@ -550,13 +550,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </ScrollArea>
 
           {/* Chat Input */}
-          <div className="p-3 border-t border-slate-200 shrink-0 bg-white">
+          <div className="p-3 border-t border-slate-700/40 shrink-0 bg-[#0a1528]">
             <div className="flex items-center gap-2">
               <Input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder={lang === "zh" ? "输入你的问题..." : "Type your question..."}
-                className="text-sm h-9 rounded-full px-4 border-slate-200 focus-visible:ring-[#1E3A5F]"
+                className="text-sm h-9 rounded-full px-4 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 focus-visible:ring-violet-500"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -570,8 +570,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 className={cn(
                   "w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all",
                   chatInput.trim()
-                    ? "bg-[#1E3A5F] text-white hover:bg-[#162d4a]"
-                    : "bg-slate-100 text-slate-300 cursor-not-allowed"
+                    ? "bg-violet-600 text-white hover:bg-violet-700"
+                    : "bg-slate-800 text-slate-600 cursor-not-allowed"
                 )}
               >
                 <Send className="w-4 h-4" />
@@ -585,10 +585,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <button
         onClick={() => setShowChat(!showChat)}
         className={cn(
-          "fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 group",
+          "fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 group glow-violet",
           showChat
-            ? "bg-slate-600 hover:bg-slate-700 rotate-0"
-            : "bg-[#1E3A5F] hover:bg-[#162d4a] hover:scale-105"
+            ? "bg-slate-700 hover:bg-slate-600 rotate-0"
+            : "bg-violet-600 hover:bg-violet-500 hover:scale-105"
         )}
         title={lang === "zh" ? "AI 助手" : "AI Assistant"}
       >
@@ -598,7 +598,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <>
             <Bot className="w-6 h-6 text-white" />
             {/* Pulse indicator */}
-            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-white" />
+            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-[#070f1e]" />
           </>
         )}
       </button>

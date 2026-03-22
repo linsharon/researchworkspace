@@ -452,24 +452,24 @@ export default function PdfViewer({
 
   return (
     <section
-      className={cn("flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-slate-200 bg-white", className)}
+      className={cn("flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-slate-700/50 bg-[#0d1b30]", className)}
       ref={containerRef}
     >
       {showTitleBar ? (
-        <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">
+        <div className="border-b border-slate-700/50 bg-slate-800/40 px-3 py-2 text-sm font-medium text-slate-700">
           {title}
         </div>
       ) : null}
 
       {showToolbar ? (
-        <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        <div className="border-b border-slate-700/50 bg-slate-800/40 px-3 py-2 text-xs text-slate-600">
           Page {resolvedPage} / {typeof totalPages === "number" ? totalPages : "--"} · Zoom {resolvedZoom}% · {citationsText} · {referencesText}
         </div>
       ) : null}
 
-      <div className="relative flex-1 bg-white">
+      <div className="relative flex-1 bg-[#0d1b30]">
         {pdfUrl ? (
-          <div className="pdf-scroll-host h-full min-h-0 overflow-hidden bg-white p-2">
+          <div className="pdf-scroll-host h-full min-h-0 overflow-hidden bg-[#0d1b30] p-2">
             <Worker workerUrl={PDF_WORKER_URL}>
               <Viewer
                 fileUrl={viewerUrl}
@@ -487,7 +487,7 @@ export default function PdfViewer({
                   applyZoom(Math.round(scale * 100));
                 }}
                 renderLoader={(percentages: number) => (
-                  <div className="flex h-full min-h-0 items-center justify-center bg-slate-50 px-6 text-center">
+                  <div className="flex h-full min-h-0 items-center justify-center bg-slate-800/40 px-6 text-center">
                     <div className="space-y-3">
                       <div className="text-sm font-medium text-slate-700">Loading PDF...</div>
                       <div className="text-xs text-slate-500">{Math.round(percentages)}%</div>
@@ -512,15 +512,15 @@ export default function PdfViewer({
         )}
 
         {!isDocumentLoaded && pdfUrl && !loadError ? (
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-50/80 backdrop-blur-[1px]">
-            <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-800/40/80 backdrop-blur-[1px]">
+            <div className="rounded-lg border border-slate-700/50 bg-[#0d1b30] px-4 py-3 text-sm text-slate-600 shadow-sm">
               Loading PDF viewer...
             </div>
           </div>
         ) : null}
 
         {loadError ? (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-50 px-6 text-center">
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-800/40 px-6 text-center">
             <div className="space-y-3">
               <div className="text-sm font-medium text-slate-700">{loadError}</div>
               <Button
@@ -551,7 +551,7 @@ export default function PdfViewer({
         />
 
         {translatedText ? (
-          <div className="absolute bottom-4 right-4 z-20 max-w-sm rounded-xl border border-emerald-200 bg-white/95 p-4 shadow-xl backdrop-blur">
+          <div className="absolute bottom-4 right-4 z-20 max-w-sm rounded-xl border border-emerald-200 bg-[#0d1b30]/95 p-4 shadow-xl backdrop-blur">
             <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-700">
               <Sparkles className="h-4 w-4" />
               Translate (EN -&gt; CN)

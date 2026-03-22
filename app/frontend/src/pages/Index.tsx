@@ -312,17 +312,17 @@ export default function Dashboard() {
       <div className="p-6 max-w-5xl mx-auto space-y-6">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{project.title}</h1>
-            <p className="text-sm text-slate-500 mt-1 max-w-xl">{project.goal}</p>
+            <h1 className="text-2xl font-bold text-slate-100">{project.title}</h1>
+            <p className="text-sm text-slate-400 mt-1 max-w-xl">{project.goal}</p>
           </div>
         </div>
 
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-slate-800">{t("dashboard.workflowProgress")}</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <h3 className="text-sm font-semibold text-slate-200">{t("dashboard.workflowProgress")}</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
                   {t("app.step")} {project.currentStep} {t("app.of")} 6 — {stepLabel}
                 </p>
               </div>
@@ -334,10 +334,10 @@ export default function Dashboard() {
                 return (
                   <Link key={step} to={`/workflow/${project.id}/${step}`} className="block">
                     <div className="relative group cursor-pointer">
-                      <div className={cn("h-2 rounded-full transition-colors", isCurrent ? "bg-[#1E3A5F]" : "bg-slate-200")} />
+                      <div className={cn("h-2 rounded-full transition-colors", isCurrent ? "bg-violet-600" : "bg-slate-700")} />
                       <div className="flex items-center gap-1 mt-2">
-                        <span className={cn("text-[10px] font-medium", isCurrent ? "text-[#1E3A5F]" : "text-slate-400")}>{step}</span>
-                        <span className={cn("text-[10px] hidden sm:inline", isCurrent ? "text-[#1E3A5F] font-medium" : "text-slate-400")}>
+                        <span className={cn("text-[10px] font-medium", isCurrent ? "text-violet-400" : "text-slate-500")}>{step}</span>
+                        <span className={cn("text-[10px] hidden sm:inline", isCurrent ? "text-violet-400 font-medium" : "text-slate-500")}>
                           {stepShortLabels[step]}
                         </span>
                       </div>
@@ -347,9 +347,9 @@ export default function Dashboard() {
               })}
             </div>
 
-            <div className="flex items-center gap-1.5 mt-4 p-2 bg-slate-50 rounded-md">
-              <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
-              <p className="text-[11px] text-slate-500">{t("dashboard.iterativeHint")}</p>
+            <div className="flex items-center gap-1.5 mt-4 p-2 bg-slate-800/60 rounded-md">
+              <TrendingUp className="w-3.5 h-3.5 text-slate-500" />
+              <p className="text-[11px] text-slate-400">{t("dashboard.iterativeHint")}</p>
             </div>
           </CardContent>
         </Card>
@@ -361,33 +361,33 @@ export default function Dashboard() {
               { label: "Online Time", value: formatDuration(onlineSeconds), icon: "⏱️" },
               { label: "Last Login", value: formatDateTime(lastLoginAt), icon: "🕘" },
             ].map((stat) => (
-              <Card key={stat.label} className="border-slate-200">
+              <Card key={stat.label} className="border-slate-700/50">
                 <CardContent className="p-4 text-center">
                   <span className="text-2xl block mb-1">{stat.icon}</span>
-                  <p className="text-sm md:text-xl font-bold text-slate-800 break-words">{stat.value}</p>
+                  <p className="text-sm md:text-xl font-bold text-slate-200 break-words">{stat.value}</p>
                   <p className="text-[10px] text-slate-500 uppercase tracking-wider">{stat.label}</p>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">Project Artifacts by Type</CardTitle>
+              <CardTitle className="text-sm font-semibold text-slate-200">Project Artifacts by Type</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {metricRows.map((row) => (
                   <Link key={row.key} to={`/artifacts?tab=${row.tab}`} className="block">
-                    <div className="flex items-center gap-3 hover:bg-slate-50 rounded-md px-1 py-0.5">
-                      <span className="text-xs text-slate-600 w-40 shrink-0">{row.label}</span>
-                      <div className="flex-1 bg-slate-100 rounded-full h-5 overflow-hidden">
+                    <div className="flex items-center gap-3 hover:bg-slate-800/50 rounded-md px-1 py-0.5">
+                      <span className="text-xs text-slate-400 w-40 shrink-0">{row.label}</span>
+                      <div className="flex-1 bg-slate-800 rounded-full h-5 overflow-hidden">
                         <div
                           className={cn("h-full rounded-full transition-all", row.color)}
                           style={{ width: `${(counts[row.key] / maxMetricCount) * 100}%` }}
                         />
                       </div>
-                      <span className="text-xs font-semibold text-slate-700 w-10 text-right">{counts[row.key]}</span>
+                      <span className="text-xs font-semibold text-slate-300 w-10 text-right">{counts[row.key]}</span>
                     </div>
                   </Link>
                 ))}
@@ -396,11 +396,11 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#2D6A4F]" />
+              <CardTitle className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-400" />
                 {t("dashboard.latestArtifacts")}
               </CardTitle>
               <Link to="/artifacts">
@@ -414,17 +414,17 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {latestItems.map((item) => (
                 <Link key={item.id} to={`/artifacts?tab=${item.tab}`}>
-                  <div className="p-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all cursor-pointer group">
+                  <div className="p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:border-violet-600/40 hover:bg-slate-800/80 transition-all cursor-pointer group">
                     <div className="flex items-start justify-between mb-1.5">
                       <Badge variant="secondary" className={cn("text-[10px] px-1.5 py-0", item.badgeClass)}>
                         {item.badgeLabel}
                       </Badge>
                     </div>
-                    <h4 className="text-sm font-medium text-slate-800 mb-1 group-hover:text-[#1E3A5F] transition-colors line-clamp-1">
+                    <h4 className="text-sm font-medium text-slate-200 mb-1 group-hover:text-violet-400 transition-colors line-clamp-1">
                       {item.title}
                     </h4>
                     <p className="text-xs text-slate-500 line-clamp-2">{item.description}</p>
-                    <div className="flex items-center gap-1 mt-2 text-[10px] text-slate-400">
+                    <div className="flex items-center gap-1 mt-2 text-[10px] text-slate-500">
                       <Clock className="w-3 h-3" />
                       {item.updatedAt}
                     </div>
@@ -441,7 +441,7 @@ export default function Dashboard() {
             alt="Academic workspace"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#1E3A5F]/80 to-transparent flex items-center">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-900/80 to-transparent flex items-center">
             <div className="p-6">
               <h2 className="text-white text-lg font-semibold mb-1">{t("dashboard.heroTitle")}</h2>
               <p className="text-white/80 text-xs max-w-md">{t("dashboard.heroDesc")}</p>
