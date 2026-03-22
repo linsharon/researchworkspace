@@ -91,7 +91,7 @@ export const STEP_META: Record<
   2: {
     label: "Discover",
     shortLabel: "Discover",
-    description: "Search and discover entry or seed papers",
+    description: "Discover entry or seed papers",
     icon: "🔍",
   },
   3: {

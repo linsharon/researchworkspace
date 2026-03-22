@@ -3,13 +3,14 @@
  * Display entry papers and expanded papers for reading
  */
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -17,10 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BookOpen, ArrowRight, AlertCircle, Trash2 } from "lucide-react";
-import { paperAPI, noteAPI, highlightAPI } from "@/lib/manuscript-api";
+import { AlertCircle, ArrowUpDown, BookOpen } from "lucide-react";
+import { paperAPI } from "@/lib/manuscript-api";
 import type { Paper } from "@/lib/manuscript-api";
 import type { Artifact } from "@/lib/data";
+import { cn } from "@/lib/utils";
 
 interface Step3Props {
   projectId: string;
@@ -36,6 +38,9 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
   const [selectedTab, setSelectedTab] = useState<"entry" | "expanded" | "all">(
     "all"
   );
+  const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
+  const [sortKey, setSortKey] = useState<"title" | "year" | "status" | "type">("year");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const getLiteratureArtifactId = (paperId: string) => `entry-paper-${paperId}`;
 
@@ -122,31 +127,107 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
     }
   };
 
-  const filteredPapers = papers.filter((paper) => {
-    if (selectedTab === "entry") return paper.is_entry_paper;
-    if (selectedTab === "expanded") return paper.is_expanded_paper;
-    return true;
-  });
+  const filteredPapers = useMemo(
+    () =>
+      papers.filter((paper) => {
+        if (selectedTab === "entry") return paper.is_entry_paper;
+        if (selectedTab === "expanded") return paper.is_expanded_paper;
+        return true;
+      }),
+    [papers, selectedTab]
+  );
+
+  const sortedFilteredPapers = useMemo(() => {
+    const direction = sortOrder === "asc" ? 1 : -1;
+    return [...filteredPapers].sort((a, b) => {
+      if (sortKey === "title") {
+        return a.title.localeCompare(b.title) * direction;
+      }
+      if (sortKey === "year") {
+        return ((a.year ?? 0) - (b.year ?? 0)) * direction;
+      }
+      if (sortKey === "status") {
+        return (a.reading_status || "").localeCompare(b.reading_status || "") * direction;
+      }
+
+      const getTypeRank = (paper: Paper) => {
+        if (paper.is_entry_paper && paper.is_expanded_paper) return 0;
+        if (paper.is_entry_paper) return 1;
+        if (paper.is_expanded_paper) return 2;
+        return 3;
+      };
+      return (getTypeRank(a) - getTypeRank(b)) * direction;
+    });
+  }, [filteredPapers, sortKey, sortOrder]);
+
+  const allVisibleSelected =
+    sortedFilteredPapers.length > 0 &&
+    sortedFilteredPapers.every((paper) => selectedPaperIds.includes(paper.id));
 
   const handleReadPaper = (paperId: string) => {
     navigate(`/paper-read/${projectId}/${paperId}`);
   };
 
-  const handleJumpToEntryArtifacts = () => {
-    navigate("/artifacts?tab=literature");
+  const togglePaperSelection = (paperId: string) => {
+    setSelectedPaperIds((prev) =>
+      prev.includes(paperId)
+        ? prev.filter((id) => id !== paperId)
+        : [...prev, paperId]
+    );
   };
 
-  const handleJumpToSearchRecord = (paper: Paper) => {
+  const handleToggleSelectAllVisible = () => {
+    const visibleIds = sortedFilteredPapers.map((paper) => paper.id);
+    if (allVisibleSelected) {
+      setSelectedPaperIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
+      return;
+    }
+    setSelectedPaperIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+  };
+
+  const handleNoteClick = (e: React.MouseEvent, paper: Paper) => {
+    e.stopPropagation();
     const rawNote = (paper.discovery_note || "").trim();
     if (!rawNote) return;
 
-    const query = rawNote.startsWith("From Search Record:")
-      ? rawNote.replace("From Search Record:", "").trim()
-      : rawNote;
+    // Case 1: Explicit search record reference
+    if (rawNote.startsWith("From Search Record:")) {
+      const query = rawNote.replace("From Search Record:", "").trim();
+      navigate(`/workflow/${projectId}/2?tab=search&searchQuery=${encodeURIComponent(query)}`);
+      return;
+    }
 
-    navigate(
-      `/workflow/${projectId}/2?tab=search&searchQuery=${encodeURIComponent(query)}`
-    );
+    // Case 2: Expanded from an entry paper — match common note prefixes
+    const expandedMatch = rawNote.match(/^(?:expanded from|from entry paper|from paper|references|cited by|from ref)[:\s]+(.+)/i);
+    if (expandedMatch) {
+      const titleHint = expandedMatch[1].trim();
+      const sourcePaper = papers.find(
+        (p) =>
+          p.title.toLowerCase().includes(titleHint.toLowerCase()) ||
+          titleHint.toLowerCase().includes(p.title.toLowerCase())
+      );
+      if (sourcePaper) {
+        navigate(`/paper-read/${projectId}/${sourcePaper.id}`);
+        return;
+      }
+    }
+
+    // Case 3: discovery_path holds the ID of the source entry paper
+    if (paper.discovery_path) {
+      const sourcePaper = papers.find((p) => p.id === paper.discovery_path);
+      if (sourcePaper) {
+        navigate(`/paper-read/${projectId}/${sourcePaper.id}`);
+        return;
+      }
+      // Looks like a bare paper ID (no spaces, reasonable length)
+      if (paper.discovery_path.length > 8 && !paper.discovery_path.includes(" ")) {
+        navigate(`/paper-read/${projectId}/${paper.discovery_path}`);
+        return;
+      }
+    }
+
+    // Default: treat note as a search query and jump to Step 2 search
+    navigate(`/workflow/${projectId}/2?tab=search&searchQuery=${encodeURIComponent(rawNote)}`);
   };
 
   const handleUpdateReadingStatus = async (
@@ -167,94 +248,70 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
     }
   };
 
-  const handleRemovePaperRole = async (
-    paper: Paper,
-    role: "entry" | "expanded"
-  ) => {
-    const nextPatch =
-      role === "entry"
-        ? { is_entry_paper: false }
-        : { is_expanded_paper: false };
+  const handleBulkRemoveSelected = async () => {
+    if (!selectedPaperIds.length) return;
 
-    let relatedNotesCount = 0;
-    let relatedHighlightsCount = 0;
-    let literatureArtifactExists = false;
-    const hasPdfAttachment = Boolean(paper.pdf_path);
+    const selectedSet = new Set(selectedPaperIds);
+    const targets = papers.filter((paper) => selectedSet.has(paper.id));
+    if (!targets.length) return;
 
-    try {
-      const notes = await noteAPI.list(paper.id);
-      relatedNotesCount = notes.length;
-    } catch {
-      relatedNotesCount = 0;
+    let patch: Partial<Pick<Paper, "is_entry_paper" | "is_expanded_paper">>;
+    if (selectedTab === "entry") {
+      patch = { is_entry_paper: false };
+    } else if (selectedTab === "expanded") {
+      patch = { is_expanded_paper: false };
+    } else {
+      patch = { is_entry_paper: false, is_expanded_paper: false };
     }
 
-    try {
-      const highlights = await highlightAPI.list(paper.id);
-      relatedHighlightsCount = highlights.length;
-    } catch {
-      relatedHighlightsCount = 0;
-    }
+    const message =
+      selectedTab === "entry"
+        ? `Remove ${targets.length} selected paper(s) from Entry?`
+        : selectedTab === "expanded"
+          ? `Remove ${targets.length} selected paper(s) from Expanded?`
+          : `Remove ${targets.length} selected paper(s) from the Step 3 reading list?`;
 
-    if (typeof window !== "undefined") {
-      try {
-        const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-        const parsed = saved ? JSON.parse(saved) : [];
-        const artifacts = Array.isArray(parsed) ? parsed : [];
-        literatureArtifactExists = artifacts.some(
-          (artifact) => artifact.id === getLiteratureArtifactId(paper.id)
-        );
-      } catch {
-        literatureArtifactExists = false;
-      }
-    }
-
-    const warningDetails = [
-      relatedHighlightsCount > 0 ? `${relatedHighlightsCount} highlight(s)` : null,
-      relatedNotesCount > 0 ? `${relatedNotesCount} note(s)` : null,
-      hasPdfAttachment ? "a PDF file" : null,
-      literatureArtifactExists ? "a Literature artifact entry" : null,
-    ].filter(Boolean);
-
-    const confirmationMessage = warningDetails.length
-      ? `This paper is connected to ${warningDetails.join(", ")}. Removing it from ${role} papers will remove it from this reading list, but the attached materials may still need your attention. Continue?`
-      : `Remove this paper from ${role} papers? It will no longer appear in this reading list.`;
-
-    const confirmed = window.confirm(confirmationMessage);
-    if (!confirmed) return;
+    if (!window.confirm(message)) return;
 
     try {
-      const updated = await paperAPI.update(paper.id, nextPatch);
-      const nextPapers = papers
-        .map((item) => (item.id === paper.id ? updated : item))
-        .filter((item) => item.is_entry_paper || item.is_expanded_paper);
-      setPapers(nextPapers);
-      syncLiteratureArtifacts(nextPapers);
-      toast.success(
-        role === "entry"
-          ? "Removed from entry papers"
-          : "Removed from expanded papers"
+      const updates = await Promise.all(
+        targets.map((paper) => paperAPI.update(paper.id, patch))
       );
+      const updateMap = new Map(updates.map((paper) => [paper.id, paper]));
+      const nextPapers = papers
+        .map((paper) => updateMap.get(paper.id) ?? paper)
+        .filter((paper) => paper.is_entry_paper || paper.is_expanded_paper);
+
+      setPapers(nextPapers);
+      setSelectedPaperIds([]);
+      syncLiteratureArtifacts(nextPapers);
+      toast.success("Selected papers removed successfully");
     } catch (error) {
-      console.error("Failed to update paper role:", error);
-      toast.error("Failed to update paper status");
+      console.error("Failed to remove selected papers:", error);
+      toast.error("Failed to remove selected papers");
     }
+  };
+
+  const handleBatchAddArtifacts = () => {
+    if (!selectedPaperIds.length) return;
+
+    const selectedPapers = papers.filter((paper) => selectedPaperIds.includes(paper.id));
+    persistArtifacts((prev) => {
+      const artifactMap = new Map(prev.map((artifact) => [artifact.id, artifact]));
+      selectedPapers.forEach((paper) => {
+        const artifact = paperToLiteratureArtifact(paper);
+        artifactMap.set(artifact.id, artifact);
+      });
+      return Array.from(artifactMap.values());
+    });
+
+    window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+    toast.success(`Added ${selectedPapers.length} paper(s) to Artifact Center`);
+    setSelectedPaperIds([]);
   };
 
   return (
     <div className="w-full space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <BookOpen className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-3xl font-bold">Read Found Papers</h1>
-            <p className="text-gray-600">
-              Deep read and annotate your entry and expanded papers
-            </p>
-          </div>
-        </div>
-      </div>
-
       {loading && (
         <Card>
           <CardContent className="pt-6 text-sm text-gray-600">
@@ -277,21 +334,129 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
 
       {/* Papers List */}
       {papers.length > 0 && (
-        <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as any)}>
-          <TabsList>
-            <TabsTrigger value="all">
-              All ({papers.length})
-            </TabsTrigger>
-            <TabsTrigger value="entry">
-              Entry ({papers.filter((p) => p.is_entry_paper).length})
-            </TabsTrigger>
-            <TabsTrigger value="expanded">
-              Expanded ({papers.filter((p) => p.is_expanded_paper).length})
-            </TabsTrigger>
-          </TabsList>
+        <Tabs
+          value={selectedTab}
+          onValueChange={(v) => {
+            setSelectedTab(v as "entry" | "expanded" | "all");
+            setSelectedPaperIds([]);
+          }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
+              <TabsTrigger
+                value="all"
+                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+              >
+                All ({papers.length})
+              </TabsTrigger>
+              <TabsTrigger
+                value="entry"
+                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+              >
+                Entry ({papers.filter((p) => p.is_entry_paper).length})
+              </TabsTrigger>
+              <TabsTrigger
+                value="expanded"
+                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+              >
+                Expanded ({papers.filter((p) => p.is_expanded_paper).length})
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex items-center gap-1.5">
+              <Select
+                value={sortKey}
+                onValueChange={(value) =>
+                  setSortKey(value as "title" | "year" | "status" | "type")
+                }
+              >
+                <SelectTrigger className="h-7 text-xs w-[130px]" onClick={(e) => e.stopPropagation()}>
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="title">Sort: Title</SelectItem>
+                  <SelectItem value="year">Sort: Year</SelectItem>
+                  <SelectItem value="status">Sort: Status</SelectItem>
+                  <SelectItem value="type">Sort: Type</SelectItem>
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                className="inline-flex items-center h-7 px-2 text-xs rounded-md border border-slate-700/50 hover:bg-slate-800/60"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+                }}
+                title="Toggle sort order"
+              >
+                <ArrowUpDown className="w-3 h-3 mr-1" />
+                {sortOrder === "asc" ? "Asc" : "Desc"}
+              </button>
+            </div>
+          </div>
 
           <TabsContent value={selectedTab} className="space-y-4">
-            {filteredPapers.map((paper) => (
+            {sortedFilteredPapers.length > 0 && (
+              <div
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg border transition-all",
+                  selectedPaperIds.length > 0
+                    ? "bg-slate-800/40 border-slate-700/70"
+                    : "border-transparent"
+                )}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Checkbox
+                  id="select-all-step3-papers"
+                  checked={allVisibleSelected}
+                  onCheckedChange={handleToggleSelectAllVisible}
+                />
+                <label
+                  htmlFor="select-all-step3-papers"
+                  className="text-xs text-slate-400 cursor-pointer select-none"
+                >
+                  {selectedPaperIds.length === 0
+                    ? "Select all"
+                    : `${selectedPaperIds.length} selected`}
+                </label>
+                {selectedPaperIds.length > 0 && (
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      className="h-7 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBatchAddArtifacts();
+                      }}
+                    >
+                      Add to Artifact Center
+                    </Button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center h-7 px-2 text-xs rounded-md border border-rose-400/40 text-rose-400 hover:bg-rose-500/10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleBulkRemoveSelected();
+                      }}
+                    >
+                      Remove Selected
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center h-7 px-2 text-xs rounded-md border border-slate-700/50 hover:bg-slate-800/60"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPaperIds([]);
+                      }}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {sortedFilteredPapers.map((paper) => (
               <Card
                 key={paper.id}
                 className="hover:shadow-lg transition-shadow cursor-pointer"
@@ -299,34 +464,33 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
               >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg hover:text-blue-600 transition-colors">
-                        {paper.title}
-                      </CardTitle>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
+                          <Checkbox
+                            checked={selectedPaperIds.includes(paper.id)}
+                            onCheckedChange={() => togglePaperSelection(paper.id)}
+                          />
+                        </div>
+                        <CardTitle className="text-lg hover:text-blue-600 transition-colors min-w-0 truncate">
+                          {paper.title}
+                        </CardTitle>
+                        {paper.is_entry_paper && (
+                          <span className="inline-flex h-6 items-center rounded-full border border-violet-500/70 px-2 text-[11px] font-medium text-violet-300 pointer-events-none">
+                            entry
+                          </span>
+                        )}
+                        {paper.is_expanded_paper && (
+                          <span className="inline-flex h-6 items-center rounded-full border border-blue-500/70 px-2 text-[11px] font-medium text-blue-300 pointer-events-none">
+                            expanded
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-600 mt-2">
                         {paper.authors.join(", ")}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {paper.is_entry_paper && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleJumpToEntryArtifacts();
-                          }}
-                          className="inline-flex"
-                        >
-                          <Badge variant="default" className="bg-blue-600 hover:bg-blue-700 cursor-pointer">
-                            Entry Paper
-                          </Badge>
-                        </button>
-                      )}
-                      {paper.is_expanded_paper && (
-                        <Badge variant="secondary" className="bg-green-100 text-green-800">
-                          Expanded
-                        </Badge>
-                      )}
                       <div onClick={(e) => e.stopPropagation()}>
                         <Select
                           value={paper.reading_status}
@@ -338,7 +502,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                           }
                         >
                           <SelectTrigger
-                            className={`h-8 min-w-[128px] text-xs border ${
+                            className={`h-7 min-w-[110px] text-xs border ${
                               paper.reading_status === "Completed"
                                 ? "bg-green-50 text-green-700 border-green-200"
                                 : paper.reading_status === "Reading"
@@ -379,11 +543,8 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                   {paper.discovery_note && (
                     <button
                       type="button"
-                      className="block w-full rounded bg-gray-50 p-3 text-left text-sm italic text-gray-600 hover:bg-blue-50 hover:text-blue-700"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleJumpToSearchRecord(paper);
-                      }}
+                      className="block w-full rounded bg-slate-800/40 p-3 text-left text-sm italic text-slate-400 hover:bg-violet-600/10 hover:text-violet-300 transition-colors"
+                      onClick={(e) => handleNoteClick(e, paper)}
                     >
                       Note: {paper.discovery_note}
                     </button>
@@ -412,52 +573,11 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                     </div>
                   )}
 
-                  {/* Read Button */}
-                  <div className="flex flex-wrap justify-end gap-2 pt-2">
-                    {paper.is_entry_paper && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-2 text-rose-600 hover:text-rose-700"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleRemovePaperRole(paper, "entry");
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Remove from Entry
-                      </Button>
-                    )}
-                    {paper.is_expanded_paper && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-2 text-rose-600 hover:text-rose-700"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleRemovePaperRole(paper, "expanded");
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Remove from Expanded
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      className="gap-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleReadPaper(paper.id);
-                      }}
-                    >
-                      Open for Reading <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             ))}
 
-            {filteredPapers.length === 0 && (
+            {sortedFilteredPapers.length === 0 && (
               <div className="text-center py-12 text-gray-600">
                 <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-30" />
                 <p>No papers in this category</p>

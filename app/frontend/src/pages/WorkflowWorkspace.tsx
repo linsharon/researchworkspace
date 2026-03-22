@@ -126,9 +126,6 @@ export default function WorkflowWorkspace() {
                 <h1 className="text-xl font-bold text-slate-100">
                   {`Step ${currentStep}: ${stepMeta.label}`}
                 </h1>
-                <Badge variant="outline" className="text-xs">
-                  {currentStep} / 6
-                </Badge>
               </div>
               <p className="text-sm text-slate-500">
                 {stepMeta.description}
@@ -1566,10 +1563,25 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         }}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="keywords">Keywords</TabsTrigger>
-          <TabsTrigger value="search">Search Log</TabsTrigger>
-          <TabsTrigger value="candidates">Candidate Papers</TabsTrigger>
+        <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
+          <TabsTrigger
+            value="keywords"
+            className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+          >
+            Keywords
+          </TabsTrigger>
+          <TabsTrigger
+            value="search"
+            className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+          >
+            Search Log
+          </TabsTrigger>
+          <TabsTrigger
+            value="candidates"
+            className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+          >
+            Candidate Papers
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="keywords" className="mt-4 space-y-4">
@@ -4008,13 +4020,21 @@ interface ManualRecordForm {
   url: string;
 }
 
+type ExpandMode = "entry-paper" | "doi-url" | "manual";
+
 function ExpandWorkspace({ projectId }: { projectId: string }) {
   const [projectPapers, setProjectPapers] = useState<ApiPaper[]>([]);
   const [loadingPapers, setLoadingPapers] = useState(false);
+  const [expandMode, setExpandMode] = useState<ExpandMode>("entry-paper");
   const [selectedPaperId, setSelectedPaperId] = useState("");
   const [activePath, setActivePath] = useState<"references" | "citations">("references");
-  const [referenceRecords, setReferenceRecords] = useState<ExpandRecord[]>([]);
-  const [citationRecords, setCitationRecords] = useState<ExpandRecord[]>([]);
+  const [recordBuckets, setRecordBuckets] = useState<
+    Record<ExpandMode, { references: ExpandRecord[]; citations: ExpandRecord[] }>
+  >({
+    "entry-paper": { references: [], citations: [] },
+    "doi-url": { references: [], citations: [] },
+    manual: { references: [], citations: [] },
+  });
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [expandError, setExpandError] = useState<string | null>(null);
   const [showManualReferences, setShowManualReferences] = useState(false);
@@ -4191,6 +4211,20 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
       url: resolvedUrl,
     };
   };
+
+  const setRecordsForMode = (
+    mode: ExpandMode,
+    direction: "references" | "citations",
+    records: ExpandRecord[]
+  ) => {
+    setRecordBuckets((prev) => ({
+      ...prev,
+      [mode]: {
+        ...prev[mode],
+        [direction]: records,
+      },
+    }));
+  };
   const fetchOpenAlexRecords = async (
     sourceWork: OpenAlexWork,
     direction: "references" | "citations"
@@ -4247,11 +4281,11 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
         fetchOpenAlexRecords(sourceWork, "references"),
         fetchOpenAlexRecords(sourceWork, "citations"),
       ]);
-      setReferenceRecords(references);
-      setCitationRecords(citations);
+      setRecordsForMode("entry-paper", "references", references);
+      setRecordsForMode("entry-paper", "citations", citations);
     } catch {
-      setReferenceRecords([]);
-      setCitationRecords([]);
+      setRecordsForMode("entry-paper", "references", []);
+      setRecordsForMode("entry-paper", "citations", []);
       setExpandError(
         "Unable to pull references or citations from OpenAlex for this entry paper. You can still use the DOI/URL pull inside each tab or add records manually."
       );
@@ -4276,11 +4310,8 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
     try {
       const sourceWork = await resolveOpenAlexWork(normalizedInput, selectedPaper?.title);
       const records = await fetchOpenAlexRecords(sourceWork, direction);
-      if (direction === "references") {
-        setReferenceRecords(records);
-      } else {
-        setCitationRecords(records);
-      }
+      const targetMode: ExpandMode = expandMode === "entry-paper" ? "doi-url" : expandMode;
+      setRecordsForMode(targetMode, direction, records);
     } catch {
       setExpandError(`Unable to pull ${direction} from OpenAlex with the provided DOI/URL.`);
     } finally {
@@ -4312,13 +4343,25 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
     };
 
     if (direction === "references") {
-      setReferenceRecords((prev) => [record, ...prev]);
+      setRecordBuckets((prev) => ({
+        ...prev,
+        manual: {
+          ...prev.manual,
+          references: [record, ...prev.manual.references],
+        },
+      }));
       setManualReferenceForm({ title: "", authors: "", year: "", journal: "", url: "" });
       setShowManualReferences(false);
       return;
     }
 
-    setCitationRecords((prev) => [record, ...prev]);
+    setRecordBuckets((prev) => ({
+      ...prev,
+      manual: {
+        ...prev.manual,
+        citations: [record, ...prev.manual.citations],
+      },
+    }));
     setManualCitationForm({ title: "", authors: "", year: "", journal: "", url: "" });
     setShowManualCitations(false);
   };
@@ -4451,7 +4494,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
           <div key={record.id} className="rounded-lg border border-slate-700/50 p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="inline-flex items-center gap-1">
                   {externalUrl ? (
                     <a
                       href={externalUrl}
@@ -4464,7 +4507,15 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                   ) : (
                     <h4 className="text-sm font-semibold text-slate-100">{record.title}</h4>
                   )}
-                  <Badge variant="outline" className={cn("text-[10px]", record.source === "auto" ? "border-blue-300 text-blue-600" : "border-purple-300 text-purple-600")}>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "h-4 px-1 text-[9px] leading-none align-middle",
+                      record.source === "auto"
+                        ? "border-blue-300 text-blue-600"
+                        : "border-purple-300 text-purple-600"
+                    )}
+                  >
                     {record.source === "auto" ? "Auto" : "Manual"}
                   </Badge>
                 </div>
@@ -4478,7 +4529,12 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
               <Button
                 size="sm"
                 variant={isExpanded ? "outline" : "default"}
-                className={cn(isExpanded ? "border-rose-300 text-rose-700" : "bg-violet-700 hover:bg-violet-800 text-white")}
+                className={cn(
+                  "h-5 px-2 text-[10px]",
+                  isExpanded
+                    ? "border-rose-300 text-rose-700"
+                    : "bg-violet-700 hover:bg-violet-800 text-white"
+                )}
                 onClick={() => void toggleExpandedPaper(record)}
               >
                 {isExpanded ? (
@@ -4489,7 +4545,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                 ) : (
                   <>
                     <Plus className="w-3 h-3 mr-1" />
-                    Add to expanded papers
+                    To Expanded
                   </>
                 )}
               </Button>
@@ -4509,188 +4565,293 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       <Card className="border-slate-700/50">
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-slate-700">1. Select one entry paper to expand</p>
-            <div className="max-h-[280px] overflow-y-auto space-y-2 pr-1">
-              {entryPapers.map((paper) => {
-                const paperUrl = (paper as ApiPaper & { url?: string }).url;
-                const externalUrl = resolveExternalPaperUrl(paperUrl, paper.title);
-                return (
-                  <div
-                    key={paper.id}
-                    onClick={() => setSelectedPaperId(paper.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        setSelectedPaperId(paper.id);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    className={cn(
-                      "w-full text-left rounded-lg border p-3 transition-all",
-                      selectedPaperId === paper.id
-                        ? "border-violet-700 bg-blue-50/60"
-                        : "border-slate-700/50 hover:border-slate-300"
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Link
-                            to={`/paper-read/${projectId}/${paper.id}`}
-                            onClick={(event) => event.stopPropagation()}
-                            className="text-sm font-semibold text-slate-100 hover:text-blue-700 hover:underline"
-                          >
-                            {paper.title}
-                          </Link>
-                          {externalUrl ? (
-                            <a
-                              href={externalUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(event) => event.stopPropagation()}
-                              className="inline-flex items-center rounded-md border border-slate-700/50 px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:border-blue-300 hover:text-blue-700"
-                            >
-                              <ExternalLink className="mr-1 h-3 w-3" />
-                              Open original
-                            </a>
-                          ) : null}
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {paper.authors.join(", ") || "Unknown authors"}
-                          {paper.year ? ` (${paper.year})` : ""}
-                        </p>
-                      </div>
-                      {selectedPaperId === paper.id ? (
-                        <Badge variant="outline" className="text-[10px] border-violet-700 text-violet-400">
-                          Selected
-                        </Badge>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
-              {!loadingPapers && entryPapers.length === 0 ? (
-                <div className="text-center py-8 text-xs text-slate-400 border border-dashed rounded-lg">
-                  No entry papers in this project.
-                </div>
-              ) : null}
-            </div>
-          </div>
+          <Tabs value={expandMode} onValueChange={(value) => { setExpandMode(value as ExpandMode); setExpandError(null); }}>
+            <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
+              <TabsTrigger
+                value="entry-paper"
+                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+              >
+                Expand by Entry Paper
+              </TabsTrigger>
+              <TabsTrigger
+                value="doi-url"
+                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+              >
+                Expand by DOI/URL
+              </TabsTrigger>
+              <TabsTrigger
+                value="manual"
+                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+              >
+                Expand Manually
+              </TabsTrigger>
+            </TabsList>
 
-          <div className="space-y-3">
-            <p className="text-sm font-medium text-slate-700">2. Expansion Paths</p>
-            <Tabs value={activePath} onValueChange={(value) => setActivePath(value as "references" | "citations")}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="references">References</TabsTrigger>
-                <TabsTrigger value="citations">Citations</TabsTrigger>
-              </TabsList>
-
-              <div className="mt-3 rounded-lg border border-slate-700/50 p-3 bg-slate-800/40/40">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-slate-600">
-                    {selectedPaper ? `Selected: ${selectedPaper.title}` : "Please select an entry paper first."}
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      if (selectedPaper) void loadExpandRecordsFromPaper(selectedPaper);
-                    }}
-                    disabled={!selectedPaper || loadingRecords}
-                  >
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    {loadingRecords ? "Pulling..." : "Pull from OpenAlex"}
-                  </Button>
-                </div>
-                {expandError ? (
-                  <p className="text-xs text-amber-700 mt-2">{expandError}</p>
-                ) : null}
+            <TabsContent value="entry-paper" className="mt-4 space-y-4">
+              <div className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-3">
+                <p className="text-xs text-slate-500">
+                  Select one entry paper, then pull both references and citations from OpenAlex.
+                </p>
               </div>
 
-              <TabsContent value="references" className="mt-4 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2">
-                  <Input
-                    value={referenceLookupInput}
-                    onChange={(event) => setReferenceLookupInput(event.target.value)}
-                    placeholder="Provide a DOI or URL to pull references"
-                    className="text-sm"
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        void loadDirectionRecordsByInput("references", referenceLookupInput);
-                      }
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void loadDirectionRecordsByInput("references", referenceLookupInput)}
-                    disabled={loadingRecords || !referenceLookupInput.trim()}
-                  >
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    Pull References
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowManualReferences((prev) => !prev)}
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add manually
-                  </Button>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">1. Select one entry paper to expand</p>
+                <div className="max-h-[280px] overflow-y-auto space-y-2 pr-1">
+                  {entryPapers.map((paper) => {
+                    const paperUrl = (paper as ApiPaper & { url?: string }).url;
+                    const externalUrl = resolveExternalPaperUrl(paperUrl, paper.title);
+                    return (
+                      <div
+                        key={paper.id}
+                        onClick={() => setSelectedPaperId(paper.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedPaperId(paper.id);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        className={cn(
+                          "w-full text-left rounded-lg border p-3 transition-all",
+                          selectedPaperId === paper.id
+                            ? "border-violet-700 bg-blue-50/60"
+                            : "border-slate-700/50 hover:border-slate-300"
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Link
+                                to={`/paper-read/${projectId}/${paper.id}`}
+                                onClick={(event) => event.stopPropagation()}
+                                className="text-sm font-semibold text-slate-100 hover:text-blue-700 hover:underline"
+                              >
+                                {paper.title}
+                              </Link>
+                              {externalUrl ? (
+                                <a
+                                  href={externalUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="inline-flex items-center rounded-md border border-slate-700/50 px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:border-blue-300 hover:text-blue-700"
+                                >
+                                  <ExternalLink className="mr-1 h-3 w-3" />
+                                  Open original
+                                </a>
+                              ) : null}
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
+                              {paper.authors.join(", ") || "Unknown authors"}
+                              {paper.year ? ` (${paper.year})` : ""}
+                            </p>
+                          </div>
+                          {selectedPaperId === paper.id ? (
+                            <Badge variant="outline" className="text-[10px] border-violet-700 text-violet-400">
+                              Selected
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {!loadingPapers && entryPapers.length === 0 ? (
+                    <div className="text-center py-8 text-xs text-slate-400 border border-dashed rounded-lg">
+                      No entry papers in this project.
+                    </div>
+                  ) : null}
                 </div>
-                {showManualReferences ? renderManualForm("references") : null}
-                {renderRecordList("references", referenceRecords)}
-              </TabsContent>
+              </div>
 
-              <TabsContent value="citations" className="mt-4 space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2">
-                  <Input
-                    value={citationLookupInput}
-                    onChange={(event) => setCitationLookupInput(event.target.value)}
-                    placeholder="Provide a DOI or URL to pull citations"
-                    className="text-sm"
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        void loadDirectionRecordsByInput("citations", citationLookupInput);
-                      }
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => void loadDirectionRecordsByInput("citations", citationLookupInput)}
-                    disabled={loadingRecords || !citationLookupInput.trim()}
-                  >
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    Pull Citations
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowManualCitations((prev) => !prev)}
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add manually
-                  </Button>
-                </div>
-                {showManualCitations ? renderManualForm("citations") : null}
-                {renderRecordList("citations", citationRecords)}
-              </TabsContent>
-            </Tabs>
-          </div>
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-slate-700">2. Pulled Expansion Results</p>
+                <Tabs value={activePath} onValueChange={(value) => setActivePath(value as "references" | "citations")}>
+                  <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
+                    <TabsTrigger
+                      value="references"
+                      className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                    >
+                      References
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="citations"
+                      className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                    >
+                      Citations
+                    </TabsTrigger>
+                  </TabsList>
 
-          <div className="flex justify-end">
-            <Link to={`/workflow/${projectId}/5`}>
-              <Button className="bg-violet-700 hover:bg-violet-800 text-white">
-                Save and Go to Visualization
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-          </div>
+                  <div className="mt-3 rounded-lg border border-slate-700/50 p-3 bg-slate-800/40/40">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-slate-600">
+                        {selectedPaper ? `Selected: ${selectedPaper.title}` : "Please select an entry paper first."}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          if (selectedPaper) void loadExpandRecordsFromPaper(selectedPaper);
+                        }}
+                        disabled={!selectedPaper || loadingRecords}
+                      >
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        {loadingRecords ? "Pulling..." : "Pull from OpenAlex"}
+                      </Button>
+                    </div>
+                    {expandError ? (
+                      <p className="text-xs text-amber-700 mt-2">{expandError}</p>
+                    ) : null}
+                  </div>
+
+                  <TabsContent value="references" className="mt-4 space-y-3">
+                    {renderRecordList("references", recordBuckets["entry-paper"].references)}
+                  </TabsContent>
+
+                  <TabsContent value="citations" className="mt-4 space-y-3">
+                    {renderRecordList("citations", recordBuckets["entry-paper"].citations)}
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="doi-url" className="mt-4 space-y-4">
+              <div className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-3">
+                <p className="text-xs text-slate-500">
+                  Use a DOI or URL as the seed source when you do not want to start from an existing entry paper.
+                </p>
+              </div>
+
+              <Tabs value={activePath} onValueChange={(value) => setActivePath(value as "references" | "citations")}>
+                <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
+                  <TabsTrigger
+                    value="references"
+                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  >
+                    References
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="citations"
+                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  >
+                    Citations
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="references" className="mt-4 space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+                    <Input
+                      value={referenceLookupInput}
+                      onChange={(event) => setReferenceLookupInput(event.target.value)}
+                      placeholder="Provide a DOI or URL to pull references"
+                      className="text-sm"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void loadDirectionRecordsByInput("references", referenceLookupInput);
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void loadDirectionRecordsByInput("references", referenceLookupInput)}
+                      disabled={loadingRecords || !referenceLookupInput.trim()}
+                    >
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      Pull References
+                    </Button>
+                  </div>
+                  {expandError ? <p className="text-xs text-amber-700">{expandError}</p> : null}
+                  {renderRecordList("references", recordBuckets["doi-url"].references)}
+                </TabsContent>
+
+                <TabsContent value="citations" className="mt-4 space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+                    <Input
+                      value={citationLookupInput}
+                      onChange={(event) => setCitationLookupInput(event.target.value)}
+                      placeholder="Provide a DOI or URL to pull citations"
+                      className="text-sm"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void loadDirectionRecordsByInput("citations", citationLookupInput);
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void loadDirectionRecordsByInput("citations", citationLookupInput)}
+                      disabled={loadingRecords || !citationLookupInput.trim()}
+                    >
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      Pull Citations
+                    </Button>
+                  </div>
+                  {expandError ? <p className="text-xs text-amber-700">{expandError}</p> : null}
+                  {renderRecordList("citations", recordBuckets["doi-url"].citations)}
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+
+            <TabsContent value="manual" className="mt-4 space-y-4">
+              <div className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-3">
+                <p className="text-xs text-slate-500">
+                  Manually add papers when automatic expansion cannot find them or when you want to curate results yourself.
+                </p>
+              </div>
+
+              <Tabs value={activePath} onValueChange={(value) => setActivePath(value as "references" | "citations")}>
+                <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
+                  <TabsTrigger
+                    value="references"
+                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  >
+                    References
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="citations"
+                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  >
+                    Citations
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="references" className="mt-4 space-y-3">
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowManualReferences((prev) => !prev)}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      {showManualReferences ? "Hide manual form" : "Add manually"}
+                    </Button>
+                  </div>
+                  {showManualReferences ? renderManualForm("references") : null}
+                  {renderRecordList("references", recordBuckets.manual.references)}
+                </TabsContent>
+
+                <TabsContent value="citations" className="mt-4 space-y-3">
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowManualCitations((prev) => !prev)}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      {showManualCitations ? "Hide manual form" : "Add manually"}
+                    </Button>
+                  </div>
+                  {showManualCitations ? renderManualForm("citations") : null}
+                  {renderRecordList("citations", recordBuckets.manual.citations)}
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+          </Tabs>
+
         </CardContent>
       </Card>
     </div>
