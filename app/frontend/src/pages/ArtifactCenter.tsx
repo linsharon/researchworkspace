@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,7 @@ import {
   Eye,
   Lightbulb,
   Search,
+  ArrowRight,
 } from "lucide-react";
 import {
   DUMMY_ARTIFACTS,
@@ -76,6 +77,7 @@ export default function ArtifactCenter() {
   const CONCEPTS_UPDATED_EVENT = "concepts-updated";
   const NOTES_UPDATED_EVENT = "notes-updated";
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const tabFromUrl = searchParams.get("tab") || "all";
   const [filter, setFilter] = useState(tabFromUrl);
   const [searchQuery, setSearchQuery] = useState("");
@@ -265,6 +267,34 @@ export default function ArtifactCenter() {
     }
   };
 
+  const getArtifactPaperReadTarget = async (artifact: Artifact) => {
+    if (artifact.type === "entry-paper") {
+      const paperId = artifact.id.replace(/^entry-paper-/, "");
+      if (!paperId || paperId === artifact.id) return null;
+      return `/paper-read/${artifact.projectId}/${paperId}`;
+    }
+
+    if (artifact.type === "literature-note" || artifact.type === "permanent-note") {
+      try {
+        const note = await noteAPI.get(artifact.id);
+        return `/paper-read/${note.project_id}/${note.paper_id}?noteId=${note.id}`;
+      } catch (error) {
+        console.error("Failed to resolve note artifact target:", error);
+        return null;
+      }
+    }
+
+    return null;
+  };
+
+  const handleOpenArtifactSource = async (artifact: Artifact) => {
+    const target = await getArtifactPaperReadTarget(artifact);
+    if (!target) {
+      return;
+    }
+    navigate(target);
+  };
+
   const getFilterCount = (filterValue: string) => {
     if (filterValue === "all") {
       return artifacts.length + concepts.length;
@@ -430,6 +460,22 @@ export default function ArtifactCenter() {
                     <p className="text-xs text-slate-500 line-clamp-2 mb-3">
                       {artifact.description}
                     </p>
+                    {(artifact.type === "entry-paper" ||
+                      artifact.type === "literature-note" ||
+                      artifact.type === "permanent-note") && (
+                      <button
+                        type="button"
+                        className="mb-3 text-xs text-[#1E3A5F] hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleOpenArtifactSource(artifact);
+                        }}
+                      >
+                        {artifact.type === "entry-paper"
+                          ? "Open this paper in Paper Read"
+                          : "Open corresponding note in Paper Read"}
+                      </button>
+                    )}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-[10px] text-slate-400">
                         <Clock className="w-3 h-3" />
@@ -452,6 +498,22 @@ export default function ArtifactCenter() {
                         >
                           <Edit className="w-3 h-3" />
                         </Button>
+                        {(artifact.type === "entry-paper" ||
+                          artifact.type === "literature-note" ||
+                          artifact.type === "permanent-note") && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            title="Open in Paper Read"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleOpenArtifactSource(artifact);
+                            }}
+                          >
+                            <ArrowRight className="w-3 h-3" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -505,6 +567,21 @@ export default function ArtifactCenter() {
                       Last edited: {artifact.updatedAt}
                     </div>
                     <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200">
+                      {(artifact.type === "entry-paper" ||
+                        artifact.type === "literature-note" ||
+                        artifact.type === "permanent-note") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => void handleOpenArtifactSource(artifact)}
+                        >
+                          <ArrowRight className="w-3 h-3 mr-1" />
+                          {artifact.type === "entry-paper"
+                            ? "Open Paper Read Page"
+                            : "Open Corresponding Note"}
+                        </Button>
+                      )}
                       <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="View">
                         <Eye className="w-3 h-3" />
                       </Button>

@@ -31,6 +31,7 @@ import {
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { highlightAPI, noteAPI } from "@/lib/manuscript-api";
 import type { Highlight, Paper, Note } from "@/lib/manuscript-api";
+import { cn } from "@/lib/utils";
 import { LiteratureNoteForm } from "./LiteratureNoteForm";
 import type { LiteratureNote } from "./LiteratureNoteForm";
 import { PermanentNoteForm } from "./PermanentNoteForm";
@@ -40,6 +41,7 @@ interface PaperToolsAreaProps {
   paper: Paper;
   projectId?: string;
   highlightPulse?: number;
+  focusNoteId?: string;
   onChanged: () => void;
 }
 
@@ -66,6 +68,7 @@ export default function PaperToolsArea({
   paper,
   projectId = "proj-1",
   highlightPulse = 0,
+  focusNoteId,
   onChanged,
 }: PaperToolsAreaProps) {
   const [notes, setNotes] = useState<Note[]>([]);
@@ -156,6 +159,19 @@ export default function PaperToolsArea({
       loadHighlights();
     }
   }, [highlightPulse, loadHighlights]);
+
+  useEffect(() => {
+    if (!focusNoteId) return;
+    if (!notes.some((note) => note.id === focusNoteId)) return;
+
+    setActiveTab("notes");
+    const timer = window.setTimeout(() => {
+      const target = document.getElementById(`paper-note-${focusNoteId}`);
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+
+    return () => window.clearTimeout(timer);
+  }, [focusNoteId, notes]);
 
   const findHighlightSummaryNote = useCallback(
     (items: Note[]) => {
@@ -493,7 +509,14 @@ export default function PaperToolsArea({
                 </div>
               )}
               {notes.map((note) => (
-                <Card key={note.id} className="hover:shadow-sm transition-shadow">
+                <Card
+                  key={note.id}
+                  id={`paper-note-${note.id}`}
+                  className={cn(
+                    "hover:shadow-sm transition-shadow",
+                    focusNoteId === note.id && "border-blue-300 bg-blue-50/50"
+                  )}
+                >
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
@@ -40,6 +40,7 @@ import {
   Clock,
   Download,
   Eye,
+  ExternalLink,
   FileText,
   FolderUp,
   Hash,
@@ -52,6 +53,7 @@ import {
   Search,
   Sparkles,
   Star,
+  RefreshCw,
   Table2,
   Tag,
   Target,
@@ -264,80 +266,80 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            {allPurposes.map((option) => (
-              <label
-                key={option}
-                className={cn(
-                  "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all text-sm",
-                  selected.includes(option)
-                    ? "border-[#1E3A5F] bg-blue-50/50"
-                    : "border-slate-200 hover:border-slate-300"
-                )}
-              >
-                <Checkbox
-                  checked={selected.includes(option)}
-                  onCheckedChange={(checked) => {
-                    if (checked) setSelected([...selected, option]);
-                    else setSelected(selected.filter((s) => s !== option));
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-slate-500">Predefined Purposes</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {allPurposes.map((option) => (
+                  <label
+                    key={option}
+                    className={cn(
+                      "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all text-sm",
+                      selected.includes(option)
+                        ? "border-[#1E3A5F] bg-blue-50/50"
+                        : "border-slate-200 hover:border-slate-300"
+                    )}
+                  >
+                    <Checkbox
+                      checked={selected.includes(option)}
+                      onCheckedChange={(checked) => {
+                        if (checked) setSelected([...selected, option]);
+                        else setSelected(selected.filter((s) => s !== option));
+                      }}
+                    />
+                    <span>{option}</span>
+                    {customPurposes.includes(option) && (
+                      <Badge variant="outline" className="text-[9px] ml-auto text-blue-500 border-blue-300">
+                        Custom
+                      </Badge>
+                    )}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-slate-500">Add Custom Purpose</p>
+              <div className="flex gap-2">
+                <Input
+                  value={newCustomPurpose}
+                  onChange={(e) => setNewCustomPurpose(e.target.value)}
+                  placeholder="Enter a custom reading purpose..."
+                  className="text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddCustomPurpose();
+                    }
                   }}
                 />
-                <span>{option}</span>
-                {customPurposes.includes(option) && (
-                  <Badge variant="outline" className="text-[9px] ml-auto text-blue-500 border-blue-300">
-                    Custom
-                  </Badge>
-                )}
-              </label>
-            ))}
-          </div>
-
-          {/* Add Custom Purpose */}
-          <Separator />
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-500">
-              Define your own purpose (Premium)
-            </p>
-            <div className="flex gap-2">
-              <Input
-                value={newCustomPurpose}
-                onChange={(e) => setNewCustomPurpose(e.target.value)}
-                placeholder="Enter a custom reading purpose..."
-                className="text-sm"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddCustomPurpose();
-                  }
-                }}
-              />
-              <Button
-                size="sm"
-                onClick={handleAddCustomPurpose}
-                className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white shrink-0"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add Purpose
-              </Button>
+                <Button
+                  size="sm"
+                  onClick={handleAddCustomPurpose}
+                  className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white shrink-0"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Purpose
+                </Button>
+              </div>
+              <p className="text-xs text-slate-500">
+                Added custom purposes will appear in the predefined list on the left.
+              </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      <Card className="border-slate-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">
-            Additional Notes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={4}
-            placeholder="Describe your specific research interest..."
-            className="text-sm"
-          />
+          <Separator />
+
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-slate-900">Additional Notes</p>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={4}
+              placeholder="Describe your specific research interest..."
+              className="text-sm"
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -374,12 +376,6 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
           <Sparkles className="w-4 h-4 mr-2" />
           Generate Purpose Card
         </Button>
-        <Link to={`/workflow/${projectId}/2`}>
-          <Button variant="outline">
-            Save and Continue
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
       </div>
     </div>
   );
@@ -389,15 +385,23 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
 // Step 2: Entry Paper Workspace
 // ============================================================
 function EntryPaperWorkspace({ projectId }: { projectId: string }) {
+  const BOOLEAN_CONNECTORS = ["AND", "OR", "NOT"] as const;
+  type BooleanConnector = (typeof BOOLEAN_CONNECTORS)[number];
+
   type CandidatePaper = Paper & {
     discoveryPath?: string;
     discoveryNote?: string;
     searchRecordId?: string;
+    doi?: string;
+    doiUrl?: string;
+    externalSourceUrl?: string;
   };
 
   const CONCEPTS_STORAGE_KEY = `rw-concepts-${projectId}`;
+  const SEARCH_RECORDS_STORAGE_KEY = `rw-search-records-${projectId}`;
   const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
   const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
+  const [searchParams, setSearchParams] = useSearchParams();
   const [addedToCenterIds, setAddedToCenterIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set<string>();
     try {
@@ -414,8 +418,22 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   });
   const [newKeyword, setNewKeyword] = useState("");
   const [keywords, setKeywords] = useState<Keyword[]>([...DUMMY_KEYWORDS]);
-  const [searchRecords, setSearchRecords] = useState<SearchRecord[]>([...DUMMY_SEARCH_RECORDS]);
+  const [searchRecords, setSearchRecords] = useState<SearchRecord[]>(() => {
+    if (typeof window === "undefined") return [...DUMMY_SEARCH_RECORDS];
+    try {
+      const saved = window.localStorage.getItem(SEARCH_RECORDS_STORAGE_KEY);
+      if (!saved) return [...DUMMY_SEARCH_RECORDS];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) && parsed.length ? parsed : [...DUMMY_SEARCH_RECORDS];
+    } catch {
+      return [...DUMMY_SEARCH_RECORDS];
+    }
+  });
   const [entryPapers, setEntryPapers] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<"keywords" | "search" | "candidates">(() => {
+    const tab = searchParams.get("tab");
+    return tab === "search" || tab === "candidates" || tab === "keywords" ? tab : "keywords";
+  });
 
   // Concepts state
   const [concepts, setConcepts] = useState<Array<{ id: string; name: string; description: string; category: string; color: string }>>(() => {
@@ -503,8 +521,11 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const [srDatabase, setSrDatabase] = useState("Web of Science");
   const [srCustomDb, setSrCustomDb] = useState("");
   const [srBooleanString, setSrBooleanString] = useState("");
+  const [srConnector, setSrConnector] = useState<BooleanConnector>("AND");
   const [srTotalResults, setSrTotalResults] = useState("");
   const [srRelevantResults, setSrRelevantResults] = useState("");
+  const [pullingSearchRecordId, setPullingSearchRecordId] = useState<string | null>(null);
+  const [searchRecordOffsets, setSearchRecordOffsets] = useState<Record<string, number>>({});
 
   // Mark Relevant Dialog
   const [showRelevanceDialog, setShowRelevanceDialog] = useState(false);
@@ -534,11 +555,34 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const [discoveryPaperId, setDiscoveryPaperId] = useState<string | null>(null);
   const [discoveryPathValue, setDiscoveryPathValue] = useState("Academic Database");
   const [discoveryNoteValue, setDiscoveryNoteValue] = useState("");
+  const highlightedSearchQuery = (searchParams.get("searchQuery") || "").trim();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify(concepts));
   }, [concepts]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_RECORDS_STORAGE_KEY, JSON.stringify(searchRecords));
+  }, [searchRecords, SEARCH_RECORDS_STORAGE_KEY]);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "search" || tab === "candidates" || tab === "keywords") {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (activeTab !== "search" || !highlightedSearchQuery) return;
+    const timer = window.setTimeout(() => {
+      const target = document.getElementById(`search-record-${encodeURIComponent(highlightedSearchQuery)}`);
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+
+    return () => window.clearTimeout(timer);
+  }, [activeTab, highlightedSearchQuery, searchRecords]);
 
   // Helper: map API paper to local Paper type
   const apiPaperToLocal = (p: ApiPaper): CandidatePaper => ({
@@ -557,6 +601,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     annotations: [],
     discoveryPath: p.discovery_path,
     discoveryNote: p.discovery_note,
+    doi: undefined,
+    doiUrl: undefined,
+    externalSourceUrl: undefined,
   });
 
   const persistArtifacts = (updater: (prev: Artifact[]) => Artifact[]) => {
@@ -585,6 +632,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         relevance: paper.relevance,
         discoveryPath: paper.discoveryPath,
         discoveryNote: paper.discoveryNote,
+        doi: paper.doi,
+        doiUrl: paper.doiUrl,
+        externalSourceUrl: paper.externalSourceUrl,
       },
       null,
       2
@@ -692,6 +742,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     setSrDatabase("Web of Science");
     setSrCustomDb("");
     setSrBooleanString("");
+    setSrConnector("AND");
     setSrTotalResults("");
     setSrRelevantResults("");
   };
@@ -720,6 +771,254 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const linkedCandidateCount = (searchRecordId: string) =>
     candidatePapers.filter((paper) => paper.searchRecordId === searchRecordId).length;
 
+  const quoteBooleanTerm = (term: string) => {
+    const normalized = term.trim().replace(/\"/g, "");
+    if (!normalized) return "";
+    return `"${normalized}"`;
+  };
+
+  const buildBooleanStringFromSelected = (
+    terms: string[],
+    connector: BooleanConnector
+  ) => {
+    const tokens = terms.map((term) => quoteBooleanTerm(term)).filter(Boolean);
+    return tokens.join(` ${connector} `);
+  };
+
+  const handleGenerateBooleanString = () => {
+    if (!srKeywords.length) {
+      toast.error("请至少选择一个关键词或概念");
+      return;
+    }
+    setSrBooleanString(buildBooleanStringFromSelected(srKeywords, srConnector));
+  };
+
+  const appendBooleanToken = (token: string) => {
+    setSrBooleanString((prev) => {
+      const trimmed = prev.trim();
+      return trimmed ? `${trimmed} ${token}` : token;
+    });
+  };
+
+  const buildDatabaseSearchUrl = (
+    database: string,
+    query: string,
+    doi?: string,
+    title?: string
+  ) => {
+    const raw = doi || title || query;
+    const encoded = encodeURIComponent(raw);
+    const db = database.toLowerCase();
+
+    if (db.includes("web of science")) return `https://www.webofscience.com/wos/woscc/basic-search?value(input1)=${encoded}`;
+    if (db.includes("scopus")) return `https://www.scopus.com/results/results.uri?query=${encoded}`;
+    if (db.includes("google scholar")) return `https://scholar.google.com/scholar?q=${encoded}`;
+    if (db.includes("cnki")) return `https://kns.cnki.net/kns8s/defaultresult/index?kw=${encoded}`;
+    if (db.includes("vip")) return `https://www.cqvip.com/`;
+    if (db.includes("pubmed")) return `https://pubmed.ncbi.nlm.nih.gov/?term=${encoded}`;
+    if (db.includes("ieee")) return `https://ieeexplore.ieee.org/search/searchresult.jsp?queryText=${encoded}`;
+    if (db.includes("eric")) return `https://eric.ed.gov/?q=${encoded}`;
+
+    return `https://scholar.google.com/scholar?q=${encoded}`;
+  };
+
+  const resolveCandidateExternalUrl = (paper: CandidatePaper) => {
+    if (paper.doiUrl) return paper.doiUrl;
+    if (paper.doi) return `https://doi.org/${encodeURIComponent(paper.doi)}`;
+    if (paper.externalSourceUrl) return paper.externalSourceUrl;
+    const db = paper.discoveryPath || "Google Scholar";
+    return buildDatabaseSearchUrl(db, paper.title, paper.doi, paper.title);
+  };
+
+  const getCrossrefYear = (item: {
+    published?: { "date-parts"?: number[][] };
+    issued?: { "date-parts"?: number[][] };
+    created?: { "date-parts"?: number[][] };
+  }) => {
+    return (
+      item.published?.["date-parts"]?.[0]?.[0] ||
+      item.issued?.["date-parts"]?.[0]?.[0] ||
+      item.created?.["date-parts"]?.[0]?.[0] ||
+      new Date().getFullYear()
+    );
+  };
+
+  const pullReferencesForSearchRecord = async (
+    record: SearchRecord,
+    mode: "first" | "next" = "first"
+  ) => {
+    const normalizedQuery = (record.query || "").trim();
+    if (!normalizedQuery) {
+      toast.error("Search string 为空，无法拉取参考文献");
+      return;
+    }
+
+    const currentOffset = mode === "first" ? 0 : searchRecordOffsets[record.id] ?? 10;
+    setPullingSearchRecordId(record.id);
+
+    try {
+      const endpoint = new URL("https://api.crossref.org/works");
+      endpoint.searchParams.set("query.bibliographic", normalizedQuery);
+      endpoint.searchParams.set("rows", "10");
+      endpoint.searchParams.set("offset", String(currentOffset));
+
+      const response = await fetch(endpoint.toString());
+      if (!response.ok) {
+        throw new Error("crossref fetch failed");
+      }
+
+      const json = (await response.json()) as {
+        message?: {
+          [key: string]: unknown;
+          items?: Array<{
+            DOI?: string;
+            title?: string[];
+            author?: Array<{ given?: string; family?: string }>;
+            published?: { "date-parts"?: number[][] };
+            issued?: { "date-parts"?: number[][] };
+            created?: { "date-parts"?: number[][] };
+            "container-title"?: string[];
+            URL?: string;
+          }>;
+        };
+      };
+
+      const totalResults = Number(json.message?.["total-results"] ?? record.results ?? 0);
+      const items = Array.isArray(json.message?.items) ? json.message?.items : [];
+
+      if (!items.length) {
+        toast.info("没有拉取到新的参考文献");
+        return;
+      }
+
+      const existingByDoi = new Set(
+        candidatePapers
+          .map((paper) => (paper.doi || "").trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const existingByTitle = new Set(candidatePapers.map((paper) => paper.title.trim().toLowerCase()));
+
+      const imported: CandidatePaper[] = [];
+      let duplicateCount = 0;
+
+      for (const item of items) {
+        const title = item.title?.[0]?.trim();
+        if (!title) continue;
+
+        const doi = (item.DOI || "").trim();
+        const doiLower = doi.toLowerCase();
+        const titleLower = title.toLowerCase();
+
+        if ((doiLower && existingByDoi.has(doiLower)) || existingByTitle.has(titleLower)) {
+          duplicateCount += 1;
+          continue;
+        }
+
+        const authors = (item.author || [])
+          .map((a) => [a.given, a.family].filter(Boolean).join(" "))
+          .filter(Boolean);
+        const year = getCrossrefYear(item);
+        const journal = item["container-title"]?.[0] || "Unknown";
+        const doiUrl = doi ? `https://doi.org/${encodeURIComponent(doi)}` : undefined;
+        const externalSourceUrl = buildDatabaseSearchUrl(record.database, normalizedQuery, doi, title);
+
+        const fallbackPaper: CandidatePaper = {
+          id: `paper-${Date.now()}-${Math.random()}`,
+          title,
+          authors,
+          year,
+          journal,
+          abstract: "",
+          researchQuestion: "",
+          theory: "",
+          method: "",
+          findings: "",
+          relevance: "medium",
+          isEntryPaper: false,
+          annotations: [],
+          discoveryPath: record.database,
+          discoveryNote: `From Search Log: ${normalizedQuery}`,
+          searchRecordId: record.id,
+          doi,
+          doiUrl,
+          externalSourceUrl: item.URL || externalSourceUrl,
+        };
+
+        try {
+          const created = await paperAPI.create({
+            title,
+            authors,
+            year,
+            journal,
+            discovery_path: record.database,
+            discovery_note: `From Search Log: ${normalizedQuery}`,
+            project_id: projectId,
+          });
+          imported.push({
+            ...apiPaperToLocal(created),
+            searchRecordId: record.id,
+            doi,
+            doiUrl,
+            externalSourceUrl: item.URL || externalSourceUrl,
+          });
+        } catch {
+          imported.push(fallbackPaper);
+        }
+
+        if (doiLower) existingByDoi.add(doiLower);
+        existingByTitle.add(titleLower);
+      }
+
+      if (!imported.length) {
+        toast.info("本次结果全部是重复文献，未新增 candidate papers");
+      } else {
+        setCandidatePapers((prev) => [...prev, ...imported]);
+      }
+
+      setSearchRecordOffsets((prev) => ({ ...prev, [record.id]: currentOffset + 10 }));
+      setSearchRecords((prev) =>
+        prev.map((r) =>
+          r.id === record.id
+            ? {
+                ...r,
+                results: totalResults || r.results,
+                relevant: Math.max(r.relevant, imported.length),
+              }
+            : r
+        )
+      );
+
+      toast.success(`已导入 ${imported.length} 篇候选文献`, {
+        description: duplicateCount > 0 ? `跳过重复文献 ${duplicateCount} 篇` : `来自 ${record.database}`,
+      });
+    } catch {
+      toast.error("拉取参考文献失败，请稍后重试");
+    } finally {
+      setPullingSearchRecordId(null);
+    }
+  };
+
+  const buildSearchRecordFromCurrentForm = () => {
+    const db = srDatabase === "Other" ? srCustomDb || "Other" : srDatabase;
+    const query = srBooleanString.trim() || buildBooleanStringFromSelected(srKeywords, srConnector).trim();
+
+    if (!query) {
+      toast.error("请先构建 Boolean Search String");
+      return null;
+    }
+
+    const nextRecord: SearchRecord = {
+      id: `sr-${Date.now()}`,
+      database: db,
+      query,
+      results: parseInt(srTotalResults) || 0,
+      relevant: parseInt(srRelevantResults) || 0,
+      date: new Date().toISOString().split("T")[0],
+    };
+
+    return nextRecord;
+  };
+
   const handleDeleteSearchRecord = (searchRecordId: string) => {
     const linkedCount = linkedCandidateCount(searchRecordId);
     if (linkedCount > 0) {
@@ -729,10 +1028,18 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       return;
     }
     setSearchRecords((prev) => prev.filter((r) => r.id !== searchRecordId));
+    setSearchRecordOffsets((prev) => {
+      const next = { ...prev };
+      delete next[searchRecordId];
+      return next;
+    });
     toast.success("Search Record 已删除");
   };
 
   const handleAddSearchRecord = () => {
+    const newRecord = buildSearchRecordFromCurrentForm();
+    if (!newRecord) return;
+
     // Add any new keywords to the global keywords list
     srKeywords.forEach((kw) => {
       if (!keywords.find((k) => k.term === kw)) {
@@ -743,18 +1050,30 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       }
     });
 
-    const db = srDatabase === "Other" ? srCustomDb || "Other" : srDatabase;
-    const newRecord: SearchRecord = {
-      id: `sr-${Date.now()}`,
-      database: db,
-      query: srBooleanString || srKeywords.join(" AND "),
-      results: parseInt(srTotalResults) || 0,
-      relevant: parseInt(srRelevantResults) || 0,
-      date: new Date().toISOString().split("T")[0],
-    };
     setSearchRecords([...searchRecords, newRecord]);
+    setSearchRecordOffsets((prev) => ({ ...prev, [newRecord.id]: 0 }));
     setShowSearchDialog(false);
     resetSearchRecordForm();
+  };
+
+  const handleAddSearchRecordAndPull = async () => {
+    const newRecord = buildSearchRecordFromCurrentForm();
+    if (!newRecord) return;
+
+    srKeywords.forEach((kw) => {
+      if (!keywords.find((k) => k.term === kw)) {
+        setKeywords((prev) => [
+          ...prev,
+          { id: `kw-${Date.now()}-${Math.random()}`, term: kw, category: "Custom" },
+        ]);
+      }
+    });
+
+    setSearchRecords((prev) => [...prev, newRecord]);
+    setSearchRecordOffsets((prev) => ({ ...prev, [newRecord.id]: 0 }));
+    setShowSearchDialog(false);
+    resetSearchRecordForm();
+    await pullReferencesForSearchRecord(newRecord, "first");
   };
 
   const handleSaveEditedSearchRecord = () => {
@@ -1134,7 +1453,20 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-5">
-      <Tabs defaultValue="keywords" className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          const nextTab = value as "keywords" | "search" | "candidates";
+          setActiveTab(nextTab);
+          const nextParams = new URLSearchParams(searchParams);
+          nextParams.set("tab", nextTab);
+          if (nextTab !== "search") {
+            nextParams.delete("searchQuery");
+          }
+          setSearchParams(nextParams, { replace: true });
+        }}
+        className="w-full"
+      >
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="keywords">Keywords</TabsTrigger>
           <TabsTrigger value="search">Search Log</TabsTrigger>
@@ -1258,21 +1590,197 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold">
-                  Search Records
+                  Search Logs
                 </CardTitle>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs h-7"
-                  onClick={openAddSearchRecordDialog}
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Search Record
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-7"
+                    onClick={openAddSearchRecordDialog}
+                  >
+                    <PenTool className="w-3 h-3 mr-1" />
+                    Advanced Form
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-4">
+                <div className="rounded-lg border border-slate-200 p-3 bg-slate-50/70 space-y-3">
+                  <p className="text-xs font-semibold text-slate-700">Build Boolean Search String</p>
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-slate-500">Select existing keywords / concepts:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {keywords.map((kw) => (
+                        <Badge
+                          key={kw.id}
+                          variant={srKeywords.includes(kw.term) ? "default" : "outline"}
+                          className={cn(
+                            "text-[10px] cursor-pointer transition-all",
+                            srKeywords.includes(kw.term)
+                              ? "bg-[#1E3A5F] text-white"
+                              : "hover:bg-slate-100"
+                          )}
+                          onClick={() => {
+                            if (srKeywords.includes(kw.term)) {
+                              setSrKeywords(srKeywords.filter((k) => k !== kw.term));
+                            } else {
+                              setSrKeywords([...srKeywords, kw.term]);
+                            }
+                          }}
+                        >
+                          {kw.term}
+                        </Badge>
+                      ))}
+                      {concepts.map((concept) => (
+                        <Badge
+                          key={concept.id}
+                          variant={srKeywords.includes(concept.name) ? "default" : "outline"}
+                          className={cn(
+                            "text-[10px] cursor-pointer transition-all border",
+                            srKeywords.includes(concept.name)
+                              ? "text-white"
+                              : "hover:opacity-80"
+                          )}
+                          style={
+                            srKeywords.includes(concept.name)
+                              ? { backgroundColor: concept.color, borderColor: concept.color }
+                              : { color: concept.color, borderColor: `${concept.color}66`, backgroundColor: `${concept.color}12` }
+                          }
+                          onClick={() => {
+                            if (srKeywords.includes(concept.name)) {
+                              setSrKeywords(srKeywords.filter((k) => k !== concept.name));
+                            } else {
+                              setSrKeywords([...srKeywords, concept.name]);
+                            }
+                          }}
+                        >
+                          <Lightbulb className="w-2.5 h-2.5 mr-1" />
+                          {concept.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] text-slate-500">Boolean connectors:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {BOOLEAN_CONNECTORS.map((connector) => (
+                        <Button
+                          key={connector}
+                          size="sm"
+                          variant={srConnector === connector ? "default" : "outline"}
+                          className={cn(
+                            "h-7 text-[11px]",
+                            srConnector === connector ? "bg-[#1E3A5F] hover:bg-[#162d4a] text-white" : ""
+                          )}
+                          onClick={() => setSrConnector(connector)}
+                        >
+                          {connector}
+                        </Button>
+                      ))}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px]"
+                        onClick={handleGenerateBooleanString}
+                      >
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        Build Query
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-500">Boolean Search String</label>
+                    <Textarea
+                      value={srBooleanString}
+                      onChange={(e) => setSrBooleanString(e.target.value)}
+                      rows={3}
+                      placeholder='e.g., "AI tutoring" AND "self-regulated learning" NOT "K-12"'
+                      className="text-xs font-mono"
+                    />
+                    <div className="flex gap-1.5">
+                      {BOOLEAN_CONNECTORS.map((connector) => (
+                        <Button
+                          key={`append-${connector}`}
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[10px]"
+                          onClick={() => appendBooleanToken(connector)}
+                        >
+                          + {connector}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-500">Academic Database</label>
+                      <Select value={srDatabase} onValueChange={setSrDatabase}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[...DATABASE_OPTIONS, "Other" as const].map((db) => (
+                            <SelectItem key={db} value={db}>{db}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {srDatabase === "Other" && (
+                        <Input
+                          value={srCustomDb}
+                          onChange={(e) => setSrCustomDb(e.target.value)}
+                          placeholder="Enter database name..."
+                          className="h-8 text-xs"
+                        />
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-slate-500">Total Results</label>
+                        <Input
+                          type="number"
+                          value={srTotalResults}
+                          onChange={(e) => setSrTotalResults(e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-slate-500">Relevant</label>
+                        <Input
+                          type="number"
+                          value={srRelevantResults}
+                          onChange={(e) => setSrRelevantResults(e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                      onClick={handleAddSearchRecord}
+                    >
+                      <Save className="w-3 h-3 mr-1" />
+                      Save Search Log
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => void handleAddSearchRecordAndPull()}
+                    >
+                      <Search className="w-3 h-3 mr-1" />
+                      Save + Pull Top 10
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
                 {searchRecords.map((record) => {
                   const linkedCount = linkedCandidateCount(record.id);
                   const cannotDeleteReason = linkedCount > 0
@@ -1282,7 +1790,13 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   return (
                     <div
                       key={record.id}
-                      className="p-3 bg-slate-50 rounded-lg border border-slate-200"
+                      id={`search-record-${encodeURIComponent(record.query)}`}
+                      className={cn(
+                        "p-3 bg-slate-50 rounded-lg border border-slate-200",
+                        highlightedSearchQuery && record.query === highlightedSearchQuery
+                          ? "border-[#1E3A5F] bg-blue-50/40 shadow-sm"
+                          : ""
+                      )}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <Badge variant="outline" className="text-[10px]">
@@ -1302,7 +1816,37 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                       {cannotDeleteReason && (
                         <p className="text-[11px] text-amber-600 mt-1.5">{cannotDeleteReason}</p>
                       )}
-                      <div className="flex gap-2 mt-2">
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7"
+                          onClick={() => void pullReferencesForSearchRecord(record, "first")}
+                          disabled={pullingSearchRecordId === record.id}
+                        >
+                          <Search className="w-3 h-3 mr-1" />
+                          {pullingSearchRecordId === record.id ? "Pulling..." : "Pull Top 10"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7"
+                          onClick={() => void pullReferencesForSearchRecord(record, "next")}
+                          disabled={pullingSearchRecordId === record.id}
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Refresh +10
+                        </Button>
+                        <a
+                          href={buildDatabaseSearchUrl(record.database, record.query)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Button size="sm" variant="outline" className="text-xs h-7" type="button">
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            Open in {record.database}
+                          </Button>
+                        </a>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1327,6 +1871,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     </div>
                   );
                 })}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1435,16 +1980,47 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                               </Badge>
                             )}
                           </div>
-                          {/* Title links to read page */}
-                          <Link to={`/workflow/${projectId}/3`}>
-                            <h4 className="text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline mb-1 cursor-pointer">
+                          {/* Title opens the original external page for quick vetting */}
+                          <a
+                            href={resolveCandidateExternalUrl(paper)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 mb-1"
+                          >
+                            <h4 className="text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline cursor-pointer">
                               {paper.title}
                             </h4>
-                          </Link>
+                            <ExternalLink className="w-3 h-3 text-blue-600" />
+                          </a>
                           <p className="text-xs text-slate-500 mb-2">
                             {paper.authors.join(", ")} ({paper.year}) —{" "}
                             {paper.journal}
                           </p>
+                          {(paper.doi || paper.doiUrl || paper.externalSourceUrl) && (
+                            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                              {paper.doi && (
+                                <Badge variant="outline" className="text-[10px] border-cyan-300 text-cyan-700">
+                                  DOI: {paper.doi}
+                                </Badge>
+                              )}
+                              {paper.doiUrl && (
+                                <a href={paper.doiUrl} target="_blank" rel="noreferrer" className="inline-flex">
+                                  <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" type="button">
+                                    <ExternalLink className="w-2.5 h-2.5 mr-1" />
+                                    DOI Link
+                                  </Button>
+                                </a>
+                              )}
+                              {paper.externalSourceUrl && (
+                                <a href={paper.externalSourceUrl} target="_blank" rel="noreferrer" className="inline-flex">
+                                  <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" type="button">
+                                    <Eye className="w-2.5 h-2.5 mr-1" />
+                                    Open Original Page
+                                  </Button>
+                                </a>
+                              )}
+                            </div>
+                          )}
                           {paper.abstract && (
                             <p className="text-xs text-slate-600 line-clamp-2">
                               {paper.abstract}
@@ -1459,29 +2035,6 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                       </div>
                       {/* Action buttons — horizontal row below paper info */}
                       <div className="flex flex-wrap gap-1.5 pl-6">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className={cn(
-                            "text-xs h-7",
-                            addedToCenterIds.has(paper.id)
-                              ? "border-emerald-400 text-emerald-700 bg-emerald-50 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
-                              : ""
-                          )}
-                          onClick={() => handleTogglePaperArtifact(paper)}
-                        >
-                          {addedToCenterIds.has(paper.id) ? (
-                            <>
-                              <CheckCircle2 className="w-3 h-3 mr-1" />
-                              已添加
-                            </>
-                          ) : (
-                            <>
-                              <FolderUp className="w-3 h-3 mr-1" />
-                              Add to Artifact Center
-                            </>
-                          )}
-                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1511,20 +2064,6 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                         >
                           <Star className="w-3 h-3 mr-1" />
                           Mark Relevant
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs h-7"
-                          onClick={() => {
-                            setDiscoveryPaperId(paper.id);
-                            setDiscoveryPathValue(paper.discoveryPath || "Academic Database");
-                            setDiscoveryNoteValue(paper.discoveryNote || "");
-                            setShowDiscoveryDialog(true);
-                          }}
-                        >
-                          <Network className="w-3 h-3 mr-1" />
-                          Discovery Path
                         </Button>
                         <Button
                           size="sm"

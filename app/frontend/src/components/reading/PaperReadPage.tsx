@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ChevronRight, ChevronLeft, Bot, X, Minimize2, Send } from "lucide-react";
@@ -27,6 +27,8 @@ import PaperToolsArea from "./PaperToolsArea";
 export default function PaperReadPage() {
   const { projectId = "proj-1", paperId } = useParams<{ projectId: string; paperId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const focusNoteId = searchParams.get("noteId") || undefined;
 
   const [paper, setPaper] = useState<Paper | null>(null);
   const [loading, setLoading] = useState(true);
@@ -234,6 +236,7 @@ export default function PaperReadPage() {
                 paper={paper}
                 projectId={projectId}
                 highlightPulse={highlightPulse}
+                focusNoteId={focusNoteId}
                 onChanged={() => setHasChanged(true)}
               />
             </div>
