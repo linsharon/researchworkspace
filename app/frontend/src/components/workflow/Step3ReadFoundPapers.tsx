@@ -18,11 +18,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, ArrowUpDown, BookOpen } from "lucide-react";
+import { AlertCircle, ArrowUpDown, BookOpen, Clock, ExternalLink } from "lucide-react";
 import { paperAPI } from "@/lib/manuscript-api";
 import type { Paper } from "@/lib/manuscript-api";
 import type { Artifact } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+const PAPER_DECISIONS_KEY = "rw-paper-decisions";
+
+interface PaperDecisionRecord {
+  titleLower: string;
+  title: string;
+  decision: string;
+  timestamp: string;
+  projectId: string;
+}
+
+const recordPaperDecision = (title: string, decision: string, projectId: string) => {
+  if (typeof window === "undefined") return;
+  try {
+    const saved = window.localStorage.getItem(PAPER_DECISIONS_KEY);
+    const records: PaperDecisionRecord[] = saved
+      ? (JSON.parse(saved) as PaperDecisionRecord[])
+      : [];
+    records.push({
+      titleLower: title.trim().toLowerCase(),
+      title,
+      decision,
+      timestamp: new Date().toISOString(),
+      projectId,
+    });
+    window.localStorage.setItem(
+      PAPER_DECISIONS_KEY,
+      JSON.stringify(records.slice(-500))
+    );
+  } catch {
+    // Storage failure is non-critical
+  }
+};
 
 interface Step3Props {
   projectId: string;
@@ -41,6 +75,25 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
   const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<"title" | "year" | "status" | "type">("year");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [paperDecisionMap, setPaperDecisionMap] = useState<Map<string, PaperDecisionRecord>>(new Map());
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(PAPER_DECISIONS_KEY);
+      if (!saved) return;
+      const all = JSON.parse(saved) as PaperDecisionRecord[];
+      const map = new Map<string, PaperDecisionRecord>();
+      for (const record of all) {
+        const existing = map.get(record.titleLower);
+        if (!existing || record.timestamp > existing.timestamp) {
+          map.set(record.titleLower, record);
+        }
+      }
+      setPaperDecisionMap(map);
+    } catch {
+      // Storage read failure is non-critical
+    }
+  }, [papers]);
 
   const getLiteratureArtifactId = (paperId: string) => `entry-paper-${paperId}`;
 
@@ -282,6 +335,16 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
         .map((paper) => updateMap.get(paper.id) ?? paper)
         .filter((paper) => paper.is_entry_paper || paper.is_expanded_paper);
 
+      const decisionLabel =
+        selectedTab === "entry"
+          ? "Removed from Entry Papers (Step 3: Read)"
+          : selectedTab === "expanded"
+          ? "Removed from Expanded Papers (Step 3: Read)"
+          : "Removed from Reading List (Step 3: Read)";
+      targets.forEach((paper) =>
+        recordPaperDecision(paper.title, decisionLabel, projectId)
+      );
+
       setPapers(nextPapers);
       setSelectedPaperIds([]);
       syncLiteratureArtifacts(nextPapers);
@@ -311,7 +374,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
   };
 
   return (
-    <div className="w-full space-y-6 p-6">
+    <div className="w-full space-y-6">
       {loading && (
         <Card>
           <CardContent className="pt-6 text-sm text-gray-600">
@@ -341,29 +404,31 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
             setSelectedPaperIds([]);
           }}
         >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
-              <TabsTrigger
-                value="all"
-                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
-              >
-                All ({papers.length})
-              </TabsTrigger>
-              <TabsTrigger
-                value="entry"
-                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
-              >
-                Entry ({papers.filter((p) => p.is_entry_paper).length})
-              </TabsTrigger>
-              <TabsTrigger
-                value="expanded"
-                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
-              >
-                Expanded ({papers.filter((p) => p.is_expanded_paper).length})
-              </TabsTrigger>
-            </TabsList>
+          <div className="space-y-3">
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/20 px-3 pt-5 pb-2">
+              <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+                <TabsTrigger
+                  value="all"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                >
+                  All ({papers.length})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="entry"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                >
+                  Entry ({papers.filter((p) => p.is_entry_paper).length})
+                </TabsTrigger>
+                <TabsTrigger
+                  value="expanded"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                >
+                  Expanded ({papers.filter((p) => p.is_expanded_paper).length})
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
               <Select
                 value={sortKey}
                 onValueChange={(value) =>
@@ -472,9 +537,53 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                             onCheckedChange={() => togglePaperSelection(paper.id)}
                           />
                         </div>
-                        <CardTitle className="text-lg hover:text-blue-600 transition-colors min-w-0 truncate">
-                          {paper.title}
-                        </CardTitle>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <CardTitle className="text-lg hover:text-blue-600 transition-colors min-w-0 truncate">
+                            {paper.title}
+                          </CardTitle>
+                          <a
+                            href={`https://scholar.google.com/scholar?q=${encodeURIComponent(paper.title)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="shrink-0 text-slate-400 hover:text-blue-500 transition-colors"
+                            title="Search on Google Scholar"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                          {(() => {
+                            const dec = paperDecisionMap.get(paper.title.trim().toLowerCase());
+                            if (!dec) return null;
+                            return (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="shrink-0 text-amber-500 hover:text-amber-600 transition-colors"
+                                    title="Previously processed"
+                                  >
+                                    <Clock className="w-3.5 h-3.5" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-64 p-3 text-xs"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <p className="font-semibold text-slate-200 mb-1">Previously Processed</p>
+                                  <p className="text-slate-400">{dec.decision}</p>
+                                  <p className="text-[10px] text-slate-500 mt-1.5">
+                                    {new Date(dec.timestamp).toLocaleDateString()}{" "}
+                                    {new Date(dec.timestamp).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  </p>
+                                </PopoverContent>
+                              </Popover>
+                            );
+                          })()}
+                        </div>
                         {paper.is_entry_paper && (
                           <span className="inline-flex h-6 items-center rounded-full border border-violet-500/70 px-2 text-[11px] font-medium text-violet-300 pointer-events-none">
                             entry

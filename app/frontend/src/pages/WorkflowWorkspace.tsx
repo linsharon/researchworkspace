@@ -91,6 +91,56 @@ import {
 import { cn } from "@/lib/utils";
 import Step3ReadFoundPapers from "@/components/workflow/Step3ReadFoundPapers";
 
+// Paper decision history — shared localStorage key with Step 3
+const PAPER_DECISIONS_KEY = "rw-paper-decisions";
+
+const recordPaperDecision = (title: string, decision: string, projectId: string) => {
+  if (typeof window === "undefined") return;
+  try {
+    const saved = window.localStorage.getItem(PAPER_DECISIONS_KEY);
+    const records = saved
+      ? (JSON.parse(saved) as Array<{ titleLower: string; title: string; decision: string; timestamp: string; projectId: string }>)
+      : [];
+    records.push({
+      titleLower: title.trim().toLowerCase(),
+      title,
+      decision,
+      timestamp: new Date().toISOString(),
+      projectId,
+    });
+    window.localStorage.setItem(PAPER_DECISIONS_KEY, JSON.stringify(records.slice(-500)));
+  } catch {
+    // Storage failure is non-critical
+  }
+};
+
+const getBlockedPaperTitlesFromDecisionHistory = (projectId: string) => {
+  if (typeof window === "undefined") return new Set<string>();
+  try {
+    const saved = window.localStorage.getItem(PAPER_DECISIONS_KEY);
+    if (!saved) return new Set<string>();
+    const records = JSON.parse(saved) as Array<{
+      titleLower?: string;
+      title?: string;
+      decision?: string;
+      projectId?: string;
+    }>;
+    const blocked = new Set<string>();
+    records.forEach((record) => {
+      if (record.projectId !== projectId) return;
+      const decision = (record.decision || "").toLowerCase();
+      const isDeleted = decision.includes("delete") || decision.includes("remove");
+      const isToEntry = decision.includes("entry");
+      if (!isDeleted && !isToEntry) return;
+      const key = (record.titleLower || record.title || "").trim().toLowerCase();
+      if (key) blocked.add(key);
+    });
+    return blocked;
+  } catch {
+    return new Set<string>();
+  }
+};
+
 export default function WorkflowWorkspace() {
   const { projectId = "proj-1", step } = useParams<{ projectId: string; step: string }>();
   const currentStep = (parseInt(step || "1") as WorkflowStep) || 1;
@@ -388,7 +438,8 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const BOOLEAN_CONNECTORS = ["AND", "OR", "NOT"] as const;
   type BooleanConnector = (typeof BOOLEAN_CONNECTORS)[number];
 
-  type CandidatePaper = Paper & {
+  type CandidatePaper = Omit<Paper, "relevance"> & {
+    relevance?: "high" | "medium" | "low";
     discoveryPath?: string;
     discoveryNote?: string;
     searchRecordId?: string;
@@ -551,6 +602,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const [bulkDoiInput, setBulkDoiInput] = useState("");
   const [bulkSearchRecordId, setBulkSearchRecordId] = useState("");
   const [bulkImporting, setBulkImporting] = useState(false);
+  const [showCandidateRefreshDialog, setShowCandidateRefreshDialog] = useState(false);
+  const [candidateRefreshMode, setCandidateRefreshMode] = useState<"select" | "random">("select");
+  const [candidateRefreshRecordId, setCandidateRefreshRecordId] = useState("");
 
   // Discovery Path Dialog
   const [showDiscoveryDialog, setShowDiscoveryDialog] = useState(false);
@@ -598,7 +652,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     theory: "",
     method: "",
     findings: "",
-    relevance: (p.relevance ?? "medium") as "high" | "medium" | "low",
+    relevance: p.relevance,
     isEntryPaper: p.is_entry_paper,
     annotations: [],
     discoveryPath: p.discovery_path,
@@ -857,6 +911,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     );
   };
 
+  const navigateToCandidatesTab = () => {
+    setActiveTab("candidates");
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("tab", "candidates");
+    nextParams.delete("searchQuery");
+    setSearchParams(nextParams, { replace: true });
+  };
+
   const pullReferencesForSearchRecord = async (
     record: SearchRecord,
     mode: "first" | "next" = "first"
@@ -864,7 +926,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     const normalizedQuery = (record.query || "").trim();
     if (!normalizedQuery) {
       toast.error("Search string 为空，无法拉取参考文献");
-      return;
+      return false;
     }
 
     const currentOffset = mode === "first" ? 0 : searchRecordOffsets[record.id] ?? 10;
@@ -902,7 +964,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
       if (!items.length) {
         toast.info("没有拉取到新的参考文献");
-        return;
+        return true;
       }
 
       const existingByDoi = new Set(
@@ -911,6 +973,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           .filter(Boolean)
       );
       const existingByTitle = new Set(candidatePapers.map((paper) => paper.title.trim().toLowerCase()));
+      const blockedByHistoryTitle = getBlockedPaperTitlesFromDecisionHistory(projectId);
 
       const imported: CandidatePaper[] = [];
       let duplicateCount = 0;
@@ -923,7 +986,11 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         const doiLower = doi.toLowerCase();
         const titleLower = title.toLowerCase();
 
-        if ((doiLower && existingByDoi.has(doiLower)) || existingByTitle.has(titleLower)) {
+        if (
+          (doiLower && existingByDoi.has(doiLower)) ||
+          existingByTitle.has(titleLower) ||
+          blockedByHistoryTitle.has(titleLower)
+        ) {
           duplicateCount += 1;
           continue;
         }
@@ -947,7 +1014,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           theory: "",
           method: "",
           findings: "",
-          relevance: "medium",
+          relevance: undefined,
           isEntryPaper: false,
           annotations: [],
           discoveryPath: record.database,
@@ -1005,8 +1072,10 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       toast.success(`已导入 ${imported.length} 篇候选文献`, {
         description: duplicateCount > 0 ? `跳过重复文献 ${duplicateCount} 篇` : `来自 ${record.database}`,
       });
+      return true;
     } catch {
       toast.error("拉取参考文献失败，请稍后重试");
+      return false;
     } finally {
       setPullingSearchRecordId(null);
     }
@@ -1087,14 +1156,46 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     setSearchRecordOffsets((prev) => ({ ...prev, [newRecord.id]: 0 }));
     setShowSearchDialog(false);
     resetSearchRecordForm();
-    await pullReferencesForSearchRecord(newRecord, "first");
+    const pullSucceeded = await pullReferencesForSearchRecord(newRecord, "first");
+    if (pullSucceeded) {
+      navigateToCandidatesTab();
+    }
+  };
 
-    // After pulling, send users directly to Candidate Papers for quick triage.
-    setActiveTab("candidates");
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set("tab", "candidates");
-    nextParams.delete("searchQuery");
-    setSearchParams(nextParams, { replace: true });
+  const handleOpenCandidateRefreshDialog = () => {
+    if (!searchRecords.length) {
+      toast.info("请先在 Search Log 中创建记录");
+      return;
+    }
+    setCandidateRefreshMode("select");
+    setCandidateRefreshRecordId(searchRecords[0]?.id ?? "");
+    setShowCandidateRefreshDialog(true);
+  };
+
+  const handleCandidateRefreshPull = async () => {
+    if (!searchRecords.length) {
+      setShowCandidateRefreshDialog(false);
+      toast.info("没有可用的 Search Log");
+      return;
+    }
+
+    let targetRecord: SearchRecord | undefined;
+    if (candidateRefreshMode === "random") {
+      const randomIndex = Math.floor(Math.random() * searchRecords.length);
+      targetRecord = searchRecords[randomIndex];
+    } else {
+      targetRecord = searchRecords.find((record) => record.id === candidateRefreshRecordId);
+      if (!targetRecord) {
+        toast.error("请选择一个 Search Log");
+        return;
+      }
+    }
+
+    setShowCandidateRefreshDialog(false);
+    const pullSucceeded = await pullReferencesForSearchRecord(targetRecord, "next");
+    if (pullSucceeded) {
+      toast.success(`已从 ${targetRecord.database} 拉取新的 10 篇候选论文`);
+    }
   };
 
   const handleSaveEditedSearchRecord = () => {
@@ -1207,7 +1308,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         theory: "",
         method: "",
         findings: "",
-        relevance: "medium",
+        relevance: undefined,
         isEntryPaper: false,
         annotations: [],
         discoveryPath: resolvedDiscoveryPath,
@@ -1301,7 +1402,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             theory: "",
             method: "",
             findings: "",
-            relevance: "medium",
+            relevance: undefined,
             isEntryPaper: false,
             annotations: [],
             discoveryPath: resolvedDiscoveryPath,
@@ -1331,7 +1432,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     }
   };
 
-  const openEditPaperDialog = (paper: Paper & { discoveryPath?: string; discoveryNote?: string }) => {
+  const openEditPaperDialog = (paper: CandidatePaper) => {
     setEditingPaperId(paper.id);
     setNewPaperTitle(paper.title);
     setNewPaperAuthors(paper.authors.join(", "));
@@ -1386,10 +1487,19 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   };
 
   const handleDeleteCandidatePaper = async (paperId: string) => {
+    const paperToDelete = candidatePapers.find((p) => p.id === paperId);
     try {
       await paperAPI.delete(paperId);
     } catch {
       // Allow local removal if backend delete fails for temporary items.
+    }
+
+    if (paperToDelete) {
+      recordPaperDecision(
+        paperToDelete.title,
+        "Deleted from Candidate Papers (Step 2: Discover)",
+        projectId
+      );
     }
 
     setCandidatePapers((prev) => prev.filter((paper) => paper.id !== paperId));
@@ -1400,7 +1510,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     persistArtifacts((prev) => prev.filter((artifact) => artifact.id !== `entry-paper-${paperId}`));
   };
 
-  const handleTogglePaperArtifact = (paper: Paper & { discoveryPath?: string; discoveryNote?: string }) => {
+  const handleTogglePaperArtifact = (paper: CandidatePaper) => {
     if (addedToCenterIds.has(paper.id)) {
       persistArtifacts((prev) => prev.filter((a) => a.id !== `entry-paper-${paper.id}`));
       setAddedToCenterIds((prev) => {
@@ -1422,12 +1532,18 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
   const handleToggleEntryPaper = (paperId: string) => {
     const isEntry = entryPapers.includes(paperId);
-    const newValue = !isEntry;
-    paperAPI.update(paperId, { is_entry_paper: newValue }).catch(() => {});
-    if (newValue) {
-      setEntryPapers((prev) => [...prev, paperId]);
-    } else {
-      setEntryPapers((prev) => prev.filter((id) => id !== paperId));
+    if (isEntry) {
+      toast.info("该论文已在 Entry Papers 中，可在后续环节删除");
+      return;
+    }
+    const targetPaper = candidatePapers.find((paper) => paper.id === paperId);
+    paperAPI.update(paperId, { is_entry_paper: true }).catch(() => {});
+    setEntryPapers((prev) => {
+      if (prev.includes(paperId)) return prev;
+      return [...prev, paperId];
+    });
+    if (targetPaper) {
+      recordPaperDecision(targetPaper.title, "Moved to Entry Papers (Step 2: Discover)", projectId);
     }
   };
 
@@ -1467,6 +1583,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   };
 
   const relevanceRank = (level: CandidatePaper["relevance"]) => {
+    if (!level) return 0;
     if (level === "high") return 3;
     if (level === "medium") return 2;
     return 1;
@@ -1488,6 +1605,16 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     return direction * (relevanceRank(a.relevance) - relevanceRank(b.relevance));
   });
 
+  const sortedSearchRecords = [...searchRecords].sort((a, b) => {
+    const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (dateDiff !== 0) return dateDiff;
+    return b.id.localeCompare(a.id);
+  });
+
+  const activePullingRecord = pullingSearchRecordId
+    ? searchRecords.find((record) => record.id === pullingSearchRecordId)
+    : null;
+
   const allVisibleSelected =
     sortedCandidatePapers.length > 0 &&
     sortedCandidatePapers.every((paper) => selectedPaperIds.includes(paper.id));
@@ -1506,6 +1633,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     if (!selectedPaperIds.length) return;
 
     const idsToDelete = [...selectedPaperIds];
+    const papersToDelete = candidatePapers.filter((paper) => idsToDelete.includes(paper.id));
     await Promise.allSettled(
       idsToDelete.map(async (paperId) => {
         try {
@@ -1515,6 +1643,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         }
       })
     );
+
+    papersToDelete.forEach((paper) => {
+      recordPaperDecision(
+        paper.title,
+        "Batch deleted from Candidate Papers (Step 2: Discover)",
+        projectId
+      );
+    });
 
     setCandidatePapers((prev) => prev.filter((paper) => !idsToDelete.includes(paper.id)));
     setEntryPapers((prev) => prev.filter((id) => !idsToDelete.includes(id)));
@@ -1532,18 +1668,22 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     toast.success(`Deleted ${idsToDelete.length} candidate paper(s)`);
   };
 
-  const handleBatchAddArtifacts = () => {
+  const handleBatchToEntry = () => {
     const selectedPapers = candidatePapers.filter((paper) => selectedPaperIds.includes(paper.id));
-    persistArtifacts((prev) => {
-      const artifactMap = new Map(prev.map((artifact) => [artifact.id, artifact]));
-      selectedPapers.forEach((paper) => {
-        const artifact = candidatePaperToArtifact(paper);
-        artifactMap.set(artifact.id, artifact);
-      });
-      return Array.from(artifactMap.values());
+    if (!selectedPapers.length) return;
+
+    selectedPapers.forEach((paper) => {
+      paperAPI.update(paper.id, { is_entry_paper: true }).catch(() => {});
+      recordPaperDecision(paper.title, "Moved to Entry Papers (Step 2: Discover)", projectId);
     });
-    setAddedToCenterIds((prev) => new Set([...prev, ...selectedPaperIds]));
-    toast.success(`已添加 ${selectedPapers.length} 篇论文到 Artifact Center`);
+
+    setEntryPapers((prev) => {
+      const next = new Set(prev);
+      selectedPapers.forEach((paper) => next.add(paper.id));
+      return Array.from(next);
+    });
+
+    toast.success(`已将 ${selectedPapers.length} 篇论文移动到 Entry Papers`);
     setSelectedPaperIds([]);
   };
 
@@ -1563,26 +1703,28 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         }}
         className="w-full"
       >
-        <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
-          <TabsTrigger
-            value="keywords"
-            className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
-          >
-            Keywords
-          </TabsTrigger>
-          <TabsTrigger
-            value="search"
-            className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
-          >
-            Search Log
-          </TabsTrigger>
-          <TabsTrigger
-            value="candidates"
-            className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
-          >
-            Candidate Papers
-          </TabsTrigger>
-        </TabsList>
+        <div className="mb-4 rounded-xl border border-slate-700/50 bg-slate-900/20 px-3 pt-5 pb-2">
+          <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+            <TabsTrigger
+              value="keywords"
+              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+            >
+              Keywords
+            </TabsTrigger>
+            <TabsTrigger
+              value="search"
+              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+            >
+              Search Log
+            </TabsTrigger>
+            <TabsTrigger
+              value="candidates"
+              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+            >
+              Candidate Papers
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="keywords" className="mt-4 space-y-4">
           <Card className="border-slate-700/50">
@@ -1891,8 +2033,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   </div>
                 </div>
 
+                {activePullingRecord && (
+                  <div className="rounded-lg border border-blue-300/40 bg-blue-50/50 p-3 text-xs text-blue-700">
+                    正在 pulling "{activePullingRecord.query}" 的文献，请稍候...
+                  </div>
+                )}
+
                 <div className="space-y-3">
-                {searchRecords.map((record) => {
+                {sortedSearchRecords.map((record) => {
                   const linkedCount = linkedCandidateCount(record.id);
                   const cannotDeleteReason = linkedCount > 0
                     ? `已关联 ${linkedCount} 篇 candidate paper，无法删除`
@@ -1932,7 +2080,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           size="sm"
                           variant="outline"
                           className="text-xs h-7"
-                          onClick={() => void pullReferencesForSearchRecord(record, "first")}
+                          onClick={async () => {
+                            const pullSucceeded = await pullReferencesForSearchRecord(record, "first");
+                            if (pullSucceeded) {
+                              navigateToCandidatesTab();
+                            }
+                          }}
                           disabled={pullingSearchRecordId === record.id}
                         >
                           <Search className="w-3 h-3 mr-1" />
@@ -1942,7 +2095,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           size="sm"
                           variant="outline"
                           className="text-xs h-7"
-                          onClick={() => void pullReferencesForSearchRecord(record, "next")}
+                          onClick={async () => {
+                            const pullSucceeded = await pullReferencesForSearchRecord(record, "next");
+                            if (pullSucceeded) {
+                              navigateToCandidatesTab();
+                            }
+                          }}
                           disabled={pullingSearchRecordId === record.id}
                         >
                           <RefreshCw className="w-3 h-3 mr-1" />
@@ -1996,6 +2154,17 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   Candidate Papers ({candidatePapers.length})
                 </CardTitle>
                 <div className="flex gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-7"
+                    onClick={handleOpenCandidateRefreshDialog}
+                    disabled={Boolean(pullingSearchRecordId)}
+                    title="Choose a search log or random pull"
+                  >
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Refresh +10
+                  </Button>
                   <Select
                     value={candidateSortKey}
                     onValueChange={(value) => setCandidateSortKey(value as "title" | "year" | "type" | "relevance")}
@@ -2079,10 +2248,10 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                       <Button
                         size="sm"
                         className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white"
-                        onClick={handleBatchAddArtifacts}
+                        onClick={handleBatchToEntry}
                       >
-                        <Plus className="w-3 h-3 mr-1" />
-                        Add as Artifacts
+                        <Target className="w-3 h-3 mr-1" />
+                        To Entry
                       </Button>
                       <Button
                         size="sm"
@@ -2135,20 +2304,22 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                                 Entry Paper
                               </Badge>
                             )}
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-[10px]",
-                                paper.relevance === "high" &&
-                                  "border-emerald-300 text-emerald-700",
-                                paper.relevance === "medium" &&
-                                  "border-amber-300 text-amber-700",
-                                paper.relevance === "low" &&
-                                  "border-slate-300 text-slate-500"
-                              )}
-                            >
-                              {paper.relevance} relevance
-                            </Badge>
+                            {paper.relevance && (
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-[10px]",
+                                  paper.relevance === "high" &&
+                                    "border-emerald-300 text-emerald-700",
+                                  paper.relevance === "medium" &&
+                                    "border-amber-300 text-amber-700",
+                                  paper.relevance === "low" &&
+                                    "border-slate-300 text-slate-500"
+                                )}
+                              >
+                                {paper.relevance} relevance
+                              </Badge>
+                            )}
                             <Badge variant="outline" className="text-[10px] border-slate-300 text-slate-600">
                               {inferPublicationType(paper)}
                             </Badge>
@@ -2253,6 +2424,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                               : "bg-violet-700 hover:bg-violet-800 text-white"
                           )}
                           onClick={() => handleToggleEntryPaper(paper.id)}
+                          disabled={entryPapers.includes(paper.id)}
                         >
                           {entryPapers.includes(paper.id) ? (
                             <>
@@ -2262,7 +2434,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           ) : (
                             <>
                               <Target className="w-3 h-3 mr-1" />
-                              Set as Entry
+                              To Entry
                             </>
                           )}
                         </Button>
@@ -2740,6 +2912,80 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               </span>
             </button>
           ))}
+        </div>
+      </ModalOverlay>
+
+      <ModalOverlay
+        open={showCandidateRefreshDialog}
+        onClose={() => setShowCandidateRefreshDialog(false)}
+        title="Refresh +10 Candidate Papers"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-400">
+            请选择一个 Search Log 拉取下一批，或随机使用已有 Search Log。
+          </p>
+
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant={candidateRefreshMode === "select" ? "default" : "outline"}
+              className={cn(
+                "h-8 text-xs",
+                candidateRefreshMode === "select" ? "bg-violet-700 hover:bg-violet-800 text-white" : ""
+              )}
+              onClick={() => setCandidateRefreshMode("select")}
+            >
+              Use Selected Log
+            </Button>
+            <Button
+              size="sm"
+              variant={candidateRefreshMode === "random" ? "default" : "outline"}
+              className={cn(
+                "h-8 text-xs",
+                candidateRefreshMode === "random" ? "bg-violet-700 hover:bg-violet-800 text-white" : ""
+              )}
+              onClick={() => setCandidateRefreshMode("random")}
+            >
+              Random
+            </Button>
+          </div>
+
+          {candidateRefreshMode === "select" && (
+            <div className="space-y-1.5">
+              <label className="text-xs text-slate-400">Search Log</label>
+              <Select value={candidateRefreshRecordId} onValueChange={setCandidateRefreshRecordId}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="Choose search log" />
+                </SelectTrigger>
+                <SelectContent>
+                  {searchRecords.map((record) => (
+                    <SelectItem key={record.id} value={record.id}>
+                      {record.database} - {record.query}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={() => setShowCandidateRefreshDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs bg-violet-700 hover:bg-violet-800 text-white"
+              onClick={() => void handleCandidateRefreshPull()}
+              disabled={Boolean(pullingSearchRecordId)}
+            >
+              Pull +10
+            </Button>
+          </div>
         </div>
       </ModalOverlay>
 
@@ -4566,26 +4812,28 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
       <Card className="border-slate-700/50">
         <CardContent className="space-y-4">
           <Tabs value={expandMode} onValueChange={(value) => { setExpandMode(value as ExpandMode); setExpandError(null); }}>
-            <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
-              <TabsTrigger
-                value="entry-paper"
-                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
-              >
-                Expand by Entry Paper
-              </TabsTrigger>
-              <TabsTrigger
-                value="doi-url"
-                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
-              >
-                Expand by DOI/URL
-              </TabsTrigger>
-              <TabsTrigger
-                value="manual"
-                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
-              >
-                Expand Manually
-              </TabsTrigger>
-            </TabsList>
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/20 px-3 pt-5 pb-2">
+              <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+                <TabsTrigger
+                  value="entry-paper"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                >
+                  Expand by Entry Paper
+                </TabsTrigger>
+                <TabsTrigger
+                  value="doi-url"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                >
+                  Expand by DOI/URL
+                </TabsTrigger>
+                <TabsTrigger
+                  value="manual"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                >
+                  Expand Manually
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="entry-paper" className="mt-4 space-y-4">
               <div className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-3">
