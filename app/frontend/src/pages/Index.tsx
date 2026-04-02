@@ -1,36 +1,127 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  ArrowRight,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  FileText,
-  Import,
-  Play,
-  Sparkles,
-  TrendingUp,
-} from "lucide-react";
+import { ArrowRight, Clock, FileText, TrendingUp } from "lucide-react";
 import {
   DUMMY_PROJECT,
   DUMMY_ARTIFACTS,
-  STEP_META,
   ARTIFACT_TYPE_META,
+  type Artifact,
   type WorkflowStep,
   type ArtifactType,
 } from "@/lib/data";
+import { noteAPI, paperAPI, type Note } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
+
+type MetricKey =
+  | "purposes"
+  | "keywords"
+  | "concepts"
+  | "searchRecords"
+  | "candidatePapers"
+  | "entryPapers"
+  | "expandedPapers"
+  | "visuals"
+  | "notes"
+  | "drafts";
+
+type LatestArtifactItem = {
+  id: string;
+  title: string;
+  description: string;
+  updatedAt: string;
+  tab: string;
+  badgeLabel: string;
+  badgeClass: string;
+};
+
+const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
+const CONCEPTS_STORAGE_KEY = "rw-concepts";
+const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
+const CONCEPTS_UPDATED_EVENT = "concepts-updated";
+const NOTES_UPDATED_EVENT = "notes-updated";
+const LOGIN_KEY = "rw-current-login-at";
+const ONLINE_TOTAL_KEY = "rw-online-total-seconds";
+
+function formatDateOnly(value: string) {
+  return value.includes("T") ? value.split("T")[0] : value;
+}
+
+function noteToArtifact(note: Note): Artifact {
+  return {
+    id: note.id,
+    title: note.title,
+    type: note.note_type,
+    projectId: note.project_id,
+    sourceStep: 3,
+    description: note.description || note.content || "Saved note",
+    updatedAt: formatDateOnly(note.updated_at),
+    content: note.content || note.description,
+  };
+}
+
+function parseDateToMs(value: string) {
+  const ts = Date.parse(value);
+  return Number.isNaN(ts) ? 0 : ts;
+}
+
+function formatDuration(seconds: number) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return "--";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "--";
+  return d.toLocaleString();
+}
 
 export default function Dashboard() {
   const { t } = useI18n();
   const project = DUMMY_PROJECT;
-  const stepMeta = STEP_META[project.currentStep];
-  const progressPercent = ((project.currentStep - 1) / 5) * 100;
-  const latestArtifacts = DUMMY_ARTIFACTS.slice(-4).reverse();
+  const [counts, setCounts] = useState<Record<MetricKey, number>>({
+    purposes: 0,
+    keywords: 0,
+    concepts: 0,
+    searchRecords: 0,
+    candidatePapers: 0,
+    entryPapers: 0,
+    expandedPapers: 0,
+    visuals: 0,
+    notes: 0,
+    drafts: 0,
+  });
+  const [latestItems, setLatestItems] = useState<LatestArtifactItem[]>([]);
+  const [onlineSeconds, setOnlineSeconds] = useState(0);
+  const [lastLoginAt, setLastLoginAt] = useState<string | null>(null);
+
+  const metricRows: Array<{ key: MetricKey; label: string; tab: string; color: string }> = [
+    { key: "purposes", label: "Purposes", tab: "purpose", color: "bg-blue-500" },
+    { key: "keywords", label: "Keywords", tab: "search", color: "bg-sky-500" },
+    { key: "concepts", label: "Concepts", tab: "concepts", color: "bg-violet-500" },
+    { key: "searchRecords", label: "Search Records", tab: "search", color: "bg-indigo-500" },
+    { key: "candidatePapers", label: "Candidate Papers", tab: "literature", color: "bg-cyan-500" },
+    { key: "entryPapers", label: "Entry Papers", tab: "literature", color: "bg-emerald-500" },
+    { key: "expandedPapers", label: "Expanded Papers", tab: "literature", color: "bg-lime-500" },
+    { key: "visuals", label: "Visuals", tab: "visual", color: "bg-fuchsia-500" },
+    { key: "notes", label: "Notes", tab: "notes", color: "bg-amber-500" },
+    { key: "drafts", label: "Drafts", tab: "drafts", color: "bg-rose-500" },
+  ];
+
+  const totalArtifacts = useMemo(
+    () => metricRows.reduce((sum, row) => sum + counts[row.key], 0),
+    [counts]
+  );
+  const maxMetricCount = useMemo(
+    () => Math.max(...metricRows.map((row) => counts[row.key]), 1),
+    [counts]
+  );
 
   const stepShortLabels: Record<WorkflowStep, string> = {
     1: t("step.1.short"),
@@ -42,7 +133,6 @@ export default function Dashboard() {
   };
 
   const stepLabel = t(`step.${project.currentStep}.label`);
-  const stepDesc = t(`step.${project.currentStep}.desc`);
 
   const artifactTypeLabels: Record<ArtifactType, string> = {
     purpose: t("artifact.purpose"),
@@ -57,100 +147,197 @@ export default function Dashboard() {
     "writing-draft": t("artifact.writingDraft"),
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const previousLogin = window.localStorage.getItem(LOGIN_KEY);
+    setLastLoginAt(previousLogin);
+    const nowIso = new Date().toISOString();
+    window.localStorage.setItem(LOGIN_KEY, nowIso);
+
+    const baseOnline = Number(window.localStorage.getItem(ONLINE_TOTAL_KEY) || "0");
+    const sessionStart = Date.now();
+
+    const updateOnline = () => {
+      const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+      setOnlineSeconds(baseOnline + elapsed);
+    };
+
+    updateOnline();
+    const timer = window.setInterval(updateOnline, 1000);
+
+    const persistOnline = () => {
+      const elapsed = Math.floor((Date.now() - sessionStart) / 1000);
+      window.localStorage.setItem(ONLINE_TOTAL_KEY, String(baseOnline + elapsed));
+    };
+
+    window.addEventListener("beforeunload", persistOnline);
+
+    return () => {
+      window.clearInterval(timer);
+      persistOnline();
+      window.removeEventListener("beforeunload", persistOnline);
+    };
+  }, []);
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      let localArtifacts: Artifact[] = [];
+      let conceptsCount = 0;
+      let papers: Awaited<ReturnType<typeof paperAPI.list>> = [];
+      let noteArtifacts: Artifact[] = [];
+
+      if (typeof window !== "undefined") {
+        try {
+          const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+          const parsed = saved ? JSON.parse(saved) : [];
+          localArtifacts = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          localArtifacts = [];
+        }
+
+        try {
+          const conceptsGlobal = window.localStorage.getItem(CONCEPTS_STORAGE_KEY);
+          const conceptsProject = window.localStorage.getItem(`rw-concepts-${project.id}`);
+          const parsedGlobal = conceptsGlobal ? JSON.parse(conceptsGlobal) : [];
+          const parsedProject = conceptsProject ? JSON.parse(conceptsProject) : [];
+          const merged = [
+            ...(Array.isArray(parsedGlobal) ? parsedGlobal : []),
+            ...(Array.isArray(parsedProject) ? parsedProject : []),
+          ];
+          const keySet = new Set(
+            merged.map((c: { id?: string; name?: string }) => c.id || c.name)
+          );
+          conceptsCount = keySet.size;
+        } catch {
+          conceptsCount = 0;
+        }
+      }
+
+      try {
+        const notes = await noteAPI.listByProject(project.id);
+        noteArtifacts = notes.map(noteToArtifact);
+      } catch {
+        noteArtifacts = [];
+      }
+
+      try {
+        papers = await paperAPI.list(project.id);
+      } catch {
+        papers = [];
+      }
+
+      const staticProjectArtifacts = DUMMY_ARTIFACTS.filter((a) => a.projectId === project.id);
+      const mergedArtifacts = Array.from(
+        new Map(
+          [...staticProjectArtifacts, ...localArtifacts, ...noteArtifacts].map((artifact) => [artifact.id, artifact])
+        ).values()
+      );
+
+      const draftCount = mergedArtifacts.filter(
+        (a) => a.type === "rq-draft" || a.type === "writing-block" || a.type === "writing-draft"
+      ).length;
+      const noteCount = mergedArtifacts.filter(
+        (a) => a.type === "literature-note" || a.type === "permanent-note"
+      ).length;
+      const entryCountFromArtifacts = mergedArtifacts.filter((a) => a.type === "entry-paper").length;
+      const entryCountFromPapers = papers.filter((p) => p.is_entry_paper).length;
+
+      setCounts({
+        purposes: mergedArtifacts.filter((a) => a.type === "purpose").length,
+        keywords: mergedArtifacts.filter((a) => a.type === "keyword").length,
+        concepts: conceptsCount,
+        searchRecords: mergedArtifacts.filter((a) => a.type === "search-log").length,
+        candidatePapers: papers.length,
+        entryPapers: Math.max(entryCountFromArtifacts, entryCountFromPapers),
+        expandedPapers: papers.filter((p) => p.is_expanded_paper).length,
+        visuals: mergedArtifacts.filter((a) => a.type === "visualization").length,
+        notes: noteCount,
+        drafts: draftCount,
+      });
+
+      const latestFromArtifacts: LatestArtifactItem[] = mergedArtifacts.map((artifact) => {
+        const tabByType: Record<ArtifactType, string> = {
+          purpose: "purpose",
+          keyword: "search",
+          "search-log": "search",
+          "entry-paper": "literature",
+          "literature-note": "notes",
+          "permanent-note": "notes",
+          visualization: "visual",
+          "rq-draft": "drafts",
+          "writing-block": "drafts",
+          "writing-draft": "drafts",
+        };
+        const typeMeta = ARTIFACT_TYPE_META[artifact.type];
+        return {
+          id: artifact.id,
+          title: artifact.title,
+          description: artifact.description,
+          updatedAt: artifact.updatedAt,
+          tab: tabByType[artifact.type],
+          badgeLabel: artifactTypeLabels[artifact.type],
+          badgeClass: `${typeMeta.bgColor} ${typeMeta.color}`,
+        };
+      });
+
+      const latestCombined = latestFromArtifacts
+        .sort((a, b) => parseDateToMs(b.updatedAt) - parseDateToMs(a.updatedAt))
+        .slice(0, 6);
+
+      setLatestItems(latestCombined);
+    };
+
+    void loadDashboard();
+
+    if (typeof window !== "undefined") {
+      const reload = () => {
+        void loadDashboard();
+      };
+      window.addEventListener(ARTIFACTS_UPDATED_EVENT, reload);
+      window.addEventListener(CONCEPTS_UPDATED_EVENT, reload);
+      window.addEventListener(NOTES_UPDATED_EVENT, reload);
+      window.addEventListener("storage", reload);
+      return () => {
+        window.removeEventListener(ARTIFACTS_UPDATED_EVENT, reload);
+        window.removeEventListener(CONCEPTS_UPDATED_EVENT, reload);
+        window.removeEventListener(NOTES_UPDATED_EVENT, reload);
+        window.removeEventListener("storage", reload);
+      };
+    }
+  }, [project.id]);
+
   return (
     <AppLayout>
       <div className="p-6 max-w-5xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
-              {project.title}
-            </h1>
-            <p className="text-sm text-slate-500 mt-1 max-w-xl">
-              {project.goal}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="text-xs">
-              <Import className="w-3.5 h-3.5 mr-1.5" />
-              {t("dashboard.importPapers")}
-            </Button>
-            <Link to={`/workflow/${project.currentStep}`}>
-              <Button
-                size="sm"
-                className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
-              >
-                <Play className="w-3.5 h-3.5 mr-1.5" />
-                {t("dashboard.continueStep")}
-              </Button>
-            </Link>
+            <h1 className="text-2xl font-bold text-slate-100">{project.title}</h1>
+            <p className="text-sm text-slate-400 mt-1 max-w-xl">{project.goal}</p>
           </div>
         </div>
 
-        {/* Workflow Progress */}
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-slate-800">
-                  {t("dashboard.workflowProgress")}
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {t("app.step")} {project.currentStep} {t("app.of")} 6 —{" "}
-                  {stepLabel}
+                <h3 className="text-sm font-semibold text-slate-200">{t("dashboard.workflowProgress")}</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {t("app.step")} {project.currentStep} {t("app.of")} 6 — {stepLabel}
                 </p>
               </div>
-              <Badge
-                variant="outline"
-                className="text-[#1E3A5F] border-[#1E3A5F]/30 bg-blue-50"
-              >
-                {Math.round(progressPercent)}% {t("dashboard.complete")}
-              </Badge>
             </div>
 
-            {/* Step Progress Bar */}
-            <div className="flex items-center gap-1 mb-2">
+            <div className="grid grid-cols-6 gap-2 mb-2">
               {([1, 2, 3, 4, 5, 6] as WorkflowStep[]).map((step) => {
-                const isCompleted = step < project.currentStep;
                 const isCurrent = step === project.currentStep;
                 return (
-                  <Link
-                    key={step}
-                    to={`/workflow/${step}`}
-                    className="flex-1"
-                  >
+                  <Link key={step} to={`/workflow/${project.id}/${step}`} className="block">
                     <div className="relative group cursor-pointer">
-                      <div
-                        className={cn(
-                          "h-2 rounded-full transition-colors",
-                          isCompleted && "bg-emerald-500",
-                          isCurrent && "bg-[#1E3A5F]",
-                          !isCompleted && !isCurrent && "bg-slate-200"
-                        )}
-                      />
+                      <div className={cn("h-2 rounded-full transition-colors", isCurrent ? "bg-violet-600" : "bg-slate-700")} />
                       <div className="flex items-center gap-1 mt-2">
-                        {isCompleted ? (
-                          <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                        ) : (
-                          <span
-                            className={cn(
-                              "text-[10px] font-medium",
-                              isCurrent
-                                ? "text-[#1E3A5F]"
-                                : "text-slate-400"
-                            )}
-                          >
-                            {step}
-                          </span>
-                        )}
-                        <span
-                          className={cn(
-                            "text-[10px] hidden sm:inline",
-                            isCompleted && "text-emerald-600",
-                            isCurrent && "text-[#1E3A5F] font-medium",
-                            !isCompleted && !isCurrent && "text-slate-400"
-                          )}
-                        >
+                        <span className={cn("text-[10px] font-medium", isCurrent ? "text-violet-400" : "text-slate-500")}>{step}</span>
+                        <span className={cn("text-[10px] hidden sm:inline", isCurrent ? "text-violet-400 font-medium" : "text-slate-500")}>
                           {stepShortLabels[step]}
                         </span>
                       </div>
@@ -160,123 +347,60 @@ export default function Dashboard() {
               })}
             </div>
 
-            {/* Iteration hint */}
-            <div className="flex items-center gap-1.5 mt-4 p-2 bg-slate-50 rounded-md">
-              <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
-              <p className="text-[11px] text-slate-500">
-                {t("dashboard.iterativeHint")}
-              </p>
+            <div className="flex items-center gap-1.5 mt-4 p-2 bg-slate-800/60 rounded-md">
+              <TrendingUp className="w-3.5 h-3.5 text-slate-500" />
+              <p className="text-[11px] text-slate-400">{t("dashboard.iterativeHint")}</p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {/* Today's Target */}
-          <Card className="border-slate-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[#1E3A5F]" />
-                {t("dashboard.todaysTarget")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-lg">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-base">{stepMeta.icon}</span>
-                  <span className="text-sm font-medium text-slate-800">
-                    {stepLabel}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 mb-3">
-                  {stepDesc}
-                </p>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-slate-600">
-                    <div className="w-4 h-4 rounded border border-slate-300 flex items-center justify-center">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                    </div>
-                    <span className="line-through text-slate-400">
-                      {t("dashboard.defineKeywords")}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-600">
-                    <div className="w-4 h-4 rounded border border-[#1E3A5F] bg-blue-50" />
-                    <span>{t("dashboard.searchWos")}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-600">
-                    <div className="w-4 h-4 rounded border border-slate-300" />
-                    <span>{t("dashboard.selectEntry")}</span>
-                  </div>
-                </div>
-              </div>
-              <Link to={`/workflow/${project.currentStep}`}>
-                <Button
-                  size="sm"
-                  className="w-full text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
-                >
-                  {t("dashboard.startTask")}
-                  <ArrowRight className="w-3 h-3 ml-1" />
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {[
+              { label: "Total Artifacts", value: totalArtifacts.toLocaleString(), icon: "📦" },
+              { label: "Online Time", value: formatDuration(onlineSeconds), icon: "⏱️" },
+              { label: "Last Login", value: formatDateTime(lastLoginAt), icon: "🕘" },
+            ].map((stat) => (
+              <Card key={stat.label} className="border-slate-700/50">
+                <CardContent className="p-4 text-center">
+                  <span className="text-2xl block mb-1">{stat.icon}</span>
+                  <p className="text-sm md:text-xl font-bold text-slate-200 break-words">{stat.value}</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider">{stat.label}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
 
-          {/* Next Suggested Move */}
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                {t("dashboard.nextSuggestedMove")}
-              </CardTitle>
+              <CardTitle className="text-sm font-semibold text-slate-200">Project Artifacts by Type</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-lg">
-                <p className="text-sm font-medium text-amber-800 mb-1">
-                  {t("dashboard.refineSearch")}
-                </p>
-                <p className="text-xs text-amber-700">
-                  {t("dashboard.refineSearchDesc")}
-                </p>
-              </div>
-              <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-lg">
-                <p className="text-sm font-medium text-emerald-800 mb-1">
-                  {t("dashboard.readyEntry")}
-                </p>
-                <p className="text-xs text-emerald-700">
-                  {t("dashboard.readyEntryDesc")}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Link to="/workflow/2" className="flex-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs"
-                  >
-                    {t("dashboard.goEntryPaper")}
-                  </Button>
-                </Link>
-                <Link to="/artifacts" className="flex-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs"
-                  >
-                    {t("dashboard.viewArtifacts")}
-                  </Button>
-                </Link>
+            <CardContent>
+              <div className="space-y-3">
+                {metricRows.map((row) => (
+                  <Link key={row.key} to={`/artifacts?tab=${row.tab}`} className="block">
+                    <div className="flex items-center gap-3 hover:bg-slate-800/50 rounded-md px-1 py-0.5">
+                      <span className="text-xs text-slate-400 w-40 shrink-0">{row.label}</span>
+                      <div className="flex-1 bg-slate-800 rounded-full h-5 overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full transition-all", row.color)}
+                          style={{ width: `${(counts[row.key] / maxMetricCount) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-semibold text-slate-300 w-10 text-right">{counts[row.key]}</span>
+                    </div>
+                  </Link>
+                ))}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Latest Artifacts */}
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#2D6A4F]" />
+              <CardTitle className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-400" />
                 {t("dashboard.latestArtifacts")}
               </CardTitle>
               <Link to="/artifacts">
@@ -288,60 +412,39 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {latestArtifacts.map((artifact) => {
-                const typeMeta = ARTIFACT_TYPE_META[artifact.type];
-                return (
-                  <div
-                    key={artifact.id}
-                    className="p-3 bg-white border border-slate-200 rounded-lg hover:border-slate-300 hover:shadow-sm transition-all cursor-pointer group"
-                  >
+              {latestItems.map((item) => (
+                <Link key={item.id} to={`/artifacts?tab=${item.tab}`}>
+                  <div className="p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:border-violet-600/40 hover:bg-slate-800/80 transition-all cursor-pointer group">
                     <div className="flex items-start justify-between mb-1.5">
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          "text-[10px] px-1.5 py-0",
-                          typeMeta.bgColor,
-                          typeMeta.color
-                        )}
-                      >
-                        {artifactTypeLabels[artifact.type]}
+                      <Badge variant="secondary" className={cn("text-[10px] px-1.5 py-0", item.badgeClass)}>
+                        {item.badgeLabel}
                       </Badge>
-                      <span className="text-[10px] text-slate-400">
-                        {t("app.step")} {artifact.sourceStep}
-                      </span>
                     </div>
-                    <h4 className="text-sm font-medium text-slate-800 mb-1 group-hover:text-[#1E3A5F] transition-colors line-clamp-1">
-                      {artifact.title}
+                    <h4 className="text-sm font-medium text-slate-200 mb-1 group-hover:text-violet-400 transition-colors line-clamp-1">
+                      {item.title}
                     </h4>
-                    <p className="text-xs text-slate-500 line-clamp-2">
-                      {artifact.description}
-                    </p>
-                    <div className="flex items-center gap-1 mt-2 text-[10px] text-slate-400">
+                    <p className="text-xs text-slate-500 line-clamp-2">{item.description}</p>
+                    <div className="flex items-center gap-1 mt-2 text-[10px] text-slate-500">
                       <Clock className="w-3 h-3" />
-                      {artifact.updatedAt}
+                      {item.updatedAt}
                     </div>
                   </div>
-                );
-              })}
+                </Link>
+              ))}
             </div>
           </CardContent>
         </Card>
 
-        {/* Hero Image */}
         <div className="relative rounded-xl overflow-hidden h-48">
           <img
             src="https://mgx-backend-cdn.metadl.com/generate/images/1012783/2026-03-09/7ac7d52d-7c9d-4f74-b291-3cc99fc97791.png"
             alt="Academic workspace"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#1E3A5F]/80 to-transparent flex items-center">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-900/80 to-transparent flex items-center">
             <div className="p-6">
-              <h2 className="text-white text-lg font-semibold mb-1">
-                {t("dashboard.heroTitle")}
-              </h2>
-              <p className="text-white/80 text-xs max-w-md">
-                {t("dashboard.heroDesc")}
-              </p>
+              <h2 className="text-white text-lg font-semibold mb-1">{t("dashboard.heroTitle")}</h2>
+              <p className="text-white/80 text-xs max-w-md">{t("dashboard.heroDesc")}</p>
             </div>
           </div>
         </div>

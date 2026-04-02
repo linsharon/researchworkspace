@@ -3,17 +3,15 @@ import { useParams, Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { pdfAPI } from "@/lib/pdf-api";
 import {
   ArrowLeft,
   BookOpen,
-  ChevronLeft,
-  ChevronRight,
   Download,
+  Eye,
   FileText,
   Highlighter,
   Maximize2,
@@ -21,11 +19,8 @@ import {
   PenTool,
   Plus,
   Save,
-  Search,
   Tag,
   X,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import { DUMMY_PAPERS } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -57,7 +52,7 @@ function TagInput({
           <Badge
             key={tag}
             variant="secondary"
-            className="text-[10px] px-2 py-0.5 bg-slate-100 hover:bg-slate-200 cursor-pointer gap-1"
+            className="text-[10px] px-2 py-0.5 bg-slate-800 hover:bg-slate-200 cursor-pointer gap-1"
           >
             <Tag className="w-2.5 h-2.5" />
             {tag}
@@ -101,8 +96,6 @@ export default function PdfViewer() {
   const paper = DUMMY_PAPERS.find((p) => p.id === paperId) || DUMMY_PAPERS[0];
 
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = 12;
-  const [zoom, setZoom] = useState(100);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<"highlights" | "lit-note" | "perm-note">("highlights");
 
@@ -177,43 +170,11 @@ export default function PdfViewer() {
     }
   };
 
-  // Simulated PDF content paragraphs for the demo
-  const pdfContent: Record<number, string[]> = {
-    1: [
-      "Artificial Intelligence in Education: A Review of Adaptive Learning Systems",
-      `${paper.authors.join(", ")}`,
-      paper.journal,
-      "Abstract",
-      paper.abstract,
-    ],
-    2: [
-      "1. Introduction",
-      "The rapid advancement of artificial intelligence (AI) has led to significant innovations in educational technology. Among these, adaptive learning systems powered by AI have emerged as a promising approach to personalized education.",
-      "These systems leverage machine learning algorithms to tailor instructional content, pacing, and feedback to individual learner needs, potentially transforming how students engage with educational material in higher education settings.",
-      "Despite growing adoption, critical questions remain about the deeper impact of these systems on student learning processes, particularly self-regulated learning (SRL).",
-    ],
-    3: [
-      "2. Literature Review",
-      "2.1 AI-Powered Adaptive Learning Systems",
-      "Adaptive learning systems use algorithms to analyze student performance data and adjust the learning experience accordingly. Key components include: (1) learner modeling, (2) content sequencing, (3) adaptive feedback, and (4) performance prediction.",
-      "While these systems have shown promise in improving test scores, their impact on deeper learning processes such as self-regulated learning remains underexplored.",
-      "2.2 Self-Regulated Learning Theory",
-      "Self-regulated learning, as defined by Zimmerman (2002), encompasses the processes by which learners systematically direct their thoughts, feelings, and actions toward the attainment of their goals.",
-    ],
-  };
-
-  const currentContent = pdfContent[currentPage] || [
-    `Page ${currentPage}`,
-    "This section continues the analysis of AI-powered adaptive learning systems and their relationship to self-regulated learning processes in higher education contexts.",
-    "The evidence suggests that while technology scaffolds can support certain aspects of SRL, the mechanisms through which AI tutoring specifically influences metacognitive development remain unclear.",
-    "Further empirical investigation is needed to understand the complex interplay between adaptive personalization features and students' capacity for self-regulation.",
-  ];
-
   return (
     <AppLayout>
       <div className="flex flex-col h-[calc(100vh-64px)]">
-        {/* PDF Toolbar */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-slate-50 shrink-0">
+        {/* Top Header */}
+        <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-slate-700/50 bg-slate-800/40 shrink-0">
           <div className="flex items-center gap-2">
             <Link to="/workflow/3">
               <Button variant="ghost" size="sm" className="text-xs">
@@ -221,9 +182,8 @@ export default function PdfViewer() {
                 Back to Read
               </Button>
             </Link>
-            <Separator orientation="vertical" className="h-5" />
             <div className="flex items-center gap-1">
-              <Badge className="text-[10px] bg-[#1E3A5F] text-white">
+              <Badge className="text-[10px] bg-violet-700 text-white">
                 PDF
               </Badge>
               <span className="text-xs text-slate-600 font-medium truncate max-w-[300px]">
@@ -232,61 +192,6 @@ export default function PdfViewer() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Page Navigation */}
-            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-md px-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="w-3 h-3" />
-              </Button>
-              <span className="text-xs text-slate-600 px-1">
-                {currentPage} / {totalPages}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight className="w-3 h-3" />
-              </Button>
-            </div>
-            {/* Zoom */}
-            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-md px-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => setZoom(Math.max(50, zoom - 10))}
-              >
-                <ZoomOut className="w-3 h-3" />
-              </Button>
-              <span className="text-xs text-slate-600 px-1">{zoom}%</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={() => setZoom(Math.min(200, zoom + 10))}
-              >
-                <ZoomIn className="w-3 h-3" />
-              </Button>
-            </div>
-            {/* Search */}
-            <Button variant="outline" size="sm" className="text-xs h-7">
-              <Search className="w-3 h-3 mr-1" />
-              Find
-            </Button>
-            {/* Download */}
-            <Button variant="outline" size="sm" className="text-xs h-7">
-              <Download className="w-3 h-3 mr-1" />
-              Download
-            </Button>
-            {/* Toggle Sidebar */}
             <Button
               variant="outline"
               size="sm"
@@ -305,85 +210,49 @@ export default function PdfViewer() {
         {/* Main Content */}
         <div className="flex flex-1 overflow-hidden">
           {/* PDF Content Area */}
-          <div className="flex-1 overflow-auto bg-slate-100 p-6">
-            <div
-              className="max-w-[700px] mx-auto bg-white shadow-lg rounded-sm border border-slate-200 p-12 min-h-[900px]"
-              style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }}
-            >
-              {/* Simulated PDF Content */}
-              <div className="space-y-4">
-                {currentContent.map((paragraph, i) => {
-                  const isTitle = i === 0 && currentPage === 1;
-                  const isAuthor = i === 1 && currentPage === 1;
-                  const isJournal = i === 2 && currentPage === 1;
-                  const isHeading = paragraph.match(/^\d+\./) || paragraph === "Abstract";
-
-                  // Check if any highlight matches this paragraph
-                  const matchingHighlight = highlights.find(
-                    (h) => h.page === currentPage && paragraph.includes(h.text)
-                  );
-
-                  return (
-                    <div key={i}>
-                      {isTitle ? (
-                        <h1 className="text-xl font-bold text-slate-900 text-center mb-2">
-                          {paragraph}
-                        </h1>
-                      ) : isAuthor ? (
-                        <p className="text-sm text-slate-500 text-center">{paragraph}</p>
-                      ) : isJournal ? (
-                        <p className="text-xs text-slate-400 text-center italic mb-6">{paragraph}</p>
-                      ) : isHeading ? (
-                        <h2 className="text-base font-semibold text-slate-800 mt-6 mb-2">
-                          {paragraph}
-                        </h2>
-                      ) : matchingHighlight ? (
-                        <p className="text-sm text-slate-700 leading-relaxed">
-                          {paragraph.split(matchingHighlight.text).map((part, pi, arr) => (
-                            <span key={pi}>
-                              {part}
-                              {pi < arr.length - 1 && (
-                                <mark
-                                  className={cn(
-                                    "px-0.5 rounded cursor-pointer",
-                                    matchingHighlight.color === "yellow"
-                                      ? "bg-yellow-200 hover:bg-yellow-300"
-                                      : "bg-green-200 hover:bg-green-300"
-                                  )}
-                                  title={matchingHighlight.note}
-                                >
-                                  {matchingHighlight.text}
-                                </mark>
-                              )}
-                            </span>
-                          ))}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-slate-700 leading-relaxed">{paragraph}</p>
-                      )}
-                    </div>
-                  );
-                })}
+          <div className="flex-1 overflow-hidden bg-slate-800 p-4">
+            <div className="h-full overflow-hidden rounded-md border border-slate-300 bg-[#0d1b30] flex flex-col">
+              <div className="flex items-center justify-between border-b border-slate-700/50 bg-slate-800 px-3 py-2">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <Eye className="h-4 w-4" />
+                  <span className="text-sm font-medium">PDF Viewer</span>
+                </div>
+                <Button
+                  className="gap-2"
+                  onClick={() => {
+                    const url = pdfAPI.downloadUrl("sample_research_paper.pdf");
+                    const link = document.createElement("a");
+                    link.href = url;
+                    link.download = "sample_research_paper.pdf";
+                    link.click();
+                  }}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Download className="h-4 w-4" />
+                  Download
+                </Button>
               </div>
 
-              {/* Page footer */}
-              <div className="mt-12 pt-4 border-t border-slate-100 text-center">
-                <span className="text-xs text-slate-400">{currentPage}</span>
-              </div>
+              <iframe
+                src={pdfAPI.viewUrl("sample_research_paper.pdf") + `#page=${currentPage}`}
+                title={`${paper.title} PDF`}
+                className="h-full w-full border-0 flex-1 min-h-0"
+              />
             </div>
           </div>
 
           {/* Sidebar */}
           {sidebarOpen && (
-            <div className="w-[340px] border-l border-slate-200 bg-white flex flex-col shrink-0">
+            <div className="w-[340px] border-l border-slate-700/50 bg-[#0d1b30] flex flex-col shrink-0">
               {/* Sidebar Tabs */}
-              <div className="flex border-b border-slate-200 shrink-0">
+              <div className="flex border-b border-slate-700/50 shrink-0">
                 <button
                   onClick={() => setSidebarTab("highlights")}
                   className={cn(
                     "flex-1 px-3 py-2.5 text-xs font-medium transition-colors",
                     sidebarTab === "highlights"
-                      ? "text-[#1E3A5F] border-b-2 border-[#1E3A5F] bg-blue-50/30"
+                      ? "text-violet-400 border-b-2 border-violet-700 bg-blue-50/30"
                       : "text-slate-500 hover:text-slate-700"
                   )}
                 >
@@ -395,7 +264,7 @@ export default function PdfViewer() {
                   className={cn(
                     "flex-1 px-3 py-2.5 text-xs font-medium transition-colors",
                     sidebarTab === "lit-note"
-                      ? "text-[#1E3A5F] border-b-2 border-[#1E3A5F] bg-blue-50/30"
+                      ? "text-violet-400 border-b-2 border-violet-700 bg-blue-50/30"
                       : "text-slate-500 hover:text-slate-700"
                   )}
                 >
@@ -424,7 +293,7 @@ export default function PdfViewer() {
                       <div className="flex gap-1.5">
                         <Button
                           size="sm"
-                          className="text-xs h-7 flex-1 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                          className="text-xs h-7 flex-1 bg-violet-700 hover:bg-violet-800 text-white"
                           onClick={() => setShowNewHighlight(true)}
                         >
                           <Plus className="w-3 h-3 mr-1" />
@@ -469,13 +338,13 @@ export default function PdfViewer() {
                             onTagsChange={setNewHTags}
                             placeholder="Add tags..."
                           />
-                          <div className="p-1.5 bg-slate-50 rounded text-[10px] text-slate-500">
+                          <div className="p-1.5 bg-slate-800/40 rounded text-[10px] text-slate-500">
                             📎 Auto-citation: {citation}
                           </div>
                           <div className="flex gap-1.5">
                             <Button
                               size="sm"
-                              className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                              className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
                               onClick={handleAddHighlight}
                             >
                               Save
@@ -500,7 +369,7 @@ export default function PdfViewer() {
                       {highlights.map((h) => (
                         <div
                           key={h.id}
-                          className="p-2.5 rounded-lg border border-slate-200 hover:border-slate-300 transition-all group"
+                          className="p-2.5 rounded-lg border border-slate-700/50 hover:border-slate-300 transition-all group"
                         >
                           <div className="flex items-center justify-between mb-1">
                             <div
@@ -517,7 +386,7 @@ export default function PdfViewer() {
                               📎 {h.citation}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-800 font-medium mb-1">
+                          <p className="text-xs text-slate-200 font-medium mb-1">
                             &ldquo;{h.text}&rdquo;
                           </p>
                           <p className="text-[11px] text-slate-500 mb-1.5">{h.note}</p>
@@ -527,7 +396,7 @@ export default function PdfViewer() {
                                 <Badge
                                   key={tag}
                                   variant="secondary"
-                                  className="text-[8px] px-1 py-0 bg-slate-100 text-slate-500"
+                                  className="text-[8px] px-1 py-0 bg-slate-800 text-slate-500"
                                 >
                                   {tag}
                                 </Badge>
@@ -595,7 +464,7 @@ export default function PdfViewer() {
                       <div className="flex gap-1.5">
                         <Button
                           size="sm"
-                          className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                          className="text-xs bg-violet-700 hover:bg-violet-800 text-white"
                           onClick={() => setLitNoteSaved(true)}
                         >
                           <Save className="w-3 h-3 mr-1" />

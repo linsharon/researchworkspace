@@ -83,21 +83,21 @@ export const STEP_META: Record<
   { label: string; shortLabel: string; description: string; icon: string }
 > = {
   1: {
-    label: "Clarify Purpose",
+    label: "Purpose",
     shortLabel: "Purpose",
     description: "Define your reading and research goals",
     icon: "🎯",
   },
   2: {
-    label: "Discover Entry Paper",
+    label: "Discover",
     shortLabel: "Discover",
-    description: "Find keywords and entry papers",
+    description: "Discover entry or seed papers",
     icon: "🔍",
   },
   3: {
-    label: "Read Found Paper",
+    label: "Read",
     shortLabel: "Read",
-    description: "Deep read and annotate papers",
+    description: "Read, annotate and take notes.",
     icon: "📖",
   },
   4: {

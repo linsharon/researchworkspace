@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
+    # Database Configuration
+    database_url: str = "sqlite+aiosqlite:///./app.db"
+
     # AWS Lambda Configuration
     is_lambda: bool = False
     lambda_function_name: str = "fastapi-backend"
@@ -38,6 +41,8 @@ class Settings(BaseSettings):
     class Config:
         case_sensitive = False
         extra = "ignore"
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
     def __getattr__(self, name: str) -> Any:
         """

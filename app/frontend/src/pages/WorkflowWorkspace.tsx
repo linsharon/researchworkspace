@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { paperAPI, conceptAPI, projectAPI } from "@/lib/manuscript-api";
+import type { Paper as ApiPaper } from "@/lib/manuscript-api";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,6 +40,7 @@ import {
   Clock,
   Download,
   Eye,
+  ExternalLink,
   FileText,
   FolderUp,
   Hash,
@@ -49,6 +53,10 @@ import {
   Search,
   Sparkles,
   Star,
+  RefreshCw,
+  ArrowUpDown,
+  CheckSquare,
+  Trash2,
   Table2,
   Tag,
   Target,
@@ -59,12 +67,12 @@ import {
 import {
   STEP_META,
   ARTIFACT_TYPE_META,
+  DUMMY_PROJECT,
   DUMMY_PAPERS,
   DUMMY_KEYWORDS,
   DUMMY_SEARCH_RECORDS,
   DUMMY_ARTIFACTS,
   PURPOSE_OPTIONS,
-  EXPAND_PATHS,
   VIZ_VIEWS,
   DISCOVERY_PATH_OPTIONS,
   DATABASE_OPTIONS,
@@ -75,18 +83,84 @@ import {
   MICRO_CHECKLIST_READABILITY,
   MICRO_CHECKLIST_CREDIBILITY,
   type WorkflowStep,
+  type Artifact,
   type Paper,
   type Keyword,
   type SearchRecord,
 } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import Step3ReadFoundPapers from "@/components/workflow/Step3ReadFoundPapers";
+
+// Paper decision history — shared localStorage key with Step 3
+const PAPER_DECISIONS_KEY = "rw-paper-decisions";
+
+const recordPaperDecision = (title: string, decision: string, projectId: string) => {
+  if (typeof window === "undefined") return;
+  try {
+    const saved = window.localStorage.getItem(PAPER_DECISIONS_KEY);
+    const records = saved
+      ? (JSON.parse(saved) as Array<{ titleLower: string; title: string; decision: string; timestamp: string; projectId: string }>)
+      : [];
+    records.push({
+      titleLower: title.trim().toLowerCase(),
+      title,
+      decision,
+      timestamp: new Date().toISOString(),
+      projectId,
+    });
+    window.localStorage.setItem(PAPER_DECISIONS_KEY, JSON.stringify(records.slice(-500)));
+  } catch {
+    // Storage failure is non-critical
+  }
+};
+
+const getBlockedPaperTitlesFromDecisionHistory = (projectId: string) => {
+  if (typeof window === "undefined") return new Set<string>();
+  try {
+    const saved = window.localStorage.getItem(PAPER_DECISIONS_KEY);
+    if (!saved) return new Set<string>();
+    const records = JSON.parse(saved) as Array<{
+      titleLower?: string;
+      title?: string;
+      decision?: string;
+      projectId?: string;
+    }>;
+    const blocked = new Set<string>();
+    records.forEach((record) => {
+      if (record.projectId !== projectId) return;
+      const decision = (record.decision || "").toLowerCase();
+      const isDeleted = decision.includes("delete") || decision.includes("remove");
+      const isToEntry = decision.includes("entry");
+      if (!isDeleted && !isToEntry) return;
+      const key = (record.titleLower || record.title || "").trim().toLowerCase();
+      if (key) blocked.add(key);
+    });
+    return blocked;
+  } catch {
+    return new Set<string>();
+  }
+};
 
 export default function WorkflowWorkspace() {
-  const { step } = useParams<{ step: string }>();
+  const { projectId = "proj-1", step } = useParams<{ projectId: string; step: string }>();
   const currentStep = (parseInt(step || "1") as WorkflowStep) || 1;
   const stepMeta = STEP_META[currentStep];
-  const prevStep = currentStep > 1 ? currentStep - 1 : null;
-  const nextStep = currentStep < 6 ? currentStep + 1 : null;
+  const workflowMenuItems: Array<{ step: WorkflowStep; label: string }> = [
+    { step: 1, label: "Purpose" },
+    { step: 2, label: "Discover" },
+    { step: 3, label: "Read" },
+    { step: 4, label: "Expand" },
+    { step: 5, label: "Visualize" },
+    { step: 6, label: "Draft" },
+  ];
+
+  // Ensure the project row exists in DB on first visit
+  useEffect(() => {
+    if (!projectId) return;
+    projectAPI
+      .ensure({ id: projectId, title: DUMMY_PROJECT.title, description: DUMMY_PROJECT.goal })
+      .catch(() => {});
+  }, [projectId]);
 
   return (
     <AppLayout>
@@ -94,74 +168,46 @@ export default function WorkflowWorkspace() {
         {/* Step Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#1E3A5F] flex items-center justify-center text-xl">
+            <div className="w-10 h-10 rounded-xl bg-violet-700 flex items-center justify-center text-xl">
               {stepMeta.icon}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-slate-900">
-                  Step {currentStep}: {stepMeta.label}
+                <h1 className="text-xl font-bold text-slate-100">
+                  {`Step ${currentStep}: ${stepMeta.label}`}
                 </h1>
-                <Badge variant="outline" className="text-xs">
-                  {currentStep} / 6
-                </Badge>
               </div>
               <p className="text-sm text-slate-500">
                 {stepMeta.description}
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            {prevStep && (
-              <Link to={`/workflow/${prevStep}`}>
-                <Button variant="outline" size="sm" className="text-xs">
-                  <ArrowLeft className="w-3 h-3 mr-1" />
-                  Step {prevStep}
-                </Button>
-              </Link>
-            )}
-            {nextStep && (
-              <Link to={`/workflow/${nextStep}`}>
-                <Button
-                  size="sm"
-                  className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+          <div className="hidden md:flex items-center gap-1 text-xs whitespace-nowrap">
+            <span className="font-semibold text-slate-400 mr-1">Workflow:</span>
+            {workflowMenuItems.map((item, index) => (
+              <div key={item.step} className="flex items-center gap-1">
+                {index > 0 && <span className="text-slate-600">&gt;</span>}
+                <Link
+                  to={`/workflow/${projectId}/${item.step}`}
+                  className={cn(
+                    "px-1.5 py-0.5 rounded transition-colors",
+                    item.step === currentStep
+                      ? "bg-violet-700 text-white font-medium"
+                      : "text-slate-500 hover:text-slate-200 hover:bg-slate-700/60"
+                  )}
                 >
-                  Step {nextStep}
-                  <ArrowRight className="w-3 h-3 ml-1" />
-                </Button>
-              </Link>
-            )}
+                  {item.label}
+                </Link>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Step Navigation Breadcrumb */}
-        <div className="flex items-center gap-1 text-xs overflow-x-auto pb-1">
-          {([1, 2, 3, 4, 5, 6] as WorkflowStep[]).map((s, i) => (
-            <div key={s} className="flex items-center gap-1 shrink-0">
-              {i > 0 && <ChevronRight className="w-3 h-3 text-slate-300" />}
-              <Link to={`/workflow/${s}`}>
-                <span
-                  className={cn(
-                    "px-2 py-0.5 rounded-full transition-colors",
-                    s === currentStep
-                      ? "bg-[#1E3A5F] text-white font-medium"
-                      : s < currentStep
-                        ? "text-emerald-600 hover:bg-emerald-50"
-                        : "text-slate-400 hover:bg-slate-100"
-                  )}
-                >
-                  {STEP_META[s].shortLabel}
-                </span>
-              </Link>
-            </div>
-          ))}
-        </div>
-
         {/* Step Content */}
-        {currentStep === 1 && <PurposeWorkspace />}
-        {currentStep === 2 && <EntryPaperWorkspace />}
-        {currentStep === 3 && <ReadWorkspace />}
-        {currentStep === 4 && <ExpandWorkspace />}
+        {currentStep === 1 && <PurposeWorkspace projectId={projectId} />}
+        {currentStep === 2 && <EntryPaperWorkspace projectId={projectId} />}
+        {currentStep === 3 && <Step3ReadFoundPapers projectId={projectId} />}
+        {currentStep === 4 && <ExpandWorkspace projectId={projectId} />}
         {currentStep === 5 && <VisualizeWorkspace />}
         {currentStep === 6 && <DraftWorkspaceInline />}
       </div>
@@ -185,12 +231,12 @@ function ModalOverlay({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
-          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded">
-            <X className="w-4 h-4 text-slate-500" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-[#0d1b30] rounded-xl shadow-2xl border border-slate-700/50 w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b border-slate-700/40">
+          <h3 className="text-sm font-semibold text-slate-200">{title}</h3>
+          <button onClick={onClose} className="p-1 hover:bg-slate-700/60 rounded">
+            <X className="w-4 h-4 text-slate-400" />
           </button>
         </div>
         <div className="p-4">{children}</div>
@@ -202,7 +248,7 @@ function ModalOverlay({
 // ============================================================
 // Step 1: Purpose Workspace
 // ============================================================
-function PurposeWorkspace() {
+function PurposeWorkspace({ projectId }: { projectId: string }) {
   const [selected, setSelected] = useState<string[]>(["Find research questions"]);
   const [customPurposes, setCustomPurposes] = useState<string[]>([]);
   const [newCustomPurpose, setNewCustomPurpose] = useState("");
@@ -222,89 +268,128 @@ function PurposeWorkspace() {
     }
   };
 
+  const handleGeneratePurposeCard = () => {
+    const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
+    const title =
+      selected.length
+        ? `Research Purpose: ${selected.slice(0, 2).join(", ")}${selected.length > 2 ? "..." : ""}`
+        : "Research Purpose";
+    const card: Artifact = {
+      id: `purpose-${Date.now()}`,
+      title,
+      type: "purpose",
+      projectId,
+      sourceStep: 1,
+      description: notes.trim() || selected.join(", ") || "Reading purpose",
+      updatedAt: new Date().toISOString().split("T")[0],
+      content: `Goals: ${selected.join(", ")}${notes.trim() ? `\n\nFocus: ${notes.trim()}` : ""}`,
+    };
+    try {
+      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+      const existing: Artifact[] = saved ? (JSON.parse(saved) as Artifact[]) : [];
+      window.localStorage.setItem(
+        ARTIFACTS_STORAGE_KEY,
+        JSON.stringify([...existing, card])
+      );
+      window.dispatchEvent(new CustomEvent("artifacts-updated"));
+    } catch {
+      // ignore storage errors
+    }
+    toast.success("Purpose Card 已生成", {
+      description: "已保存到 Artifact Center › Purposes",
+      duration: 3000,
+    });
+    // Reset page
+    setSelected([]);
+    setCustomPurposes([]);
+    setNewCustomPurpose("");
+    setNotes("");
+    setCardGenerated(false);
+  };
+
   return (
     <div className="space-y-5">
-      <Card className="border-slate-200">
+      <Card className="border-slate-700/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">
             What is your reading purpose?
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            {allPurposes.map((option) => (
-              <label
-                key={option}
-                className={cn(
-                  "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all text-sm",
-                  selected.includes(option)
-                    ? "border-[#1E3A5F] bg-blue-50/50"
-                    : "border-slate-200 hover:border-slate-300"
-                )}
-              >
-                <Checkbox
-                  checked={selected.includes(option)}
-                  onCheckedChange={(checked) => {
-                    if (checked) setSelected([...selected, option]);
-                    else setSelected(selected.filter((s) => s !== option));
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-slate-500">Predefined Purposes</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {allPurposes.map((option) => (
+                  <label
+                    key={option}
+                    className={cn(
+                      "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all text-sm",
+                      selected.includes(option)
+                        ? "border-violet-700 bg-blue-50/50"
+                        : "border-slate-700/50 hover:border-slate-300"
+                    )}
+                  >
+                    <Checkbox
+                      checked={selected.includes(option)}
+                      onCheckedChange={(checked) => {
+                        if (checked) setSelected([...selected, option]);
+                        else setSelected(selected.filter((s) => s !== option));
+                      }}
+                    />
+                    <span>{option}</span>
+                    {customPurposes.includes(option) && (
+                      <Badge variant="outline" className="text-[9px] ml-auto text-blue-500 border-blue-300">
+                        Custom
+                      </Badge>
+                    )}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-slate-500">Add Custom Purpose</p>
+              <div className="flex gap-2">
+                <Input
+                  value={newCustomPurpose}
+                  onChange={(e) => setNewCustomPurpose(e.target.value)}
+                  placeholder="Enter a custom reading purpose..."
+                  className="text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddCustomPurpose();
+                    }
                   }}
                 />
-                <span>{option}</span>
-                {customPurposes.includes(option) && (
-                  <Badge variant="outline" className="text-[9px] ml-auto text-blue-500 border-blue-300">
-                    Custom
-                  </Badge>
-                )}
-              </label>
-            ))}
-          </div>
-
-          {/* Add Custom Purpose */}
-          <Separator />
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-slate-500">
-              Define your own purpose (Premium)
-            </p>
-            <div className="flex gap-2">
-              <Input
-                value={newCustomPurpose}
-                onChange={(e) => setNewCustomPurpose(e.target.value)}
-                placeholder="Enter a custom reading purpose..."
-                className="text-sm"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddCustomPurpose();
-                  }
-                }}
-              />
-              <Button
-                size="sm"
-                onClick={handleAddCustomPurpose}
-                className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white shrink-0"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add Purpose
-              </Button>
+                <Button
+                  size="sm"
+                  onClick={handleAddCustomPurpose}
+                  className="bg-violet-700 hover:bg-violet-800 text-white shrink-0"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Purpose
+                </Button>
+              </div>
+              <p className="text-xs text-slate-500">
+                Added custom purposes will appear in the predefined list on the left.
+              </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      <Card className="border-slate-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">
-            Additional Notes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={4}
-            placeholder="Describe your specific research interest..."
-            className="text-sm"
-          />
+          <Separator />
+
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-slate-100">Additional Notes</p>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={4}
+              placeholder="Describe your specific research interest..."
+              className="text-sm"
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -317,8 +402,8 @@ function PurposeWorkspace() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="p-4 bg-white rounded-lg border border-emerald-200">
-              <h4 className="font-medium text-sm text-slate-800 mb-2">
+            <div className="p-4 bg-[#0d1b30] rounded-lg border border-emerald-200">
+              <h4 className="font-medium text-sm text-slate-200 mb-2">
                 Research Purpose: AI & SRL in Higher Ed
               </h4>
               <p className="text-xs text-slate-600 mb-2">
@@ -334,18 +419,13 @@ function PurposeWorkspace() {
 
       <div className="flex gap-2">
         <Button
-          onClick={() => setCardGenerated(true)}
-          className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+          onClick={handleGeneratePurposeCard}
+          disabled={!selected.length && !notes.trim()}
+          className="bg-violet-700 hover:bg-violet-800 text-white disabled:opacity-50"
         >
           <Sparkles className="w-4 h-4 mr-2" />
           Generate Purpose Card
         </Button>
-        <Link to="/workflow/2">
-          <Button variant="outline">
-            Save and Continue
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
       </div>
     </div>
   );
@@ -354,12 +434,57 @@ function PurposeWorkspace() {
 // ============================================================
 // Step 2: Entry Paper Workspace
 // ============================================================
-function EntryPaperWorkspace() {
-  const CONCEPTS_STORAGE_KEY = "rw-concepts";
+function EntryPaperWorkspace({ projectId }: { projectId: string }) {
+  const BOOLEAN_CONNECTORS = ["AND", "OR", "NOT"] as const;
+  type BooleanConnector = (typeof BOOLEAN_CONNECTORS)[number];
+
+  type CandidatePaper = Omit<Paper, "relevance"> & {
+    relevance?: "high" | "medium" | "low";
+    discoveryPath?: string;
+    discoveryNote?: string;
+    searchRecordId?: string;
+    doi?: string;
+    doiUrl?: string;
+    externalSourceUrl?: string;
+  };
+
+  const CONCEPTS_STORAGE_KEY = `rw-concepts-${projectId}`;
+  const SEARCH_RECORDS_STORAGE_KEY = `rw-search-records-${projectId}`;
+  const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
+  const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [addedToCenterIds, setAddedToCenterIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set<string>();
+    try {
+      const saved = window.localStorage.getItem("rw-artifacts");
+      const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
+      return new Set(
+        (Array.isArray(parsed) ? parsed : [])
+          .filter((a) => a.type === "entry-paper")
+          .map((a) => a.id.replace("entry-paper-", ""))
+      );
+    } catch {
+      return new Set<string>();
+    }
+  });
   const [newKeyword, setNewKeyword] = useState("");
   const [keywords, setKeywords] = useState<Keyword[]>([...DUMMY_KEYWORDS]);
-  const [searchRecords, setSearchRecords] = useState<SearchRecord[]>([...DUMMY_SEARCH_RECORDS]);
-  const [entryPapers, setEntryPapers] = useState<string[]>(["paper-1"]);
+  const [searchRecords, setSearchRecords] = useState<SearchRecord[]>(() => {
+    if (typeof window === "undefined") return [...DUMMY_SEARCH_RECORDS];
+    try {
+      const saved = window.localStorage.getItem(SEARCH_RECORDS_STORAGE_KEY);
+      if (!saved) return [...DUMMY_SEARCH_RECORDS];
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) && parsed.length ? parsed : [...DUMMY_SEARCH_RECORDS];
+    } catch {
+      return [...DUMMY_SEARCH_RECORDS];
+    }
+  });
+  const [entryPapers, setEntryPapers] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<"keywords" | "search" | "candidates">(() => {
+    const tab = searchParams.get("tab");
+    return tab === "search" || tab === "candidates" || tab === "keywords" ? tab : "keywords";
+  });
 
   // Concepts state
   const [concepts, setConcepts] = useState<Array<{ id: string; name: string; description: string; category: string; color: string }>>(() => {
@@ -426,7 +551,7 @@ function EntryPaperWorkspace() {
     if (!srKeywords.includes(trimmed)) {
       setSrKeywords((prev) => [...prev, trimmed]);
     }
-    setSrNewKeyword("");
+    setNewKeyword("");
     setShowConceptDialog(false);
     setConceptName("");
     setConceptDescription("");
@@ -435,19 +560,25 @@ function EntryPaperWorkspace() {
   };
 
   // Candidate papers state
-  const [candidatePapers, setCandidatePapers] = useState<
-    Array<Paper & { discoveryPath?: string; discoveryNote?: string }>
-  >(DUMMY_PAPERS.map((p) => ({ ...p })));
-  const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]);
+  const [papersLoading, setPapersLoading] = useState(false);
+  const [candidatePapers, setCandidatePapers] = useState<CandidatePaper[]>([]);
+  const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]); 
+  const [candidateSortKey, setCandidateSortKey] = useState<"title" | "year" | "type" | "relevance">("relevance");
+  const [candidateSortOrder, setCandidateSortOrder] = useState<"asc" | "desc">("desc");
 
   // Add Search Record Dialog
   const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [showEditSearchDialog, setShowEditSearchDialog] = useState(false);
+  const [editingSearchRecordId, setEditingSearchRecordId] = useState<string | null>(null);
   const [srKeywords, setSrKeywords] = useState<string[]>([]);
   const [srDatabase, setSrDatabase] = useState("Web of Science");
   const [srCustomDb, setSrCustomDb] = useState("");
   const [srBooleanString, setSrBooleanString] = useState("");
+  const [srConnector, setSrConnector] = useState<BooleanConnector>("AND");
   const [srTotalResults, setSrTotalResults] = useState("");
   const [srRelevantResults, setSrRelevantResults] = useState("");
+  const [pullingSearchRecordId, setPullingSearchRecordId] = useState<string | null>(null);
+  const [searchRecordOffsets, setSearchRecordOffsets] = useState<Record<string, number>>({});
 
   // Mark Relevant Dialog
   const [showRelevanceDialog, setShowRelevanceDialog] = useState(false);
@@ -455,23 +586,130 @@ function EntryPaperWorkspace() {
 
   // Add Candidate Paper Dialog
   const [showAddPaperDialog, setShowAddPaperDialog] = useState(false);
+  const [showAddMultiplePaperDialog, setShowAddMultiplePaperDialog] = useState(false);
+  const [showEditPaperDialog, setShowEditPaperDialog] = useState(false);
+  const [editingPaperId, setEditingPaperId] = useState<string | null>(null);
   const [newPaperTitle, setNewPaperTitle] = useState("");
   const [newPaperAuthors, setNewPaperAuthors] = useState("");
   const [newPaperYear, setNewPaperYear] = useState("");
   const [newPaperJournal, setNewPaperJournal] = useState("");
   const [newPaperDiscoveryPath, setNewPaperDiscoveryPath] = useState("Academic Database");
   const [newPaperDiscoveryNote, setNewPaperDiscoveryNote] = useState("");
+  const [newPaperDoiUrl, setNewPaperDoiUrl] = useState("");
+  const [doiFetching, setDoiFetching] = useState(false);
+  const [doiFetchError, setDoiFetchError] = useState<string | null>(null);
+  const [newPaperSearchRecordId, setNewPaperSearchRecordId] = useState("");
+  const [bulkDoiInput, setBulkDoiInput] = useState("");
+  const [bulkSearchRecordId, setBulkSearchRecordId] = useState("");
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [showCandidateRefreshDialog, setShowCandidateRefreshDialog] = useState(false);
+  const [candidateRefreshMode, setCandidateRefreshMode] = useState<"select" | "random">("select");
+  const [candidateRefreshRecordId, setCandidateRefreshRecordId] = useState("");
 
   // Discovery Path Dialog
   const [showDiscoveryDialog, setShowDiscoveryDialog] = useState(false);
   const [discoveryPaperId, setDiscoveryPaperId] = useState<string | null>(null);
   const [discoveryPathValue, setDiscoveryPathValue] = useState("Academic Database");
   const [discoveryNoteValue, setDiscoveryNoteValue] = useState("");
+  const highlightedSearchQuery = (searchParams.get("searchQuery") || "").trim();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify(concepts));
   }, [concepts]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(SEARCH_RECORDS_STORAGE_KEY, JSON.stringify(searchRecords));
+  }, [searchRecords, SEARCH_RECORDS_STORAGE_KEY]);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "search" || tab === "candidates" || tab === "keywords") {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (activeTab !== "search" || !highlightedSearchQuery) return;
+    const timer = window.setTimeout(() => {
+      const target = document.getElementById(`search-record-${encodeURIComponent(highlightedSearchQuery)}`);
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+
+    return () => window.clearTimeout(timer);
+  }, [activeTab, highlightedSearchQuery, searchRecords]);
+
+  // Helper: map API paper to local Paper type
+  const apiPaperToLocal = (p: ApiPaper): CandidatePaper => ({
+    id: p.id,
+    title: p.title,
+    authors: p.authors,
+    year: p.year ?? new Date().getFullYear(),
+    journal: p.journal ?? "Unknown",
+    abstract: p.abstract ?? "",
+    researchQuestion: "",
+    theory: "",
+    method: "",
+    findings: "",
+    relevance: p.relevance,
+    isEntryPaper: p.is_entry_paper,
+    annotations: [],
+    discoveryPath: p.discovery_path,
+    discoveryNote: p.discovery_note,
+    doi: undefined,
+    doiUrl: undefined,
+    externalSourceUrl: undefined,
+  });
+
+  const persistArtifacts = (updater: (prev: Artifact[]) => Artifact[]) => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+    const parsed = saved ? JSON.parse(saved) : [];
+    const next = updater(Array.isArray(parsed) ? parsed : []);
+    window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+  };
+
+  const candidatePaperToArtifact = (paper: CandidatePaper): Artifact => ({
+    id: `entry-paper-${paper.id}`,
+    title: paper.title,
+    type: "entry-paper",
+    projectId,
+    sourceStep: 2,
+    description: paper.abstract || `${paper.authors.join(", ")} (${paper.year}) - ${paper.journal}`,
+    updatedAt: new Date().toISOString().split("T")[0],
+    content: JSON.stringify(
+      {
+        authors: paper.authors,
+        year: paper.year,
+        journal: paper.journal,
+        abstract: paper.abstract,
+        relevance: paper.relevance,
+        discoveryPath: paper.discoveryPath,
+        discoveryNote: paper.discoveryNote,
+        doi: paper.doi,
+        doiUrl: paper.doiUrl,
+        externalSourceUrl: paper.externalSourceUrl,
+      },
+      null,
+      2
+    ),
+  });
+
+  // Load papers from backend on mount
+  useEffect(() => {
+    if (!projectId) return;
+    setPapersLoading(true);
+    paperAPI
+      .list(projectId)
+      .then((apiPapers) => {
+        setCandidatePapers(apiPapers.map(apiPaperToLocal));
+        setEntryPapers(apiPapers.filter((p) => p.is_entry_paper).map((p) => p.id));
+      })
+      .catch(() => {})
+      .finally(() => setPapersLoading(false));
+  }, [projectId]);
 
   const handleOpenAddConceptDialog = (prefill?: string) => {
     setConceptName(prefill?.trim() || "");
@@ -555,7 +793,336 @@ function EntryPaperWorkspace() {
     return <>{nodes}</>;
   };
 
+  const resetSearchRecordForm = () => {
+    setSrKeywords([]);
+    setSrDatabase("Web of Science");
+    setSrCustomDb("");
+    setSrBooleanString("");
+    setSrConnector("AND");
+    setSrTotalResults("");
+    setSrRelevantResults("");
+  };
+
+  const openAddSearchRecordDialog = () => {
+    resetSearchRecordForm();
+    setShowSearchDialog(true);
+  };
+
+  const openEditSearchRecordDialog = (record: SearchRecord) => {
+    setEditingSearchRecordId(record.id);
+    setSrBooleanString(record.query || "");
+    setSrTotalResults(String(record.results || ""));
+    setSrRelevantResults(String(record.relevant || ""));
+    if (DATABASE_OPTIONS.includes(record.database as (typeof DATABASE_OPTIONS)[number])) {
+      setSrDatabase(record.database);
+      setSrCustomDb("");
+    } else {
+      setSrDatabase("Other");
+      setSrCustomDb(record.database);
+    }
+    setSrKeywords([]);
+    setShowEditSearchDialog(true);
+  };
+
+  const linkedCandidateCount = (searchRecordId: string) =>
+    candidatePapers.filter((paper) => paper.searchRecordId === searchRecordId).length;
+
+  const quoteBooleanTerm = (term: string) => {
+    const normalized = term.trim().replace(/\"/g, "");
+    if (!normalized) return "";
+    return `"${normalized}"`;
+  };
+
+  const buildBooleanStringFromSelected = (
+    terms: string[],
+    connector: BooleanConnector
+  ) => {
+    const tokens = terms.map((term) => quoteBooleanTerm(term)).filter(Boolean);
+    return tokens.join(` ${connector} `);
+  };
+
+  const handleGenerateBooleanString = () => {
+    if (!srKeywords.length) {
+      toast.error("请至少选择一个关键词或概念");
+      return;
+    }
+    setSrBooleanString(buildBooleanStringFromSelected(srKeywords, srConnector));
+  };
+
+  const appendBooleanToken = (token: string) => {
+    setSrBooleanString((prev) => {
+      const trimmed = prev.trim();
+      return trimmed ? `${trimmed} ${token}` : token;
+    });
+  };
+
+  const buildDatabaseSearchUrl = (
+    database: string,
+    query: string,
+    doi?: string,
+    title?: string
+  ) => {
+    const raw = doi || title || query;
+    const encoded = encodeURIComponent(raw);
+    const db = database.toLowerCase();
+
+    if (db.includes("web of science")) return `https://www.webofscience.com/wos/woscc/basic-search?value(input1)=${encoded}`;
+    if (db.includes("scopus")) return `https://www.scopus.com/results/results.uri?query=${encoded}`;
+    if (db.includes("google scholar")) return `https://scholar.google.com/scholar?q=${encoded}`;
+    if (db.includes("cnki")) return `https://kns.cnki.net/kns8s/defaultresult/index?kw=${encoded}`;
+    if (db.includes("vip")) return `https://www.cqvip.com/`;
+    if (db.includes("pubmed")) return `https://pubmed.ncbi.nlm.nih.gov/?term=${encoded}`;
+    if (db.includes("ieee")) return `https://ieeexplore.ieee.org/search/searchresult.jsp?queryText=${encoded}`;
+    if (db.includes("eric")) return `https://eric.ed.gov/?q=${encoded}`;
+
+    return `https://scholar.google.com/scholar?q=${encoded}`;
+  };
+
+  const buildAccessiblePaperLookupUrl = (title?: string, doi?: string) => {
+    const raw = (doi || title || "").trim();
+    if (!raw) return undefined;
+    return `https://scholar.google.com/scholar?q=${encodeURIComponent(raw)}`;
+  };
+
+  const isRestrictedIndexerUrl = (url?: string) => {
+    if (!url) return false;
+    return /webofscience\.com|webofknowledge\.com|scopus\.com/i.test(url);
+  };
+
+  const resolveCandidateExternalUrl = (paper: CandidatePaper) => {
+    if (paper.doiUrl) return paper.doiUrl;
+    if (paper.doi) return `https://doi.org/${encodeURIComponent(paper.doi)}`;
+    if (paper.externalSourceUrl && !isRestrictedIndexerUrl(paper.externalSourceUrl)) {
+      return paper.externalSourceUrl;
+    }
+    return buildAccessiblePaperLookupUrl(paper.title, paper.doi) || paper.externalSourceUrl;
+  };
+
+  const getCrossrefYear = (item: {
+    published?: { "date-parts"?: number[][] };
+    issued?: { "date-parts"?: number[][] };
+    created?: { "date-parts"?: number[][] };
+  }) => {
+    return (
+      item.published?.["date-parts"]?.[0]?.[0] ||
+      item.issued?.["date-parts"]?.[0]?.[0] ||
+      item.created?.["date-parts"]?.[0]?.[0] ||
+      new Date().getFullYear()
+    );
+  };
+
+  const navigateToCandidatesTab = () => {
+    setActiveTab("candidates");
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("tab", "candidates");
+    nextParams.delete("searchQuery");
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const pullReferencesForSearchRecord = async (
+    record: SearchRecord,
+    mode: "first" | "next" = "first"
+  ) => {
+    const normalizedQuery = (record.query || "").trim();
+    if (!normalizedQuery) {
+      toast.error("Search string 为空，无法拉取参考文献");
+      return false;
+    }
+
+    const currentOffset = mode === "first" ? 0 : searchRecordOffsets[record.id] ?? 10;
+    setPullingSearchRecordId(record.id);
+
+    try {
+      const endpoint = new URL("https://api.crossref.org/works");
+      endpoint.searchParams.set("query.bibliographic", normalizedQuery);
+      endpoint.searchParams.set("rows", "10");
+      endpoint.searchParams.set("offset", String(currentOffset));
+
+      const response = await fetch(endpoint.toString());
+      if (!response.ok) {
+        throw new Error("crossref fetch failed");
+      }
+
+      const json = (await response.json()) as {
+        message?: {
+          [key: string]: unknown;
+          items?: Array<{
+            DOI?: string;
+            title?: string[];
+            author?: Array<{ given?: string; family?: string }>;
+            published?: { "date-parts"?: number[][] };
+            issued?: { "date-parts"?: number[][] };
+            created?: { "date-parts"?: number[][] };
+            "container-title"?: string[];
+            URL?: string;
+          }>;
+        };
+      };
+
+      const totalResults = Number(json.message?.["total-results"] ?? record.results ?? 0);
+      const items = Array.isArray(json.message?.items) ? json.message?.items : [];
+
+      if (!items.length) {
+        toast.info("没有拉取到新的参考文献");
+        return true;
+      }
+
+      const existingByDoi = new Set(
+        candidatePapers
+          .map((paper) => (paper.doi || "").trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const existingByTitle = new Set(candidatePapers.map((paper) => paper.title.trim().toLowerCase()));
+      const blockedByHistoryTitle = getBlockedPaperTitlesFromDecisionHistory(projectId);
+
+      const imported: CandidatePaper[] = [];
+      let duplicateCount = 0;
+
+      for (const item of items) {
+        const title = item.title?.[0]?.trim();
+        if (!title) continue;
+
+        const doi = (item.DOI || "").trim();
+        const doiLower = doi.toLowerCase();
+        const titleLower = title.toLowerCase();
+
+        if (
+          (doiLower && existingByDoi.has(doiLower)) ||
+          existingByTitle.has(titleLower) ||
+          blockedByHistoryTitle.has(titleLower)
+        ) {
+          duplicateCount += 1;
+          continue;
+        }
+
+        const authors = (item.author || [])
+          .map((a) => [a.given, a.family].filter(Boolean).join(" "))
+          .filter(Boolean);
+        const year = getCrossrefYear(item);
+        const journal = item["container-title"]?.[0] || "Unknown";
+        const doiUrl = doi ? `https://doi.org/${encodeURIComponent(doi)}` : undefined;
+        const externalSourceUrl = buildDatabaseSearchUrl(record.database, normalizedQuery, doi, title);
+
+        const fallbackPaper: CandidatePaper = {
+          id: `paper-${Date.now()}-${Math.random()}`,
+          title,
+          authors,
+          year,
+          journal,
+          abstract: "",
+          researchQuestion: "",
+          theory: "",
+          method: "",
+          findings: "",
+          relevance: undefined,
+          isEntryPaper: false,
+          annotations: [],
+          discoveryPath: record.database,
+          discoveryNote: `From Search Log: ${normalizedQuery}`,
+          searchRecordId: record.id,
+          doi,
+          doiUrl,
+          externalSourceUrl: item.URL || externalSourceUrl,
+        };
+
+        try {
+          const created = await paperAPI.create({
+            title,
+            authors,
+            year,
+            journal,
+            discovery_path: record.database,
+            discovery_note: `From Search Log: ${normalizedQuery}`,
+            project_id: projectId,
+          });
+          imported.push({
+            ...apiPaperToLocal(created),
+            searchRecordId: record.id,
+            doi,
+            doiUrl,
+            externalSourceUrl: item.URL || externalSourceUrl,
+          });
+        } catch {
+          imported.push(fallbackPaper);
+        }
+
+        if (doiLower) existingByDoi.add(doiLower);
+        existingByTitle.add(titleLower);
+      }
+
+      if (!imported.length) {
+        toast.info("本次结果全部是重复文献，未新增 candidate papers");
+      } else {
+        setCandidatePapers((prev) => [...prev, ...imported]);
+      }
+
+      setSearchRecordOffsets((prev) => ({ ...prev, [record.id]: currentOffset + 10 }));
+      setSearchRecords((prev) =>
+        prev.map((r) =>
+          r.id === record.id
+            ? {
+                ...r,
+                results: totalResults || r.results,
+                relevant: Math.max(r.relevant, imported.length),
+              }
+            : r
+        )
+      );
+
+      toast.success(`已导入 ${imported.length} 篇候选文献`, {
+        description: duplicateCount > 0 ? `跳过重复文献 ${duplicateCount} 篇` : `来自 ${record.database}`,
+      });
+      return true;
+    } catch {
+      toast.error("拉取参考文献失败，请稍后重试");
+      return false;
+    } finally {
+      setPullingSearchRecordId(null);
+    }
+  };
+
+  const buildSearchRecordFromCurrentForm = () => {
+    const db = srDatabase === "Other" ? srCustomDb || "Other" : srDatabase;
+    const query = srBooleanString.trim() || buildBooleanStringFromSelected(srKeywords, srConnector).trim();
+
+    if (!query) {
+      toast.error("请先构建 Boolean Search String");
+      return null;
+    }
+
+    const nextRecord: SearchRecord = {
+      id: `sr-${Date.now()}`,
+      database: db,
+      query,
+      results: parseInt(srTotalResults) || 0,
+      relevant: parseInt(srRelevantResults) || 0,
+      date: new Date().toISOString().split("T")[0],
+    };
+
+    return nextRecord;
+  };
+
+  const handleDeleteSearchRecord = (searchRecordId: string) => {
+    const linkedCount = linkedCandidateCount(searchRecordId);
+    if (linkedCount > 0) {
+      toast.error("无法删除该 Search Record", {
+        description: `已关联 ${linkedCount} 篇 candidate paper，请先解除关联。`,
+      });
+      return;
+    }
+    setSearchRecords((prev) => prev.filter((r) => r.id !== searchRecordId));
+    setSearchRecordOffsets((prev) => {
+      const next = { ...prev };
+      delete next[searchRecordId];
+      return next;
+    });
+    toast.success("Search Record 已删除");
+  };
+
   const handleAddSearchRecord = () => {
+    const newRecord = buildSearchRecordFromCurrentForm();
+    if (!newRecord) return;
+
     // Add any new keywords to the global keywords list
     srKeywords.forEach((kw) => {
       if (!keywords.find((k) => k.term === kw)) {
@@ -566,27 +1133,140 @@ function EntryPaperWorkspace() {
       }
     });
 
-    const db = srDatabase === "Other" ? srCustomDb || "Other" : srDatabase;
-    const newRecord: SearchRecord = {
-      id: `sr-${Date.now()}`,
-      database: db,
-      query: srBooleanString || srKeywords.join(" AND "),
-      results: parseInt(srTotalResults) || 0,
-      relevant: parseInt(srRelevantResults) || 0,
-      date: new Date().toISOString().split("T")[0],
-    };
     setSearchRecords([...searchRecords, newRecord]);
+    setSearchRecordOffsets((prev) => ({ ...prev, [newRecord.id]: 0 }));
     setShowSearchDialog(false);
-    setSrKeywords([]);
-    setSrDatabase("Web of Science");
-    setSrCustomDb("");
-    setSrBooleanString("");
-    setSrTotalResults("");
-    setSrRelevantResults("");
+    resetSearchRecordForm();
+  };
+
+  const handleAddSearchRecordAndPull = async () => {
+    const newRecord = buildSearchRecordFromCurrentForm();
+    if (!newRecord) return;
+
+    srKeywords.forEach((kw) => {
+      if (!keywords.find((k) => k.term === kw)) {
+        setKeywords((prev) => [
+          ...prev,
+          { id: `kw-${Date.now()}-${Math.random()}`, term: kw, category: "Custom" },
+        ]);
+      }
+    });
+
+    setSearchRecords((prev) => [...prev, newRecord]);
+    setSearchRecordOffsets((prev) => ({ ...prev, [newRecord.id]: 0 }));
+    setShowSearchDialog(false);
+    resetSearchRecordForm();
+    const pullSucceeded = await pullReferencesForSearchRecord(newRecord, "first");
+    if (pullSucceeded) {
+      navigateToCandidatesTab();
+    }
+  };
+
+  const handleOpenCandidateRefreshDialog = () => {
+    if (!searchRecords.length) {
+      toast.info("请先在 Search Log 中创建记录");
+      return;
+    }
+    setCandidateRefreshMode("select");
+    setCandidateRefreshRecordId(searchRecords[0]?.id ?? "");
+    setShowCandidateRefreshDialog(true);
+  };
+
+  const handleCandidateRefreshPull = async () => {
+    if (!searchRecords.length) {
+      setShowCandidateRefreshDialog(false);
+      toast.info("没有可用的 Search Log");
+      return;
+    }
+
+    let targetRecord: SearchRecord | undefined;
+    if (candidateRefreshMode === "random") {
+      const randomIndex = Math.floor(Math.random() * searchRecords.length);
+      targetRecord = searchRecords[randomIndex];
+    } else {
+      targetRecord = searchRecords.find((record) => record.id === candidateRefreshRecordId);
+      if (!targetRecord) {
+        toast.error("请选择一个 Search Log");
+        return;
+      }
+    }
+
+    setShowCandidateRefreshDialog(false);
+    const pullSucceeded = await pullReferencesForSearchRecord(targetRecord, "next");
+    if (pullSucceeded) {
+      toast.success(`已从 ${targetRecord.database} 拉取新的 10 篇候选论文`);
+    }
+  };
+
+  const handleSaveEditedSearchRecord = () => {
+    if (!editingSearchRecordId) return;
+    const db = srDatabase === "Other" ? srCustomDb || "Other" : srDatabase;
+    setSearchRecords((prev) =>
+      prev.map((record) =>
+        record.id === editingSearchRecordId
+          ? {
+              ...record,
+              database: db,
+              query: srBooleanString || record.query,
+              results: parseInt(srTotalResults) || 0,
+              relevant: parseInt(srRelevantResults) || 0,
+            }
+          : record
+      )
+    );
+    setShowEditSearchDialog(false);
+    setEditingSearchRecordId(null);
+    resetSearchRecordForm();
+  };
+
+  const extractDoiFromText = (input: string) => {
+    const doiMatch = input.match(/\b10\.\d{4,}\/[^\s]+/i);
+    return doiMatch ? doiMatch[0].replace(/[.,;)>]+$/, "") : null;
+  };
+
+  const handleFetchByDoiUrl = async () => {
+    const input = newPaperDoiUrl.trim();
+    if (!input) return;
+    const doi = extractDoiFromText(input);
+    if (!doi) {
+      setDoiFetchError("未找到有效的 DOI，请检查输入或手动填写");
+      return;
+    }
+    setDoiFetching(true);
+    setDoiFetchError(null);
+    try {
+      const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`);
+      if (!res.ok) throw new Error("Not found");
+      const json = (await res.json()) as {
+        message: {
+          title?: string[];
+          author?: Array<{ given?: string; family?: string }>;
+          published?: { "date-parts"?: number[][] };
+          "container-title"?: string[];
+          publisher?: string;
+        };
+      };
+      const work = json.message;
+      if (work.title?.[0]) setNewPaperTitle(work.title[0]);
+      const authors = (work.author ?? []).map((a) =>
+        [a.given, a.family].filter(Boolean).join(" ")
+      );
+      if (authors.length) setNewPaperAuthors(authors.join(", "));
+      const year = work.published?.["date-parts"]?.[0]?.[0];
+      if (year) setNewPaperYear(String(year));
+      const journal = work["container-title"]?.[0] ?? work.publisher;
+      if (journal) setNewPaperJournal(journal);
+      setDoiFetchError(null);
+    } catch {
+      setDoiFetchError("获取信息失败，请检查 DOI 是否正确或手动填写");
+    } finally {
+      setDoiFetching(false);
+    }
   };
 
   const handleMarkRelevance = (level: "high" | "medium" | "low") => {
     if (relevancePaperId) {
+      paperAPI.update(relevancePaperId, { relevance: level }).catch(() => {});
       setCandidatePapers(
         candidatePapers.map((p) =>
           p.id === relevancePaperId ? { ...p, relevance: level } : p
@@ -597,30 +1277,207 @@ function EntryPaperWorkspace() {
     setRelevancePaperId(null);
   };
 
-  const handleAddCandidatePaper = () => {
+  const handleAddCandidatePaper = async () => {
     if (!newPaperTitle.trim()) return;
-    const newPaper: Paper & { discoveryPath?: string; discoveryNote?: string } = {
-      id: `paper-${Date.now()}`,
-      title: newPaperTitle.trim(),
-      authors: newPaperAuthors
-        .split(",")
-        .map((a) => a.trim())
-        .filter(Boolean),
-      year: parseInt(newPaperYear) || new Date().getFullYear(),
-      journal: newPaperJournal.trim() || "Unknown",
-      abstract: "",
-      researchQuestion: "",
-      theory: "",
-      method: "",
-      findings: "",
-      relevance: "medium",
-      isEntryPaper: false,
-      annotations: [],
-      discoveryPath: newPaperDiscoveryPath,
-      discoveryNote: newPaperDiscoveryNote,
-    };
-    setCandidatePapers([...candidatePapers, newPaper]);
+    const selectedRecord = searchRecords.find((r) => r.id === newPaperSearchRecordId);
+    const resolvedDiscoveryPath = selectedRecord?.database || newPaperDiscoveryPath;
+    const resolvedDiscoveryNote = newPaperDiscoveryNote || (selectedRecord ? `From Search Record: ${selectedRecord.query}` : undefined);
+
+    try {
+      const created = await paperAPI.create({
+        title: newPaperTitle.trim(),
+        authors: newPaperAuthors.split(",").map((a) => a.trim()).filter(Boolean),
+        year: parseInt(newPaperYear) || undefined,
+        journal: newPaperJournal.trim() || undefined,
+        discovery_path: resolvedDiscoveryPath,
+        discovery_note: resolvedDiscoveryNote,
+        project_id: projectId,
+      });
+      const localPaper = apiPaperToLocal(created);
+      setCandidatePapers((prev) => [...prev, { ...localPaper, searchRecordId: newPaperSearchRecordId || undefined }]);
+    } catch {
+      // fallback: add locally with temp id
+      const newPaper: CandidatePaper = {
+        id: `paper-${Date.now()}`,
+        title: newPaperTitle.trim(),
+        authors: newPaperAuthors.split(",").map((a) => a.trim()).filter(Boolean),
+        year: parseInt(newPaperYear) || new Date().getFullYear(),
+        journal: newPaperJournal.trim() || "Unknown",
+        abstract: "",
+        researchQuestion: "",
+        theory: "",
+        method: "",
+        findings: "",
+        relevance: undefined,
+        isEntryPaper: false,
+        annotations: [],
+        discoveryPath: resolvedDiscoveryPath,
+        discoveryNote: resolvedDiscoveryNote,
+        searchRecordId: newPaperSearchRecordId || undefined,
+      };
+      setCandidatePapers((prev) => [...prev, newPaper]);
+    }
     setShowAddPaperDialog(false);
+    setNewPaperTitle("");
+    setNewPaperAuthors("");
+    setNewPaperYear("");
+    setNewPaperJournal("");
+    setNewPaperDiscoveryPath("Academic Database");
+    setNewPaperDiscoveryNote("");
+    setNewPaperDoiUrl("");
+    setDoiFetchError(null);
+    setNewPaperSearchRecordId("");
+  };
+
+  const handleAddMultipleCandidatePapers = async () => {
+    const lines = bulkDoiInput
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (!lines.length) return;
+
+    const selectedRecord = searchRecords.find((r) => r.id === bulkSearchRecordId);
+    const resolvedDiscoveryPath = selectedRecord?.database || "Academic Database";
+    const resolvedDiscoveryNote = selectedRecord ? `From Search Record: ${selectedRecord.query}` : undefined;
+
+    setBulkImporting(true);
+    const imported: CandidatePaper[] = [];
+    let failedCount = 0;
+
+    for (const line of lines) {
+      const doi = extractDoiFromText(line);
+      if (!doi) {
+        failedCount += 1;
+        continue;
+      }
+
+      try {
+        const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`);
+        if (!res.ok) {
+          failedCount += 1;
+          continue;
+        }
+        const json = (await res.json()) as {
+          message: {
+            title?: string[];
+            author?: Array<{ given?: string; family?: string }>;
+            published?: { "date-parts"?: number[][] };
+            "container-title"?: string[];
+            publisher?: string;
+          };
+        };
+        const work = json.message;
+        const title = work.title?.[0]?.trim();
+        if (!title) {
+          failedCount += 1;
+          continue;
+        }
+        const authors = (work.author ?? []).map((a) => [a.given, a.family].filter(Boolean).join(" ")).filter(Boolean);
+        const year = work.published?.["date-parts"]?.[0]?.[0];
+        const journal = work["container-title"]?.[0] ?? work.publisher;
+
+        try {
+          const created = await paperAPI.create({
+            title,
+            authors,
+            year: year || undefined,
+            journal: journal || undefined,
+            discovery_path: resolvedDiscoveryPath,
+            discovery_note: resolvedDiscoveryNote,
+            project_id: projectId,
+          });
+          imported.push({
+            ...apiPaperToLocal(created),
+            searchRecordId: bulkSearchRecordId || undefined,
+          });
+        } catch {
+          imported.push({
+            id: `paper-${Date.now()}-${Math.random()}`,
+            title,
+            authors,
+            year: year || new Date().getFullYear(),
+            journal: journal || "Unknown",
+            abstract: "",
+            researchQuestion: "",
+            theory: "",
+            method: "",
+            findings: "",
+            relevance: undefined,
+            isEntryPaper: false,
+            annotations: [],
+            discoveryPath: resolvedDiscoveryPath,
+            discoveryNote: resolvedDiscoveryNote,
+            searchRecordId: bulkSearchRecordId || undefined,
+          });
+        }
+      } catch {
+        failedCount += 1;
+      }
+    }
+
+    if (imported.length > 0) {
+      setCandidatePapers((prev) => [...prev, ...imported]);
+    }
+
+    setBulkImporting(false);
+    if (imported.length > 0) {
+      toast.success(`已导入 ${imported.length} 篇 candidate papers`, {
+        description: failedCount > 0 ? `${failedCount} 条 DOI 识别失败` : undefined,
+      });
+      setShowAddMultiplePaperDialog(false);
+      setBulkDoiInput("");
+      setBulkSearchRecordId("");
+    } else {
+      toast.error("未能导入论文，请检查 DOI 链接格式");
+    }
+  };
+
+  const openEditPaperDialog = (paper: CandidatePaper) => {
+    setEditingPaperId(paper.id);
+    setNewPaperTitle(paper.title);
+    setNewPaperAuthors(paper.authors.join(", "));
+    setNewPaperYear(String(paper.year || ""));
+    setNewPaperJournal(paper.journal || "");
+    setNewPaperDiscoveryPath(paper.discoveryPath || "Academic Database");
+    setNewPaperDiscoveryNote(paper.discoveryNote || "");
+    setShowEditPaperDialog(true);
+  };
+
+  const handleSaveEditedPaper = async () => {
+    if (!editingPaperId || !newPaperTitle.trim()) return;
+
+    const nextPatch = {
+      title: newPaperTitle.trim(),
+      authors: newPaperAuthors.split(",").map((a) => a.trim()).filter(Boolean),
+      year: parseInt(newPaperYear) || undefined,
+      journal: newPaperJournal.trim() || undefined,
+      discovery_path: newPaperDiscoveryPath,
+      discovery_note: newPaperDiscoveryNote || undefined,
+    };
+
+    try {
+      const updated = await paperAPI.update(editingPaperId, nextPatch);
+      setCandidatePapers((prev) => prev.map((paper) => (paper.id === editingPaperId ? apiPaperToLocal(updated) : paper)));
+    } catch {
+      setCandidatePapers((prev) =>
+        prev.map((paper) =>
+          paper.id === editingPaperId
+            ? {
+                ...paper,
+                title: nextPatch.title,
+                authors: nextPatch.authors || [],
+                year: nextPatch.year || paper.year,
+                journal: nextPatch.journal || "Unknown",
+                discoveryPath: nextPatch.discovery_path,
+                discoveryNote: nextPatch.discovery_note,
+              }
+            : paper
+        )
+      );
+    }
+
+    setShowEditPaperDialog(false);
+    setEditingPaperId(null);
     setNewPaperTitle("");
     setNewPaperAuthors("");
     setNewPaperYear("");
@@ -629,8 +1486,75 @@ function EntryPaperWorkspace() {
     setNewPaperDiscoveryNote("");
   };
 
+  const handleDeleteCandidatePaper = async (paperId: string) => {
+    const paperToDelete = candidatePapers.find((p) => p.id === paperId);
+    try {
+      await paperAPI.delete(paperId);
+    } catch {
+      // Allow local removal if backend delete fails for temporary items.
+    }
+
+    if (paperToDelete) {
+      recordPaperDecision(
+        paperToDelete.title,
+        "Deleted from Candidate Papers (Step 2: Discover)",
+        projectId
+      );
+    }
+
+    setCandidatePapers((prev) => prev.filter((paper) => paper.id !== paperId));
+    setEntryPapers((prev) => prev.filter((id) => id !== paperId));
+    setSelectedPaperIds((prev) => prev.filter((id) => id !== paperId));
+    setAddedToCenterIds((prev) => { const next = new Set(prev); next.delete(paperId); return next; });
+
+    persistArtifacts((prev) => prev.filter((artifact) => artifact.id !== `entry-paper-${paperId}`));
+  };
+
+  const handleTogglePaperArtifact = (paper: CandidatePaper) => {
+    if (addedToCenterIds.has(paper.id)) {
+      persistArtifacts((prev) => prev.filter((a) => a.id !== `entry-paper-${paper.id}`));
+      setAddedToCenterIds((prev) => {
+        const next = new Set(prev);
+        next.delete(paper.id);
+        return next;
+      });
+      toast.success("已从 Artifact Center 移除", { description: paper.title, duration: 2000 });
+    } else {
+      const artifact = candidatePaperToArtifact(paper);
+      persistArtifacts((prev) => {
+        const filtered = prev.filter((item) => item.id !== artifact.id);
+        return [...filtered, artifact];
+      });
+      setAddedToCenterIds((prev) => new Set([...prev, paper.id]));
+      toast.success("已添加到 Artifact Center", { description: paper.title, duration: 2500 });
+    }
+  };
+
+  const handleToggleEntryPaper = (paperId: string) => {
+    const isEntry = entryPapers.includes(paperId);
+    if (isEntry) {
+      toast.info("该论文已在 Entry Papers 中，可在后续环节删除");
+      return;
+    }
+    const targetPaper = candidatePapers.find((paper) => paper.id === paperId);
+    paperAPI.update(paperId, { is_entry_paper: true }).catch(() => {});
+    setEntryPapers((prev) => {
+      if (prev.includes(paperId)) return prev;
+      return [...prev, paperId];
+    });
+    if (targetPaper) {
+      recordPaperDecision(targetPaper.title, "Moved to Entry Papers (Step 2: Discover)", projectId);
+    }
+  };
+
   const handleSaveDiscoveryPath = () => {
     if (discoveryPaperId) {
+      paperAPI
+        .update(discoveryPaperId, {
+          discovery_path: discoveryPathValue,
+          discovery_note: discoveryNoteValue || undefined,
+        })
+        .catch(() => {});
       setCandidatePapers(
         candidatePapers.map((p) =>
           p.id === discoveryPaperId
@@ -649,23 +1573,161 @@ function EntryPaperWorkspace() {
     );
   };
 
-  const handleBatchAddArtifacts = () => {
-    // In a real app this would add to artifacts store
-    alert(`Added ${selectedPaperIds.length} paper(s) as artifacts.`);
+  const inferPublicationType = (paper: CandidatePaper) => {
+    const source = `${paper.journal || ""} ${paper.title || ""}`.toLowerCase();
+    if (/proceedings|conference|symposium|workshop|acm|ieee/.test(source)) return "conference";
+    if (/book|handbook|monograph|press/.test(source)) return "book";
+    if (/arxiv|preprint|biorxiv|medrxiv/.test(source)) return "preprint";
+    if (/journal|transactions|letters|review/.test(source)) return "journal article";
+    return "other";
+  };
+
+  const relevanceRank = (level: CandidatePaper["relevance"]) => {
+    if (!level) return 0;
+    if (level === "high") return 3;
+    if (level === "medium") return 2;
+    return 1;
+  };
+
+  const sortedCandidatePapers = [...candidatePapers].sort((a, b) => {
+    const direction = candidateSortOrder === "asc" ? 1 : -1;
+
+    if (candidateSortKey === "title") {
+      return direction * a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+    }
+    if (candidateSortKey === "year") {
+      return direction * ((a.year || 0) - (b.year || 0));
+    }
+    if (candidateSortKey === "type") {
+      return direction * inferPublicationType(a).localeCompare(inferPublicationType(b));
+    }
+
+    return direction * (relevanceRank(a.relevance) - relevanceRank(b.relevance));
+  });
+
+  const sortedSearchRecords = [...searchRecords].sort((a, b) => {
+    const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (dateDiff !== 0) return dateDiff;
+    return b.id.localeCompare(a.id);
+  });
+
+  const activePullingRecord = pullingSearchRecordId
+    ? searchRecords.find((record) => record.id === pullingSearchRecordId)
+    : null;
+
+  const allVisibleSelected =
+    sortedCandidatePapers.length > 0 &&
+    sortedCandidatePapers.every((paper) => selectedPaperIds.includes(paper.id));
+
+  const handleToggleSelectAllVisible = () => {
+    const visibleIds = sortedCandidatePapers.map((paper) => paper.id);
+    if (allVisibleSelected) {
+      setSelectedPaperIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
+      return;
+    }
+
+    setSelectedPaperIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+  };
+
+  const handleBatchDeleteSelected = async () => {
+    if (!selectedPaperIds.length) return;
+
+    const idsToDelete = [...selectedPaperIds];
+    const papersToDelete = candidatePapers.filter((paper) => idsToDelete.includes(paper.id));
+    await Promise.allSettled(
+      idsToDelete.map(async (paperId) => {
+        try {
+          await paperAPI.delete(paperId);
+        } catch {
+          // Keep local removal for temporary papers.
+        }
+      })
+    );
+
+    papersToDelete.forEach((paper) => {
+      recordPaperDecision(
+        paper.title,
+        "Batch deleted from Candidate Papers (Step 2: Discover)",
+        projectId
+      );
+    });
+
+    setCandidatePapers((prev) => prev.filter((paper) => !idsToDelete.includes(paper.id)));
+    setEntryPapers((prev) => prev.filter((id) => !idsToDelete.includes(id)));
+    setAddedToCenterIds((prev) => {
+      const next = new Set(prev);
+      idsToDelete.forEach((id) => next.delete(id));
+      return next;
+    });
+    setSelectedPaperIds([]);
+
+    persistArtifacts((prev) =>
+      prev.filter((artifact) => !idsToDelete.some((paperId) => artifact.id === `entry-paper-${paperId}`))
+    );
+
+    toast.success(`Deleted ${idsToDelete.length} candidate paper(s)`);
+  };
+
+  const handleBatchToEntry = () => {
+    const selectedPapers = candidatePapers.filter((paper) => selectedPaperIds.includes(paper.id));
+    if (!selectedPapers.length) return;
+
+    selectedPapers.forEach((paper) => {
+      paperAPI.update(paper.id, { is_entry_paper: true }).catch(() => {});
+      recordPaperDecision(paper.title, "Moved to Entry Papers (Step 2: Discover)", projectId);
+    });
+
+    setEntryPapers((prev) => {
+      const next = new Set(prev);
+      selectedPapers.forEach((paper) => next.add(paper.id));
+      return Array.from(next);
+    });
+
+    toast.success(`已将 ${selectedPapers.length} 篇论文移动到 Entry Papers`);
     setSelectedPaperIds([]);
   };
 
   return (
     <div className="space-y-5">
-      <Tabs defaultValue="keywords" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="keywords">Keywords</TabsTrigger>
-          <TabsTrigger value="search">Search Log</TabsTrigger>
-          <TabsTrigger value="candidates">Candidate Papers</TabsTrigger>
-        </TabsList>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          const nextTab = value as "keywords" | "search" | "candidates";
+          setActiveTab(nextTab);
+          const nextParams = new URLSearchParams(searchParams);
+          nextParams.set("tab", nextTab);
+          if (nextTab !== "search") {
+            nextParams.delete("searchQuery");
+          }
+          setSearchParams(nextParams, { replace: true });
+        }}
+        className="w-full"
+      >
+        <div className="mb-4 rounded-xl border border-slate-700/50 bg-slate-900/20 px-3 pt-5 pb-2">
+          <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+            <TabsTrigger
+              value="keywords"
+              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+            >
+              Keywords
+            </TabsTrigger>
+            <TabsTrigger
+              value="search"
+              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+            >
+              Search Log
+            </TabsTrigger>
+            <TabsTrigger
+              value="candidates"
+              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+            >
+              Candidate Papers
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="keywords" className="mt-4 space-y-4">
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold">
                 Keyword Builder
@@ -699,7 +1761,7 @@ function EntryPaperWorkspace() {
                   <DropdownMenuTrigger asChild>
                     <Button
                       size="sm"
-                      className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white shrink-0"
+                      className="bg-violet-700 hover:bg-violet-800 text-white shrink-0"
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Add
@@ -739,7 +1801,7 @@ function EntryPaperWorkspace() {
                   <Badge
                     key={kw.id}
                     variant="secondary"
-                    className="text-xs px-3 py-1 bg-slate-100 gap-1"
+                    className="text-xs px-3 py-1 bg-slate-800 gap-1"
                   >
                     {kw.term}
                     <span className="ml-1.5 text-[10px] text-slate-400">
@@ -777,98 +1839,457 @@ function EntryPaperWorkspace() {
         </TabsContent>
 
         <TabsContent value="search" className="mt-4 space-y-4">
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold">
-                  Search Records
+                  Search Logs
                 </CardTitle>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs h-7"
-                  onClick={() => setShowSearchDialog(true)}
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Search Record
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-7"
+                    onClick={openAddSearchRecordDialog}
+                  >
+                    <PenTool className="w-3 h-3 mr-1" />
+                    Advanced Form
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {searchRecords.map((record) => (
-                  <div
-                    key={record.id}
-                    className="p-3 bg-slate-50 rounded-lg border border-slate-200"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <Badge variant="outline" className="text-[10px]">
-                        {record.database}
-                      </Badge>
-                      <span className="text-[10px] text-slate-400">
-                        {record.date}
-                      </span>
-                    </div>
-                    <p className="text-xs font-mono text-slate-700 mb-2">
-                      {renderQueryWithConceptLinks(record.query)}
-                    </p>
-                    <div className="flex gap-4 text-[11px] text-slate-500">
-                      <span>{record.results} results</span>
-                      <span>{record.relevant} relevant</span>
+              <div className="space-y-4">
+                <div className="rounded-lg border border-slate-700/50 p-3 bg-slate-800/40/70 space-y-3">
+                  <p className="text-xs font-semibold text-slate-700">Build Boolean Search String</p>
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-slate-500">Select existing keywords / concepts:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {keywords.map((kw) => (
+                        <Badge
+                          key={kw.id}
+                          variant={srKeywords.includes(kw.term) ? "default" : "outline"}
+                          className={cn(
+                            "text-[10px] cursor-pointer transition-all",
+                            srKeywords.includes(kw.term)
+                              ? "bg-violet-700 text-white"
+                              : "hover:bg-slate-800"
+                          )}
+                          onClick={() => {
+                            if (srKeywords.includes(kw.term)) {
+                              setSrKeywords(srKeywords.filter((k) => k !== kw.term));
+                            } else {
+                              setSrKeywords([...srKeywords, kw.term]);
+                            }
+                          }}
+                        >
+                          {kw.term}
+                        </Badge>
+                      ))}
+                      {concepts.map((concept) => (
+                        <Badge
+                          key={concept.id}
+                          variant={srKeywords.includes(concept.name) ? "default" : "outline"}
+                          className={cn(
+                            "text-[10px] cursor-pointer transition-all border",
+                            srKeywords.includes(concept.name)
+                              ? "text-white"
+                              : "hover:opacity-80"
+                          )}
+                          style={
+                            srKeywords.includes(concept.name)
+                              ? { backgroundColor: concept.color, borderColor: concept.color }
+                              : { color: concept.color, borderColor: `${concept.color}66`, backgroundColor: `${concept.color}12` }
+                          }
+                          onClick={() => {
+                            if (srKeywords.includes(concept.name)) {
+                              setSrKeywords(srKeywords.filter((k) => k !== concept.name));
+                            } else {
+                              setSrKeywords([...srKeywords, concept.name]);
+                            }
+                          }}
+                        >
+                          <Lightbulb className="w-2.5 h-2.5 mr-1" />
+                          {concept.name}
+                        </Badge>
+                      ))}
                     </div>
                   </div>
-                ))}
+
+                  <div className="space-y-1.5">
+                    <p className="text-[11px] text-slate-500">Boolean connectors:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {BOOLEAN_CONNECTORS.map((connector) => (
+                        <Button
+                          key={connector}
+                          size="sm"
+                          variant={srConnector === connector ? "default" : "outline"}
+                          className={cn(
+                            "h-7 text-[11px]",
+                            srConnector === connector ? "bg-violet-700 hover:bg-violet-800 text-white" : ""
+                          )}
+                          onClick={() => setSrConnector(connector)}
+                        >
+                          {connector}
+                        </Button>
+                      ))}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px]"
+                        onClick={handleGenerateBooleanString}
+                      >
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        Build Query
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-500">Boolean Search String</label>
+                    <Textarea
+                      value={srBooleanString}
+                      onChange={(e) => setSrBooleanString(e.target.value)}
+                      rows={3}
+                      placeholder='e.g., "AI tutoring" AND "self-regulated learning" NOT "K-12"'
+                      className="text-xs font-mono"
+                    />
+                    <div className="flex gap-1.5">
+                      {BOOLEAN_CONNECTORS.map((connector) => (
+                        <Button
+                          key={`append-${connector}`}
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[10px]"
+                          onClick={() => appendBooleanToken(connector)}
+                        >
+                          + {connector}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-500">Academic Database</label>
+                      <Select value={srDatabase} onValueChange={setSrDatabase}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[...DATABASE_OPTIONS, "Other" as const].map((db) => (
+                            <SelectItem key={db} value={db}>{db}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {srDatabase === "Other" && (
+                        <Input
+                          value={srCustomDb}
+                          onChange={(e) => setSrCustomDb(e.target.value)}
+                          placeholder="Enter database name..."
+                          className="h-8 text-xs"
+                        />
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-slate-500">Total Results</label>
+                        <Input
+                          type="number"
+                          value={srTotalResults}
+                          onChange={(e) => setSrTotalResults(e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] text-slate-500">Relevant</label>
+                        <Input
+                          type="number"
+                          value={srRelevantResults}
+                          onChange={(e) => setSrRelevantResults(e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs bg-violet-700 hover:bg-violet-800 text-white"
+                      onClick={handleAddSearchRecord}
+                    >
+                      <Save className="w-3 h-3 mr-1" />
+                      Save Search Log
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => void handleAddSearchRecordAndPull()}
+                    >
+                      <Search className="w-3 h-3 mr-1" />
+                      Save + Pull Top 10
+                    </Button>
+                  </div>
+                </div>
+
+                {activePullingRecord && (
+                  <div className="rounded-lg border border-blue-300/40 bg-blue-50/50 p-3 text-xs text-blue-700">
+                    正在 pulling "{activePullingRecord.query}" 的文献，请稍候...
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                {sortedSearchRecords.map((record) => {
+                  const linkedCount = linkedCandidateCount(record.id);
+                  const cannotDeleteReason = linkedCount > 0
+                    ? `已关联 ${linkedCount} 篇 candidate paper，无法删除`
+                    : null;
+
+                  return (
+                    <div
+                      key={record.id}
+                      id={`search-record-${encodeURIComponent(record.query)}`}
+                      className={cn(
+                        "p-3 bg-slate-800/40 rounded-lg border border-slate-700/50",
+                        highlightedSearchQuery && record.query === highlightedSearchQuery
+                          ? "border-violet-700 bg-blue-50/40 shadow-sm"
+                          : ""
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <Badge variant="outline" className="text-[10px]">
+                          {record.database}
+                        </Badge>
+                        <span className="text-[10px] text-slate-400">
+                          {record.date}
+                        </span>
+                      </div>
+                      <p className="text-xs font-mono text-slate-700 mb-2">
+                        {renderQueryWithConceptLinks(record.query)}
+                      </p>
+                      <div className="flex gap-4 text-[11px] text-slate-500">
+                        <span>{record.results} results</span>
+                        <span>{record.relevant} relevant</span>
+                      </div>
+                      {cannotDeleteReason && (
+                        <p className="text-[11px] text-amber-600 mt-1.5">{cannotDeleteReason}</p>
+                      )}
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7"
+                          onClick={async () => {
+                            const pullSucceeded = await pullReferencesForSearchRecord(record, "first");
+                            if (pullSucceeded) {
+                              navigateToCandidatesTab();
+                            }
+                          }}
+                          disabled={pullingSearchRecordId === record.id}
+                        >
+                          <Search className="w-3 h-3 mr-1" />
+                          {pullingSearchRecordId === record.id ? "Pulling..." : "Pull Top 10"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7"
+                          onClick={async () => {
+                            const pullSucceeded = await pullReferencesForSearchRecord(record, "next");
+                            if (pullSucceeded) {
+                              navigateToCandidatesTab();
+                            }
+                          }}
+                          disabled={pullingSearchRecordId === record.id}
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Refresh +10
+                        </Button>
+                        <a
+                          href={buildDatabaseSearchUrl(record.database, record.query)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Button size="sm" variant="outline" className="text-xs h-7" type="button">
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            Open in {record.database}
+                          </Button>
+                        </a>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7"
+                          onClick={() => openEditSearchRecordDialog(record)}
+                        >
+                          <PenTool className="w-3 h-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                          onClick={() => handleDeleteSearchRecord(record.id)}
+                          disabled={Boolean(cannotDeleteReason)}
+                          title={cannotDeleteReason || "Delete search record"}
+                        >
+                          <X className="w-3 h-3 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+                </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="candidates" className="mt-4 space-y-4">
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold">
                   Candidate Papers ({candidatePapers.length})
                 </CardTitle>
                 <div className="flex gap-1.5">
-                  {selectedPaperIds.length > 0 && (
-                    <Button
-                      size="sm"
-                      className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={handleBatchAddArtifacts}
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Add {selectedPaperIds.length} as Artifacts
-                    </Button>
-                  )}
                   <Button
                     size="sm"
                     variant="outline"
                     className="text-xs h-7"
-                    onClick={() => setShowAddPaperDialog(true)}
+                    onClick={handleOpenCandidateRefreshDialog}
+                    disabled={Boolean(pullingSearchRecordId)}
+                    title="Choose a search log or random pull"
                   >
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add Paper
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Refresh +10
                   </Button>
+                  <Select
+                    value={candidateSortKey}
+                    onValueChange={(value) => setCandidateSortKey(value as "title" | "year" | "type" | "relevance")}
+                  >
+                    <SelectTrigger className="h-7 text-xs w-[140px]">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="title">Sort: Title</SelectItem>
+                      <SelectItem value="year">Sort: Year</SelectItem>
+                      <SelectItem value="type">Sort: Type</SelectItem>
+                      <SelectItem value="relevance">Sort: Relevance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-7"
+                    onClick={() => setCandidateSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+                    title="Toggle sort order"
+                  >
+                    <ArrowUpDown className="w-3 h-3 mr-1" />
+                    {candidateSortOrder === "asc" ? "Asc" : "Desc"}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add Paper
+                        <ChevronDown className="w-3 h-3 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setShowAddPaperDialog(true);
+                        }}
+                      >
+                        Add One
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setShowAddMultiplePaperDialog(true);
+                        }}
+                      >
+                        Add Multiple
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
+              {/* Select-all bar — only rendered when there are papers */}
+              {sortedCandidatePapers.length > 0 && (
+                <div className={cn(
+                  "flex items-center gap-3 mb-3 px-3 py-2 rounded-lg border transition-all",
+                  selectedPaperIds.length > 0
+                    ? "bg-slate-800/40 border-slate-300"
+                    : "border-transparent"
+                )}>
+                  <Checkbox
+                    id="select-all-candidates"
+                    checked={allVisibleSelected}
+                    onCheckedChange={handleToggleSelectAllVisible}
+                  />
+                  <label
+                    htmlFor="select-all-candidates"
+                    className="text-xs text-slate-500 cursor-pointer select-none"
+                  >
+                    {selectedPaperIds.length === 0
+                      ? "Select all"
+                      : `${selectedPaperIds.length} selected`}
+                  </label>
+                  {selectedPaperIds.length > 0 && (
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <Button
+                        size="sm"
+                        className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={handleBatchToEntry}
+                      >
+                        <Target className="w-3 h-3 mr-1" />
+                        To Entry
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-7 text-rose-600 hover:text-rose-700 border-rose-200"
+                        onClick={() => void handleBatchDeleteSelected()}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Delete
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs h-7 text-slate-400 hover:text-slate-600"
+                        onClick={() => setSelectedPaperIds([])}
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Clear
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="space-y-3">
-                {candidatePapers.map((paper) => (
+                {sortedCandidatePapers.map((paper) => (
                   <div
                     key={paper.id}
                     className={cn(
                       "p-4 rounded-lg border transition-all",
                       entryPapers.includes(paper.id)
-                        ? "border-[#1E3A5F] bg-blue-50/30"
+                        ? "border-violet-700 bg-blue-50/30"
                         : selectedPaperIds.includes(paper.id)
                           ? "border-emerald-400 bg-emerald-50/20"
-                          : "border-slate-200 hover:border-slate-300"
+                          : "border-slate-700/50 hover:border-slate-300"
                     )}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                    <div>
+                      <div className="flex items-start gap-2 mb-3">
                         {/* Multi-select checkbox */}
                         <div className="pt-1">
                           <Checkbox
@@ -879,23 +2300,28 @@ function EntryPaperWorkspace() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             {entryPapers.includes(paper.id) && (
-                              <Badge className="text-[10px] bg-[#1E3A5F] text-white">
+                              <Badge className="text-[10px] bg-violet-700 text-white">
                                 Entry Paper
                               </Badge>
                             )}
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-[10px]",
-                                paper.relevance === "high" &&
-                                  "border-emerald-300 text-emerald-700",
-                                paper.relevance === "medium" &&
-                                  "border-amber-300 text-amber-700",
-                                paper.relevance === "low" &&
-                                  "border-slate-300 text-slate-500"
-                              )}
-                            >
-                              {paper.relevance} relevance
+                            {paper.relevance && (
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-[10px]",
+                                  paper.relevance === "high" &&
+                                    "border-emerald-300 text-emerald-700",
+                                  paper.relevance === "medium" &&
+                                    "border-amber-300 text-amber-700",
+                                  paper.relevance === "low" &&
+                                    "border-slate-300 text-slate-500"
+                                )}
+                              >
+                                {paper.relevance} relevance
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-[10px] border-slate-300 text-slate-600">
+                              {inferPublicationType(paper)}
                             </Badge>
                             {paper.discoveryPath && (
                               <Badge
@@ -906,16 +2332,45 @@ function EntryPaperWorkspace() {
                               </Badge>
                             )}
                           </div>
-                          {/* Title links to read page */}
-                          <Link to={`/workflow/3`}>
-                            <h4 className="text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline mb-1 cursor-pointer">
-                              {paper.title}
-                            </h4>
-                          </Link>
+                          {/* Title opens the original external page for quick vetting */}
+                          <a
+                            href={resolveCandidateExternalUrl(paper)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex max-w-full items-center gap-1 mb-1 text-sm font-medium text-slate-100 hover:text-blue-700 hover:underline"
+                          >
+                            <span className="min-w-0 truncate">{paper.title}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                          </a>
                           <p className="text-xs text-slate-500 mb-2">
                             {paper.authors.join(", ")} ({paper.year}) —{" "}
                             {paper.journal}
                           </p>
+                          {(paper.doi || paper.doiUrl || paper.externalSourceUrl) && (
+                            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                              {paper.doi && (
+                                <Badge variant="outline" className="text-[10px] border-cyan-300 text-cyan-700">
+                                  DOI: {paper.doi}
+                                </Badge>
+                              )}
+                              {paper.doiUrl && (
+                                <a href={paper.doiUrl} target="_blank" rel="noreferrer" className="inline-flex">
+                                  <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" type="button">
+                                    <ExternalLink className="w-2.5 h-2.5 mr-1" />
+                                    DOI Link
+                                  </Button>
+                                </a>
+                              )}
+                              {paper.externalSourceUrl && (
+                                <a href={paper.externalSourceUrl} target="_blank" rel="noreferrer" className="inline-flex">
+                                  <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" type="button">
+                                    <Eye className="w-2.5 h-2.5 mr-1" />
+                                    Open Original Page
+                                  </Button>
+                                </a>
+                              )}
+                            </div>
+                          )}
                           {paper.abstract && (
                             <p className="text-xs text-slate-600 line-clamp-2">
                               {paper.abstract}
@@ -928,7 +2383,26 @@ function EntryPaperWorkspace() {
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-col gap-1.5 shrink-0">
+                      {/* Action buttons — horizontal row below paper info */}
+                      <div className="flex flex-wrap gap-1.5 pl-6">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7"
+                          onClick={() => openEditPaperDialog(paper)}
+                        >
+                          <PenTool className="w-3 h-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 text-rose-600 hover:text-rose-700"
+                          onClick={() => handleDeleteCandidatePaper(paper.id)}
+                        >
+                          <X className="w-3 h-3 mr-1" />
+                          Delete
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -943,40 +2417,14 @@ function EntryPaperWorkspace() {
                         </Button>
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="text-xs h-7"
-                          onClick={() => {
-                            setDiscoveryPaperId(paper.id);
-                            setDiscoveryPathValue(paper.discoveryPath || "Academic Database");
-                            setDiscoveryNoteValue(paper.discoveryNote || "");
-                            setShowDiscoveryDialog(true);
-                          }}
-                        >
-                          <Network className="w-3 h-3 mr-1" />
-                          Discovery Path
-                        </Button>
-                        <Button
-                          size="sm"
                           className={cn(
                             "text-xs h-7",
                             entryPapers.includes(paper.id)
                               ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                              : "bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                              : "bg-violet-700 hover:bg-violet-800 text-white"
                           )}
-                          onClick={() => {
-                            if (entryPapers.includes(paper.id)) {
-                              setEntryPapers(
-                                entryPapers.filter(
-                                  (id) => id !== paper.id
-                                )
-                              );
-                            } else {
-                              setEntryPapers([
-                                ...entryPapers,
-                                paper.id,
-                              ]);
-                            }
-                          }}
+                          onClick={() => handleToggleEntryPaper(paper.id)}
+                          disabled={entryPapers.includes(paper.id)}
                         >
                           {entryPapers.includes(paper.id) ? (
                             <>
@@ -986,7 +2434,7 @@ function EntryPaperWorkspace() {
                           ) : (
                             <>
                               <Target className="w-3 h-3 mr-1" />
-                              Set as Entry
+                              To Entry
                             </>
                           )}
                         </Button>
@@ -1083,7 +2531,7 @@ function EntryPaperWorkspace() {
           </div>
 
           {conceptName.trim() && (
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
               <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">Preview</p>
               <Badge
                 className="text-xs px-3 py-1 gap-1 border"
@@ -1098,7 +2546,7 @@ function EntryPaperWorkspace() {
 
           <div className="flex gap-2 pt-1">
             <Button
-              className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
               onClick={handleAddConcept}
               disabled={!conceptName.trim()}
             >
@@ -1122,6 +2570,39 @@ function EntryPaperWorkspace() {
         </div>
       </ModalOverlay>
 
+      <ModalOverlay
+        open={showEditPaperDialog}
+        onClose={() => {
+          setShowEditPaperDialog(false);
+          setEditingPaperId(null);
+        }}
+        title="Edit Candidate Paper"
+      >
+        <div className="space-y-3">
+          <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder="Paper title" />
+          <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder="Authors (comma separated)" />
+          <div className="grid grid-cols-2 gap-3">
+            <Input value={newPaperYear} onChange={(e) => setNewPaperYear(e.target.value)} placeholder="Year" />
+            <Input value={newPaperJournal} onChange={(e) => setNewPaperJournal(e.target.value)} placeholder="Journal" />
+          </div>
+          <Select value={newPaperDiscoveryPath} onValueChange={setNewPaperDiscoveryPath}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DISCOVERY_PATH_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>{option}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} placeholder="Discovery note" rows={3} />
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => setShowEditPaperDialog(false)} type="button" variant="outline">Cancel</Button>
+            <Button onClick={handleSaveEditedPaper} type="button">Save Changes</Button>
+          </div>
+        </div>
+      </ModalOverlay>
+
       {/* Add Search Record Dialog */}
       <ModalOverlay
         open={showSearchDialog}
@@ -1140,8 +2621,8 @@ function EntryPaperWorkspace() {
                   className={cn(
                     "text-[10px] cursor-pointer transition-all",
                     srKeywords.includes(kw.term)
-                      ? "bg-[#1E3A5F] text-white"
-                      : "hover:bg-slate-100"
+                      ? "bg-violet-700 text-white"
+                      : "hover:bg-slate-800"
                   )}
                   onClick={() => {
                     if (srKeywords.includes(kw.term)) {
@@ -1212,8 +2693,8 @@ function EntryPaperWorkspace() {
                   className={cn(
                     "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
                     srDatabase === db
-                      ? "border-[#1E3A5F] bg-blue-50/50"
-                      : "border-slate-200 hover:border-slate-300"
+                      ? "border-violet-700 bg-blue-50/50"
+                      : "border-slate-700/50 hover:border-slate-300"
                   )}
                 >
                   <input
@@ -1277,7 +2758,7 @@ function EntryPaperWorkspace() {
 
           <div className="flex gap-2 pt-2">
             <Button
-              className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
               onClick={handleAddSearchRecord}
             >
               <Save className="w-3 h-3 mr-1" />
@@ -1287,6 +2768,102 @@ function EntryPaperWorkspace() {
               variant="ghost"
               className="text-xs"
               onClick={() => setShowSearchDialog(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </ModalOverlay>
+
+      <ModalOverlay
+        open={showEditSearchDialog}
+        onClose={() => {
+          setShowEditSearchDialog(false);
+          setEditingSearchRecordId(null);
+        }}
+        title="Edit Search Record"
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-slate-600">Academic Database</label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[...DATABASE_OPTIONS, "Other" as const].map((db) => (
+                <label
+                  key={db}
+                  className={cn(
+                    "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
+                    srDatabase === db
+                      ? "border-violet-700 bg-blue-50/50"
+                      : "border-slate-700/50 hover:border-slate-300"
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="edit-sr-database"
+                    checked={srDatabase === db}
+                    onChange={() => setSrDatabase(db)}
+                    className="accent-[#1E3A5F]"
+                  />
+                  {db}
+                </label>
+              ))}
+            </div>
+            {srDatabase === "Other" && (
+              <Input
+                value={srCustomDb}
+                onChange={(e) => setSrCustomDb(e.target.value)}
+                placeholder="Enter database name..."
+                className="text-xs h-7 mt-1"
+              />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-slate-600">Boolean Search String</label>
+            <Textarea
+              value={srBooleanString}
+              onChange={(e) => setSrBooleanString(e.target.value)}
+              rows={3}
+              className="text-xs font-mono"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Total Results</label>
+              <Input
+                type="number"
+                value={srTotalResults}
+                onChange={(e) => setSrTotalResults(e.target.value)}
+                className="text-xs h-8"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Relevant Results</label>
+              <Input
+                type="number"
+                value={srRelevantResults}
+                onChange={(e) => setSrRelevantResults(e.target.value)}
+                className="text-xs h-8"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
+              onClick={handleSaveEditedSearchRecord}
+            >
+              <Save className="w-3 h-3 mr-1" />
+              Save Changes
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-xs"
+              onClick={() => {
+                setShowEditSearchDialog(false);
+                setEditingSearchRecordId(null);
+              }}
             >
               Cancel
             </Button>
@@ -1315,7 +2892,7 @@ function EntryPaperWorkspace() {
                 "w-full p-3 rounded-lg border text-left transition-all text-sm",
                 level === "high" && "border-emerald-300 hover:bg-emerald-50",
                 level === "medium" && "border-amber-300 hover:bg-amber-50",
-                level === "low" && "border-slate-300 hover:bg-slate-50"
+                level === "low" && "border-slate-300 hover:bg-slate-800/40"
               )}
             >
               <span
@@ -1335,6 +2912,80 @@ function EntryPaperWorkspace() {
               </span>
             </button>
           ))}
+        </div>
+      </ModalOverlay>
+
+      <ModalOverlay
+        open={showCandidateRefreshDialog}
+        onClose={() => setShowCandidateRefreshDialog(false)}
+        title="Refresh +10 Candidate Papers"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-slate-400">
+            请选择一个 Search Log 拉取下一批，或随机使用已有 Search Log。
+          </p>
+
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant={candidateRefreshMode === "select" ? "default" : "outline"}
+              className={cn(
+                "h-8 text-xs",
+                candidateRefreshMode === "select" ? "bg-violet-700 hover:bg-violet-800 text-white" : ""
+              )}
+              onClick={() => setCandidateRefreshMode("select")}
+            >
+              Use Selected Log
+            </Button>
+            <Button
+              size="sm"
+              variant={candidateRefreshMode === "random" ? "default" : "outline"}
+              className={cn(
+                "h-8 text-xs",
+                candidateRefreshMode === "random" ? "bg-violet-700 hover:bg-violet-800 text-white" : ""
+              )}
+              onClick={() => setCandidateRefreshMode("random")}
+            >
+              Random
+            </Button>
+          </div>
+
+          {candidateRefreshMode === "select" && (
+            <div className="space-y-1.5">
+              <label className="text-xs text-slate-400">Search Log</label>
+              <Select value={candidateRefreshRecordId} onValueChange={setCandidateRefreshRecordId}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="Choose search log" />
+                </SelectTrigger>
+                <SelectContent>
+                  {searchRecords.map((record) => (
+                    <SelectItem key={record.id} value={record.id}>
+                      {record.database} - {record.query}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs"
+              onClick={() => setShowCandidateRefreshDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs bg-violet-700 hover:bg-violet-800 text-white"
+              onClick={() => void handleCandidateRefreshPull()}
+              disabled={Boolean(pullingSearchRecordId)}
+            >
+              Pull +10
+            </Button>
+          </div>
         </div>
       </ModalOverlay>
 
@@ -1410,7 +3061,7 @@ function EntryPaperWorkspace() {
             </div>
             <div className="flex gap-2 pt-1">
               <Button
-                className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+                className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
                 onClick={() => {
                   setShowConceptDetailDialog(false);
                   setEditingConceptId(null);
@@ -1436,10 +3087,83 @@ function EntryPaperWorkspace() {
       {/* Add Candidate Paper Dialog */}
       <ModalOverlay
         open={showAddPaperDialog}
-        onClose={() => setShowAddPaperDialog(false)}
+        onClose={() => {
+          setShowAddPaperDialog(false);
+          setNewPaperDoiUrl("");
+          setDoiFetchError(null);
+          setNewPaperSearchRecordId("");
+        }}
         title="Add Candidate Paper"
       >
         <div className="space-y-3">
+          {/* DOI / URL Auto-extract */}
+          <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50 space-y-2">
+            <label className="text-xs font-semibold text-slate-700">通过 DOI 或 URL 自动提取信息</label>
+            <div className="flex gap-2">
+              <Input
+                value={newPaperDoiUrl}
+                onChange={(e) => { setNewPaperDoiUrl(e.target.value); setDoiFetchError(null); }}
+                placeholder="例如：10.1145/1234567 或 https://doi.org/10.xxxx/xxxx"
+                className="text-xs h-8 flex-1"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleFetchByDoiUrl(); } }}
+              />
+              <Button
+                size="sm"
+                className="h-8 text-xs bg-violet-700 hover:bg-violet-800 text-white shrink-0"
+                onClick={() => void handleFetchByDoiUrl()}
+                disabled={doiFetching || !newPaperDoiUrl.trim()}
+              >
+                {doiFetching ? (
+                  <span className="flex items-center gap-1"><span className="animate-spin">⟳</span> 提取中</span>
+                ) : (
+                  <span className="flex items-center gap-1"><Sparkles className="w-3 h-3" /> 提取信息</span>
+                )}
+              </Button>
+            </div>
+            {doiFetchError && (
+              <p className="text-xs text-red-500">{doiFetchError}</p>
+            )}
+          </div>
+
+          {/* Source Search Record */}
+          {searchRecords.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">来自 Search Log（可选）</label>
+              <Select
+                value={newPaperSearchRecordId || "__none__"}
+                onValueChange={(v) => {
+                  const id = v === "__none__" ? "" : v;
+                  setNewPaperSearchRecordId(id);
+                  if (id) {
+                    const rec = searchRecords.find((r) => r.id === id);
+                    if (rec) setNewPaperDiscoveryPath(rec.database);
+                  }
+                }}
+              >
+                <SelectTrigger className="text-xs h-8">
+                  <SelectValue placeholder="选择对应的 Search Record..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— 不关联 Search Record —</SelectItem>
+                  {searchRecords.map((rec) => (
+                    <SelectItem key={rec.id} value={rec.id}>
+                      <span className="font-medium">{rec.database}</span>
+                      <span className="text-slate-400 ml-2 text-[10px]">{rec.date} · {rec.results} results</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {newPaperSearchRecordId && (() => {
+                const rec = searchRecords.find((r) => r.id === newPaperSearchRecordId);
+                return rec ? (
+                  <p className="text-[10px] text-slate-500 font-mono bg-slate-800/40 p-1.5 rounded border">
+                    {rec.query}
+                  </p>
+                ) : null;
+              })()}
+            </div>
+          )}
+
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate-600">Title *</label>
             <Input
@@ -1489,7 +3213,7 @@ function EntryPaperWorkspace() {
                     "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
                     newPaperDiscoveryPath === path
                       ? "border-purple-400 bg-purple-50/50"
-                      : "border-slate-200 hover:border-slate-300"
+                      : "border-slate-700/50 hover:border-slate-300"
                   )}
                 >
                   <input
@@ -1516,7 +3240,7 @@ function EntryPaperWorkspace() {
           </div>
           <div className="flex gap-2 pt-2">
             <Button
-              className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
               onClick={handleAddCandidatePaper}
             >
               <Plus className="w-3 h-3 mr-1" />
@@ -1526,6 +3250,66 @@ function EntryPaperWorkspace() {
               variant="ghost"
               className="text-xs"
               onClick={() => setShowAddPaperDialog(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </ModalOverlay>
+
+      <ModalOverlay
+        open={showAddMultiplePaperDialog}
+        onClose={() => {
+          setShowAddMultiplePaperDialog(false);
+          setBulkDoiInput("");
+          setBulkSearchRecordId("");
+        }}
+        title="Add Multiple Candidate Papers"
+      >
+        <div className="space-y-3">
+          {searchRecords.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">关联 Search Record（可选）</label>
+              <Select value={bulkSearchRecordId || "__none__"} onValueChange={(v) => setBulkSearchRecordId(v === "__none__" ? "" : v)}>
+                <SelectTrigger className="text-xs h-8">
+                  <SelectValue placeholder="选择对应的 Search Record..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— 不关联 Search Record —</SelectItem>
+                  {searchRecords.map((rec) => (
+                    <SelectItem key={rec.id} value={rec.id}>
+                      {rec.database} · {rec.date}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-600">DOI 链接（每行一个）</label>
+            <Textarea
+              value={bulkDoiInput}
+              onChange={(e) => setBulkDoiInput(e.target.value)}
+              rows={8}
+              placeholder={"https://doi.org/10.xxxx/xxxx\n10.1145/1234567\nhttps://example.org/path/10.1000/xyz"}
+              className="text-xs font-mono"
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
+              onClick={() => void handleAddMultipleCandidatePapers()}
+              disabled={bulkImporting || !bulkDoiInput.trim()}
+            >
+              <Sparkles className="w-3 h-3 mr-1" />
+              {bulkImporting ? "Importing..." : "Import All"}
+            </Button>
+            <Button
+              variant="ghost"
+              className="text-xs"
+              onClick={() => setShowAddMultiplePaperDialog(false)}
             >
               Cancel
             </Button>
@@ -1551,7 +3335,7 @@ function EntryPaperWorkspace() {
                   "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
                   discoveryPathValue === path
                     ? "border-purple-400 bg-purple-50/50"
-                    : "border-slate-200 hover:border-slate-300"
+                    : "border-slate-700/50 hover:border-slate-300"
                 )}
               >
                 <input
@@ -1597,18 +3381,6 @@ function EntryPaperWorkspace() {
         </div>
       </ModalOverlay>
 
-      <div className="flex gap-2">
-        <Button variant="outline">
-          <Save className="w-4 h-4 mr-2" />
-          Save Artifacts
-        </Button>
-        <Link to="/workflow/3">
-          <Button className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white">
-            Move to Reading
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
-      </div>
     </div>
   );
 }
@@ -1642,7 +3414,7 @@ function TagInput({
           <Badge
             key={tag}
             variant="secondary"
-            className="text-[10px] px-2 py-0.5 bg-slate-100 hover:bg-slate-200 cursor-pointer gap-1"
+            className="text-[10px] px-2 py-0.5 bg-slate-800 hover:bg-slate-200 cursor-pointer gap-1"
           >
             <Tag className="w-2.5 h-2.5" />
             {tag}
@@ -1849,14 +3621,14 @@ function ReadWorkspace() {
   return (
     <div className="space-y-5">
       {/* Paper Metadata */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-700/50">
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <Badge className="text-[10px] bg-[#1E3A5F] text-white mb-2">
+              <Badge className="text-[10px] bg-violet-700 text-white mb-2">
                 Entry Paper
               </Badge>
-              <h3 className="text-base font-semibold text-slate-800 mb-1">
+              <h3 className="text-base font-semibold text-slate-200 mb-1">
                 {paper.title}
               </h3>
               <p className="text-xs text-slate-500">
@@ -1882,7 +3654,7 @@ function ReadWorkspace() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Annotations & Highlights */}
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold">
@@ -1935,13 +3707,13 @@ function ReadWorkspace() {
                   onTagsChange={setNewAnnTags}
                   placeholder="Add tags (e.g., gap, method, key-finding)..."
                 />
-                <div className="p-1.5 bg-slate-50 rounded text-[10px] text-slate-500">
+                <div className="p-1.5 bg-slate-800/40 rounded text-[10px] text-slate-500">
                   📎 Auto-citation: {citation}
                 </div>
                 <div className="flex gap-1.5">
                   <Button
                     size="sm"
-                    className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                    className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
                     onClick={handleAddAnnotation}
                   >
                     <Plus className="w-3 h-3 mr-1" />
@@ -1969,7 +3741,7 @@ function ReadWorkspace() {
                 {annotations.map((ann) => (
                   <div
                     key={ann.id}
-                    className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition-all group"
+                    className="p-3 rounded-lg border border-slate-700/50 hover:border-slate-300 transition-all group"
                   >
                     <div
                       className={cn(
@@ -1991,7 +3763,7 @@ function ReadWorkspace() {
                           <Badge
                             key={tag}
                             variant="secondary"
-                            className="text-[9px] px-1.5 py-0 bg-slate-100 text-slate-500"
+                            className="text-[9px] px-1.5 py-0 bg-slate-800 text-slate-500"
                           >
                             <Tag className="w-2 h-2 mr-0.5" />
                             {tag}
@@ -2037,7 +3809,7 @@ function ReadWorkspace() {
         </Card>
 
         {/* Notes Panel */}
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex gap-1">
@@ -2046,8 +3818,8 @@ function ReadWorkspace() {
                   className={cn(
                     "px-3 py-1 rounded-md text-xs font-medium transition-all",
                     noteTab === "literature"
-                      ? "bg-[#1E3A5F] text-white"
-                      : "text-slate-500 hover:bg-slate-100"
+                      ? "bg-violet-700 text-white"
+                      : "text-slate-500 hover:bg-slate-800"
                   )}
                 >
                   Literature Notes ({litNotes.length})
@@ -2058,7 +3830,7 @@ function ReadWorkspace() {
                     "px-3 py-1 rounded-md text-xs font-medium transition-all",
                     noteTab === "permanent"
                       ? "bg-rose-600 text-white"
-                      : "text-slate-500 hover:bg-slate-100"
+                      : "text-slate-500 hover:bg-slate-800"
                   )}
                 >
                   Permanent Notes ({permNotes.length})
@@ -2067,7 +3839,7 @@ function ReadWorkspace() {
               {noteTab === "literature" ? (
                 <Button
                   size="sm"
-                  className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                  className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
                   onClick={() => {
                     setShowNewNote(true);
                     setShowNewPermNote(false);
@@ -2105,8 +3877,8 @@ function ReadWorkspace() {
                       className={cn(
                         "px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-all border",
                         activeNoteId === note.id && !showNewNote
-                          ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                          ? "bg-violet-700 text-white border-violet-700"
+                          : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-slate-300"
                       )}
                     >
                       {note.title}
@@ -2139,13 +3911,13 @@ function ReadWorkspace() {
                       onTagsChange={setNewNoteTags}
                       placeholder="Add tags (e.g., gap, theory, method)..."
                     />
-                    <div className="p-1.5 bg-slate-50 rounded text-[10px] text-slate-500">
+                    <div className="p-1.5 bg-slate-800/40 rounded text-[10px] text-slate-500">
                       📎 Auto-citation: {citation}
                     </div>
                     <div className="flex gap-1.5">
                       <Button
                         size="sm"
-                        className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                        className="text-xs bg-violet-700 hover:bg-violet-800 text-white"
                         onClick={handleAddNote}
                       >
                         <Save className="w-3 h-3 mr-1" />
@@ -2169,7 +3941,7 @@ function ReadWorkspace() {
                 ) : activeNote ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-medium text-slate-800">
+                      <h4 className="text-sm font-medium text-slate-200">
                         {activeNote.title}
                       </h4>
                       <span className="text-[10px] text-slate-400">
@@ -2196,7 +3968,7 @@ function ReadWorkspace() {
                         <Badge
                           key={tag}
                           variant="secondary"
-                          className="text-[10px] px-2 py-0.5 bg-slate-100"
+                          className="text-[10px] px-2 py-0.5 bg-slate-800"
                         >
                           <Tag className="w-2.5 h-2.5 mr-0.5" />
                           {tag}
@@ -2359,7 +4131,7 @@ function ReadWorkspace() {
                           className="p-3 rounded-lg border border-rose-200 bg-rose-50/30"
                         >
                           <div className="flex items-center justify-between mb-1">
-                            <h4 className="text-sm font-medium text-slate-800">
+                            <h4 className="text-sm font-medium text-slate-200">
                               {note.title}
                             </h4>
                             <span className="text-[10px] text-slate-400">
@@ -2429,7 +4201,7 @@ function ReadWorkspace() {
       </div>
 
       {/* Relevance & Value */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-700/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">
             Relevance & Value Assessment
@@ -2445,7 +4217,7 @@ function ReadWorkspace() {
                     "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all text-xs",
                     i === 0
                       ? "border-emerald-300 bg-emerald-50/50"
-                      : "border-slate-200 hover:border-slate-300"
+                      : "border-slate-700/50 hover:border-slate-300"
                   )}
                 >
                   <input
@@ -2475,411 +4247,861 @@ function ReadWorkspace() {
 // ============================================================
 // Step 4: Expand Workspace
 // ============================================================
-interface ExpandPaper {
+interface ExpandRecord {
   id: string;
   title: string;
-  authors: string;
-  year: number;
+  authors: string[];
+  year?: number;
+  journal?: string;
   source: "auto" | "manual";
+  direction: "references" | "citations";
+  url?: string;
 }
 
-function ExpandWorkspace() {
-  const [activeTrail, setActiveTrail] = useState("references");
+interface ManualRecordForm {
+  title: string;
+  authors: string;
+  year: string;
+  journal: string;
+  url: string;
+}
 
-  // References
-  const [refPapers, setRefPapers] = useState<ExpandPaper[]>([
-    { id: "ref-1", title: "Self-Regulated Learning Theory (Zimmerman, 2002)", authors: "Zimmerman, B.J.", year: 2002, source: "auto" },
-    { id: "ref-2", title: "Technology Acceptance Model (Davis, 1989)", authors: "Davis, F.D.", year: 1989, source: "auto" },
-    { id: "ref-3", title: "Metacognition and Learning Technologies: An Overview", authors: "Azevedo, R., Aleven, V.", year: 2013, source: "auto" },
-    { id: "ref-4", title: "Adaptive Learning Systems: A Systematic Review", authors: "Martin, F., Chen, Y.", year: 2020, source: "auto" },
-  ]);
-  const [showAddRef, setShowAddRef] = useState(false);
-  const [newRefTitle, setNewRefTitle] = useState("");
-  const [newRefAuthors, setNewRefAuthors] = useState("");
-  const [newRefYear, setNewRefYear] = useState("");
+type ExpandMode = "entry-paper" | "doi-url" | "manual";
 
-  // Cited By
-  const [citedByPapers, setCitedByPapers] = useState<ExpandPaper[]>([
-    { id: "cb-1", title: "AI Scaffolding and Learner Autonomy in Graduate Education", authors: "Park, J., Lee, S.", year: 2025, source: "auto" },
-    { id: "cb-2", title: "Measuring SRL in AI-Enhanced Classrooms", authors: "Wang, M., Chen, L.", year: 2025, source: "auto" },
-  ]);
-  const [showAddCitedBy, setShowAddCitedBy] = useState(false);
-  const [newCbTitle, setNewCbTitle] = useState("");
-  const [newCbAuthors, setNewCbAuthors] = useState("");
-  const [newCbYear, setNewCbYear] = useState("");
+function ExpandWorkspace({ projectId }: { projectId: string }) {
+  const [projectPapers, setProjectPapers] = useState<ApiPaper[]>([]);
+  const [loadingPapers, setLoadingPapers] = useState(false);
+  const [expandMode, setExpandMode] = useState<ExpandMode>("entry-paper");
+  const [selectedPaperId, setSelectedPaperId] = useState("");
+  const [activePath, setActivePath] = useState<"references" | "citations">("references");
+  const [recordBuckets, setRecordBuckets] = useState<
+    Record<ExpandMode, { references: ExpandRecord[]; citations: ExpandRecord[] }>
+  >({
+    "entry-paper": { references: [], citations: [] },
+    "doi-url": { references: [], citations: [] },
+    manual: { references: [], citations: [] },
+  });
+  const [loadingRecords, setLoadingRecords] = useState(false);
+  const [expandError, setExpandError] = useState<string | null>(null);
+  const [showManualReferences, setShowManualReferences] = useState(false);
+  const [showManualCitations, setShowManualCitations] = useState(false);
+  const [referenceLookupInput, setReferenceLookupInput] = useState("");
+  const [citationLookupInput, setCitationLookupInput] = useState("");
+  const [manualReferenceForm, setManualReferenceForm] = useState<ManualRecordForm>({
+    title: "",
+    authors: "",
+    year: "",
+    journal: "",
+    url: "",
+  });
+  const [manualCitationForm, setManualCitationForm] = useState<ManualRecordForm>({
+    title: "",
+    authors: "",
+    year: "",
+    journal: "",
+    url: "",
+  });
 
-  // Similar Topic
-  const [similarTopicPapers, setSimilarTopicPapers] = useState<ExpandPaper[]>(
-    DUMMY_PAPERS.slice(1, 3).map((p) => ({
-      id: p.id,
-      title: p.title,
-      authors: p.authors.join(", "),
-      year: p.year,
-      source: "auto" as const,
-    }))
-  );
-  const [showAddSimilarTopic, setShowAddSimilarTopic] = useState(false);
-  const [newStTitle, setNewStTitle] = useState("");
-  const [newStAuthors, setNewStAuthors] = useState("");
-  const [newStYear, setNewStYear] = useState("");
+  const entryPapers = projectPapers.filter((paper) => paper.is_entry_paper);
+  const selectedPaper = entryPapers.find((paper) => paper.id === selectedPaperId) ?? null;
 
-  // Similar Method
-  const [similarMethodPapers, setSimilarMethodPapers] = useState<ExpandPaper[]>([
-    { id: "sm-1", title: "A Meta-Analysis of Intelligent Tutoring System Effectiveness", authors: "Kulik, J.A., Fletcher, J.D.", year: 2016, source: "auto" },
-  ]);
-  const [showAddSimilarMethod, setShowAddSimilarMethod] = useState(false);
-  const [newSmTitle, setNewSmTitle] = useState("");
-  const [newSmAuthors, setNewSmAuthors] = useState("");
-  const [newSmYear, setNewSmYear] = useState("");
+  interface OpenAlexWork {
+    id?: string;
+    display_name?: string;
+    publication_year?: number;
+    authorships?: Array<{ author?: { display_name?: string } }>;
+    primary_location?: { source?: { display_name?: string } };
+    host_venue?: { display_name?: string };
+    doi?: string;
+    ids?: { doi?: string; openalex?: string };
+    referenced_works?: string[];
+    cited_by_api_url?: string;
+  }
 
-  const handleAddPaper = (
-    type: "ref" | "citedBy" | "similarTopic" | "similarMethod"
+  useEffect(() => {
+    if (!projectId) return;
+    setLoadingPapers(true);
+    paperAPI
+      .list(projectId)
+      .then((papers) => {
+        setProjectPapers(papers);
+        const existingEntryPapers = papers.filter((paper) => paper.is_entry_paper);
+        if (existingEntryPapers.length > 0) {
+          setSelectedPaperId((prev) => prev || existingEntryPapers[0].id);
+        }
+      })
+      .catch(() => {
+        toast.error("Failed to load entry papers");
+      })
+      .finally(() => setLoadingPapers(false));
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!entryPapers.length) {
+      setSelectedPaperId("");
+      return;
+    }
+    if (!selectedPaperId || !entryPapers.some((paper) => paper.id === selectedPaperId)) {
+      setSelectedPaperId(entryPapers[0].id);
+    }
+  }, [entryPapers, selectedPaperId]);
+
+  const extractDoi = (input?: string | null) => {
+    if (!input) return null;
+    const doiMatch = input.match(/\b10\.\d{4,9}\/[^\s"<>]+/i);
+    return doiMatch ? doiMatch[0].replace(/[.,;)>]+$/, "") : null;
+  };
+
+  const normalize = (value?: string | null) => (value || "").trim().toLowerCase();
+  const buildAccessibleExternalLookupUrl = (title?: string, doi?: string | null) => {
+    const raw = (doi || title || "").trim();
+    if (!raw) return undefined;
+    return `https://scholar.google.com/scholar?q=${encodeURIComponent(raw)}`;
+  };
+
+  const isRestrictedExternalUrl = (url?: string | null) => {
+    if (!url) return false;
+    return /webofscience\.com|webofknowledge\.com|scopus\.com/i.test(url);
+  };
+
+  const resolveExternalPaperUrl = (input?: string | null, title?: string) => {
+    const normalizedInput = (input || "").trim();
+    const doi = extractDoi(normalizedInput);
+    if (doi) {
+      return `https://doi.org/${encodeURIComponent(doi)}`;
+    }
+
+    if (/^https?:\/\//i.test(normalizedInput) && !isRestrictedExternalUrl(normalizedInput)) {
+      return normalizedInput;
+    }
+
+    return buildAccessibleExternalLookupUrl(title, doi);
+  };
+
+  const buildOpenAlexUrl = (workId?: string) => {
+    if (!workId) return undefined;
+    const normalized = workId.replace("https://openalex.org/", "");
+    return `https://openalex.org/${encodeURIComponent(normalized)}`;
+  };
+
+  const getOpenAlexWork = async (identifier: string): Promise<OpenAlexWork> => {
+    const response = await fetch(`https://api.openalex.org/works/${encodeURIComponent(identifier)}`);
+    if (!response.ok) {
+      throw new Error("openalex lookup failed");
+    }
+    return (await response.json()) as OpenAlexWork;
+  };
+
+  const resolveOpenAlexWork = async (
+    sourceInput: string,
+    fallbackTitle?: string
+  ): Promise<OpenAlexWork> => {
+    const normalizedInput = sourceInput.trim();
+    const doi = extractDoi(normalizedInput);
+
+    if (doi) {
+      try {
+        return await getOpenAlexWork(`https://doi.org/${doi.trim().toLowerCase()}`);
+      } catch {
+        const byDoiResponse = await fetch(
+          `https://api.openalex.org/works?filter=doi:${encodeURIComponent(doi.trim().toLowerCase())}&per-page=1`
+        );
+        if (byDoiResponse.ok) {
+          const payload = (await byDoiResponse.json()) as { results?: OpenAlexWork[] };
+          const first = payload.results?.[0];
+          if (first) return first;
+        }
+      }
+    }
+
+    const query = (fallbackTitle || normalizedInput).trim();
+    if (!query) {
+      throw new Error("missing source query");
+    }
+
+    const response = await fetch(
+      `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=1`
+    );
+    if (!response.ok) {
+      throw new Error("openalex title search failed");
+    }
+    const payload = (await response.json()) as { results?: OpenAlexWork[] };
+    const first = payload.results?.[0];
+    if (!first) {
+      throw new Error("openalex title search returned empty");
+    }
+    return first;
+  };
+
+  const mapOpenAlexToRecord = (
+    work: OpenAlexWork,
+    direction: "references" | "citations"
+  ): ExpandRecord | null => {
+    if (!work.display_name) return null;
+
+    const doi = work.ids?.doi || work.doi;
+    const resolvedUrl = doi
+      ? `https://doi.org/${encodeURIComponent(doi.replace("https://doi.org/", ""))}`
+      : buildOpenAlexUrl(work.id);
+
+    return {
+      id: work.id || `${direction}-${Date.now()}-${Math.random()}`,
+      title: work.display_name,
+      authors: (work.authorships || [])
+        .map((entry) => entry.author?.display_name)
+        .filter((name): name is string => Boolean(name)),
+      year: work.publication_year,
+      journal: work.primary_location?.source?.display_name || work.host_venue?.display_name,
+      source: "auto",
+      direction,
+      url: resolvedUrl,
+    };
+  };
+
+  const setRecordsForMode = (
+    mode: ExpandMode,
+    direction: "references" | "citations",
+    records: ExpandRecord[]
   ) => {
-    let title = "", authors = "", year = "";
-    if (type === "ref") { title = newRefTitle; authors = newRefAuthors; year = newRefYear; }
-    else if (type === "citedBy") { title = newCbTitle; authors = newCbAuthors; year = newCbYear; }
-    else if (type === "similarTopic") { title = newStTitle; authors = newStAuthors; year = newStYear; }
-    else { title = newSmTitle; authors = newSmAuthors; year = newSmYear; }
+    setRecordBuckets((prev) => ({
+      ...prev,
+      [mode]: {
+        ...prev[mode],
+        [direction]: records,
+      },
+    }));
+  };
+  const fetchOpenAlexRecords = async (
+    sourceWork: OpenAlexWork,
+    direction: "references" | "citations"
+  ) => {
+    if (direction === "references") {
+      const referencedIds = (sourceWork.referenced_works || [])
+        .slice(0, 20)
+        .map((item) => item.split("/").pop() || item);
 
-    if (!title.trim()) return;
+      const works = await Promise.all(
+        referencedIds.map(async (workId) => {
+          try {
+            return await getOpenAlexWork(workId);
+          } catch {
+            return null;
+          }
+        })
+      );
 
-    const newPaper: ExpandPaper = {
-      id: `${type}-${Date.now()}`,
-      title: title.trim(),
-      authors: authors.trim(),
-      year: parseInt(year) || new Date().getFullYear(),
+      return works
+        .map((work) => (work ? mapOpenAlexToRecord(work, direction) : null))
+        .filter((record): record is ExpandRecord => Boolean(record));
+    }
+
+    const openAlexId = sourceWork.id?.split("/").pop();
+    const citedByUrl = openAlexId
+      ? `https://api.openalex.org/works?filter=cites:${encodeURIComponent(openAlexId)}&per-page=20`
+      : sourceWork.cited_by_api_url
+        ? `${sourceWork.cited_by_api_url}&per-page=20`
+        : null;
+
+    if (!citedByUrl) {
+      throw new Error("openalex cited-by url unavailable");
+    }
+
+    const response = await fetch(citedByUrl);
+    if (!response.ok) {
+      throw new Error("openalex citations lookup failed");
+    }
+
+    const payload = (await response.json()) as { results?: OpenAlexWork[] };
+    return (payload.results || [])
+      .map((work) => mapOpenAlexToRecord(work, direction))
+      .filter((record): record is ExpandRecord => Boolean(record));
+  };
+
+  const loadExpandRecordsFromPaper = async (paper: ApiPaper) => {
+    setLoadingRecords(true);
+    setExpandError(null);
+
+    try {
+      const sourceWork = await resolveOpenAlexWork(paper.url || "", paper.title);
+      const [references, citations] = await Promise.all([
+        fetchOpenAlexRecords(sourceWork, "references"),
+        fetchOpenAlexRecords(sourceWork, "citations"),
+      ]);
+      setRecordsForMode("entry-paper", "references", references);
+      setRecordsForMode("entry-paper", "citations", citations);
+    } catch {
+      setRecordsForMode("entry-paper", "references", []);
+      setRecordsForMode("entry-paper", "citations", []);
+      setExpandError(
+        "Unable to pull references or citations from OpenAlex for this entry paper. You can still use the DOI/URL pull inside each tab or add records manually."
+      );
+    } finally {
+      setLoadingRecords(false);
+    }
+  };
+
+  const loadDirectionRecordsByInput = async (
+    direction: "references" | "citations",
+    sourceInput: string
+  ) => {
+    const normalizedInput = sourceInput.trim();
+    if (!normalizedInput) {
+      setExpandError(`Please enter a DOI or URL to pull ${direction}.`);
+      return;
+    }
+
+    setLoadingRecords(true);
+    setExpandError(null);
+
+    try {
+      const sourceWork = await resolveOpenAlexWork(normalizedInput, selectedPaper?.title);
+      const records = await fetchOpenAlexRecords(sourceWork, direction);
+      const targetMode: ExpandMode = expandMode === "entry-paper" ? "doi-url" : expandMode;
+      setRecordsForMode(targetMode, direction, records);
+    } catch {
+      setExpandError(`Unable to pull ${direction} from OpenAlex with the provided DOI/URL.`);
+    } finally {
+      setLoadingRecords(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedPaper) return;
+    void loadExpandRecordsFromPaper(selectedPaper);
+  }, [selectedPaperId, selectedPaper?.title, selectedPaper?.url]);
+
+  const addManualRecord = (direction: "references" | "citations") => {
+    const form = direction === "references" ? manualReferenceForm : manualCitationForm;
+    if (!form.title.trim()) return;
+
+    const record: ExpandRecord = {
+      id: `${direction}-manual-${Date.now()}`,
+      title: form.title.trim(),
+      authors: form.authors
+        .split(",")
+        .map((author) => author.trim())
+        .filter(Boolean),
+      year: form.year ? parseInt(form.year, 10) || undefined : undefined,
+      journal: form.journal.trim() || undefined,
       source: "manual",
+      direction,
+      url: form.url.trim() || undefined,
     };
 
-    if (type === "ref") {
-      setRefPapers([...refPapers, newPaper]);
-      setShowAddRef(false);
-      setNewRefTitle(""); setNewRefAuthors(""); setNewRefYear("");
-    } else if (type === "citedBy") {
-      setCitedByPapers([...citedByPapers, newPaper]);
-      setShowAddCitedBy(false);
-      setNewCbTitle(""); setNewCbAuthors(""); setNewCbYear("");
-    } else if (type === "similarTopic") {
-      setSimilarTopicPapers([...similarTopicPapers, newPaper]);
-      setShowAddSimilarTopic(false);
-      setNewStTitle(""); setNewStAuthors(""); setNewStYear("");
-    } else {
-      setSimilarMethodPapers([...similarMethodPapers, newPaper]);
-      setShowAddSimilarMethod(false);
-      setNewSmTitle(""); setNewSmAuthors(""); setNewSmYear("");
-    }
-  };
-
-  const getPapersForTrail = () => {
-    if (activeTrail === "references") return refPapers;
-    if (activeTrail === "cited-by") return citedByPapers;
-    if (activeTrail === "same-author") {
-      return DUMMY_PAPERS.slice(0, 2).map((p) => ({
-        id: p.id,
-        title: p.title,
-        authors: p.authors.join(", "),
-        year: p.year,
-        source: "auto" as const,
+    if (direction === "references") {
+      setRecordBuckets((prev) => ({
+        ...prev,
+        manual: {
+          ...prev.manual,
+          references: [record, ...prev.manual.references],
+        },
       }));
+      setManualReferenceForm({ title: "", authors: "", year: "", journal: "", url: "" });
+      setShowManualReferences(false);
+      return;
     }
-    if (activeTrail === "similar-topic") return similarTopicPapers;
-    if (activeTrail === "similar-method") return similarMethodPapers;
-    return [];
+
+    setRecordBuckets((prev) => ({
+      ...prev,
+      manual: {
+        ...prev.manual,
+        citations: [record, ...prev.manual.citations],
+      },
+    }));
+    setManualCitationForm({ title: "", authors: "", year: "", journal: "", url: "" });
+    setShowManualCitations(false);
   };
 
-  const getShowAdd = () => {
-    if (activeTrail === "references") return showAddRef;
-    if (activeTrail === "cited-by") return showAddCitedBy;
-    if (activeTrail === "similar-topic") return showAddSimilarTopic;
-    if (activeTrail === "similar-method") return showAddSimilarMethod;
-    return false;
+  const findExistingProjectPaper = (record: ExpandRecord) => {
+    const recordDoi = extractDoi(record.url);
+    return projectPapers.find((paper) => {
+      const paperUrl = (paper as ApiPaper & { url?: string }).url;
+      const paperDoi = extractDoi(paperUrl);
+      if (recordDoi && paperDoi && recordDoi === paperDoi) return true;
+      if (record.url && paperUrl && normalize(record.url) === normalize(paperUrl)) return true;
+      return normalize(paper.title) === normalize(record.title) && (paper.year || null) === (record.year || null);
+    });
   };
 
-  const setShowAdd = (val: boolean) => {
-    if (activeTrail === "references") setShowAddRef(val);
-    else if (activeTrail === "cited-by") setShowAddCitedBy(val);
-    else if (activeTrail === "similar-topic") setShowAddSimilarTopic(val);
-    else if (activeTrail === "similar-method") setShowAddSimilarMethod(val);
+  const toggleExpandedPaper = async (record: ExpandRecord) => {
+    const existing = findExistingProjectPaper(record);
+
+    if (existing) {
+      try {
+        const nextExpandedValue = !existing.is_expanded_paper;
+        const updated = await paperAPI.update(existing.id, {
+          is_expanded_paper: nextExpandedValue,
+          url: existing.url || record.url,
+          discovery_path: existing.discovery_path || "OpenAlex",
+          discovery_note:
+            existing.discovery_note ||
+            (selectedPaper ? `Expanded from: ${selectedPaper.title}` : "Expanded from Step 4"),
+        });
+        setProjectPapers((prev) => prev.map((paper) => (paper.id === existing.id ? updated : paper)));
+        toast.success(nextExpandedValue ? "Added to expanded papers" : "Removed from expanded papers");
+      } catch {
+        toast.error("Failed to update this paper in expanded papers");
+      }
+      return;
+    }
+
+    try {
+      const created = await paperAPI.create({
+        title: record.title,
+        authors: record.authors,
+        year: record.year,
+        journal: record.journal,
+        url: record.url,
+        discovery_path: "OpenAlex",
+        discovery_note: selectedPaper ? `Expanded from: ${selectedPaper.title}` : "Expanded from Step 4",
+        project_id: projectId,
+      });
+
+      try {
+        const updated = await paperAPI.update(created.id, { is_expanded_paper: true });
+        setProjectPapers((prev) => [...prev, updated]);
+      } catch {
+        setProjectPapers((prev) => [...prev, created]);
+      }
+      toast.success("Added to expanded papers");
+    } catch {
+      toast.error("Failed to add this record to expanded papers");
+    }
   };
 
-  const getNewTitle = () => {
-    if (activeTrail === "references") return newRefTitle;
-    if (activeTrail === "cited-by") return newCbTitle;
-    if (activeTrail === "similar-topic") return newStTitle;
-    if (activeTrail === "similar-method") return newSmTitle;
-    return "";
-  };
-  const setNewTitle = (val: string) => {
-    if (activeTrail === "references") setNewRefTitle(val);
-    else if (activeTrail === "cited-by") setNewCbTitle(val);
-    else if (activeTrail === "similar-topic") setNewStTitle(val);
-    else if (activeTrail === "similar-method") setNewSmTitle(val);
-  };
-  const getNewAuthors = () => {
-    if (activeTrail === "references") return newRefAuthors;
-    if (activeTrail === "cited-by") return newCbAuthors;
-    if (activeTrail === "similar-topic") return newStAuthors;
-    if (activeTrail === "similar-method") return newSmAuthors;
-    return "";
-  };
-  const setNewAuthors = (val: string) => {
-    if (activeTrail === "references") setNewRefAuthors(val);
-    else if (activeTrail === "cited-by") setNewCbAuthors(val);
-    else if (activeTrail === "similar-topic") setNewStAuthors(val);
-    else if (activeTrail === "similar-method") setNewSmAuthors(val);
-  };
-  const getNewYear = () => {
-    if (activeTrail === "references") return newRefYear;
-    if (activeTrail === "cited-by") return newCbYear;
-    if (activeTrail === "similar-topic") return newStYear;
-    if (activeTrail === "similar-method") return newSmYear;
-    return "";
-  };
-  const setNewYear = (val: string) => {
-    if (activeTrail === "references") setNewRefYear(val);
-    else if (activeTrail === "cited-by") setNewCbYear(val);
-    else if (activeTrail === "similar-topic") setNewStYear(val);
-    else if (activeTrail === "similar-method") setNewSmYear(val);
-  };
-  const getAddType = (): "ref" | "citedBy" | "similarTopic" | "similarMethod" => {
-    if (activeTrail === "references") return "ref";
-    if (activeTrail === "cited-by") return "citedBy";
-    if (activeTrail === "similar-topic") return "similarTopic";
-    return "similarMethod";
+  const renderManualForm = (direction: "references" | "citations") => {
+    const form = direction === "references" ? manualReferenceForm : manualCitationForm;
+    const setForm = direction === "references" ? setManualReferenceForm : setManualCitationForm;
+
+    return (
+      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-800/40 p-3 space-y-2">
+        <Input
+          value={form.title}
+          onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+          placeholder="Paper title"
+          className="text-sm"
+        />
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            value={form.authors}
+            onChange={(event) => setForm((prev) => ({ ...prev, authors: event.target.value }))}
+            placeholder="Authors (comma separated)"
+            className="text-sm"
+          />
+          <Input
+            value={form.year}
+            onChange={(event) => setForm((prev) => ({ ...prev, year: event.target.value }))}
+            placeholder="Year"
+            type="number"
+            className="text-sm"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            value={form.journal}
+            onChange={(event) => setForm((prev) => ({ ...prev, journal: event.target.value }))}
+            placeholder="Journal"
+            className="text-sm"
+          />
+          <Input
+            value={form.url}
+            onChange={(event) => setForm((prev) => ({ ...prev, url: event.target.value }))}
+            placeholder="DOI or URL"
+            className="text-sm"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => addManualRecord(direction)} className="bg-violet-700 hover:bg-violet-800 text-white">
+            <Plus className="w-3 h-3 mr-1" />
+            Add record
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              if (direction === "references") setShowManualReferences(false);
+              else setShowManualCitations(false);
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
   };
 
-  const papers = getPapersForTrail();
-  const canManualAdd = ["references", "cited-by", "similar-topic", "similar-method"].includes(activeTrail);
+  const renderRecordList = (direction: "references" | "citations", records: ExpandRecord[]) => (
+    <div className="space-y-3">
+      {records.map((record) => {
+        const existing = findExistingProjectPaper(record);
+        const isExpanded = Boolean(existing?.is_expanded_paper);
+        const externalUrl = resolveExternalPaperUrl(record.url, record.title);
+        return (
+          <div key={record.id} className="rounded-lg border border-slate-700/50 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="inline-flex items-center gap-1">
+                  {externalUrl ? (
+                    <a
+                      href={externalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-semibold text-slate-100 hover:text-blue-700 hover:underline"
+                    >
+                      {record.title}
+                    </a>
+                  ) : (
+                    <h4 className="text-sm font-semibold text-slate-100">{record.title}</h4>
+                  )}
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "h-4 px-1 text-[9px] leading-none align-middle",
+                      record.source === "auto"
+                        ? "border-blue-300 text-blue-600"
+                        : "border-purple-300 text-purple-600"
+                    )}
+                  >
+                    {record.source === "auto" ? "Auto" : "Manual"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-500">
+                  {record.authors.length ? record.authors.join(", ") : "Unknown authors"}
+                  {record.year ? ` (${record.year})` : ""}
+                </p>
+                {record.journal ? <p className="text-xs text-slate-500">{record.journal}</p> : null}
+                {record.url ? <p className="text-xs text-slate-400 break-all">{record.url}</p> : null}
+              </div>
+              <Button
+                size="sm"
+                variant={isExpanded ? "outline" : "default"}
+                className={cn(
+                  "h-5 px-2 text-[10px]",
+                  isExpanded
+                    ? "border-rose-300 text-rose-700"
+                    : "bg-violet-700 hover:bg-violet-800 text-white"
+                )}
+                onClick={() => void toggleExpandedPaper(record)}
+              >
+                {isExpanded ? (
+                  <>
+                    <X className="w-3 h-3 mr-1" />
+                    Remove from expanded papers
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-3 h-3 mr-1" />
+                    To Expanded
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        );
+      })}
+      {records.length === 0 && !loadingRecords ? (
+        <div className="text-center py-8 text-xs text-slate-400 border border-dashed rounded-lg">
+          No records yet. Pull from OpenAlex or add manually.
+        </div>
+      ) : null}
+    </div>
+  );
 
   return (
     <div className="space-y-5">
-      <Card className="border-slate-200">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold">
-              Expansion Paths from Entry Paper
-            </CardTitle>
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-xs h-7"
-              onClick={() => setShowAdd(true)}
-            >
-              <Plus className="w-3 h-3 mr-1" />
-              Add Manually
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-5 gap-2">
-            {EXPAND_PATHS.map((path) => (
-              <button
-                key={path.id}
-                onClick={() => setActiveTrail(path.id)}
-                className={cn(
-                  "p-3 rounded-lg border text-center transition-all",
-                  activeTrail === path.id
-                    ? "border-[#1E3A5F] bg-blue-50/50"
-                    : "border-slate-200 hover:border-slate-300"
-                )}
-              >
-                <span className="text-xl block mb-1">{path.icon}</span>
-                <span className="text-xs font-medium text-slate-700">
-                  {path.label}
-                </span>
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  {path.description}
+      <Card className="border-slate-700/50">
+        <CardContent className="space-y-4">
+          <Tabs value={expandMode} onValueChange={(value) => { setExpandMode(value as ExpandMode); setExpandError(null); }}>
+            <div className="rounded-xl border border-slate-700/50 bg-slate-900/20 px-3 pt-5 pb-2">
+              <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+                <TabsTrigger
+                  value="entry-paper"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                >
+                  Expand by Entry Paper
+                </TabsTrigger>
+                <TabsTrigger
+                  value="doi-url"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                >
+                  Expand by DOI/URL
+                </TabsTrigger>
+                <TabsTrigger
+                  value="manual"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                >
+                  Expand Manually
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="entry-paper" className="mt-4 space-y-4">
+              <div className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-3">
+                <p className="text-xs text-slate-500">
+                  Select one entry paper, then pull both references and citations from OpenAlex.
                 </p>
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Expanded Papers */}
-      <Card className="border-slate-200">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold">
-              {EXPAND_PATHS.find((p) => p.id === activeTrail)?.label} ({papers.length})
-            </CardTitle>
-            <div className="flex gap-1.5">
-              {(activeTrail === "references" || activeTrail === "cited-by") && (
-                <Button size="sm" variant="outline" className="text-xs h-7">
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  Auto-Identify
-                </Button>
-              )}
-              {canManualAdd && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs h-7"
-                  onClick={() => setShowAdd(true)}
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Manually
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Manual Add Form */}
-          {getShowAdd() && canManualAdd && (
-            <div className="p-3 mb-3 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/30 space-y-2">
-              <Input
-                value={getNewTitle()}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Paper title..."
-                className="text-xs"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  value={getNewAuthors()}
-                  onChange={(e) => setNewAuthors(e.target.value)}
-                  placeholder="Authors..."
-                  className="text-xs"
-                />
-                <Input
-                  value={getNewYear()}
-                  onChange={(e) => setNewYear(e.target.value)}
-                  placeholder="Year"
-                  type="number"
-                  className="text-xs"
-                />
               </div>
-              <div className="flex gap-1.5">
-                <Button
-                  size="sm"
-                  className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
-                  onClick={() => handleAddPaper(getAddType())}
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Add Paper
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-xs h-7"
-                  onClick={() => setShowAdd(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
 
-          <div className="space-y-3">
-            {papers.map((paper) => (
-              <div
-                key={paper.id}
-                className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition-all"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge
-                        variant="outline"
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">1. Select one entry paper to expand</p>
+                <div className="max-h-[280px] overflow-y-auto space-y-2 pr-1">
+                  {entryPapers.map((paper) => {
+                    const paperUrl = (paper as ApiPaper & { url?: string }).url;
+                    const externalUrl = resolveExternalPaperUrl(paperUrl, paper.title);
+                    return (
+                      <div
+                        key={paper.id}
+                        onClick={() => setSelectedPaperId(paper.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedPaperId(paper.id);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
                         className={cn(
-                          "text-[10px]",
-                          paper.source === "auto"
-                            ? "border-blue-300 text-blue-600"
-                            : "border-purple-300 text-purple-600"
+                          "w-full text-left rounded-lg border p-3 transition-all",
+                          selectedPaperId === paper.id
+                            ? "border-violet-700 bg-blue-50/60"
+                            : "border-slate-700/50 hover:border-slate-300"
                         )}
                       >
-                        {paper.source === "auto" ? "Auto-identified" : "Manually added"}
-                      </Badge>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Link
+                                to={`/paper-read/${projectId}/${paper.id}`}
+                                onClick={(event) => event.stopPropagation()}
+                                className="text-sm font-semibold text-slate-100 hover:text-blue-700 hover:underline"
+                              >
+                                {paper.title}
+                              </Link>
+                              {externalUrl ? (
+                                <a
+                                  href={externalUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="inline-flex items-center rounded-md border border-slate-700/50 px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:border-blue-300 hover:text-blue-700"
+                                >
+                                  <ExternalLink className="mr-1 h-3 w-3" />
+                                  Open original
+                                </a>
+                              ) : null}
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
+                              {paper.authors.join(", ") || "Unknown authors"}
+                              {paper.year ? ` (${paper.year})` : ""}
+                            </p>
+                          </div>
+                          {selectedPaperId === paper.id ? (
+                            <Badge variant="outline" className="text-[10px] border-violet-700 text-violet-400">
+                              Selected
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {!loadingPapers && entryPapers.length === 0 ? (
+                    <div className="text-center py-8 text-xs text-slate-400 border border-dashed rounded-lg">
+                      No entry papers in this project.
                     </div>
-                    <Link to="/workflow/3">
-                      <h4 className="text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline cursor-pointer mb-1">
-                        {paper.title}
-                      </h4>
-                    </Link>
-                    <p className="text-xs text-slate-500">
-                      {paper.authors} ({paper.year})
-                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-slate-700">2. Pulled Expansion Results</p>
+                <Tabs value={activePath} onValueChange={(value) => setActivePath(value as "references" | "citations")}>
+                  <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
+                    <TabsTrigger
+                      value="references"
+                      className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                    >
+                      References
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="citations"
+                      className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                    >
+                      Citations
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <div className="mt-3 rounded-lg border border-slate-700/50 p-3 bg-slate-800/40/40">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-slate-600">
+                        {selectedPaper ? `Selected: ${selectedPaper.title}` : "Please select an entry paper first."}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          if (selectedPaper) void loadExpandRecordsFromPaper(selectedPaper);
+                        }}
+                        disabled={!selectedPaper || loadingRecords}
+                      >
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        {loadingRecords ? "Pulling..." : "Pull from OpenAlex"}
+                      </Button>
+                    </div>
+                    {expandError ? (
+                      <p className="text-xs text-amber-700 mt-2">{expandError}</p>
+                    ) : null}
                   </div>
-                  <div className="flex gap-1.5 shrink-0">
+
+                  <TabsContent value="references" className="mt-4 space-y-3">
+                    {renderRecordList("references", recordBuckets["entry-paper"].references)}
+                  </TabsContent>
+
+                  <TabsContent value="citations" className="mt-4 space-y-3">
+                    {renderRecordList("citations", recordBuckets["entry-paper"].citations)}
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="doi-url" className="mt-4 space-y-4">
+              <div className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-3">
+                <p className="text-xs text-slate-500">
+                  Use a DOI or URL as the seed source when you do not want to start from an existing entry paper.
+                </p>
+              </div>
+
+              <Tabs value={activePath} onValueChange={(value) => setActivePath(value as "references" | "citations")}>
+                <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
+                  <TabsTrigger
+                    value="references"
+                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  >
+                    References
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="citations"
+                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  >
+                    Citations
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="references" className="mt-4 space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+                    <Input
+                      value={referenceLookupInput}
+                      onChange={(event) => setReferenceLookupInput(event.target.value)}
+                      placeholder="Provide a DOI or URL to pull references"
+                      className="text-sm"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void loadDirectionRecordsByInput("references", referenceLookupInput);
+                        }
+                      }}
+                    />
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-xs h-7"
+                      onClick={() => void loadDirectionRecordsByInput("references", referenceLookupInput)}
+                      disabled={loadingRecords || !referenceLookupInput.trim()}
                     >
-                      <Zap className="w-3 h-3 mr-1" />
-                      Quick Check
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Add to Queue
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      Pull References
                     </Button>
                   </div>
-                </div>
+                  {expandError ? <p className="text-xs text-amber-700">{expandError}</p> : null}
+                  {renderRecordList("references", recordBuckets["doi-url"].references)}
+                </TabsContent>
+
+                <TabsContent value="citations" className="mt-4 space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+                    <Input
+                      value={citationLookupInput}
+                      onChange={(event) => setCitationLookupInput(event.target.value)}
+                      placeholder="Provide a DOI or URL to pull citations"
+                      className="text-sm"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void loadDirectionRecordsByInput("citations", citationLookupInput);
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void loadDirectionRecordsByInput("citations", citationLookupInput)}
+                      disabled={loadingRecords || !citationLookupInput.trim()}
+                    >
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      Pull Citations
+                    </Button>
+                  </div>
+                  {expandError ? <p className="text-xs text-amber-700">{expandError}</p> : null}
+                  {renderRecordList("citations", recordBuckets["doi-url"].citations)}
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+
+            <TabsContent value="manual" className="mt-4 space-y-4">
+              <div className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-3">
+                <p className="text-xs text-slate-500">
+                  Manually add papers when automatic expansion cannot find them or when you want to curate results yourself.
+                </p>
               </div>
-            ))}
-            {papers.length === 0 && (
-              <div className="text-center py-6 text-slate-400 text-xs">
-                No papers found. Use &quot;Auto-Identify&quot; or add manually.
-              </div>
-            )}
-          </div>
+
+              <Tabs value={activePath} onValueChange={(value) => setActivePath(value as "references" | "citations")}>
+                <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
+                  <TabsTrigger
+                    value="references"
+                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  >
+                    References
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="citations"
+                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  >
+                    Citations
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="references" className="mt-4 space-y-3">
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowManualReferences((prev) => !prev)}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      {showManualReferences ? "Hide manual form" : "Add manually"}
+                    </Button>
+                  </div>
+                  {showManualReferences ? renderManualForm("references") : null}
+                  {renderRecordList("references", recordBuckets.manual.references)}
+                </TabsContent>
+
+                <TabsContent value="citations" className="mt-4 space-y-3">
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowManualCitations((prev) => !prev)}
+                    >
+                      <Plus className="w-3 h-3 mr-1" />
+                      {showManualCitations ? "Hide manual form" : "Add manually"}
+                    </Button>
+                  </div>
+                  {showManualCitations ? renderManualForm("citations") : null}
+                  {renderRecordList("citations", recordBuckets.manual.citations)}
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+          </Tabs>
+
         </CardContent>
       </Card>
-
-      {/* Reading Queue */}
-      <Card className="border-slate-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">
-            Reading Queue (3 papers)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {DUMMY_PAPERS.slice(0, 3).map((paper, i) => (
-              <div
-                key={paper.id}
-                className="flex items-center gap-3 p-2 rounded-lg bg-slate-50"
-              >
-                <span className="text-xs font-mono text-slate-400 w-5">
-                  {i + 1}
-                </span>
-                <Link to="/workflow/3" className="flex-1 truncate">
-                  <span className="text-sm text-blue-700 hover:text-blue-900 hover:underline cursor-pointer">
-                    {paper.title}
-                  </span>
-                </Link>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-[10px]",
-                    i === 0
-                      ? "text-emerald-600 border-emerald-300"
-                      : "text-slate-400"
-                  )}
-                >
-                  {i === 0 ? "Reading" : "Queued"}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex gap-2">
-        <Button variant="outline">
-          <FileText className="w-4 h-4 mr-2" />
-          Generate Comparison Table
-        </Button>
-        <Link to="/workflow/5">
-          <Button className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white">
-            Save and Go to Visualization
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
-      </div>
     </div>
   );
 }
@@ -2888,21 +5110,8 @@ function ExpandWorkspace() {
 // Step 5: Visualize Workspace
 // ============================================================
 function VisualizeWorkspace() {
-  const [vizSection, setVizSection] = useState<"workspace" | "research" | "viztools">("workspace");
+  const [vizSection, setVizSection] = useState<"research" | "viztools">("research");
   const [researchSubTab, setResearchSubTab] = useState<"papers" | "files" | "ai-summary" | "perm-notes" | "synthesis">("papers");
-
-  // Workspace stats
-  const workspaceStats = {
-    projects: 3,
-    totalArtifacts: DUMMY_ARTIFACTS.length,
-    annotations: DUMMY_ARTIFACTS.filter((a) => a.type === "highlight").length + 3,
-    litNotes: DUMMY_ARTIFACTS.filter((a) => a.type === "literature-note").length + 2,
-    permNotes: DUMMY_ARTIFACTS.filter((a) => a.type === "permanent-note").length + 1,
-    drafts: DUMMY_ARTIFACTS.filter((a) => a.type === "rq-draft").length,
-    purposeCards: DUMMY_ARTIFACTS.filter((a) => a.type === "purpose").length + 1,
-    onlineHours: 24.5,
-    totalWords: 12840,
-  };
 
   // Research content stats
   const papers = DUMMY_PAPERS;
@@ -3071,15 +5280,6 @@ function VisualizeWorkspace() {
     }, 1500);
   };
 
-  const artifactBreakdown = [
-    { label: "Annotations/Highlights", count: workspaceStats.annotations, color: "bg-yellow-400" },
-    { label: "Literature Notes", count: workspaceStats.litNotes, color: "bg-blue-400" },
-    { label: "Permanent Notes", count: workspaceStats.permNotes, color: "bg-rose-400" },
-    { label: "Drafts", count: workspaceStats.drafts, color: "bg-emerald-400" },
-    { label: "Purpose Cards", count: workspaceStats.purposeCards, color: "bg-purple-400" },
-  ];
-  const maxArtifactCount = Math.max(...artifactBreakdown.map((a) => a.count), 1);
-
   // Visualization Tools state
   interface VizTool {
     id: string;
@@ -3132,22 +5332,13 @@ function VisualizeWorkspace() {
   return (
     <div className="space-y-5">
       {/* Section Tabs */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-700/50">
         <CardContent className="p-3">
           <div className="flex gap-2">
             <Button
               size="sm"
-              variant={vizSection === "workspace" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "workspace" && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white")}
-              onClick={() => setVizSection("workspace")}
-            >
-              <BarChart3 className="w-3 h-3 mr-1" />
-              Workspace Analytics
-            </Button>
-            <Button
-              size="sm"
               variant={vizSection === "research" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "research" && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white")}
+              className={cn("text-xs", vizSection === "research" && "bg-violet-700 hover:bg-violet-800 text-white")}
               onClick={() => setVizSection("research")}
             >
               <BookOpen className="w-3 h-3 mr-1" />
@@ -3156,7 +5347,7 @@ function VisualizeWorkspace() {
             <Button
               size="sm"
               variant={vizSection === "viztools" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "viztools" && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white")}
+              className={cn("text-xs", vizSection === "viztools" && "bg-violet-700 hover:bg-violet-800 text-white")}
               onClick={() => setVizSection("viztools")}
             >
               <Zap className="w-3 h-3 mr-1" />
@@ -3166,70 +5357,24 @@ function VisualizeWorkspace() {
         </CardContent>
       </Card>
 
-      {/* ===== WORKSPACE ANALYTICS ===== */}
-      {vizSection === "workspace" && (
-        <div className="space-y-5">
-          {/* Overview Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: "Projects", value: workspaceStats.projects, icon: "📁" },
-              { label: "Total Artifacts", value: workspaceStats.totalArtifacts, icon: "📦" },
-              { label: "Online Hours", value: `${workspaceStats.onlineHours}h`, icon: "⏱️" },
-              { label: "Total Words", value: workspaceStats.totalWords.toLocaleString(), icon: "✍️" },
-            ].map((stat) => (
-              <Card key={stat.label} className="border-slate-200">
-                <CardContent className="p-4 text-center">
-                  <span className="text-2xl block mb-1">{stat.icon}</span>
-                  <p className="text-xl font-bold text-slate-800">{stat.value}</p>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider">{stat.label}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Artifact Breakdown */}
-          <Card className="border-slate-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">Artifact Breakdown by Type</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {artifactBreakdown.map((item) => (
-                  <div key={item.label} className="flex items-center gap-3">
-                    <span className="text-xs text-slate-600 w-36 shrink-0">{item.label}</span>
-                    <div className="flex-1 bg-slate-100 rounded-full h-5 overflow-hidden">
-                      <div
-                        className={cn("h-full rounded-full transition-all", item.color)}
-                        style={{ width: `${(item.count / maxArtifactCount) * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-semibold text-slate-700 w-8 text-right">{item.count}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
       {/* ===== RESEARCH CONTENT with Sub-Tabs ===== */}
       {vizSection === "research" && (
         <div className="space-y-5">
           {/* Paper Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-slate-800">{papers.length}</p>
+                <p className="text-2xl font-bold text-slate-200">{papers.length}</p>
                 <p className="text-[10px] text-slate-500 uppercase">Total Papers</p>
               </CardContent>
             </Card>
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold text-emerald-600">{readPapers.length}</p>
                 <p className="text-[10px] text-slate-500 uppercase">Papers Read</p>
               </CardContent>
             </Card>
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold text-amber-600">{papers.length - readPapers.length}</p>
                 <p className="text-[10px] text-slate-500 uppercase">Unread</p>
@@ -3252,8 +5397,8 @@ function VisualizeWorkspace() {
                 className={cn(
                   "px-3 py-1.5 rounded-md text-xs font-medium transition-all border whitespace-nowrap",
                   researchSubTab === tab.key
-                    ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                    ? "bg-violet-700 text-white border-violet-700"
+                    : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-slate-300"
                 )}
               >
                 {tab.icon} {tab.label}
@@ -3263,7 +5408,7 @@ function VisualizeWorkspace() {
 
           {/* Sub-Tab: Papers Overview */}
           {researchSubTab === "papers" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold">Papers Overview</CardTitle>
@@ -3271,7 +5416,7 @@ function VisualizeWorkspace() {
                     <Button
                       size="sm"
                       variant={paperSort === "year" ? "default" : "outline"}
-                      className={cn("text-[10px] h-6", paperSort === "year" && "bg-[#1E3A5F] text-white")}
+                      className={cn("text-[10px] h-6", paperSort === "year" && "bg-violet-700 text-white")}
                       onClick={() => setPaperSort("year")}
                     >
                       <Clock className="w-2.5 h-2.5 mr-0.5" />
@@ -3280,7 +5425,7 @@ function VisualizeWorkspace() {
                     <Button
                       size="sm"
                       variant={paperSort === "access" ? "default" : "outline"}
-                      className={cn("text-[10px] h-6", paperSort === "access" && "bg-[#1E3A5F] text-white")}
+                      className={cn("text-[10px] h-6", paperSort === "access" && "bg-violet-700 text-white")}
                       onClick={() => setPaperSort("access")}
                     >
                       <Eye className="w-2.5 h-2.5 mr-0.5" />
@@ -3293,10 +5438,10 @@ function VisualizeWorkspace() {
                 <ScrollArea className="max-h-[400px]">
                   <div className="space-y-2">
                     {sortedPapers.map((paper) => (
-                      <div key={paper.id} className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 transition-all">
+                      <div key={paper.id} className="p-3 rounded-lg border border-slate-700/50 hover:border-slate-300 transition-all">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-xs font-medium text-slate-800 line-clamp-1">{paper.title}</h4>
+                            <h4 className="text-xs font-medium text-slate-200 line-clamp-1">{paper.title}</h4>
                             <p className="text-[10px] text-slate-500">{paper.authors.join(", ")} ({paper.year})</p>
                           </div>
                           <div className="flex gap-2 shrink-0">
@@ -3324,7 +5469,7 @@ function VisualizeWorkspace() {
 
           {/* Sub-Tab: External Files */}
           {researchSubTab === "files" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
@@ -3342,7 +5487,7 @@ function VisualizeWorkspace() {
                   <div className="p-4 mb-3 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/30 text-center">
                     <Upload className="w-8 h-8 text-blue-300 mx-auto mb-2" />
                     <p className="text-xs text-slate-500 mb-2">Drag & drop files here, or click to browse</p>
-                    <Button size="sm" className="text-xs bg-[#1E3A5F] hover:bg-[#162d4a] text-white" onClick={handleUploadFile}>
+                    <Button size="sm" className="text-xs bg-violet-700 hover:bg-violet-800 text-white" onClick={handleUploadFile}>
                       <Plus className="w-3 h-3 mr-1" />
                       Simulate Upload
                     </Button>
@@ -3351,7 +5496,7 @@ function VisualizeWorkspace() {
                 {uploadedFiles.length > 0 ? (
                   <div className="space-y-2">
                     {uploadedFiles.map((file, i) => (
-                      <div key={i} className="flex items-center gap-3 p-2 bg-slate-50 rounded-lg">
+                      <div key={i} className="flex items-center gap-3 p-2 bg-slate-800/40 rounded-lg">
                         <FileText className="w-4 h-4 text-slate-400" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-slate-700 truncate">{file.name}</p>
@@ -3392,7 +5537,7 @@ function VisualizeWorkspace() {
 
           {/* Sub-Tab: AI Summarize Notes */}
           {researchSubTab === "ai-summary" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-purple-500" />
@@ -3429,7 +5574,7 @@ function VisualizeWorkspace() {
 
           {/* Sub-Tab: Permanent Notes */}
           {researchSubTab === "perm-notes" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
@@ -3478,7 +5623,7 @@ function VisualizeWorkspace() {
                     {addedPermNotes.map((note) => (
                       <div key={note.id} className="p-2 rounded-lg border border-rose-200 bg-rose-50/20">
                         <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-xs font-medium text-slate-800">{note.title}</h4>
+                          <h4 className="text-xs font-medium text-slate-200">{note.title}</h4>
                           <span className="text-[9px] text-slate-400">{note.date}</span>
                         </div>
                         <p className="text-[10px] text-slate-600 line-clamp-2">{note.content}</p>
@@ -3495,7 +5640,7 @@ function VisualizeWorkspace() {
 
           {/* Sub-Tab: Synthesis Tables */}
           {researchSubTab === "synthesis" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
@@ -3526,8 +5671,8 @@ function VisualizeWorkspace() {
                           className={cn(
                             "px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-all border",
                             activeSynthTableId === table.id
-                              ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
-                              : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                              ? "bg-violet-700 text-white border-violet-700"
+                              : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-slate-300"
                           )}
                         >
                           {table.name}
@@ -3540,7 +5685,7 @@ function VisualizeWorkspace() {
                     <p className="text-xs font-medium text-slate-600 mb-2">Select Papers (Rows):</p>
                     <div className="space-y-1 max-h-[150px] overflow-y-auto">
                       {papers.map((paper) => (
-                        <label key={paper.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer">
+                        <label key={paper.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-800/40 cursor-pointer">
                           <Checkbox
                             checked={synthSelectedPapers.includes(paper.id)}
                             onCheckedChange={(checked) => {
@@ -3559,7 +5704,7 @@ function VisualizeWorkspace() {
                     <p className="text-xs font-medium text-slate-600 mb-2">Columns (Attributes):</p>
                     <div className="flex flex-wrap gap-1.5 mb-2">
                       {synthColumns.map((col) => (
-                        <Badge key={col} variant="secondary" className="text-[10px] px-2 py-0.5 bg-slate-100 gap-1">
+                        <Badge key={col} variant="secondary" className="text-[10px] px-2 py-0.5 bg-slate-800 gap-1">
                           {col}
                           <button onClick={() => setSynthColumns(synthColumns.filter((c) => c !== col))} className="hover:text-red-500">
                             <X className="w-2.5 h-2.5" />
@@ -3618,11 +5763,11 @@ function VisualizeWorkspace() {
                       <table className="w-full text-xs border-collapse">
                         <thead>
                           <tr>
-                            <th className="text-left p-2 border border-slate-200 bg-slate-50 font-semibold text-slate-600 min-w-[150px]">
+                            <th className="text-left p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-600 min-w-[150px]">
                               Paper
                             </th>
                             {synthColumns.map((col) => (
-                              <th key={col} className="text-left p-2 border border-slate-200 bg-slate-50 font-semibold text-slate-600 min-w-[120px]">
+                              <th key={col} className="text-left p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-600 min-w-[120px]">
                                 {col}
                               </th>
                             ))}
@@ -3634,19 +5779,19 @@ function VisualizeWorkspace() {
                             if (!paper) return null;
                             return (
                               <tr key={pid}>
-                                <td className="p-2 border border-slate-200 font-medium text-slate-700">
+                                <td className="p-2 border border-slate-700/50 font-medium text-slate-700">
                                   {paper.authors[0]} ({paper.year})
                                 </td>
                                 {synthColumns.map((col) => (
-                                  <td key={col} className="p-2 border border-slate-200">
+                                  <td key={col} className="p-2 border border-slate-700/50">
                                     <input
                                       type="text"
                                       value={synthData[pid]?.[col] || ""}
                                       onChange={(e) => {
-                                        setSynthData((prev) => ({
-                                          ...prev,
-                                          [pid]: { ...prev[pid], [col]: e.target.value },
-                                        }));
+                                        setSynthData({
+                                          ...synthData,
+                                          [pid]: { ...(synthData[pid] || {}), [col]: e.target.value },
+                                        });
                                       }}
                                       placeholder="Enter data..."
                                       className="w-full text-[10px] text-slate-600 bg-transparent outline-none"
@@ -3670,7 +5815,7 @@ function VisualizeWorkspace() {
       {/* ===== VISUALIZATION TOOLS ===== */}
       {vizSection === "viztools" && (
         <div className="space-y-5">
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -3684,7 +5829,7 @@ function VisualizeWorkspace() {
                 </div>
                 <Button
                   size="sm"
-                  className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                  className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
                   onClick={() => setShowAddVizTool(!showAddVizTool)}
                 >
                   <Plus className="w-3 h-3 mr-1" />
@@ -3741,7 +5886,7 @@ function VisualizeWorkspace() {
                                 ? p === "free" ? "bg-emerald-500 text-white border-emerald-500"
                                   : p === "freemium" ? "bg-amber-500 text-white border-amber-500"
                                   : "bg-red-500 text-white border-red-500"
-                                : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                                : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-slate-300"
                             )}
                           >
                             {p}
@@ -3776,11 +5921,11 @@ function VisualizeWorkspace() {
                 {vizTools.map((tool) => (
                   <div
                     key={tool.id}
-                    className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all group"
+                    className="p-3 rounded-lg border border-slate-700/50 hover:border-slate-300 hover:shadow-sm transition-all group"
                   >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2">
-                        <h4 className="text-xs font-semibold text-slate-800">{tool.name}</h4>
+                        <h4 className="text-xs font-semibold text-slate-200">{tool.name}</h4>
                         {tool.source === "user" && (
                           <Badge variant="outline" className="text-[8px] px-1 py-0 border-purple-300 text-purple-600">
                             Custom
@@ -3843,7 +5988,7 @@ function VisualizeWorkspace() {
           Synthesize into Permanent Note
         </Button>
         <Link to="/workflow/6">
-          <Button className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white">
+          <Button className="bg-violet-700 hover:bg-violet-800 text-white">
             Push to Research Question Draft
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
@@ -4119,7 +6264,7 @@ function DraftWorkspaceInline() {
   return (
     <div className="space-y-5">
       {/* Pre-Writing Block */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-700/50">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -4150,7 +6295,7 @@ function DraftWorkspaceInline() {
                       "px-3 py-1.5 rounded-md text-xs font-medium transition-all border",
                       preWriteTab === key
                         ? "bg-amber-500 text-white border-amber-500"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-amber-300"
+                        : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-amber-300"
                     )}
                   >
                     {strategy.icon} {strategy.label}
@@ -4181,7 +6326,7 @@ function DraftWorkspaceInline() {
                         href={tool.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50 transition-all text-[10px] text-slate-600 hover:text-amber-700"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-700/50 bg-[#0d1b30] hover:border-amber-300 hover:bg-amber-50 transition-all text-[10px] text-slate-600 hover:text-amber-700"
                         title={tool.desc}
                       >
                         🔗 {tool.name}
@@ -4240,7 +6385,7 @@ function DraftWorkspaceInline() {
                             "px-2 py-0.5 rounded text-[10px] border transition-all",
                             newPreWriteTool === tool.name
                               ? "bg-amber-500 text-white border-amber-500"
-                              : "bg-white text-slate-600 border-slate-200 hover:border-amber-300"
+                              : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-amber-300"
                           )}
                         >
                           {tool.name}
@@ -4295,7 +6440,7 @@ function DraftWorkspaceInline() {
                   {(preWriteNotes[preWriteTab] || []).map((note) => (
                     <div key={note.id} className="p-3 rounded-lg border border-amber-200 bg-amber-50/20 group">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className="text-xs font-medium text-slate-800">{note.title}</h4>
+                        <h4 className="text-xs font-medium text-slate-200">{note.title}</h4>
                         <div className="flex items-center gap-1.5">
                           <span className="text-[9px] text-slate-400">{note.date}</span>
                           <Badge variant="outline" className="text-[8px] px-1 py-0 border-amber-300 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
@@ -4314,7 +6459,7 @@ function DraftWorkspaceInline() {
       </Card>
 
       {/* Reporting Style Selector */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-700/50">
         <CardContent className="p-3">
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider shrink-0">
@@ -4328,7 +6473,7 @@ function DraftWorkspaceInline() {
                   variant={selectedStyle === style.id ? "default" : "outline"}
                   className={cn(
                     "text-xs",
-                    selectedStyle === style.id && "bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                    selectedStyle === style.id && "bg-violet-700 hover:bg-violet-800 text-white"
                   )}
                   onClick={() => {
                     setSelectedStyle(style.id);
@@ -4367,7 +6512,7 @@ function DraftWorkspaceInline() {
                 return (
                   <div
                     key={artifact.id}
-                    className="p-3 bg-white border border-slate-200 rounded-lg hover:border-[#1E3A5F] hover:shadow-sm transition-all group"
+                    className="p-3 bg-[#0d1b30] border border-slate-700/50 rounded-lg hover:border-violet-700 hover:shadow-sm transition-all group"
                   >
                     <Badge
                       variant="secondary"
@@ -4375,7 +6520,7 @@ function DraftWorkspaceInline() {
                     >
                       {typeMeta.label}
                     </Badge>
-                    <p className="text-xs font-medium text-slate-700 line-clamp-2 group-hover:text-[#1E3A5F]">
+                    <p className="text-xs font-medium text-slate-700 line-clamp-2 group-hover:text-violet-400">
                       {artifact.title}
                     </p>
                     <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -4391,7 +6536,7 @@ function DraftWorkspaceInline() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-[10px] h-6 px-2 border-[#1E3A5F]/30 text-[#1E3A5F]"
+                        className="text-[10px] h-6 px-2 border-violet-700/30 text-violet-400"
                         onClick={() => {
                           setInsertTarget(activeComponentId);
                           handleInsertArtifact(artifact.id);
@@ -4410,7 +6555,7 @@ function DraftWorkspaceInline() {
 
         {/* Middle Column: Writing Block */}
         <div className="lg:col-span-2 space-y-3">
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold">
@@ -4470,9 +6615,9 @@ function DraftWorkspaceInline() {
                   ) : (
                     <div className="space-y-2 max-h-[250px] overflow-y-auto">
                       {writingDrafts.map((draft) => (
-                        <div key={draft.id} className="p-2 rounded-lg border border-orange-200 bg-white">
+                        <div key={draft.id} className="p-2 rounded-lg border border-orange-200 bg-[#0d1b30]">
                           <div className="flex items-center justify-between mb-1">
-                            <h4 className="text-xs font-medium text-slate-800">{draft.name}</h4>
+                            <h4 className="text-xs font-medium text-slate-200">{draft.name}</h4>
                             <Badge variant="outline" className="text-[9px] px-1 py-0">
                               {draft.versions.length} version{draft.versions.length > 1 ? "s" : ""}
                             </Badge>
@@ -4487,7 +6632,7 @@ function DraftWorkspaceInline() {
                                   "w-full text-left p-1.5 rounded text-[10px] transition-all border",
                                   selectedDraftId === draft.id && selectedVersionId === version.id
                                     ? "bg-orange-100 border-orange-300 text-orange-800"
-                                    : "bg-slate-50 border-slate-200 hover:border-orange-200 text-slate-600"
+                                    : "bg-slate-800/40 border-slate-700/50 hover:border-orange-200 text-slate-600"
                                 )}
                               >
                                 <span className="flex items-center gap-1">
@@ -4516,10 +6661,10 @@ function DraftWorkspaceInline() {
                     className={cn(
                       "px-2.5 py-1 rounded-md text-[11px] whitespace-nowrap transition-all border shrink-0",
                       activeComponentId === comp.id
-                        ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
+                        ? "bg-violet-700 text-white border-violet-700"
                         : componentContents[getContentKey(comp.id)]
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                          : "bg-[#0d1b30] text-slate-500 border-slate-700/50 hover:border-slate-300"
                     )}
                   >
                     {comp.label}
@@ -4536,7 +6681,7 @@ function DraftWorkspaceInline() {
                 .map((comp) => (
                   <div key={comp.id} className="space-y-2">
                     <div className="p-2.5 bg-blue-50/50 border border-blue-100 rounded-lg">
-                      <p className="text-xs font-medium text-[#1E3A5F] mb-0.5">{comp.label}</p>
+                      <p className="text-xs font-medium text-violet-400 mb-0.5">{comp.label}</p>
                       <p className="text-[10px] text-slate-500">{comp.description}</p>
                     </div>
                     <Textarea
@@ -4572,8 +6717,8 @@ function DraftWorkspaceInline() {
                 className={cn(
                   "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all capitalize",
                   checkTab === tab
-                    ? "bg-[#1E3A5F] text-white"
-                    : "text-slate-500 hover:bg-slate-100"
+                    ? "bg-violet-700 text-white"
+                    : "text-slate-500 hover:bg-slate-800"
                 )}
               >
                 {tab}
@@ -4583,7 +6728,7 @@ function DraftWorkspaceInline() {
 
           {/* Macro Level */}
           {checkTab === "macro" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-semibold text-slate-600">
                   Macro Level — Overall Structure
@@ -4595,7 +6740,7 @@ function DraftWorkspaceInline() {
                     {MACRO_CHECKLIST.map((item) => (
                       <label
                         key={item.id}
-                        className="flex items-start gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer"
+                        className="flex items-start gap-2 p-1.5 rounded hover:bg-slate-800/40 cursor-pointer"
                       >
                         <Checkbox
                           checked={!!macroChecked[item.id]}
@@ -4627,7 +6772,7 @@ function DraftWorkspaceInline() {
 
           {/* Meso Level — Toulmin Argumentation */}
           {checkTab === "meso" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-2">
                 <div>
                   <CardTitle className="text-xs font-semibold text-slate-600">
@@ -4644,7 +6789,7 @@ function DraftWorkspaceInline() {
                     {MESO_TOULMIN_CHECKLIST.map((item) => (
                       <label
                         key={item.id}
-                        className="flex items-start gap-2 p-1.5 rounded hover:bg-slate-50 cursor-pointer"
+                        className="flex items-start gap-2 p-1.5 rounded hover:bg-slate-800/40 cursor-pointer"
                       >
                         <Checkbox
                           checked={!!mesoChecked[item.id]}
@@ -4681,7 +6826,7 @@ function DraftWorkspaceInline() {
 
           {/* Micro Level */}
           {checkTab === "micro" && (
-            <Card className="border-slate-200">
+            <Card className="border-slate-700/50">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-semibold text-slate-600">
                   Micro Level — Language & Details
@@ -4697,7 +6842,7 @@ function DraftWorkspaceInline() {
                       </p>
                       <div className="space-y-1">
                         {MICRO_CHECKLIST_BASIC.map((item) => (
-                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-800/40 cursor-pointer">
                             <Checkbox
                               checked={!!microBasicChecked[item.id]}
                               onCheckedChange={(checked) =>
@@ -4720,7 +6865,7 @@ function DraftWorkspaceInline() {
                       </p>
                       <div className="space-y-1">
                         {MICRO_CHECKLIST_READABILITY.map((item) => (
-                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-800/40 cursor-pointer">
                             <Checkbox
                               checked={!!microReadChecked[item.id]}
                               onCheckedChange={(checked) =>
@@ -4743,7 +6888,7 @@ function DraftWorkspaceInline() {
                       </p>
                       <div className="space-y-1">
                         {MICRO_CHECKLIST_CREDIBILITY.map((item) => (
-                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-50 cursor-pointer">
+                          <label key={item.id} className="flex items-start gap-2 p-1 rounded hover:bg-slate-800/40 cursor-pointer">
                             <Checkbox
                               checked={!!microCredChecked[item.id]}
                               onCheckedChange={(checked) =>
@@ -4812,7 +6957,7 @@ function DraftWorkspaceInline() {
       {/* Artifact Preview Modal */}
       {previewArtifact && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[70vh] overflow-y-auto">
+          <div className="bg-[#0d1b30] rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[70vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b">
               <div>
                 <Badge
@@ -4825,23 +6970,23 @@ function DraftWorkspaceInline() {
                 >
                   {ARTIFACT_TYPE_META[previewArtifact.type].label}
                 </Badge>
-                <h3 className="text-sm font-semibold text-slate-800">{previewArtifact.title}</h3>
+                <h3 className="text-sm font-semibold text-slate-200">{previewArtifact.title}</h3>
               </div>
-              <button onClick={() => setPreviewArtifactId(null)} className="p-1 hover:bg-slate-100 rounded">
+              <button onClick={() => setPreviewArtifactId(null)} className="p-1 hover:bg-slate-800 rounded">
                 <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
             <div className="p-4">
               <p className="text-xs text-slate-500 mb-2">{previewArtifact.description}</p>
               {previewArtifact.content && (
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
                   <pre className="text-xs text-slate-700 whitespace-pre-wrap">{previewArtifact.content}</pre>
                 </div>
               )}
               <div className="flex gap-1.5 mt-3">
                 <Button
                   size="sm"
-                  className="text-xs h-7 bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                  className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
                   onClick={() => {
                     handleInsertArtifact(previewArtifact.id);
                     setPreviewArtifactId(null);
@@ -4862,12 +7007,12 @@ function DraftWorkspaceInline() {
       {/* Full Preview Modal */}
       {showPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
-              <h3 className="text-sm font-semibold text-slate-800">
+          <div className="bg-[#0d1b30] rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-[#0d1b30] z-10">
+              <h3 className="text-sm font-semibold text-slate-200">
                 Full Preview — {activeStyle.name}
               </h3>
-              <button onClick={() => setShowPreview(false)} className="p-1 hover:bg-slate-100 rounded">
+              <button onClick={() => setShowPreview(false)} className="p-1 hover:bg-slate-800 rounded">
                 <X className="w-4 h-4 text-slate-500" />
               </button>
             </div>
@@ -4878,7 +7023,7 @@ function DraftWorkspaceInline() {
                   if (!content) return null;
                   return (
                     <div key={comp.id} className="mb-6">
-                      <h2 className="text-base font-bold text-slate-800 mb-2 border-b pb-1">
+                      <h2 className="text-base font-bold text-slate-200 mb-2 border-b pb-1">
                         {comp.label}
                       </h2>
                       <div className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">

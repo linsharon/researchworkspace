@@ -37,11 +37,11 @@ export default function VisualizationBoard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#1E3A5F] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-violet-700 flex items-center justify-center">
               <Map className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900">
+              <h1 className="text-xl font-bold text-slate-100">
                 Visualization Board
               </h1>
               <p className="text-sm text-slate-500">
@@ -79,7 +79,7 @@ export default function VisualizationBoard() {
               className={cn(
                 "text-xs",
                 activeView === view.id &&
-                  "bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                  "bg-violet-700 hover:bg-violet-800 text-white"
               )}
               onClick={() => setActiveView(view.id)}
             >
@@ -89,7 +89,7 @@ export default function VisualizationBoard() {
         </div>
 
         {/* Main Visualization Canvas */}
-        <Card className="border-slate-200">
+        <Card className="border-slate-700/50">
           <CardContent
             className="p-0 relative overflow-hidden rounded-lg"
             style={{
@@ -110,7 +110,7 @@ export default function VisualizationBoard() {
 
         {/* Insights & RQ */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold">
                 Research Insights
@@ -126,7 +126,7 @@ export default function VisualizationBoard() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200">
+          <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold">
                 Emerging Research Questions
@@ -143,7 +143,7 @@ export default function VisualizationBoard() {
                   among graduate students?
                 </p>
               </div>
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+              <div className="p-3 bg-slate-800/40 border border-slate-700/50 rounded-lg">
                 <p className="text-sm text-slate-700 font-medium mb-1">
                   Sub-RQ 1
                 </p>
@@ -153,7 +153,7 @@ export default function VisualizationBoard() {
                   metacognitive development?
                 </p>
               </div>
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+              <div className="p-3 bg-slate-800/40 border border-slate-700/50 rounded-lg">
                 <p className="text-sm text-slate-700 font-medium mb-1">
                   Sub-RQ 2
                 </p>
@@ -177,7 +177,7 @@ export default function VisualizationBoard() {
             Synthesize into Permanent Note
           </Button>
           <Link to="/draft">
-            <Button className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white">
+            <Button className="bg-violet-700 hover:bg-violet-800 text-white">
               Push to Research Question Draft
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
@@ -375,7 +375,7 @@ function SynthesisTableView() {
     <div className="p-6 h-full overflow-auto">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-slate-200">
+          <tr className="border-b border-slate-700/50">
             <th className="text-left py-3 px-3 font-semibold text-slate-600">Paper</th>
             <th className="text-left py-3 px-3 font-semibold text-slate-600">Topic</th>
             <th className="text-left py-3 px-3 font-semibold text-slate-600">Theory</th>
@@ -389,7 +389,7 @@ function SynthesisTableView() {
               key={i}
               className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors"
             >
-              <td className="py-3 px-3 font-medium text-slate-800">{row.paper}</td>
+              <td className="py-3 px-3 font-medium text-slate-200">{row.paper}</td>
               <td className="py-3 px-3 text-slate-600">{row.topic}</td>
               <td className="py-3 px-3 text-slate-600">{row.theory}</td>
               <td className="py-3 px-3 text-slate-600">{row.method}</td>

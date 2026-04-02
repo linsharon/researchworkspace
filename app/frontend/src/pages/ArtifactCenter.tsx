@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,19 +14,46 @@ import {
   Eye,
   Lightbulb,
   Search,
+  ArrowRight,
 } from "lucide-react";
 import {
   DUMMY_ARTIFACTS,
   ARTIFACT_TYPE_META,
   STEP_META,
+  type Artifact,
   type ArtifactType,
 } from "@/lib/data";
+import { noteAPI } from "@/lib/manuscript-api";
+import type { Note } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
+
+const STATIC_ARTIFACTS = DUMMY_ARTIFACTS.filter(
+  (artifact) =>
+    artifact.type !== "literature-note" && artifact.type !== "permanent-note"
+);
+
+function formatArtifactDate(value: string) {
+  return value.includes("T") ? value.split("T")[0] : value;
+}
+
+function noteToArtifact(note: Note): Artifact {
+  return {
+    id: note.id,
+    title: note.title,
+    type: note.note_type,
+    projectId: note.project_id,
+    sourceStep: 3,
+    description: note.description || note.content || "Saved note",
+    updatedAt: formatArtifactDate(note.updated_at),
+    content: note.content || note.description,
+  };
+}
 
 const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
   { value: "purpose", label: "Purposes" },
   { value: "concepts", label: "Concepts" },
+  { value: "literature", label: "Literature" },
   { value: "search", label: "Searches" },
   { value: "notes", label: "Notes" },
   { value: "visual", label: "Visuals" },
@@ -36,19 +63,25 @@ const FILTER_OPTIONS: { value: string; label: string }[] = [
 const FILTER_MAP: Record<string, ArtifactType[]> = {
   all: [],
   purpose: ["purpose"],
-  search: ["keyword", "search-log", "entry-paper"],
+  literature: ["entry-paper"],
+  search: ["keyword", "search-log"],
   notes: ["literature-note", "permanent-note"],
   visual: ["visualization"],
   drafts: ["rq-draft", "writing-block", "writing-draft"],
 };
 
 export default function ArtifactCenter() {
+  const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
+  const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
   const CONCEPTS_STORAGE_KEY = "rw-concepts";
+  const CONCEPTS_UPDATED_EVENT = "concepts-updated";
+  const NOTES_UPDATED_EVENT = "notes-updated";
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const tabFromUrl = searchParams.get("tab") || "all";
   const [filter, setFilter] = useState(tabFromUrl);
   const [searchQuery, setSearchQuery] = useState("");
-  const [artifacts, setArtifacts] = useState([...DUMMY_ARTIFACTS]);
+  const [artifacts, setArtifacts] = useState<Artifact[]>([...STATIC_ARTIFACTS]);
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
   const [concepts, setConcepts] = useState<
     Array<{ id: string; name: string; description: string; category: string; color: string }>
@@ -89,7 +122,57 @@ export default function ArtifactCenter() {
 
     loadConcepts();
     window.addEventListener("storage", loadConcepts);
-    return () => window.removeEventListener("storage", loadConcepts);
+    window.addEventListener(CONCEPTS_UPDATED_EVENT, loadConcepts);
+    return () => {
+      window.removeEventListener("storage", loadConcepts);
+      window.removeEventListener(CONCEPTS_UPDATED_EVENT, loadConcepts);
+    };
+  }, []);
+
+  useEffect(() => {
+    const loadSavedNotes = async () => {
+      let savedEntryArtifacts: Artifact[] = [];
+
+      if (typeof window !== "undefined") {
+        try {
+          const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+          const parsed = saved ? JSON.parse(saved) : [];
+          savedEntryArtifacts = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          savedEntryArtifacts = [];
+        }
+      }
+
+      try {
+        const savedNotes = await noteAPI.listAll();
+        const savedNoteArtifacts = savedNotes.map(noteToArtifact);
+        const merged = [...STATIC_ARTIFACTS, ...savedEntryArtifacts, ...savedNoteArtifacts];
+        const deduped = Array.from(new Map(merged.map((artifact) => [artifact.id, artifact])).values());
+        setArtifacts(deduped);
+      } catch (error) {
+        console.error("Failed to load notes for Artifact Center:", error);
+        const merged = [...STATIC_ARTIFACTS, ...savedEntryArtifacts];
+        const deduped = Array.from(new Map(merged.map((artifact) => [artifact.id, artifact])).values());
+        setArtifacts(deduped);
+      }
+    };
+
+    loadSavedNotes();
+
+    if (typeof window !== "undefined") {
+      const onNotesUpdated = () => {
+        loadSavedNotes();
+      };
+      const onArtifactsUpdated = () => {
+        loadSavedNotes();
+      };
+      window.addEventListener(NOTES_UPDATED_EVENT, onNotesUpdated);
+      window.addEventListener(ARTIFACTS_UPDATED_EVENT, onArtifactsUpdated);
+      return () => {
+        window.removeEventListener(NOTES_UPDATED_EVENT, onNotesUpdated);
+        window.removeEventListener(ARTIFACTS_UPDATED_EVENT, onArtifactsUpdated);
+      };
+    }
   }, []);
 
   const filteredArtifacts = artifacts.filter((a) => {
@@ -163,11 +246,53 @@ export default function ArtifactCenter() {
     setSelectedConceptId(null);
   };
 
-  const handleDeleteArtifact = (artifactId: string) => {
+  const handleDeleteArtifact = async (artifactId: string) => {
+    const artifact = artifacts.find((item) => item.id === artifactId);
+
+    if (
+      artifact &&
+      (artifact.type === "literature-note" || artifact.type === "permanent-note")
+    ) {
+      try {
+        await noteAPI.delete(artifactId);
+      } catch (error) {
+        console.error("Failed to delete note artifact:", error);
+        return;
+      }
+    }
+
     setArtifacts((prev) => prev.filter((a) => a.id !== artifactId));
     if (selectedArtifact === artifactId) {
       setSelectedArtifact(null);
     }
+  };
+
+  const getArtifactPaperReadTarget = async (artifact: Artifact) => {
+    if (artifact.type === "entry-paper") {
+      const paperId = artifact.id.replace(/^entry-paper-/, "");
+      if (!paperId || paperId === artifact.id) return null;
+      return `/paper-read/${artifact.projectId}/${paperId}`;
+    }
+
+    if (artifact.type === "literature-note" || artifact.type === "permanent-note") {
+      try {
+        const note = await noteAPI.get(artifact.id);
+        return `/paper-read/${note.project_id}/${note.paper_id}?noteId=${note.id}`;
+      } catch (error) {
+        console.error("Failed to resolve note artifact target:", error);
+        return null;
+      }
+    }
+
+    return null;
+  };
+
+  const handleOpenArtifactSource = async (artifact: Artifact) => {
+    const target = await getArtifactPaperReadTarget(artifact);
+    if (!target) {
+      return;
+    }
+    navigate(target);
   };
 
   const getFilterCount = (filterValue: string) => {
@@ -200,7 +325,7 @@ export default function ArtifactCenter() {
               <Archive className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900">
+              <h1 className="text-xl font-bold text-slate-100">
                 Artifact Center
               </h1>
               <p className="text-sm text-slate-500">
@@ -214,7 +339,7 @@ export default function ArtifactCenter() {
         </div>
 
         {/* Search & Filters */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
@@ -224,7 +349,7 @@ export default function ArtifactCenter() {
               className="pl-9 text-sm"
             />
           </div>
-          <div className="flex gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             {FILTER_OPTIONS.map((opt) => (
               <Button
                 key={opt.value}
@@ -233,7 +358,7 @@ export default function ArtifactCenter() {
                 className={cn(
                   "text-xs",
                   filter === opt.value &&
-                    "bg-[#1E3A5F] hover:bg-[#162d4a] text-white"
+                    "bg-violet-700 hover:bg-violet-800 text-white"
                 )}
                 onClick={() => setFilter(opt.value)}
               >
@@ -247,7 +372,7 @@ export default function ArtifactCenter() {
         {filter === "concepts" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredConcepts.map((concept) => (
-              <Card key={concept.id} className="border-slate-200 hover:shadow-md transition-all group">
+              <Card key={concept.id} className="border-slate-700/50 hover:shadow-md transition-all group">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2">
                     <Badge
@@ -311,7 +436,7 @@ export default function ArtifactCenter() {
               <Dialog key={artifact.id}>
                 <DialogTrigger asChild>
                   <div
-                    className="p-4 bg-white border border-slate-200 rounded-xl hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group"
+                    className="p-4 bg-[#0d1b30] border border-slate-700/50 rounded-xl hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group"
                     onClick={() => setSelectedArtifact(artifact.id)}
                   >
                     <div className="flex items-start justify-between mb-2">
@@ -329,12 +454,28 @@ export default function ArtifactCenter() {
                         {stepMeta.icon} Step {artifact.sourceStep}
                       </span>
                     </div>
-                    <h4 className="text-sm font-medium text-slate-800 mb-1 group-hover:text-[#1E3A5F] transition-colors line-clamp-2">
+                    <h4 className="text-sm font-medium text-slate-200 mb-1 group-hover:text-violet-400 transition-colors line-clamp-2">
                       {artifact.title}
                     </h4>
                     <p className="text-xs text-slate-500 line-clamp-2 mb-3">
                       {artifact.description}
                     </p>
+                    {(artifact.type === "entry-paper" ||
+                      artifact.type === "literature-note" ||
+                      artifact.type === "permanent-note") && (
+                      <button
+                        type="button"
+                        className="mb-3 text-xs text-violet-400 hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleOpenArtifactSource(artifact);
+                        }}
+                      >
+                        {artifact.type === "entry-paper"
+                          ? "Open this paper in Paper Read"
+                          : "Open corresponding note in Paper Read"}
+                      </button>
+                    )}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-[10px] text-slate-400">
                         <Clock className="w-3 h-3" />
@@ -357,6 +498,22 @@ export default function ArtifactCenter() {
                         >
                           <Edit className="w-3 h-3" />
                         </Button>
+                        {(artifact.type === "entry-paper" ||
+                          artifact.type === "literature-note" ||
+                          artifact.type === "permanent-note") && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            title="Open in Paper Read"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void handleOpenArtifactSource(artifact);
+                            }}
+                          >
+                            <ArrowRight className="w-3 h-3" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -364,7 +521,7 @@ export default function ArtifactCenter() {
                           title="Delete"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteArtifact(artifact.id);
+                            void handleDeleteArtifact(artifact.id);
                           }}
                         >
                           <Trash2 className="w-3 h-3" />
@@ -399,7 +556,7 @@ export default function ArtifactCenter() {
                       {artifact.description}
                     </p>
                     {artifact.content && (
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                      <div className="p-4 bg-slate-800/40 rounded-lg border border-slate-700/50">
                         <p className="text-sm text-slate-700 whitespace-pre-wrap">
                           {artifact.content}
                         </p>
@@ -409,7 +566,22 @@ export default function ArtifactCenter() {
                       <Clock className="w-3.5 h-3.5" />
                       Last edited: {artifact.updatedAt}
                     </div>
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200">
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-700/50">
+                      {(artifact.type === "entry-paper" ||
+                        artifact.type === "literature-note" ||
+                        artifact.type === "permanent-note") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => void handleOpenArtifactSource(artifact)}
+                        >
+                          <ArrowRight className="w-3 h-3 mr-1" />
+                          {artifact.type === "entry-paper"
+                            ? "Open Paper Read Page"
+                            : "Open Corresponding Note"}
+                        </Button>
+                      )}
                       <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="View">
                         <Eye className="w-3 h-3" />
                       </Button>
@@ -421,7 +593,7 @@ export default function ArtifactCenter() {
                         variant="outline"
                         className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
                         title="Delete"
-                        onClick={() => handleDeleteArtifact(artifact.id)}
+                        onClick={() => void handleDeleteArtifact(artifact.id)}
                       >
                         <Trash2 className="w-3 h-3" />
                       </Button>
@@ -497,7 +669,7 @@ export default function ArtifactCenter() {
                 <div className="flex gap-2 pt-1">
                   {conceptDialogMode === "edit" ? (
                     <Button
-                      className="bg-[#1E3A5F] hover:bg-[#162d4a] text-white text-xs"
+                      className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
                       onClick={handleSaveConcept}
                     >
                       Save
