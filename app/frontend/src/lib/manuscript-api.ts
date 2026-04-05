@@ -5,6 +5,16 @@
 import axios, { AxiosError } from "axios";
 
 const API_BASE_URL = "/api/v1/manuscripts";
+// Keep requests short so offline back-end quickly falls back to localStorage.
+axios.defaults.timeout = 2500;
+
+const STORAGE_KEYS = {
+  papers: "rw-manuscript-papers",
+  projects: "rw-manuscript-projects",
+  notes: "rw-manuscript-notes",
+  highlights: "rw-manuscript-highlights",
+  concepts: "rw-manuscript-concepts",
+} as const;
 
 // ============================================================
 // Types
@@ -69,6 +79,77 @@ export interface Concept {
   created_at: string;
 }
 
+interface StoredConcept extends Concept {
+  project_id: string;
+}
+
+const canUseStorage = () => typeof window !== "undefined" && !!window.localStorage;
+
+const loadCollection = <T>(key: string): T[] => {
+  if (!canUseStorage()) return [];
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveCollection = <T>(key: string, items: T[]) => {
+  if (!canUseStorage()) return;
+  window.localStorage.setItem(key, JSON.stringify(items));
+};
+
+const nowIso = () => new Date().toISOString();
+const makeId = (prefix: string) =>
+  `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+const shouldFallbackToLocal = (error: unknown) => {
+  if (!canUseStorage()) return false;
+  if (!axios.isAxiosError(error)) return false;
+
+  if (error.code === "ECONNABORTED") return true;
+  if (!error.response) return true;
+
+  const status = error.response.status;
+  const requestUrl = (error.config?.url || "").toLowerCase();
+  const payload =
+    typeof error.response.data === "string"
+      ? error.response.data
+      : JSON.stringify(error.response.data || "");
+  const message = `${error.message || ""} ${payload}`.toLowerCase();
+
+  // Vite proxy/back-end offline often surfaces as 5xx with ECONNREFUSED in payload.
+  if (status >= 500) return true;
+  if (status === 404 && requestUrl.includes("/api/v1/manuscripts")) return true;
+  if (/econnrefused|proxy|failed to fetch|network error|socket hang up|timeout/.test(message)) {
+    return true;
+  }
+
+  return false;
+};
+
+const withLocalFallback = async <T>(
+  remote: () => Promise<T>,
+  fallback: () => T | Promise<T>
+): Promise<T> => {
+  try {
+    return await remote();
+  } catch (error) {
+    if (!shouldFallbackToLocal(error)) throw error;
+    return await fallback();
+  }
+};
+
+const sortByUpdatedDesc = <T extends { updated_at?: string; created_at?: string }>(items: T[]) =>
+  [...items].sort((left, right) => {
+    const leftValue = left.updated_at || left.created_at || "";
+    const rightValue = right.updated_at || right.created_at || "";
+    return rightValue.localeCompare(leftValue);
+  });
+
 // ============================================================
 // Papers API
 // ============================================================
@@ -85,42 +166,121 @@ export const paperAPI = {
     discovery_note?: string;
     project_id: string;
   }): Promise<Paper> => {
-    const response = await axios.post(`${API_BASE_URL}/papers`, data);
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.post(`${API_BASE_URL}/papers`, data);
+        return response.data;
+      },
+      () => {
+        const papers = loadCollection<Paper>(STORAGE_KEYS.papers);
+        const paper: Paper = {
+          id: makeId("paper"),
+          title: data.title,
+          authors: data.authors || [],
+          year: data.year,
+          journal: data.journal,
+          abstract: data.abstract,
+          url: data.url,
+          is_entry_paper: false,
+          is_expanded_paper: false,
+          reading_status: "To Read",
+          relevance: undefined,
+          discovery_path: data.discovery_path,
+          discovery_note: data.discovery_note,
+          pdf_path: undefined,
+          project_id: data.project_id,
+        };
+        saveCollection(STORAGE_KEYS.papers, [...papers, paper]);
+        return paper;
+      }
+    );
   },
 
   list: async (projectId: string): Promise<Paper[]> => {
-    const response = await axios.get(`${API_BASE_URL}/papers`, {
-      params: { project_id: projectId },
-    });
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.get(`${API_BASE_URL}/papers`, {
+          params: { project_id: projectId },
+        });
+        return response.data;
+      },
+      () => loadCollection<Paper>(STORAGE_KEYS.papers).filter((paper) => paper.project_id === projectId)
+    );
   },
 
   listEntryPapers: async (projectId: string): Promise<Paper[]> => {
-    const response = await axios.get(`${API_BASE_URL}/papers/entry-papers`, {
-      params: { project_id: projectId },
-    });
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.get(`${API_BASE_URL}/papers/entry-papers`, {
+          params: { project_id: projectId },
+        });
+        return response.data;
+      },
+      () =>
+        loadCollection<Paper>(STORAGE_KEYS.papers).filter(
+          (paper) =>
+            paper.project_id === projectId &&
+            (paper.is_entry_paper || paper.is_expanded_paper)
+        )
+    );
   },
 
   get: async (paperId: string): Promise<Paper> => {
-    const response = await axios.get(`${API_BASE_URL}/papers/${paperId}`);
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.get(`${API_BASE_URL}/papers/${paperId}`);
+        return response.data;
+      },
+      () => {
+        const paper = loadCollection<Paper>(STORAGE_KEYS.papers).find((item) => item.id === paperId);
+        if (!paper) {
+          throw new AxiosError("Paper not found", "ERR_BAD_REQUEST");
+        }
+        return paper;
+      }
+    );
   },
 
   update: async (
     paperId: string,
     data: Partial<Paper>
   ): Promise<Paper> => {
-    const response = await axios.put(
-      `${API_BASE_URL}/papers/${paperId}`,
-      data
+    return withLocalFallback(
+      async () => {
+        const response = await axios.put(
+          `${API_BASE_URL}/papers/${paperId}`,
+          data
+        );
+        return response.data;
+      },
+      () => {
+        const papers = loadCollection<Paper>(STORAGE_KEYS.papers);
+        const index = papers.findIndex((paper) => paper.id === paperId);
+        if (index === -1) {
+          throw new AxiosError("Paper not found", "ERR_BAD_REQUEST");
+        }
+        const updated = { ...papers[index], ...data, id: paperId } as Paper;
+        const next = [...papers];
+        next[index] = updated;
+        saveCollection(STORAGE_KEYS.papers, next);
+        return updated;
+      }
     );
-    return response.data;
   },
 
   delete: async (paperId: string): Promise<void> => {
-    await axios.delete(`${API_BASE_URL}/papers/${paperId}`);
+    return withLocalFallback(
+      async () => {
+        await axios.delete(`${API_BASE_URL}/papers/${paperId}`);
+      },
+      () => {
+        const papers = loadCollection<Paper>(STORAGE_KEYS.papers);
+        saveCollection(
+          STORAGE_KEYS.papers,
+          papers.filter((paper) => paper.id !== paperId)
+        );
+      }
+    );
   },
 };
 
@@ -140,41 +300,129 @@ export const noteAPI = {
     citations?: string[];
     content?: string;
   }): Promise<Note> => {
-    const response = await axios.post(`${API_BASE_URL}/notes`, data);
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.post(`${API_BASE_URL}/notes`, data);
+        return response.data;
+      },
+      () => {
+        const notes = loadCollection<Note>(STORAGE_KEYS.notes);
+        const timestamp = nowIso();
+        const note: Note = {
+          id: makeId("note"),
+          paper_id: data.paper_id,
+          project_id: data.project_id,
+          title: data.title,
+          description: data.description,
+          note_type: data.note_type,
+          page: data.page,
+          keywords: data.keywords || [],
+          citations: data.citations || [],
+          content: data.content,
+          created_at: timestamp,
+          updated_at: timestamp,
+        };
+        saveCollection(STORAGE_KEYS.notes, [...notes, note]);
+        return note;
+      }
+    );
   },
 
   list: async (paperId: string): Promise<Note[]> => {
-    const response = await axios.get(`${API_BASE_URL}/notes`, {
-      params: { paper_id: paperId },
-    });
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.get(`${API_BASE_URL}/notes`, {
+          params: { paper_id: paperId },
+        });
+        return response.data;
+      },
+      () =>
+        sortByUpdatedDesc(
+          loadCollection<Note>(STORAGE_KEYS.notes).filter((note) => note.paper_id === paperId)
+        )
+    );
   },
 
   listAll: async (): Promise<Note[]> => {
-    const response = await axios.get(`${API_BASE_URL}/notes`);
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.get(`${API_BASE_URL}/notes`);
+        return response.data;
+      },
+      () => sortByUpdatedDesc(loadCollection<Note>(STORAGE_KEYS.notes))
+    );
   },
 
   listByProject: async (projectId: string): Promise<Note[]> => {
-    const response = await axios.get(`${API_BASE_URL}/notes`, {
-      params: { project_id: projectId },
-    });
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.get(`${API_BASE_URL}/notes`, {
+          params: { project_id: projectId },
+        });
+        return response.data;
+      },
+      () =>
+        sortByUpdatedDesc(
+          loadCollection<Note>(STORAGE_KEYS.notes).filter((note) => note.project_id === projectId)
+        )
+    );
   },
 
   get: async (noteId: string): Promise<Note> => {
-    const response = await axios.get(`${API_BASE_URL}/notes/${noteId}`);
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.get(`${API_BASE_URL}/notes/${noteId}`);
+        return response.data;
+      },
+      () => {
+        const note = loadCollection<Note>(STORAGE_KEYS.notes).find((item) => item.id === noteId);
+        if (!note) {
+          throw new AxiosError("Note not found", "ERR_BAD_REQUEST");
+        }
+        return note;
+      }
+    );
   },
 
   update: async (noteId: string, data: Partial<Note>): Promise<Note> => {
-    const response = await axios.put(`${API_BASE_URL}/notes/${noteId}`, data);
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.put(`${API_BASE_URL}/notes/${noteId}`, data);
+        return response.data;
+      },
+      () => {
+        const notes = loadCollection<Note>(STORAGE_KEYS.notes);
+        const index = notes.findIndex((note) => note.id === noteId);
+        if (index === -1) {
+          throw new AxiosError("Note not found", "ERR_BAD_REQUEST");
+        }
+        const updated: Note = {
+          ...notes[index],
+          ...data,
+          id: noteId,
+          updated_at: nowIso(),
+        };
+        const next = [...notes];
+        next[index] = updated;
+        saveCollection(STORAGE_KEYS.notes, next);
+        return updated;
+      }
+    );
   },
 
   delete: async (noteId: string): Promise<void> => {
-    await axios.delete(`${API_BASE_URL}/notes/${noteId}`);
+    return withLocalFallback(
+      async () => {
+        await axios.delete(`${API_BASE_URL}/notes/${noteId}`);
+      },
+      () => {
+        const notes = loadCollection<Note>(STORAGE_KEYS.notes);
+        saveCollection(
+          STORAGE_KEYS.notes,
+          notes.filter((note) => note.id !== noteId)
+        );
+      }
+    );
   },
 };
 
@@ -190,19 +438,58 @@ export const highlightAPI = {
     color?: string;
     note?: string;
   }): Promise<Highlight> => {
-    const response = await axios.post(`${API_BASE_URL}/highlights`, data);
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.post(`${API_BASE_URL}/highlights`, data);
+        return response.data;
+      },
+      () => {
+        const highlights = loadCollection<Highlight>(STORAGE_KEYS.highlights);
+        const highlight: Highlight = {
+          id: makeId("highlight"),
+          paper_id: data.paper_id,
+          text: data.text,
+          page: data.page,
+          color: (data.color as Highlight["color"]) || "yellow",
+          note: data.note,
+          created_at: nowIso(),
+        };
+        saveCollection(STORAGE_KEYS.highlights, [...highlights, highlight]);
+        return highlight;
+      }
+    );
   },
 
   list: async (paperId: string): Promise<Highlight[]> => {
-    const response = await axios.get(`${API_BASE_URL}/highlights`, {
-      params: { paper_id: paperId },
-    });
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.get(`${API_BASE_URL}/highlights`, {
+          params: { paper_id: paperId },
+        });
+        return response.data;
+      },
+      () =>
+        sortByUpdatedDesc(
+          loadCollection<Highlight>(STORAGE_KEYS.highlights).filter(
+            (highlight) => highlight.paper_id === paperId
+          )
+        )
+    );
   },
 
   delete: async (highlightId: string): Promise<void> => {
-    await axios.delete(`${API_BASE_URL}/highlights/${highlightId}`);
+    return withLocalFallback(
+      async () => {
+        await axios.delete(`${API_BASE_URL}/highlights/${highlightId}`);
+      },
+      () => {
+        const highlights = loadCollection<Highlight>(STORAGE_KEYS.highlights);
+        saveCollection(
+          STORAGE_KEYS.highlights,
+          highlights.filter((highlight) => highlight.id !== highlightId)
+        );
+      }
+    );
   },
 };
 
@@ -217,15 +504,40 @@ export const conceptAPI = {
     definition?: string;
     project_id: string;
   }): Promise<Concept> => {
-    const response = await axios.post(`${API_BASE_URL}/concepts`, data);
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.post(`${API_BASE_URL}/concepts`, data);
+        return response.data;
+      },
+      () => {
+        const concepts = loadCollection<StoredConcept>(STORAGE_KEYS.concepts);
+        const concept: StoredConcept = {
+          id: makeId("concept"),
+          title: data.title,
+          description: data.description,
+          definition: data.definition,
+          project_id: data.project_id,
+          created_at: nowIso(),
+        };
+        saveCollection(STORAGE_KEYS.concepts, [...concepts, concept]);
+        return concept;
+      }
+    );
   },
 
   list: async (projectId: string): Promise<Concept[]> => {
-    const response = await axios.get(`${API_BASE_URL}/concepts`, {
-      params: { project_id: projectId },
-    });
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.get(`${API_BASE_URL}/concepts`, {
+          params: { project_id: projectId },
+        });
+        return response.data;
+      },
+      () =>
+        loadCollection<StoredConcept>(STORAGE_KEYS.concepts)
+          .filter((concept) => concept.project_id === projectId)
+          .map(({ project_id: _projectId, ...concept }) => concept)
+    );
   },
 };
 
@@ -240,28 +552,95 @@ export const projectAPI = {
     title: string;
     description?: string;
   }): Promise<Project> => {
-    const response = await axios.post(`${API_BASE_URL}/projects`, data);
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.post(`${API_BASE_URL}/projects`, data);
+        return response.data;
+      },
+      () => {
+        const projects = loadCollection<Project>(STORAGE_KEYS.projects);
+        const existing = projects.find((project) => project.id === data.id);
+        const timestamp = nowIso();
+        const nextProject: Project = existing
+          ? {
+              ...existing,
+              title: data.title,
+              description: data.description,
+              updated_at: timestamp,
+            }
+          : {
+              id: data.id,
+              title: data.title,
+              description: data.description,
+              created_at: timestamp,
+              updated_at: timestamp,
+            };
+        const nextProjects = existing
+          ? projects.map((project) => (project.id === data.id ? nextProject : project))
+          : [...projects, nextProject];
+        saveCollection(STORAGE_KEYS.projects, nextProjects);
+        return nextProject;
+      }
+    );
   },
 
   list: async (): Promise<Project[]> => {
-    const response = await axios.get(`${API_BASE_URL}/projects`);
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.get(`${API_BASE_URL}/projects`);
+        return response.data;
+      },
+      () => sortByUpdatedDesc(loadCollection<Project>(STORAGE_KEYS.projects))
+    );
   },
 
   get: async (projectId: string): Promise<Project> => {
-    const response = await axios.get(`${API_BASE_URL}/projects/${projectId}`);
-    return response.data;
+    return withLocalFallback(
+      async () => {
+        const response = await axios.get(`${API_BASE_URL}/projects/${projectId}`);
+        return response.data;
+      },
+      () => {
+        const project = loadCollection<Project>(STORAGE_KEYS.projects).find(
+          (item) => item.id === projectId
+        );
+        if (!project) {
+          throw new AxiosError("Project not found", "ERR_BAD_REQUEST");
+        }
+        return project;
+      }
+    );
   },
 
   update: async (
     projectId: string,
     data: { title?: string; description?: string }
   ): Promise<Project> => {
-    const response = await axios.put(
-      `${API_BASE_URL}/projects/${projectId}`,
-      data
+    return withLocalFallback(
+      async () => {
+        const response = await axios.put(
+          `${API_BASE_URL}/projects/${projectId}`,
+          data
+        );
+        return response.data;
+      },
+      () => {
+        const projects = loadCollection<Project>(STORAGE_KEYS.projects);
+        const index = projects.findIndex((project) => project.id === projectId);
+        if (index === -1) {
+          throw new AxiosError("Project not found", "ERR_BAD_REQUEST");
+        }
+        const updated: Project = {
+          ...projects[index],
+          ...data,
+          id: projectId,
+          updated_at: nowIso(),
+        };
+        const next = [...projects];
+        next[index] = updated;
+        saveCollection(STORAGE_KEYS.projects, next);
+        return updated;
+      }
     );
-    return response.data;
   },
 };

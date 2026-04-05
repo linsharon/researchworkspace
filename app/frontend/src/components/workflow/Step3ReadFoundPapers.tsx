@@ -524,7 +524,11 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
             {sortedFilteredPapers.map((paper) => (
               <Card
                 key={paper.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
+                data-selected={selectedPaperIds.includes(paper.id)}
+                className={cn(
+                  "record-item border border-slate-700/50 hover:shadow-lg transition-shadow cursor-pointer",
+                  selectedPaperIds.includes(paper.id) && "border-violet-600/50"
+                )}
                 onClick={() => handleReadPaper(paper.id)}
               >
                 <CardHeader className="pb-3">
@@ -538,7 +542,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                           />
                         </div>
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <CardTitle className="text-lg hover:text-blue-600 transition-colors min-w-0 truncate">
+                          <CardTitle className="text-lg transition-colors min-w-0 truncate record-item-title">
                             {paper.title}
                           </CardTitle>
                           <a

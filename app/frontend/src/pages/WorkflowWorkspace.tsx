@@ -662,6 +662,100 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     externalSourceUrl: undefined,
   });
 
+  const mergePersistedCandidatePaper = (
+    previous: CandidatePaper,
+    persisted: ApiPaper
+  ): CandidatePaper => ({
+    ...apiPaperToLocal(persisted),
+    searchRecordId: previous.searchRecordId,
+    doi: previous.doi,
+    doiUrl: previous.doiUrl,
+    externalSourceUrl: previous.externalSourceUrl,
+  });
+
+  const replaceCandidatePaper = (previousId: string, nextPaper: CandidatePaper) => {
+    setCandidatePapers((prev) =>
+      prev.map((paper) => (paper.id === previousId ? nextPaper : paper))
+    );
+    setEntryPapers((prev) => prev.map((id) => (id === previousId ? nextPaper.id : id)));
+    setSelectedPaperIds((prev) => prev.map((id) => (id === previousId ? nextPaper.id : id)));
+    setAddedToCenterIds((prev) => {
+      if (!prev.has(previousId)) return prev;
+      const next = new Set(prev);
+      next.delete(previousId);
+      next.add(nextPaper.id);
+      return next;
+    });
+    persistArtifacts((prev) =>
+      prev.map((artifact) =>
+        artifact.id === `entry-paper-${previousId}` ? candidatePaperToArtifact(nextPaper) : artifact
+      )
+    );
+  };
+
+  const formatApiErrorDetail = (error: unknown) => {
+    const err = error as {
+      message?: string;
+      response?: {
+        status?: number;
+        data?: unknown;
+      };
+    };
+
+    const status = err?.response?.status;
+    const data = err?.response?.data;
+
+    let detail = "Unknown error";
+    if (typeof data === "string") {
+      detail = data;
+    } else if (data && typeof data === "object") {
+      const payload = data as { detail?: string; message?: string };
+      detail = payload.detail || payload.message || err?.message || "Unknown error";
+    } else if (err?.message) {
+      detail = err.message;
+    }
+
+    if (status) {
+      return `HTTP ${status}: ${detail}`;
+    }
+
+    return detail;
+  };
+
+  const persistCandidatePaper = async (
+    paper: CandidatePaper,
+    patch: Partial<ApiPaper>
+  ): Promise<CandidatePaper> => {
+    const isTemporaryPaper = paper.id.startsWith("paper-");
+
+    if (!isTemporaryPaper) {
+      const updated = await paperAPI.update(paper.id, patch);
+      const nextPaper = mergePersistedCandidatePaper(paper, updated);
+      setCandidatePapers((prev) =>
+        prev.map((item) => (item.id === paper.id ? nextPaper : item))
+      );
+      return nextPaper;
+    }
+
+    const created = await paperAPI.create({
+      title: patch.title ?? paper.title,
+      authors: patch.authors ?? paper.authors,
+      year: patch.year ?? paper.year,
+      journal:
+        patch.journal ?? (paper.journal && paper.journal !== "Unknown" ? paper.journal : undefined),
+      abstract: patch.abstract ?? paper.abstract ?? undefined,
+      url: patch.url ?? paper.doiUrl ?? paper.externalSourceUrl,
+      discovery_path: patch.discovery_path ?? paper.discoveryPath,
+      discovery_note: patch.discovery_note ?? paper.discoveryNote,
+      project_id: projectId,
+    });
+
+    const updated = await paperAPI.update(created.id, patch);
+    const nextPaper = mergePersistedCandidatePaper(paper, updated);
+    replaceCandidatePaper(paper.id, nextPaper);
+    return nextPaper;
+  };
+
   const persistArtifacts = (updater: (prev: Artifact[]) => Artifact[]) => {
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
@@ -1530,20 +1624,26 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     }
   };
 
-  const handleToggleEntryPaper = (paperId: string) => {
+  const handleToggleEntryPaper = async (paperId: string) => {
     const isEntry = entryPapers.includes(paperId);
     if (isEntry) {
       toast.info("该论文已在 Entry Papers 中，可在后续环节删除");
       return;
     }
     const targetPaper = candidatePapers.find((paper) => paper.id === paperId);
-    paperAPI.update(paperId, { is_entry_paper: true }).catch(() => {});
-    setEntryPapers((prev) => {
-      if (prev.includes(paperId)) return prev;
-      return [...prev, paperId];
-    });
-    if (targetPaper) {
+    if (!targetPaper) return;
+
+    try {
+      const persistedPaper = await persistCandidatePaper(targetPaper, { is_entry_paper: true });
+      setEntryPapers((prev) => {
+        if (prev.includes(persistedPaper.id)) return prev;
+        return [...prev.filter((id) => id !== paperId), persistedPaper.id];
+      });
       recordPaperDecision(targetPaper.title, "Moved to Entry Papers (Step 2: Discover)", projectId);
+    } catch (error) {
+      toast.error("移动到 Entry Papers 失败", {
+        description: formatApiErrorDetail(error),
+      });
     }
   };
 
@@ -1668,22 +1768,47 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     toast.success(`Deleted ${idsToDelete.length} candidate paper(s)`);
   };
 
-  const handleBatchToEntry = () => {
+  const handleBatchToEntry = async () => {
     const selectedPapers = candidatePapers.filter((paper) => selectedPaperIds.includes(paper.id));
     if (!selectedPapers.length) return;
 
-    selectedPapers.forEach((paper) => {
-      paperAPI.update(paper.id, { is_entry_paper: true }).catch(() => {});
+    const results = await Promise.allSettled(
+      selectedPapers.map((paper) => persistCandidatePaper(paper, { is_entry_paper: true }))
+    );
+
+    const movedPapers = results
+      .filter((result): result is PromiseFulfilledResult<CandidatePaper> => result.status === "fulfilled")
+      .map((result) => result.value);
+
+    const failureDetails = results
+      .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+      .map((result) => formatApiErrorDetail(result.reason));
+
+    if (!movedPapers.length) {
+      toast.error("移动到 Entry Papers 失败", {
+        description: failureDetails[0] || "Unknown error",
+      });
+      return;
+    }
+
+    movedPapers.forEach((paper) => {
       recordPaperDecision(paper.title, "Moved to Entry Papers (Step 2: Discover)", projectId);
     });
 
     setEntryPapers((prev) => {
       const next = new Set(prev);
-      selectedPapers.forEach((paper) => next.add(paper.id));
+      selectedPapers.forEach((paper) => next.delete(paper.id));
+      movedPapers.forEach((paper) => next.add(paper.id));
       return Array.from(next);
     });
 
-    toast.success(`已将 ${selectedPapers.length} 篇论文移动到 Entry Papers`);
+    if (failureDetails.length) {
+      toast.error(`其中 ${failureDetails.length} 篇发送失败`, {
+        description: failureDetails[0],
+      });
+    }
+
+    toast.success(`已将 ${movedPapers.length} 篇论文移动到 Entry Papers`);
     setSelectedPaperIds([]);
   };
 
@@ -5977,23 +6102,6 @@ function VisualizeWorkspace() {
           </Card>
         </div>
       )}
-
-      <div className="flex gap-2">
-        <Button variant="outline">
-          <Eye className="w-4 h-4 mr-2" />
-          Generate Visualization Board
-        </Button>
-        <Button variant="outline">
-          <Sparkles className="w-4 h-4 mr-2" />
-          Synthesize into Permanent Note
-        </Button>
-        <Link to="/workflow/6">
-          <Button className="bg-violet-700 hover:bg-violet-800 text-white">
-            Push to Research Question Draft
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        </Link>
-      </div>
     </div>
   );
 }
@@ -6491,7 +6599,7 @@ function DraftWorkspaceInline() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-3 gap-5">
         {/* Left Column: Available Artifacts */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
@@ -6512,7 +6620,7 @@ function DraftWorkspaceInline() {
                 return (
                   <div
                     key={artifact.id}
-                    className="p-3 bg-[#0d1b30] border border-slate-700/50 rounded-lg hover:border-violet-700 hover:shadow-sm transition-all group"
+                    className="p-3 bg-[#0d1b30] border border-slate-700/50 rounded-lg hover:shadow-sm transition-all group record-item"
                   >
                     <Badge
                       variant="secondary"
@@ -6520,7 +6628,7 @@ function DraftWorkspaceInline() {
                     >
                       {typeMeta.label}
                     </Badge>
-                    <p className="text-xs font-medium text-slate-700 line-clamp-2 group-hover:text-violet-400">
+                    <p className="text-xs font-medium text-slate-700 line-clamp-2 record-item-title">
                       {artifact.title}
                     </p>
                     <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -6554,7 +6662,7 @@ function DraftWorkspaceInline() {
         </div>
 
         {/* Middle Column: Writing Block */}
-        <div className="lg:col-span-2 space-y-3">
+        <div className="space-y-3">
           <Card className="border-slate-700/50">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">

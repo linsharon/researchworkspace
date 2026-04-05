@@ -8,15 +8,16 @@ let configLoading = true;
 
 // Default fallback configuration
 const defaultConfig = {
-  API_BASE_URL: 'http://127.0.0.1:8000', // Only used if runtime config fails to load
+  API_BASE_URL: '',
 };
 
 // Function to load runtime configuration
 export async function loadRuntimeConfig(): Promise<void> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 2000);
   try {
-    console.log('🔧 DEBUG: Starting to load runtime config...');
     // Try to load configuration from a config endpoint
-    const response = await fetch('/api/config');
+    const response = await fetch('/api/config', { signal: controller.signal });
     if (response.ok) {
       const contentType = response.headers.get('content-type');
       // Only parse as JSON if the response is actually JSON
@@ -29,29 +30,22 @@ export async function loadRuntimeConfig(): Promise<void> {
         );
       }
     } else {
-      console.log(
-        '🔧 DEBUG: Config fetch failed with status:',
-        response.status
-      );
+      console.log('Config fetch failed with status:', response.status);
     }
   } catch (error) {
-    console.log('Failed to load runtime config, using defaults:', error);
+    if ((error as Error)?.name === 'AbortError') {
+      console.log('Runtime config request timed out, using defaults');
+    } else {
+      console.log('Failed to load runtime config, using defaults:', error);
+    }
   } finally {
+    window.clearTimeout(timeoutId);
     configLoading = false;
-    console.log(
-      '🔧 DEBUG: Config loading finished, configLoading set to false'
-    );
   }
 }
 
 // Get current configuration
 export function getConfig() {
-  // If config is still loading, return default config to avoid using stale Vite env vars
-  if (configLoading) {
-    console.log('Config still loading, using default config');
-    return defaultConfig;
-  }
-
   // First try runtime config (for Lambda)
   if (runtimeConfig) {
     console.log('Using runtime config');
@@ -65,6 +59,10 @@ export function getConfig() {
     };
     console.log('Using Vite environment config');
     return viteConfig;
+  }
+
+  if (configLoading) {
+    console.log('Config still loading, using default config');
   }
 
   // Finally fall back to default

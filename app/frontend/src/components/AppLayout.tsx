@@ -226,15 +226,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         setActiveProjectId(proj.id);
                         setShowProjectSwitcher(false);
                       }}
+                      data-selected={proj.id === activeProjectId}
                       className={cn(
-                        "w-full text-left p-2 rounded-md transition-all",
+                        "w-full text-left p-2 rounded-md transition-all border record-item",
                         proj.id === activeProjectId
-                          ? "bg-violet-600/10 border border-violet-600/30"
-                          : "hover:bg-slate-800/60 border border-transparent"
+                          ? "border-violet-600/40"
+                          : "border-slate-700/40"
                       )}
                     >
                       <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-xs font-medium text-slate-200 truncate">
+                        <span className="text-xs font-medium text-slate-200 truncate record-item-title">
                           {proj.title}
                         </span>
                         {proj.id === activeProjectId && (
@@ -324,11 +325,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
               return (
                 <Link key={item.path} to={item.path}>
                   <div
+                    data-selected={isActive}
                     className={cn(
-                      "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors",
+                      "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                       isActive
-                        ? "bg-violet-600/20 text-violet-300 border border-violet-600/30"
-                        : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border border-transparent"
+                        ? "text-violet-300 border-violet-600/30"
+                        : "text-slate-400 border-slate-700/40"
                     )}
                   >
                     {isCompleted && !isActive ? (
@@ -341,7 +343,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     ) : (
                       <Icon className="w-4 h-4 shrink-0" />
                     )}
-                    <span className="truncate">{item.label}</span>
+                    <span className="truncate record-item-title">{item.label}</span>
                   </div>
                 </Link>
               );
@@ -358,15 +360,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
               return (
                 <Link key={item.path} to={item.path}>
                   <div
+                    data-selected={isActive}
                     className={cn(
-                      "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border",
+                      "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                       isActive
-                        ? "bg-violet-600/20 text-violet-300 border-violet-600/30"
-                        : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border-transparent"
+                        ? "text-violet-300 border-violet-600/30"
+                        : "text-slate-400 border-slate-700/40"
                     )}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
-                    <span className="truncate">{item.label}</span>
+                    <span className="truncate record-item-title">{item.label}</span>
                   </div>
                 </Link>
               );
@@ -377,15 +380,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </p>
             <Link to="/pdf-manager">
               <div
+                data-selected={location.pathname === "/pdf-manager"}
                 className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border",
+                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                   location.pathname === "/pdf-manager"
-                    ? "bg-violet-600/20 text-violet-300 border-violet-600/30"
-                    : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200 border-transparent"
+                    ? "text-violet-300 border-violet-600/30"
+                    : "text-slate-400 border-slate-700/40"
                 )}
               >
                 <FileText className="w-4 h-4 shrink-0" />
-                <span className="truncate">{lang === "zh" ? "PDF 管理" : "PDF Manager"}</span>
+                <span className="truncate record-item-title">{lang === "zh" ? "PDF 管理" : "PDF Manager"}</span>
               </div>
             </Link>
           </nav>
@@ -455,31 +459,33 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     <div className="p-1.5 space-y-0.5">
                       <button
                         onClick={() => { setLang("en"); setShowLangSwitcher(false); }}
+                        data-selected={lang === "en"}
                         className={cn(
-                          "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between",
+                          "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between border record-item",
                           lang === "en"
-                            ? "bg-violet-600/10 border border-violet-600/30 font-medium"
-                            : "hover:bg-slate-800/60 border border-transparent"
+                            ? "border-violet-600/30 font-medium"
+                            : "border-slate-700/40"
                         )}
                       >
                         <span className="flex items-center gap-2">
                           <span className="text-base">🇺🇸</span>
-                          <span className="text-slate-300">English</span>
+                          <span className="text-slate-300 record-item-title">English</span>
                         </span>
                         {lang === "en" && <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />}
                       </button>
                       <button
                         onClick={() => { setLang("zh"); setShowLangSwitcher(false); }}
+                        data-selected={lang === "zh"}
                         className={cn(
-                          "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between",
+                          "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between border record-item",
                           lang === "zh"
-                            ? "bg-violet-600/10 border border-violet-600/30 font-medium"
-                            : "hover:bg-slate-800/60 border border-transparent"
+                            ? "border-violet-600/30 font-medium"
+                            : "border-slate-700/40"
                         )}
                       >
                         <span className="flex items-center gap-2">
                           <span className="text-base">🇨🇳</span>
-                          <span className="text-slate-300">中文</span>
+                          <span className="text-slate-300 record-item-title">中文</span>
                         </span>
                         {lang === "zh" && <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />}
                       </button>

@@ -1,17 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  ArrowRight,
-  Eye,
-  Map,
-  Maximize2,
-  Minimize2,
-  Sparkles,
-} from "lucide-react";
+import { Map, Maximize2, Minimize2 } from "lucide-react";
 import { VIZ_VIEWS, DUMMY_ARTIFACTS } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
@@ -164,24 +156,6 @@ export default function VisualizationBoard() {
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          <Button variant="outline">
-            <Eye className="w-4 h-4 mr-2" />
-            Generate Visualization Board
-          </Button>
-          <Button variant="outline">
-            <Sparkles className="w-4 h-4 mr-2" />
-            Synthesize into Permanent Note
-          </Button>
-          <Link to="/draft">
-            <Button className="bg-violet-700 hover:bg-violet-800 text-white">
-              Push to Research Question Draft
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </Link>
         </div>
       </div>
     </AppLayout>

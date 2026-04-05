@@ -108,3 +108,19 @@
 /* ─── Glow utilities ────────────────────────────────────── */
 .glow-violet { box-shadow: 0 0 24px -6px rgba(122, 92, 246, 0.55); }
 .glow-sm     { box-shadow: 0 0 12px -4px rgba(122, 92, 246, 0.35); }
+
+@layer components {
+  .record-item {
+    @apply transition-colors;
+  }
+
+  .record-item:hover,
+  .record-item[data-selected="true"] {
+    border-color: hsl(var(--primary)) !important;
+  }
+
+  .record-item:hover .record-item-title,
+  .record-item[data-selected="true"] .record-item-title {
+    color: hsl(var(--primary)) !important;
+  }
+}
