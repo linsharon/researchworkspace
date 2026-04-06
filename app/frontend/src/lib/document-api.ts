@@ -27,6 +27,18 @@ function handleApiError(error: unknown): never {
 
 export type DocumentStatus = "draft" | "review" | "published" | "archived";
 export type DocumentPermission = "private" | "team" | "public";
+export type DocumentAccessLevel = "read" | "edit";
+
+export interface DocumentShareItem {
+  document_id: string;
+  grantee_user_id: string;
+  grantee_email?: string | null;
+  grantee_name?: string | null;
+  granted_by_user_id: string;
+  access_level: DocumentAccessLevel;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface DocumentItem {
   id: string;
@@ -40,6 +52,7 @@ export interface DocumentItem {
   storage_provider: string;
   bucket_name?: string | null;
   object_key?: string | null;
+  search_highlight?: string | null;
   is_deleted: boolean;
   deleted_at?: string | null;
   created_at: string;
@@ -119,6 +132,12 @@ export const documentAPI = {
     q?: string;
     status?: DocumentStatus;
     tag?: string;
+    permission?: DocumentPermission;
+    owner_user_id?: string;
+    created_from?: string;
+    created_to?: string;
+    updated_from?: string;
+    updated_to?: string;
     limit?: number;
     offset?: number;
   }): Promise<PagedDocumentResponse> {
@@ -236,6 +255,32 @@ export const documentAPI = {
     try {
       const response = await axios.post(`/api/v1/storage/download-url`, payload, buildConfig());
       return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async listShares(documentId: string): Promise<DocumentShareItem[]> {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/${documentId}/share`, buildConfig());
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async grantShare(documentId: string, payload: { grantee_user_id: string; access_level: DocumentAccessLevel }): Promise<DocumentShareItem> {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/${documentId}/share`, payload, buildConfig());
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async revokeShare(documentId: string, granteeUserId: string): Promise<void> {
+    try {
+      await axios.delete(`${API_BASE_URL}/${documentId}/share/${granteeUserId}`, buildConfig());
     } catch (error) {
       return handleApiError(error);
     }

@@ -7,11 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FilePlus2, RefreshCw, RotateCcw, Search, Trash2, Upload, FolderArchive, ListChecks } from "lucide-react";
+import { Download, FilePlus2, RefreshCw, RotateCcw, Search, Share2, Trash2, Upload, FolderArchive, ListChecks } from "lucide-react";
 import {
   documentAPI,
+  type DocumentAccessLevel,
   type DocumentItem,
   type DocumentPermission,
+  type DocumentShareItem,
   type DocumentStatus,
   type DocumentVersionItem,
 } from "@/lib/document-api";
@@ -35,14 +37,38 @@ function readableDate(value: string | undefined | null) {
   return date.toLocaleString();
 }
 
+function renderHighlightedSnippet(value: string) {
+  const parts = value.split(/(\[\[.*?\]\])/g).filter(Boolean);
+
+  return parts.map((part, index) => {
+    const isHighlight = part.startsWith("[[") && part.endsWith("]]");
+    const text = isHighlight ? part.slice(2, -2) : part;
+
+    if (isHighlight) {
+      return (
+        <mark key={`${text}-${index}`} className="rounded bg-amber-400/20 px-1 text-amber-200">
+          {text}
+        </mark>
+      );
+    }
+
+    return <span key={`${text}-${index}`}>{text}</span>;
+  });
+}
+
 export default function DocumentCenter() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [uploadingDocumentId, setUploadingDocumentId] = useState<string | null>(null);
   const [uploadTargetDoc, setUploadTargetDoc] = useState<DocumentItem | null>(null);
+  const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [tagFilter, setTagFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | "all">("all");
+  const [permissionFilter, setPermissionFilter] = useState<DocumentPermission | "all">("all" as DocumentPermission | "all");
+  const [createdFromFilter, setCreatedFromFilter] = useState("");
+  const [createdToFilter, setCreatedToFilter] = useState("");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -59,6 +85,12 @@ export default function DocumentCenter() {
   const [versions, setVersions] = useState<DocumentVersionItem[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
 
+  const [shareDoc, setShareDoc] = useState<DocumentItem | null>(null);
+  const [shares, setShares] = useState<DocumentShareItem[]>([]);
+  const [sharesLoading, setSharesLoading] = useState(false);
+  const [newGranteeId, setNewGranteeId] = useState("");
+  const [newGrantLevel, setNewGrantLevel] = useState<DocumentAccessLevel>("read");
+
   const totalPages = useMemo(() => Math.max(Math.ceil(total / PAGE_SIZE), 1), [total]);
   const currentPage = useMemo(() => Math.floor(offset / PAGE_SIZE) + 1, [offset]);
 
@@ -68,6 +100,10 @@ export default function DocumentCenter() {
       const response = await documentAPI.search({
         q: query || undefined,
         status: statusFilter === "all" ? undefined : statusFilter,
+        tag: tagFilter || undefined,
+        permission: permissionFilter === "all" ? undefined : permissionFilter,
+        created_from: createdFromFilter || undefined,
+        created_to: createdToFilter || undefined,
         limit: PAGE_SIZE,
         offset: nextOffset,
       });
@@ -107,6 +143,54 @@ export default function DocumentCenter() {
       setVersions([]);
     } finally {
       setVersionsLoading(false);
+    }
+  };
+
+  const loadShares = async (doc: DocumentItem) => {
+    setShareDoc(doc);
+    setSharesLoading(true);
+    setNewGranteeId("");
+    setNewGrantLevel("read");
+    try {
+      const data = await documentAPI.listShares(doc.id);
+      setShares(data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to load shares");
+      setShares([]);
+    } finally {
+      setSharesLoading(false);
+    }
+  };
+
+  const handleGrantShare = async () => {
+    if (!shareDoc || !newGranteeId.trim()) {
+      toast.error("User ID is required");
+      return;
+    }
+    try {
+      await documentAPI.grantShare(shareDoc.id, {
+        grantee_user_id: newGranteeId.trim(),
+        access_level: newGrantLevel,
+      });
+      toast.success("Access granted");
+      setNewGranteeId("");
+      await loadShares(shareDoc);
+    } catch (error: unknown) {
+      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast.error(detail || "Failed to grant access");
+    }
+  };
+
+  const handleRevokeShare = async (granteeUserId: string) => {
+    if (!shareDoc) return;
+    try {
+      await documentAPI.revokeShare(shareDoc.id, granteeUserId);
+      toast.success("Access revoked");
+      await loadShares(shareDoc);
+    } catch (error: unknown) {
+      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast.error(detail || "Failed to revoke access");
     }
   };
 
@@ -235,6 +319,46 @@ export default function DocumentCenter() {
     fileInputRef.current?.click();
   };
 
+  const triggerBrowserDownload = (url: string, filename: string) => {
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.rel = "noopener noreferrer";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const handleDownload = async (params: {
+    bucketName?: string | null;
+    objectKey?: string | null;
+    filename: string;
+    requestKey: string;
+  }) => {
+    if (!params.bucketName || !params.objectKey) {
+      toast.error("No uploaded file available for download");
+      return;
+    }
+
+    setDownloadingKey(params.requestKey);
+    try {
+      const response = await documentAPI.getDownloadUrl({
+        bucket_name: params.bucketName,
+        object_key: params.objectKey,
+      });
+      if (!response.download_url) {
+        toast.error("Download URL is unavailable");
+        return;
+      }
+      triggerBrowserDownload(response.download_url, params.filename);
+    } catch (error: unknown) {
+      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast.error(detail || "Failed to download file");
+    } finally {
+      setDownloadingKey(null);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="p-6 max-w-7xl mx-auto space-y-4">
@@ -321,7 +445,54 @@ export default function DocumentCenter() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <Select value={permissionFilter} onValueChange={(v) => setPermissionFilter(v as DocumentPermission | "all") }>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Permission" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Permissions</SelectItem>
+                      {permissionOptions.map((item) => (
+                        <SelectItem key={item} value={item}>{item}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex gap-2 flex-wrap">
+                  <Input
+                    className="min-w-[180px] flex-1"
+                    value={tagFilter}
+                    onChange={(e) => setTagFilter(e.target.value)}
+                    placeholder="Filter by tag"
+                  />
+                  <Input
+                    className="w-[180px]"
+                    type="date"
+                    value={createdFromFilter}
+                    onChange={(e) => setCreatedFromFilter(e.target.value)}
+                  />
+                  <Input
+                    className="w-[180px]"
+                    type="date"
+                    value={createdToFilter}
+                    onChange={(e) => setCreatedToFilter(e.target.value)}
+                  />
                   <Button onClick={() => void loadDocuments(0)} size="sm">Apply</Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setQuery("");
+                      setTagFilter("");
+                      setStatusFilter("all");
+                      setPermissionFilter("all");
+                      setCreatedFromFilter("");
+                      setCreatedToFilter("");
+                      void loadDocuments(0);
+                    }}
+                  >
+                    Reset
+                  </Button>
                 </div>
 
                 {loading ? (
@@ -339,6 +510,11 @@ export default function DocumentCenter() {
                               <Badge variant="outline">{doc.permission}</Badge>
                             </div>
                             <p className="text-xs text-slate-400">Updated: {readableDate(doc.updated_at)}</p>
+                            {doc.search_highlight && (
+                              <p className="text-xs leading-5 text-slate-300">
+                                Match: {renderHighlightedSnippet(doc.search_highlight)}
+                              </p>
+                            )}
                             {doc.tags?.length > 0 && (
                               <p className="text-xs text-slate-500">Tags: {doc.tags.join(", ")}</p>
                             )}
@@ -354,6 +530,24 @@ export default function DocumentCenter() {
                             </Select>
                             <Button variant="outline" size="sm" onClick={() => void loadVersions(doc)}>
                               Versions
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => void loadShares(doc)}>
+                              <Share2 className="w-3 h-3 mr-1" />
+                              Share
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={!doc.bucket_name || !doc.object_key || downloadingKey === `doc-${doc.id}`}
+                              onClick={() => void handleDownload({
+                                bucketName: doc.bucket_name,
+                                objectKey: doc.object_key,
+                                filename: `${doc.title}.bin`,
+                                requestKey: `doc-${doc.id}`,
+                              })}
+                            >
+                              <Download className="w-3 h-3 mr-1" />
+                              {downloadingKey === `doc-${doc.id}` ? "Downloading..." : "Download"}
                             </Button>
                             <Button
                               variant="outline"
@@ -443,7 +637,7 @@ export default function DocumentCenter() {
                   ) : (
                     versions.map((version) => (
                       <div key={version.id} className="p-2 rounded border border-slate-700/50 bg-slate-900/40">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-2">
                           <Badge variant="outline">v{version.version_number}</Badge>
                           <span className="text-[10px] text-slate-500">{readableDate(version.created_at)}</span>
                         </div>
@@ -451,6 +645,82 @@ export default function DocumentCenter() {
                         <p className="text-[10px] text-slate-500 mt-0.5">
                           {version.object_key || "(no object key)"}
                         </p>
+                        <div className="mt-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!version.bucket_name || !version.object_key || downloadingKey === `version-${version.id}`}
+                            onClick={() => void handleDownload({
+                              bucketName: version.bucket_name,
+                              objectKey: version.object_key,
+                              filename: version.filename,
+                              requestKey: `version-${version.id}`,
+                            })}
+                          >
+                            <Download className="w-3 h-3 mr-1" />
+                            {downloadingKey === `version-${version.id}` ? "Downloading..." : "Download Version"}
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-700/50 h-fit">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Access Sharing</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {!shareDoc && <p className="text-sm text-slate-500">Select a document and click Share to manage access.</p>}
+              {shareDoc && (
+                <>
+                  <div className="text-xs text-slate-400">Document: {shareDoc.title}</div>
+
+                  <div className="flex gap-1 flex-wrap">
+                    <Input
+                      className="flex-1 min-w-[140px] h-7 text-xs"
+                      placeholder="User ID to grant"
+                      value={newGranteeId}
+                      onChange={(e) => setNewGranteeId(e.target.value)}
+                    />
+                    <Select value={newGrantLevel} onValueChange={(v) => setNewGrantLevel(v as DocumentAccessLevel)}>
+                      <SelectTrigger className="w-[90px] h-7 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="read">Read</SelectItem>
+                        <SelectItem value="edit">Edit</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" className="h-7 text-xs" onClick={() => void handleGrantShare()}>
+                      Grant
+                    </Button>
+                  </div>
+
+                  {sharesLoading ? (
+                    <p className="text-xs text-slate-400">Loading…</p>
+                  ) : shares.length === 0 ? (
+                    <p className="text-xs text-slate-500">No active shares.</p>
+                  ) : (
+                    shares.map((s) => (
+                      <div key={s.grantee_user_id} className="flex items-center justify-between p-1.5 rounded border border-slate-700/50 bg-slate-900/40">
+                        <div className="text-xs text-slate-300 truncate max-w-[140px]" title={s.grantee_user_id}>
+                          {s.grantee_email || s.grantee_name || s.grantee_user_id}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline" className="text-[10px] py-0">{s.access_level}</Badge>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-5 w-5 p-0 text-slate-400 hover:text-red-400"
+                            onClick={() => void handleRevokeShare(s.grantee_user_id)}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
                     ))
                   )}

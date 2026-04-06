@@ -17,7 +17,7 @@ import hashlib
 import json
 import logging
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
 import httpx
@@ -186,13 +186,16 @@ class TestClient:
             logger.error(f"Error listing documents: {e}")
             return None
 
-    async def search_documents(self, query: str) -> Optional[dict]:
+    async def search_documents(self, query: str, extra_params: Optional[dict] = None) -> Optional[dict]:
         """Search documents."""
         try:
+            params = {"q": query}
+            if extra_params:
+                params.update(extra_params)
             response = self.client.get(
                 f"{self.backend_url}/api/v1/documents/search",
                 headers=self._headers(),
-                params={"q": query},
+                params=params,
             )
             if response.status_code == 200:
                 data = response.json()
@@ -417,6 +420,37 @@ async def run_tests(backend_url: str, frontend_url: str, verbose: bool = False) 
         else:
             logger.warning("⊘ SKIPPED (no search results)")
 
+        # Test 7.2: Advanced Search Filters
+        logger.info("\n[Test 7.2] Advanced Search Filters")
+        advanced_search_results = await client.search_documents(
+            "Integration",
+            {
+                "tag": "test",
+                "permission": "private",
+                "created_from": datetime.now(timezone.utc).date().isoformat(),
+            },
+        )
+        if advanced_search_results and len(advanced_search_results.get("items", [])) > 0:
+            logger.info("✓ PASSED")
+            test_passed += 1
+        else:
+            logger.error("✗ FAILED")
+            test_failed += 1
+
+        # Test 7.3: Search Highlight Snippet
+        logger.info("\n[Test 7.3] Search Highlight Snippet")
+        if advanced_search_results and len(advanced_search_results.get("items", [])) > 0:
+            has_highlight = any(bool(item.get("search_highlight")) for item in advanced_search_results.get("items", []))
+            if has_highlight:
+                logger.info("✓ PASSED")
+                test_passed += 1
+            else:
+                logger.error("✗ FAILED - no search_highlight returned")
+                test_failed += 1
+        else:
+            logger.error("✗ FAILED - missing search results for highlight check")
+            test_failed += 1
+
         # Test 7.5: Presigned Upload + Download
         logger.info("\n[Test 7.5] Presigned Upload + Download")
         if document_id:
@@ -457,6 +491,48 @@ async def run_tests(backend_url: str, frontend_url: str, verbose: bool = False) 
                     test_failed += 1
             else:
                 logger.error("✗ FAILED - presigned upload failed")
+                test_failed += 1
+        else:
+            logger.warning("⊘ SKIPPED (no document)")
+
+        # Test 7.6: Document Sharing (grant / list / revoke)
+        logger.info("\n[Test 7.6] Document Access Sharing")
+        second_user_id = "admin-staging"
+        if document_id:
+            # Grant read access
+            grant_resp = client.client.post(
+                f"{client.backend_url}/api/v1/documents/{document_id}/share",
+                headers=client._headers(),
+                json={"grantee_user_id": second_user_id, "access_level": "read"},
+            )
+            if grant_resp.status_code == 201:
+                logger.info(f"✓ Granted read access to {second_user_id}")
+                # List grants
+                list_resp = client.client.get(
+                    f"{client.backend_url}/api/v1/documents/{document_id}/share",
+                    headers=client._headers(),
+                )
+                grants = list_resp.json() if list_resp.status_code == 200 else []
+                found = any(g.get("grantee_user_id") == second_user_id for g in grants)
+                if found:
+                    logger.info("✓ Share listed correctly")
+                    # Revoke
+                    revoke_resp = client.client.delete(
+                        f"{client.backend_url}/api/v1/documents/{document_id}/share/{second_user_id}",
+                        headers=client._headers(),
+                    )
+                    if revoke_resp.status_code == 200:
+                        logger.info("✓ Access revoked")
+                        logger.info("✓ PASSED")
+                        test_passed += 1
+                    else:
+                        logger.error(f"✗ FAILED - revoke returned {revoke_resp.status_code}")
+                        test_failed += 1
+                else:
+                    logger.error("✗ FAILED - grant not found in list")
+                    test_failed += 1
+            else:
+                logger.error(f"✗ FAILED - grant returned {grant_resp.status_code}: {grant_resp.text}")
                 test_failed += 1
         else:
             logger.warning("⊘ SKIPPED (no document)")

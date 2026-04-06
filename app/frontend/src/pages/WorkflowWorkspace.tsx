@@ -1012,7 +1012,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     candidatePapers.filter((paper) => paper.searchRecordId === searchRecordId).length;
 
   const quoteBooleanTerm = (term: string) => {
-    const normalized = term.trim().replace(/\"/g, "");
+    const normalized = term.trim().replace(/"/g, "");
     if (!normalized) return "";
     return `"${normalized}"`;
   };

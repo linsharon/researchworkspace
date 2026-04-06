@@ -1,5 +1,5 @@
 from models.base import Base
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -28,6 +28,7 @@ class Document(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     versions = relationship("DocumentVersion", back_populates="document", cascade="all, delete-orphan")
+    access_grants = relationship("DocumentAccessGrant", back_populates="document", cascade="all, delete-orphan")
 
 
 class DocumentVersion(Base):
@@ -49,3 +50,18 @@ class DocumentVersion(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     document = relationship("Document", back_populates="versions")
+
+
+class DocumentAccessGrant(Base):
+    __tablename__ = "document_access_grants"
+    __table_args__ = (UniqueConstraint("document_id", "grantee_user_id", name="uq_document_access_grant_user"),)
+
+    id = Column(String(36), primary_key=True, index=True)
+    document_id = Column(String(36), ForeignKey("documents.id"), nullable=False, index=True)
+    grantee_user_id = Column(String(255), ForeignKey("users.id"), nullable=False, index=True)
+    granted_by_user_id = Column(String(255), ForeignKey("users.id"), nullable=False)
+    access_level = Column(String(20), nullable=False, default="read")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    document = relationship("Document", back_populates="access_grants")

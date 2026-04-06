@@ -1,19 +1,21 @@
 import json
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone
 from typing import List
 from uuid import uuid4
 
 from dependencies.auth import get_current_user
 from dependencies.database import get_db
 from fastapi import APIRouter, Depends, HTTPException, Query
-from models.document import Document, DocumentVersion
+from models.document import Document, DocumentAccessGrant, DocumentVersion
 from models.manuscript import Project
 from schemas.auth import UserResponse
 from schemas.document import (
     DocumentCreate,
     DocumentListResponse,
     DocumentResponse,
+    DocumentShareCreate,
+    DocumentShareResponse,
     DocumentUploadCompleteRequest,
     DocumentUploadInitRequest,
     DocumentUploadInitResponse,
@@ -72,6 +74,52 @@ async def get_owned_document_or_404(
     return document
 
 
+async def get_document_with_access_or_404(
+    session: AsyncSession,
+    document_id: str,
+    user_id: str,
+    require_write: bool = False,
+    include_deleted: bool = False,
+) -> Document:
+    """Return document if user owns it, has a share grant, or document is public.
+    Sets synthetic attributes `effective_access_level` and `is_owner` on the returned object.
+    """
+    result = await session.execute(
+        select(Document).where(Document.id == document_id)
+    )
+    document = result.scalar_one_or_none()
+    if not document or (document.is_deleted and not include_deleted):
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if document.owner_user_id == user_id:
+        setattr(document, "effective_access_level", "owner")
+        setattr(document, "is_owner", True)
+        return document
+
+    # Public documents are readable by all authenticated users
+    if document.permission == "public" and not require_write:
+        setattr(document, "effective_access_level", "read")
+        setattr(document, "is_owner", False)
+        return document
+
+    # Check explicit share grant
+    grant_result = await session.execute(
+        select(DocumentAccessGrant).where(
+            DocumentAccessGrant.document_id == document_id,
+            DocumentAccessGrant.grantee_user_id == user_id,
+        )
+    )
+    grant = grant_result.scalar_one_or_none()
+    if grant:
+        if require_write and grant.access_level != "edit":
+            raise HTTPException(status_code=403, detail="You have read-only access to this document")
+        setattr(document, "effective_access_level", grant.access_level)
+        setattr(document, "is_owner", False)
+        return document
+
+    raise HTTPException(status_code=404, detail="Document not found")
+
+
 def ensure_permission_allowed(permission: str, current_user: UserResponse, project_id: str | None) -> None:
     if permission not in {"private", "team", "public"}:
         raise HTTPException(status_code=400, detail="Invalid document permission")
@@ -106,6 +154,25 @@ def sanitize_filename(filename: str) -> str:
         raise HTTPException(status_code=400, detail="Invalid filename")
     safe = re.sub(r"[^A-Za-z0-9._-]", "-", base)
     return safe[:255]
+
+
+def parse_datetime_filter(value: str, end_of_day: bool = False) -> datetime:
+    normalized = value.strip()
+    if not normalized:
+        raise HTTPException(status_code=400, detail="Invalid datetime filter")
+
+    try:
+        if len(normalized) == 10:
+            parsed_date = date.fromisoformat(normalized)
+            parsed_time = time.max if end_of_day else time.min
+            return datetime.combine(parsed_date, parsed_time, tzinfo=timezone.utc)
+
+        parsed = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid datetime filter: {value}") from exc
 
 
 async def get_next_document_version(session: AsyncSession, document_id: str) -> int:
@@ -151,6 +218,7 @@ async def create_document(
 async def list_documents(
     project_id: str | None = Query(default=None),
     include_deleted: bool = Query(default=False),
+    include_shared: bool = Query(default=False, description="Include documents shared with this user"),
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -161,7 +229,34 @@ async def list_documents(
         stmt = stmt.where(Document.is_deleted.is_(False))
 
     result = await session.execute(stmt.order_by(Document.updated_at.desc(), Document.created_at.desc()))
-    return result.scalars().all()
+    owned_docs: List[Document] = list(result.scalars().all())
+    for doc in owned_docs:
+        setattr(doc, "effective_access_level", "owner")
+        setattr(doc, "is_owner", True)
+
+    if not include_shared:
+        return owned_docs
+
+    # Fetch documents this user has an explicit share grant for
+    shared_stmt = (
+        select(Document, DocumentAccessGrant.access_level)
+        .join(DocumentAccessGrant, DocumentAccessGrant.document_id == Document.id)
+        .where(
+            DocumentAccessGrant.grantee_user_id == current_user.id,
+            Document.is_deleted.is_(False),
+        )
+    )
+    shared_result = await session.execute(shared_stmt)
+    shared_docs: List[Document] = []
+    owned_ids = {d.id for d in owned_docs}
+    for row in shared_result.all():
+        doc, access_level = row[0], row[1]
+        if doc.id not in owned_ids:
+            setattr(doc, "effective_access_level", access_level)
+            setattr(doc, "is_owner", False)
+            shared_docs.append(doc)
+
+    return owned_docs + shared_docs
 
 
 @router.get("/search", response_model=DocumentListResponse)
@@ -169,20 +264,33 @@ async def search_documents(
     q: str | None = Query(default=None),
     status: str | None = Query(default=None),
     tag: str | None = Query(default=None),
+    permission: str | None = Query(default=None),
     project_id: str | None = Query(default=None),
+    owner_user_id: str | None = Query(default=None),
+    created_from: str | None = Query(default=None),
+    created_to: str | None = Query(default=None),
+    updated_from: str | None = Query(default=None),
+    updated_to: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    stmt = select(Document).where(
-        Document.owner_user_id == current_user.id,
-        Document.is_deleted.is_(False),
-    )
+    effective_owner_user_id = current_user.id
+    if owner_user_id:
+        if current_user.role != "admin" and owner_user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Only admin can query other owners")
+        effective_owner_user_id = owner_user_id
+
+    stmt = select(Document).where(Document.owner_user_id == effective_owner_user_id, Document.is_deleted.is_(False))
     count_stmt = select(func.count()).select_from(Document).where(
-        Document.owner_user_id == current_user.id,
+        Document.owner_user_id == effective_owner_user_id,
         Document.is_deleted.is_(False),
     )
+    use_postgres_fts_ordering = False
+    fts_vector = None
+    fts_query = None
+    fts_headline = None
 
     if project_id:
         stmt = stmt.where(Document.project_id == project_id)
@@ -190,21 +298,88 @@ async def search_documents(
     if status:
         stmt = stmt.where(Document.status == status)
         count_stmt = count_stmt.where(Document.status == status)
+    if permission:
+        stmt = stmt.where(Document.permission == permission)
+        count_stmt = count_stmt.where(Document.permission == permission)
     if q:
-        like = f"%{q}%"
-        stmt = stmt.where((Document.title.ilike(like)) | (Document.description.ilike(like)))
-        count_stmt = count_stmt.where((Document.title.ilike(like)) | (Document.description.ilike(like)))
+        bind = session.get_bind()
+        dialect_name = bind.dialect.name if bind is not None else ""
+        if dialect_name == "postgresql":
+            fts_vector = func.to_tsvector(
+                "simple",
+                func.concat_ws(
+                    " ",
+                    func.coalesce(Document.title, ""),
+                    func.coalesce(Document.description, ""),
+                    func.coalesce(Document.tags, ""),
+                ),
+            )
+            fts_query = func.websearch_to_tsquery("simple", q)
+            fts_headline = func.ts_headline(
+                "simple",
+                func.concat_ws(
+                    " ",
+                    func.coalesce(Document.title, ""),
+                    func.coalesce(Document.description, ""),
+                    func.coalesce(Document.tags, ""),
+                ),
+                fts_query,
+                "StartSel=[[, StopSel=]], MaxFragments=2, MinWords=4, MaxWords=12, ShortWord=2, HighlightAll=false",
+            ).label("search_highlight")
+            stmt = stmt.where(fts_vector.op("@@")(fts_query))
+            count_stmt = count_stmt.where(fts_vector.op("@@")(fts_query))
+            use_postgres_fts_ordering = True
+        else:
+            like = f"%{q}%"
+            stmt = stmt.where((Document.title.ilike(like)) | (Document.description.ilike(like)))
+            count_stmt = count_stmt.where((Document.title.ilike(like)) | (Document.description.ilike(like)))
     if tag:
         tag_like = f'%"{tag}"%'
         stmt = stmt.where(Document.tags.like(tag_like))
         count_stmt = count_stmt.where(Document.tags.like(tag_like))
+    if created_from:
+        parsed_created_from = parse_datetime_filter(created_from)
+        stmt = stmt.where(Document.created_at >= parsed_created_from)
+        count_stmt = count_stmt.where(Document.created_at >= parsed_created_from)
+    if created_to:
+        parsed_created_to = parse_datetime_filter(created_to, end_of_day=True)
+        stmt = stmt.where(Document.created_at <= parsed_created_to)
+        count_stmt = count_stmt.where(Document.created_at <= parsed_created_to)
+    if updated_from:
+        parsed_updated_from = parse_datetime_filter(updated_from)
+        stmt = stmt.where(Document.updated_at >= parsed_updated_from)
+        count_stmt = count_stmt.where(Document.updated_at >= parsed_updated_from)
+    if updated_to:
+        parsed_updated_to = parse_datetime_filter(updated_to, end_of_day=True)
+        stmt = stmt.where(Document.updated_at <= parsed_updated_to)
+        count_stmt = count_stmt.where(Document.updated_at <= parsed_updated_to)
 
     total_result = await session.execute(count_stmt)
     total = int(total_result.scalar_one())
 
-    result = await session.execute(
-        stmt.order_by(Document.updated_at.desc(), Document.created_at.desc()).offset(offset).limit(limit)
-    )
+    if use_postgres_fts_ordering and fts_vector is not None and fts_query is not None:
+        if fts_headline is not None:
+            stmt = stmt.add_columns(fts_headline)
+        stmt = stmt.order_by(
+            func.ts_rank_cd(fts_vector, fts_query).desc(),
+            Document.updated_at.desc(),
+            Document.created_at.desc(),
+        )
+    else:
+        stmt = stmt.order_by(Document.updated_at.desc(), Document.created_at.desc())
+
+    result = await session.execute(stmt.offset(offset).limit(limit))
+
+    if use_postgres_fts_ordering and fts_headline is not None:
+        rows = result.all()
+        items: List[Document] = []
+        for row in rows:
+            document = row[0]
+            search_highlight = row[1] if len(row) > 1 else None
+            setattr(document, "search_highlight", search_highlight)
+            items.append(document)
+        return DocumentListResponse(total=total, items=items)
+
     return DocumentListResponse(total=total, items=result.scalars().all())
 
 
@@ -303,7 +478,91 @@ async def get_document(
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    return await get_owned_document_or_404(session, document_id, current_user.id)
+    return await get_document_with_access_or_404(session, document_id, current_user.id)
+
+
+@router.get("/{document_id}/share", response_model=List[DocumentShareResponse])
+async def list_document_shares(
+    document_id: str,
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """List all access grants for a document (owner only)."""
+    await get_owned_document_or_404(session, document_id, current_user.id)
+    result = await session.execute(
+        select(DocumentAccessGrant).where(DocumentAccessGrant.document_id == document_id)
+    )
+    return result.scalars().all()
+
+
+@router.post("/{document_id}/share", response_model=DocumentShareResponse, status_code=201)
+async def grant_document_access(
+    document_id: str,
+    payload: DocumentShareCreate,
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """Grant a user access to a document (owner only)."""
+    await get_owned_document_or_404(session, document_id, current_user.id)
+
+    if payload.grantee_user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot share document with yourself")
+
+    # Check grantee exists
+    from models.auth import User
+    grantee_result = await session.execute(select(User).where(User.id == payload.grantee_user_id))
+    if grantee_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Grantee user not found")
+
+    # Upsert: update if already granted
+    existing_result = await session.execute(
+        select(DocumentAccessGrant).where(
+            DocumentAccessGrant.document_id == document_id,
+            DocumentAccessGrant.grantee_user_id == payload.grantee_user_id,
+        )
+    )
+    existing = existing_result.scalar_one_or_none()
+    if existing:
+        existing.access_level = payload.access_level
+        existing.granted_by_user_id = current_user.id
+        await session.commit()
+        await session.refresh(existing)
+        return existing
+
+    grant = DocumentAccessGrant(
+        id=str(uuid4()),
+        document_id=document_id,
+        grantee_user_id=payload.grantee_user_id,
+        granted_by_user_id=current_user.id,
+        access_level=payload.access_level,
+    )
+    session.add(grant)
+    await session.commit()
+    await session.refresh(grant)
+    return grant
+
+
+@router.delete("/{document_id}/share/{grantee_user_id}", status_code=200)
+async def revoke_document_access(
+    document_id: str,
+    grantee_user_id: str,
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """Revoke a user's access grant (owner only)."""
+    await get_owned_document_or_404(session, document_id, current_user.id)
+    result = await session.execute(
+        select(DocumentAccessGrant).where(
+            DocumentAccessGrant.document_id == document_id,
+            DocumentAccessGrant.grantee_user_id == grantee_user_id,
+        )
+    )
+    grant = result.scalar_one_or_none()
+    if not grant:
+        raise HTTPException(status_code=404, detail="Grant not found")
+    await session.delete(grant)
+    await session.commit()
+    return {"message": "Access revoked"}
 
 
 @router.patch("/{document_id}", response_model=DocumentResponse)
@@ -313,7 +572,7 @@ async def update_document(
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    document = await get_owned_document_or_404(session, document_id, current_user.id)
+    document = await get_document_with_access_or_404(session, document_id, current_user.id, require_write=True)
 
     update_data = payload.model_dump(exclude_unset=True)
 

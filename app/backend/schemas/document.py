@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field, field_validator
 
 DocumentStatus = Literal["draft", "review", "published", "archived"]
 DocumentPermission = Literal["private", "team", "public"]
+DocumentAccessLevel = Literal["read", "edit"]
+DocumentEffectiveAccessLevel = Literal["read", "edit", "owner"]
 
 
 class DocumentCreate(BaseModel):
@@ -43,6 +45,9 @@ class DocumentResponse(BaseModel):
     storage_provider: str
     bucket_name: Optional[str]
     object_key: Optional[str]
+    search_highlight: Optional[str] = None
+    effective_access_level: DocumentEffectiveAccessLevel = "owner"
+    is_owner: bool = True
     is_deleted: bool
     deleted_at: Optional[str]
     created_at: str
@@ -109,6 +114,33 @@ class DocumentVersionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class DocumentShareCreate(BaseModel):
+    grantee_user_id: str
+    access_level: DocumentAccessLevel = "read"
+
+
+class DocumentShareResponse(BaseModel):
+    document_id: str
+    grantee_user_id: str
+    grantee_email: Optional[str] = None
+    grantee_name: Optional[str] = None
+    granted_by_user_id: str
+    access_level: DocumentAccessLevel
+    created_at: str
+    updated_at: str
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def convert_share_datetime(cls, value):
+        if isinstance(value, datetime):
+            return value.isoformat()
+        return value
+
+
+class DocumentDownloadRequest(BaseModel):
+    version_id: Optional[str] = None
 
 
 class DocumentUploadInitRequest(BaseModel):
