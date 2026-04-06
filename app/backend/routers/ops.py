@@ -1,9 +1,13 @@
 from datetime import datetime, timezone
 
 from core.config import settings
+from dependencies.auth import get_admin_user
 from fastapi import APIRouter, Response, status
+from schemas.auth import UserResponse
 from services.database import check_database_health
+from services.ops_monitor import collect_ops_metrics, evaluate_alerts
 from services.storage import StorageService
+from fastapi import Depends
 
 router = APIRouter(prefix="/ops", tags=["ops"])
 
@@ -48,5 +52,27 @@ async def readiness_probe(response: Response):
     return {
         "status": "ready",
         "checks": checks,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get("/metrics")
+async def ops_metrics(_current_user: UserResponse = Depends(get_admin_user)):
+    metrics = await collect_ops_metrics()
+    return {
+        "status": "ok",
+        "metrics": metrics,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get("/alerts")
+async def ops_alerts(_current_user: UserResponse = Depends(get_admin_user)):
+    metrics = await collect_ops_metrics()
+    alerts = evaluate_alerts(metrics)
+    return {
+        "status": "alert" if alerts else "ok",
+        "alerts": alerts,
+        "metrics": metrics,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

@@ -11,6 +11,7 @@
 - [ ] API key rotation procedures documented
 - [ ] Security headers configured (X-Content-Type-Options, etc.)
 - [ ] CORS policy restricted (not `*` in production)
+- [x] CORS policy restricted (not `*` in production)
 
 ## Phase 2: Data Management ✓
 - [x] Document metadata model defined (Document, DocumentVersion)
@@ -45,6 +46,7 @@
 - [ ] Database connection pooling (PgBouncer)
 - [ ] Redis configured for sessions/cache
 - [ ] Database backups automated (daily)
+- [x] Database backups automated (daily)
 - [ ] Database restore tested
 - [ ] Database indexes optimized
 - [ ] Query performance analyzed
@@ -65,6 +67,7 @@
 - [ ] Metrics collection (Prometheus)
 - [ ] Log aggregation (ELK or Loki)
 - [ ] request_id tracing in all logs
+- [x] request_id tracing in all logs
 - [ ] Alert thresholds configured:
   - [ ] Error rate > 1%
   - [ ] P95 latency > 500ms

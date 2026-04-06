@@ -25,12 +25,17 @@ EOF
 # Start all services
 docker-compose up -d
 
+# (Optional) start automated backup worker
+docker-compose --profile backup up -d backup-worker
+
 # Wait for services to be healthy
 sleep 30
 
 # Check status
 docker-compose ps
 ```
+
+Automated backups are written to `./backups/postgres` with retention managed by `BACKUP_RETENTION_DAYS`.
 
 ### 2. Run Database Migrations
 
@@ -75,6 +80,9 @@ python scripts/integration_tests.py \
   --frontend-url http://localhost:3000 \
   --verbose \
   --junit-output test-results.xml
+
+# Pre-launch gate (includes build/lint/integration/readiness/migration reversibility)
+./scripts/prelaunch_check.sh
 ```
 
 ## Manual Testing Checklist

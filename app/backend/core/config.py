@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     cors_allow_origins: str = ""
     max_upload_size_mb: int = 50
     allowed_upload_mime_types: str = "application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ops_alert_window_minutes: int = 15
+    alert_error_rate_threshold_pct: float = 1.0
+    alert_p95_latency_ms_threshold: int = 500
+    alert_disk_usage_threshold_pct: float = 80.0
+    alert_cpu_usage_threshold_pct: float = 80.0
+    alert_db_connections_threshold: int = 80
 
     # Database Configuration
     database_url: str = "sqlite+aiosqlite:///./app.db"

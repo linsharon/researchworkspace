@@ -37,6 +37,31 @@ services:
     networks:
       - rw-network
 
+  # Automated PostgreSQL Backup Worker (optional)
+  backup-worker:
+    image: postgres:16-alpine
+    container_name: rw-backup-worker
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: research_workspace
+      POSTGRES_USER: rw_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev_password_123}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      BACKUP_DIR: /backups/postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./scripts/backup_worker.sh:/backup_worker.sh:ro
+      - ./backups:/backups
+    command: ["sh", "/backup_worker.sh"]
+    networks:
+      - rw-network
+    profiles:
+      - backup
+
   # Backend API
   backend:
     build:
