@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies using pnpm
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+RUN npm install -g pnpm && pnpm install --frozen-lockfile --no-optional
 
 # Copy source code
 COPY . .
@@ -24,11 +24,8 @@ WORKDIR /app
 RUN npm install -g serve
 
 # Copy built files from builder
-COPY --from=builder /app/dist ./dist
-
-# Create non-root user
-RUN addgroup -g 1000 appuser && adduser -D -u 1000 -G appuser appuser
-USER appuser
+COPY --from=builder --chown=node:node /app/dist ./dist
+USER node
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
