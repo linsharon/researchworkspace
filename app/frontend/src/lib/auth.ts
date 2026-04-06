@@ -49,6 +49,34 @@ class RPApi {
     window.location.href = `${base}/api/v1/auth/login`;
   }
 
+  async loginWithPassword(email: string, password: string) {
+    try {
+      const response = await this.client.post(
+        `${this.getBaseURL()}/api/v1/auth/login/password`,
+        { email, password }
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.detail || 'Failed to login with email/password'
+      );
+    }
+  }
+
+  async registerWithPassword(email: string, password: string, name?: string) {
+    try {
+      const response = await this.client.post(
+        `${this.getBaseURL()}/api/v1/auth/register`,
+        { email, password, name }
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(
+        error.response?.data?.detail || 'Failed to register account'
+      );
+    }
+  }
+
   async logout() {
     try {
       clearAuthSession();

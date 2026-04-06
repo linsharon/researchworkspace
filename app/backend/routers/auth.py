@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Optional
 from urllib.parse import urlencode, urlparse
 
@@ -21,11 +22,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from models.auth import User
 from schemas.auth import (
+    AuthTokenResponse,
+    PasswordLoginRequest,
     PlatformTokenExchangeRequest,
+    RegisterRequest,
     TokenExchangeResponse,
     UserResponse,
 )
 from services.auth import AuthService
+from services.password_auth import hash_password, verify_password
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
@@ -43,10 +49,7 @@ def _local_patch(url: str) -> str:
 
 
 def get_dynamic_backend_url(request: Request) -> str:
-    """Get backend URL dynamically from request headers.
-
-    Priority: mgx-external-domain > x-forwarded-host > host > settings.backend_url
-    """
+    """Get backend URL dynamically from request headers."""
     mgx_external_domain = request.headers.get("mgx-external-domain")
     x_forwarded_host = request.headers.get("x-forwarded-host")
     host = request.headers.get("host")
@@ -74,11 +77,7 @@ def derive_name_from_email(email: str) -> str:
 
 
 def is_oidc_configured() -> bool:
-    return bool(
-        settings.oidc_client_id
-        and settings.oidc_client_secret
-        and settings.oidc_issuer_url
-    )
+    return bool(settings.oidc_client_id and settings.oidc_client_secret and settings.oidc_issuer_url)
 
 
 def is_dev_auth_fallback_enabled() -> bool:
@@ -141,6 +140,71 @@ async def perform_dev_login(request: Request, db: AsyncSession) -> RedirectRespo
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
 
 
+@router.post("/register", response_model=AuthTokenResponse, status_code=201)
+async def register_with_email_password(payload: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    email = payload.email.strip().lower()
+    password = payload.password
+    name = payload.name.strip() if payload.name else None
+
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email")
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    existing_result = await db.execute(select(User).where(func.lower(User.email) == email))
+    existing_user = existing_result.scalar_one_or_none()
+    if existing_user:
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    auth_service = AuthService(db)
+    user = await auth_service.get_or_create_user(
+        platform_sub=f"local-{os.urandom(8).hex()}",
+        email=email,
+        name=name or derive_name_from_email(email),
+    )
+    user.password_hash = hash_password(password)
+    user.role = "user"
+    user.last_login = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(user)
+
+    token, expires_at, _ = await auth_service.issue_app_token(user=user)
+    return AuthTokenResponse(
+        token=token,
+        expires_at=int(expires_at.timestamp()),
+        user=UserResponse.model_validate(user),
+    )
+
+
+@router.post("/login/password", response_model=AuthTokenResponse)
+async def login_with_email_password(payload: PasswordLoginRequest, db: AsyncSession = Depends(get_db)):
+    email = payload.email.strip().lower()
+    password = payload.password
+
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password are required")
+
+    result = await db.execute(select(User).where(func.lower(User.email) == email))
+    user = result.scalar_one_or_none()
+    if not user or not user.password_hash:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not verify_password(password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    auth_service = AuthService(db)
+    user.last_login = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(user)
+
+    token, expires_at, _ = await auth_service.issue_app_token(user=user)
+    return AuthTokenResponse(
+        token=token,
+        expires_at=int(expires_at.timestamp()),
+        user=UserResponse.model_validate(user),
+    )
+
+
 @router.get("/login")
 async def login(request: Request, db: AsyncSession = Depends(get_db)):
     """Start OIDC login flow with PKCE."""
@@ -157,11 +221,9 @@ async def login(request: Request, db: AsyncSession = Depends(get_db)):
     code_verifier = generate_code_verifier()
     code_challenge = generate_code_challenge(code_verifier)
 
-    # Store state, nonce, and code verifier in database
     auth_service = AuthService(db)
     await auth_service.store_oidc_state(state, nonce, code_verifier)
 
-    # Build redirect_uri dynamically from request
     backend_url = get_dynamic_backend_url(request)
     redirect_uri = f"{backend_url}/api/v1/auth/callback"
     logger.info("[login] Starting OIDC flow with redirect_uri=%s", redirect_uri)
@@ -187,10 +249,7 @@ async def callback(
 
     def redirect_with_error(message: str) -> RedirectResponse:
         fragment = urlencode({"msg": message})
-        return RedirectResponse(
-            url=f"{backend_url}/auth/error?{fragment}",
-            status_code=status.HTTP_302_FOUND,
-        )
+        return RedirectResponse(url=f"{backend_url}/auth/error?{fragment}", status_code=status.HTTP_302_FOUND)
 
     if error:
         return redirect_with_error(f"OIDC error: {error}")
@@ -198,7 +257,6 @@ async def callback(
     if not code or not state:
         return redirect_with_error("Missing code or state parameter")
 
-    # Validate state using database
     auth_service = AuthService(db)
     temp_data = await auth_service.get_and_delete_oidc_state(state)
     if not temp_data:
@@ -208,11 +266,7 @@ async def callback(
     code_verifier = temp_data.get("code_verifier")
 
     try:
-        # Build redirect_uri dynamically from request
         redirect_uri = f"{backend_url}/api/v1/auth/callback"
-        logger.info("[callback] Exchanging code for tokens with redirect_uri=%s", redirect_uri)
-
-        # Exchange authorization code for tokens with PKCE
         token_data = {
             "grant_type": "authorization_code",
             "code": code,
@@ -220,56 +274,36 @@ async def callback(
             "client_id": settings.oidc_client_id,
             "client_secret": settings.oidc_client_secret,
         }
-
-        # Add PKCE code verifier if available
         if code_verifier:
             token_data["code_verifier"] = code_verifier
 
         token_url = f"{settings.oidc_issuer_url}/token"
-        try:
-            async with httpx.AsyncClient() as client:
-                token_response = await client.post(
-                    token_url,
-                    data=token_data,
-                    headers={"Content-Type": "application/x-www-form-urlencoded", "X-Request-ID": state},
-                )
-        except httpx.HTTPError as e:
-            logger.error(
-                "[callback] Token exchange HTTP error: url=%s, error=%s",
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
                 token_url,
-                str(e),
-                exc_info=True,
+                data=token_data,
+                headers={"Content-Type": "application/x-www-form-urlencoded", "X-Request-ID": state},
             )
-            return redirect_with_error(f"Token exchange failed: {e}")
 
         if token_response.status_code != 200:
-            logger.error(
-                "[callback] Token exchange failed: url=%s, status_code=%s, response=%s",
-                token_url,
-                token_response.status_code,
-                token_response.text,
-            )
             return redirect_with_error(f"Token exchange failed: {token_response.text}")
 
         tokens = token_response.json()
-
-        # Validate ID token
         id_token = tokens.get("id_token")
         if not id_token:
             return redirect_with_error("No ID token received")
 
         id_claims = await validate_id_token(id_token)
-
-        # Validate nonce
         if id_claims.get("nonce") != nonce:
             return redirect_with_error("Invalid nonce")
 
-        # Get or create user
         email = id_claims.get("email", "")
         name = id_claims.get("name") or derive_name_from_email(email)
         user = await auth_service.get_or_create_user(platform_sub=id_claims["sub"], email=email, name=name)
+        user.last_login = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(user)
 
-        # Issue application JWT token encapsulating user information
         app_token, expires_at, _ = await auth_service.issue_app_token(user=user)
 
         fragment = urlencode(
@@ -281,36 +315,23 @@ async def callback(
         )
 
         redirect_url = f"{backend_url}/auth/callback?{fragment}"
-        logger.info("[callback] OIDC callback successful, redirecting to %s", redirect_url)
-        redirect_response = RedirectResponse(
-            url=redirect_url,
-            status_code=status.HTTP_302_FOUND,
-        )
-        return redirect_response
+        return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
 
     except IDTokenValidationError as e:
-        # Redirect to error page with validation details
         return redirect_with_error(f"Authentication failed: {e.message}")
     except HTTPException as e:
-        # Redirect to error page with the original detail message
         return redirect_with_error(str(e.detail))
     except Exception as e:
-        logger.exception(f"Unexpected error in OIDC callback: {e}")
+        logger.exception("Unexpected error in OIDC callback: %s", e)
         return redirect_with_error(
             "Authentication processing failed. Please try again or contact support if the issue persists."
         )
 
 
 @router.post("/token/exchange", response_model=TokenExchangeResponse)
-async def exchange_platform_token(
-    payload: PlatformTokenExchangeRequest,
-    db: AsyncSession = Depends(get_db),
-):
+async def exchange_platform_token(payload: PlatformTokenExchangeRequest, db: AsyncSession = Depends(get_db)):
     """Exchange Platform token for app token, restricted to admin user."""
-    logger.info("[token/exchange] Received platform token exchange request")
-
     verify_url = f"{settings.oidc_issuer_url}/platform/tokens/verify"
-    logger.debug(f"[token/exchange] Verifying token with issuer: {verify_url}")
 
     try:
         async with httpx.AsyncClient() as client:
@@ -319,23 +340,18 @@ async def exchange_platform_token(
                 json={"platform_token": payload.platform_token},
                 headers={"Content-Type": "application/json"},
             )
-        logger.debug(f"[token/exchange] Issuer response status: {verify_response.status_code}")
     except httpx.HTTPError as exc:
-        logger.error(f"[token/exchange] HTTP error verifying platform token: {exc}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to verify platform token") from exc
 
     try:
         verify_body = verify_response.json()
-        logger.debug(f"[token/exchange] Issuer response body: {verify_body}")
     except ValueError:
-        logger.error(f"[token/exchange] Failed to parse issuer response as JSON: {verify_response.text}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Invalid response from platform token verification service",
         )
 
     if not isinstance(verify_body, dict):
-        logger.error(f"[token/exchange] Unexpected response type: {type(verify_body)}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Unexpected response from platform token verification service",
@@ -343,9 +359,6 @@ async def exchange_platform_token(
 
     if verify_response.status_code != status.HTTP_200_OK or not verify_body.get("success"):
         message = verify_body.get("message", "") if isinstance(verify_body, dict) else ""
-        logger.warning(
-            f"[token/exchange] Token verification failed: status={verify_response.status_code}, message={message}"
-        )
         raise HTTPException(
             status_code=verify_response.status_code,
             detail=message or "Platform token verification failed",
@@ -353,22 +366,14 @@ async def exchange_platform_token(
 
     payload_data = verify_body.get("data") or {}
     raw_user_id = payload_data.get("user_id")
-    logger.info(f"[token/exchange] Token verified, platform_user_id={raw_user_id}, email={payload_data.get('email')}")
 
     if not raw_user_id:
-        logger.error("[token/exchange] Platform token payload missing user_id")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Platform token payload missing user_id")
 
     platform_user_id = str(raw_user_id)
     if platform_user_id != str(settings.admin_user_id):
-        logger.warning(
-            f"[token/exchange] Denied: platform_user_id={platform_user_id}, admin_user_id={settings.admin_user_id}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only admin user can exchange a platform token"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admin user can exchange a platform token")
 
-    logger.info("[token/exchange] Admin user verified, issuing admin token without DB persistence")
     auth_service = AuthService(db)
 
     admin_email = payload_data.get("email", "") or getattr(settings, "admin_user_email", "")
@@ -377,16 +382,9 @@ async def exchange_platform_token(
         admin_name = derive_name_from_email(admin_email)
 
     user = User(id=platform_user_id, email=admin_email, name=admin_name, role="admin")
-    logger.debug(
-        f"[token/exchange] Admin user object for token issuance: id={user.id}, email={user.email}, role={user.role}"
-    )
+    app_token, _expires_at, _ = await auth_service.issue_app_token(user=user)
 
-    app_token, expires_at, _ = await auth_service.issue_app_token(user=user)
-    logger.info(f"[token/exchange] Token issued successfully for user_id={user.id}, expires_at={expires_at}")
-
-    return TokenExchangeResponse(
-        token=app_token,
-    )
+    return TokenExchangeResponse(token=app_token)
 
 
 @router.get("/me", response_model=UserResponse)

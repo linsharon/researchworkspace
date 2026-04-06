@@ -199,6 +199,12 @@ echo "Ready for production deployment"
 - **Infrastructure Lead**: [Contact Info]
 - **Incident Channel**: [Slack/Teams Channel]
 
+## Working Artifacts
+
+- Launch report template: `LAUNCH_CHECK_REPORT_TEMPLATE.md`
+- Remaining work tracker: `OPEN_ITEMS.md`
+- Backup/restore runbook: `BACKUP_RESTORE_PLAYBOOK.md`
+
 ## Deployment Timeline
 
 | Task | Duration | Owner |

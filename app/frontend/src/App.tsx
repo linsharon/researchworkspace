@@ -15,6 +15,8 @@ import PdfManager from './pages/PdfManager';
 import NotFound from './pages/NotFound';
 import AuthCallback from './pages/AuthCallback';
 import AuthError from './pages/AuthError';
+import AuthLogin from './pages/AuthLogin';
+import AuthRegister from './pages/AuthRegister';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
@@ -50,6 +52,8 @@ const App = () => (
               <Route path="/projects/members" element={<ProtectedRoute><ProjectMembers /></ProtectedRoute>} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/auth/error" element={<AuthError />} />
+              <Route path="/auth/login" element={<AuthLogin />} />
+              <Route path="/auth/register" element={<AuthRegister />} />
               {/* MODULE_ROUTES_START */}
               {/* MODULE_ROUTES_END */}
               <Route path="*" element={<NotFound />} />

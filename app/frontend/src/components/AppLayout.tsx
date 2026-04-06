@@ -1,6 +1,7 @@
 import { ReactNode, useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const { t, lang, setLang } = useI18n();
+  const { user, logout } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const project = DUMMY_PROJECT;
 
@@ -450,6 +452,36 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
           {/* Right: Language switcher */}
           <div className="flex items-center gap-2">
+            {!user ? (
+              <>
+                <Link to="/auth/register">
+                  <Button size="sm" variant="outline" className="h-8 text-xs">
+                    {lang === "zh" ? "注册" : "Register"}
+                  </Button>
+                </Link>
+                <Link to="/auth/login">
+                  <Button size="sm" className="h-8 text-xs bg-violet-600 hover:bg-violet-700">
+                    {lang === "zh" ? "登录" : "Login"}
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Badge variant="outline" className="text-xs text-slate-300 border-slate-600">
+                  {user.name || user.email}
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                  onClick={() => {
+                    void logout();
+                  }}
+                >
+                  {lang === "zh" ? "退出" : "Logout"}
+                </Button>
+              </>
+            )}
             <div className="relative">
               <button
                 onClick={() => setShowLangSwitcher(!showLangSwitcher)}

@@ -1,0 +1,195 @@
+Pre-launch Checklist
+====================
+[1/7] backend static checks
+[2/7] frontend lint
+
+> shadcnui@ lint /workspaces/researchworkspace/app/frontend
+> eslint --quiet ./src
+
+[3/7] frontend build
+
+> shadcnui@ build /workspaces/researchworkspace/app/frontend
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1956 modules transformed.
+node_modules/.pnpm/pdfjs-dist@3.11.174/node_modules/pdfjs-dist/build/pdf.js (1982:23): Use of eval in "node_modules/.pnpm/pdfjs-dist@3.11.174/node_modules/pdfjs-dist/build/pdf.js" is strongly discouraged as it poses security risks and may cause issues with minification.
+rendering chunks...
+computing gzip size...
+dist/index.html                            1.35 kB │ gzip:   0.57 kB
+dist/assets/index-CFUO8rAY.css           113.74 kB │ gzip:  18.47 kB
+dist/assets/react-vendor-D5SslO5G.js       0.03 kB │ gzip:   0.05 kB
+dist/assets/form-vendor-D5SslO5G.js        0.03 kB │ gzip:   0.05 kB
+dist/assets/router-vendor-ppixSUau.js     21.56 kB │ gzip:   8.03 kB
+dist/assets/query-vendor-HV8EkYfY.js      27.81 kB │ gzip:   8.50 kB
+dist/assets/utils-vendor-DFPXRRfK.js      78.81 kB │ gzip:  24.90 kB
+dist/assets/ui-vendor-Bc-gs1AP.js        277.19 kB │ gzip:  87.49 kB
+dist/assets/index-Ce6rvsIb.js          1,063.76 kB │ gzip: 282.03 kB
+
+(!) Some chunks are larger than 1000 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 11.26s
+[4/7] integration tests
+2026-04-06 14:29:22,892 - __main__ - INFO - ============================================================
+2026-04-06 14:29:22,893 - __main__ - INFO - Integration Test Suite
+2026-04-06 14:29:22,893 - __main__ - INFO - ============================================================
+2026-04-06 14:29:22,893 - __main__ - INFO - 
+[Test 1] Health Check
+2026-04-06 14:29:22,934 - httpx - INFO - HTTP Request: GET http://localhost:8000/database/health "HTTP/1.1 200 OK"
+2026-04-06 14:29:22,935 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:22,935 - __main__ - INFO - 
+[Test 2] Login
+2026-04-06 14:29:23,083 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/auth/login "HTTP/1.1 302 Found"
+2026-04-06 14:29:23,083 - __main__ - INFO - ✓ Login successful via /auth/login redirect token
+2026-04-06 14:29:23,083 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:23,083 - __main__ - INFO - 
+[Test 3] Create Project
+2026-04-06 14:29:23,139 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/manuscripts/projects "HTTP/1.1 201 Created"
+2026-04-06 14:29:23,140 - __main__ - INFO - ✓ Created project: proj-6ec7db81
+2026-04-06 14:29:23,140 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:23,140 - __main__ - INFO - 
+[Test 4] Create Paper
+2026-04-06 14:29:23,165 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/manuscripts/papers "HTTP/1.1 200 OK"
+2026-04-06 14:29:23,165 - __main__ - INFO - ✓ Created paper: 0c6b0887-a90a-45c8-acce-f55019978cb5
+2026-04-06 14:29:23,165 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:23,165 - __main__ - INFO - 
+[Test 5] Create Document
+2026-04-06 14:29:23,200 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents "HTTP/1.1 201 Created"
+2026-04-06 14:29:23,201 - __main__ - INFO - ✓ Created document: d8ef7969-de34-4e54-91b1-7627dfcea29d
+2026-04-06 14:29:23,201 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:23,201 - __main__ - INFO - 
+[Test 6] List Documents
+2026-04-06 14:29:23,218 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents "HTTP/1.1 200 OK"
+2026-04-06 14:29:23,219 - __main__ - INFO - ✓ Listed 3 documents
+2026-04-06 14:29:23,220 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:23,220 - __main__ - INFO - 
+[Test 7] Search Documents
+2026-04-06 14:29:23,252 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents/search?q=Integration "HTTP/1.1 200 OK"
+2026-04-06 14:29:23,253 - __main__ - INFO - ✓ Search found 3 results
+2026-04-06 14:29:23,253 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:23,253 - __main__ - INFO - 
+[Test 7.2] Advanced Search Filters
+2026-04-06 14:29:23,276 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents/search?q=Integration&tag=test&permission=team&created_from=2026-04-06 "HTTP/1.1 200 OK"
+2026-04-06 14:29:23,277 - __main__ - INFO - ✓ Search found 1 results
+2026-04-06 14:29:23,277 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:23,277 - __main__ - INFO - 
+[Test 7.3] Search Highlight Snippet
+2026-04-06 14:29:23,277 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:23,277 - __main__ - INFO - 
+[Test 7.5] Presigned Upload + Download
+2026-04-06 14:29:23,770 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents/d8ef7969-de34-4e54-91b1-7627dfcea29d/upload-url "HTTP/1.1 200 OK"
+2026-04-06 14:29:23,771 - __main__ - INFO - ✓ Received upload URL for integration-test.pdf
+2026-04-06 14:29:23,785 - httpx - INFO - HTTP Request: PUT http://localhost:9000/documents/documents/dev-user/d8ef7969-de34-4e54-91b1-7627dfcea29d/v1-integration-test.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20260406%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T142923Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host&X-Amz-Signature=513570d9f035448763d2ad17f53c287dad122c1ae6d6db1194adf7bb57e449b9 "HTTP/1.1 200 OK"
+2026-04-06 14:29:23,786 - __main__ - INFO - ✓ Uploaded bytes to presigned URL
+2026-04-06 14:29:23,846 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents/d8ef7969-de34-4e54-91b1-7627dfcea29d/upload-complete "HTTP/1.1 201 Created"
+2026-04-06 14:29:23,846 - __main__ - INFO - ✓ Confirmed upload for version 1
+2026-04-06 14:29:23,877 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents/d8ef7969-de34-4e54-91b1-7627dfcea29d/download-url "HTTP/1.1 200 OK"
+2026-04-06 14:29:23,878 - __main__ - INFO - ✓ Received download URL
+2026-04-06 14:29:23,880 - httpx - INFO - HTTP Request: GET http://localhost:9000/documents/documents/dev-user/d8ef7969-de34-4e54-91b1-7627dfcea29d/v1-integration-test.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20260406%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T142923Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host&X-Amz-Signature=24ce7bd18f5953aa5e3304485efe374c8c33d48b0405a9318aef1a6a512c2ac4 "HTTP/1.1 200 OK"
+2026-04-06 14:29:23,880 - __main__ - INFO - ✓ Downloaded bytes from presigned URL
+2026-04-06 14:29:23,880 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:23,880 - __main__ - INFO - 
+[Test 7.6] Team Permission via Project Membership
+2026-04-06 14:29:23,931 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/auth/login?user_id=team-editor&email=team-editor%40example.com&name=Team+Editor&role=user "HTTP/1.1 302 Found"
+2026-04-06 14:29:23,932 - __main__ - INFO - ✓ Login successful via /auth/login redirect token
+2026-04-06 14:29:23,959 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/manuscripts/projects/proj-6ec7db81/members "HTTP/1.1 201 Created"
+2026-04-06 14:29:23,960 - __main__ - INFO - ✓ Added project member: team-editor (editor)
+2026-04-06 14:29:23,983 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents/search?q=Integration "HTTP/1.1 200 OK"
+2026-04-06 14:29:23,984 - __main__ - INFO - ✓ Search found 1 results
+2026-04-06 14:29:24,000 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/manuscripts/papers "HTTP/1.1 200 OK"
+2026-04-06 14:29:24,000 - __main__ - INFO - ✓ Created paper: e47a943d-ce8a-4d48-805f-2e2d075f1e30
+2026-04-06 14:29:24,027 - httpx - INFO - HTTP Request: PATCH http://localhost:8000/api/v1/documents/d8ef7969-de34-4e54-91b1-7627dfcea29d "HTTP/1.1 200 OK"
+2026-04-06 14:29:24,027 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:24,028 - __main__ - INFO - 
+[Test 7.7] Document Access Sharing
+2026-04-06 14:29:24,066 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/auth/login?user_id=shared-reader&email=shared-reader%40example.com&name=Shared+Reader&role=user "HTTP/1.1 302 Found"
+2026-04-06 14:29:24,066 - __main__ - INFO - ✓ Login successful via /auth/login redirect token
+2026-04-06 14:29:24,089 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/users/search?q=shared-reader&limit=5 "HTTP/1.1 200 OK"
+2026-04-06 14:29:24,125 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents/d8ef7969-de34-4e54-91b1-7627dfcea29d/share "HTTP/1.1 201 Created"
+2026-04-06 14:29:24,137 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents/d8ef7969-de34-4e54-91b1-7627dfcea29d/share "HTTP/1.1 200 OK"
+2026-04-06 14:29:24,155 - httpx - INFO - HTTP Request: DELETE http://localhost:8000/api/v1/documents/d8ef7969-de34-4e54-91b1-7627dfcea29d/share/shared-reader "HTTP/1.1 200 OK"
+2026-04-06 14:29:24,155 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:24,155 - __main__ - INFO - 
+[Test 7.8] Version Restore
+2026-04-06 14:29:24,166 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents/d8ef7969-de34-4e54-91b1-7627dfcea29d/versions "HTTP/1.1 200 OK"
+2026-04-06 14:29:24,189 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents/d8ef7969-de34-4e54-91b1-7627dfcea29d/versions/acd6eecd-08ef-4efb-99b3-5c82c6890379/restore "HTTP/1.1 201 Created"
+2026-04-06 14:29:24,223 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents/d8ef7969-de34-4e54-91b1-7627dfcea29d/download-url "HTTP/1.1 200 OK"
+2026-04-06 14:29:24,223 - __main__ - INFO - ✓ Received download URL
+2026-04-06 14:29:24,225 - httpx - INFO - HTTP Request: GET http://localhost:9000/documents/documents/dev-user/d8ef7969-de34-4e54-91b1-7627dfcea29d/v1-integration-test.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20260406%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T142924Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host&X-Amz-Signature=419482351c538b040afd2d3273f85e214ff5863f7ae8a3e970754522c6af3fca "HTTP/1.1 200 OK"
+2026-04-06 14:29:24,225 - __main__ - INFO - ✓ Downloaded bytes from presigned URL
+2026-04-06 14:29:24,225 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:24,225 - __main__ - INFO - 
+[Test 8] Data Persistence (Refresh)
+2026-04-06 14:29:24,241 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents "HTTP/1.1 200 OK"
+2026-04-06 14:29:24,241 - __main__ - INFO - ✓ Listed 3 documents
+2026-04-06 14:29:24,251 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents "HTTP/1.1 200 OK"
+2026-04-06 14:29:24,251 - __main__ - INFO - ✓ Listed 3 documents
+2026-04-06 14:29:24,251 - __main__ - INFO - ✓ PASSED (Data persisted: 3 documents)
+2026-04-06 14:29:24,252 - __main__ - INFO - 
+[Test 9] Soft Delete Document
+2026-04-06 14:29:24,267 - httpx - INFO - HTTP Request: DELETE http://localhost:8000/api/v1/documents/d8ef7969-de34-4e54-91b1-7627dfcea29d "HTTP/1.1 200 OK"
+2026-04-06 14:29:24,267 - __main__ - INFO - ✓ Soft deleted document: d8ef7969-de34-4e54-91b1-7627dfcea29d
+2026-04-06 14:29:24,267 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:24,267 - __main__ - INFO - 
+[Test 10] Activity Tracking
+2026-04-06 14:29:24,285 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/admin/activity/events?limit=5 "HTTP/1.1 200 OK"
+2026-04-06 14:29:24,286 - __main__ - INFO - ✓ Retrieved 5 activity events
+2026-04-06 14:29:24,286 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:29:24,286 - __main__ - INFO - 
+============================================================
+2026-04-06 14:29:24,286 - __main__ - INFO - Results: 16 passed, 0 failed
+2026-04-06 14:29:24,286 - __main__ - INFO - ============================================================
+[5/7] readiness gate
+{"status":"ready","checks":{"database":"healthy","storage":"healthy"},"timestamp":"2026-04-06T14:29:24.432605+00:00"}[6/7] migration reversibility dry-run
+time="2026-04-06T14:29:25Z" level=warning msg="/workspaces/researchworkspace/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+DROP DATABASE
+NOTICE:  database "migration_probe" does not exist, skipping
+time="2026-04-06T14:29:25Z" level=warning msg="/workspaces/researchworkspace/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+CREATE DATABASE
+[migration] upgrade head
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> a0da2fc2e882, add manuscript models
+INFO  [alembic.runtime.migration] Running upgrade a0da2fc2e882 -> 9f31a1d2c4e0, add project owner user id
+INFO  [alembic.runtime.migration] Running upgrade 9f31a1d2c4e0 -> b7c4d8e1f2a9, add activity events table
+INFO  [alembic.runtime.migration] Running upgrade b7c4d8e1f2a9 -> e3b7c1a4d2f6, add search records table
+INFO  [alembic.runtime.migration] Running upgrade e3b7c1a4d2f6 -> f4a9c2d3e6b1, add documents and document versions tables
+INFO  [alembic.runtime.migration] Running upgrade f4a9c2d3e6b1 -> c6f7b2a1d4e8, add documents search vector fts support
+INFO  [alembic.runtime.migration] Running upgrade c6f7b2a1d4e8 -> d7e8f3a2b1c9, add document access grants table
+INFO  [alembic.runtime.migration] Running upgrade d7e8f3a2b1c9 -> e2c4f6a8b0d1, add activity event resource fields
+INFO  [alembic.runtime.migration] Running upgrade e2c4f6a8b0d1 -> f1c2d3e4b5a6, add project members and activity details
+[migration] downgrade base
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade f1c2d3e4b5a6 -> e2c4f6a8b0d1, add project members and activity details
+INFO  [alembic.runtime.migration] Running downgrade e2c4f6a8b0d1 -> d7e8f3a2b1c9, add activity event resource fields
+INFO  [alembic.runtime.migration] Running downgrade d7e8f3a2b1c9 -> c6f7b2a1d4e8, add document access grants table
+INFO  [alembic.runtime.migration] Running downgrade c6f7b2a1d4e8 -> f4a9c2d3e6b1, add documents search vector fts support
+INFO  [alembic.runtime.migration] Running downgrade f4a9c2d3e6b1 -> e3b7c1a4d2f6, add documents and document versions tables
+INFO  [alembic.runtime.migration] Running downgrade e3b7c1a4d2f6 -> b7c4d8e1f2a9, add search records table
+INFO  [alembic.runtime.migration] Running downgrade b7c4d8e1f2a9 -> 9f31a1d2c4e0, add activity events table
+INFO  [alembic.runtime.migration] Running downgrade 9f31a1d2c4e0 -> a0da2fc2e882, add project owner user id
+INFO  [alembic.runtime.migration] Running downgrade a0da2fc2e882 -> , add manuscript models
+[migration] re-upgrade head
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> a0da2fc2e882, add manuscript models
+INFO  [alembic.runtime.migration] Running upgrade a0da2fc2e882 -> 9f31a1d2c4e0, add project owner user id
+INFO  [alembic.runtime.migration] Running upgrade 9f31a1d2c4e0 -> b7c4d8e1f2a9, add activity events table
+INFO  [alembic.runtime.migration] Running upgrade b7c4d8e1f2a9 -> e3b7c1a4d2f6, add search records table
+INFO  [alembic.runtime.migration] Running upgrade e3b7c1a4d2f6 -> f4a9c2d3e6b1, add documents and document versions tables
+INFO  [alembic.runtime.migration] Running upgrade f4a9c2d3e6b1 -> c6f7b2a1d4e8, add documents search vector fts support
+INFO  [alembic.runtime.migration] Running upgrade c6f7b2a1d4e8 -> d7e8f3a2b1c9, add document access grants table
+INFO  [alembic.runtime.migration] Running upgrade d7e8f3a2b1c9 -> e2c4f6a8b0d1, add activity event resource fields
+INFO  [alembic.runtime.migration] Running upgrade e2c4f6a8b0d1 -> f1c2d3e4b5a6, add project members and activity details
+[migration] cleanup
+time="2026-04-06T14:29:29Z" level=warning msg="/workspaces/researchworkspace/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+DROP DATABASE
+migration reversibility check passed
+[7/7] ops alerts baseline
+ops/alerts http=200
+{"status":"alert","alerts":[{"name":"high_cpu_usage","level":"warning","value":100.0,"threshold":80.0}],"metrics":{"window_minutes":15,"total_requests":114,"error_requests":0,"error_rate_pct":0.0,"p95_latency_ms":78,"disk_usage_pct":51.26,"cpu_usage_pct":100.0,"db_connections":7},"timestamp":"2026-04-06T14:29:29.873970+00:00"}All pre-launch checks completed
+Report: /workspaces/researchworkspace/reports/prelaunch/prelaunch_20260406T142856Z.txt

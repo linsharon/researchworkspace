@@ -1,0 +1,1 @@
+{"status":"alert","alerts":[{"name":"high_cpu_usage","level":"warning","value":100.0,"threshold":80.0}],"metrics":{"window_minutes":15,"total_requests":114,"error_requests":0,"error_rate_pct":0.0,"p95_latency_ms":78,"disk_usage_pct":51.26,"cpu_usage_pct":100.0,"db_connections":7},"timestamp":"2026-04-06T14:29:29.873970+00:00"}

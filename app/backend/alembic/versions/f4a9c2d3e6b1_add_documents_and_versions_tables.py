@@ -33,7 +33,7 @@ def upgrade() -> None:
         sa.Column("storage_provider", sa.String(length=50), nullable=False),
         sa.Column("bucket_name", sa.String(length=255), nullable=True),
         sa.Column("object_key", sa.String(length=1024), nullable=True),
-        sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column("is_deleted", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),

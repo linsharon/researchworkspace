@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     alert_disk_usage_threshold_pct: float = 80.0
     alert_cpu_usage_threshold_pct: float = 80.0
     alert_db_connections_threshold: int = 80
+    content_security_policy: str = "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; font-src 'self' data:; connect-src 'self' http: https: ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    permissions_policy: str = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
 
     # Database Configuration
     database_url: str = "sqlite+aiosqlite:///./app.db"

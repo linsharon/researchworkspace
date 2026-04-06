@@ -96,7 +96,7 @@ production_like = environment in {"prod", "production", "staging"}
 configured_origins = settings.cors_allow_origin_list
 
 if production_like:
-    allow_origins = configured_origins or [settings.frontend_url]
+    allow_origins = configured_origins
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allow_origins,
@@ -153,6 +153,21 @@ async def activity_event_middleware(request: Request, call_next):
                 error_type=error_type,
                 duration_ms=duration_ms,
             )
+
+
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", settings.permissions_policy)
+    response.headers.setdefault("Content-Security-Policy", settings.content_security_policy)
+    response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    response.headers.setdefault("Cross-Origin-Resource-Policy", "same-origin")
+    if request.headers.get("x-forwarded-proto", request.url.scheme) == "https":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
 
 
 # Auto-discover and include all routers from the local `routers` package

@@ -26,6 +26,9 @@ def validate_runtime_configuration() -> None:
         if settings.frontend_url.startswith("http://"):
             warnings.append("FRONTEND_URL is using http in production; https is recommended")
 
+        if not settings.cors_allow_origin_list:
+            errors.append("CORS_ALLOW_ORIGINS must be explicitly configured in production")
+
         if "*" in settings.cors_allow_origin_list:
             errors.append("CORS_ALLOW_ORIGINS must not include '*' in production")
 

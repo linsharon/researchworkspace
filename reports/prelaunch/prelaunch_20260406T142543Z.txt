@@ -1,0 +1,329 @@
+Pre-launch Checklist
+====================
+[1/7] backend static checks
+[2/7] frontend lint
+
+> shadcnui@ lint /workspaces/researchworkspace/app/frontend
+> eslint --quiet ./src
+
+[3/7] frontend build
+
+> shadcnui@ build /workspaces/researchworkspace/app/frontend
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1956 modules transformed.
+node_modules/.pnpm/pdfjs-dist@3.11.174/node_modules/pdfjs-dist/build/pdf.js (1982:23): Use of eval in "node_modules/.pnpm/pdfjs-dist@3.11.174/node_modules/pdfjs-dist/build/pdf.js" is strongly discouraged as it poses security risks and may cause issues with minification.
+rendering chunks...
+computing gzip size...
+dist/index.html                            1.35 kB │ gzip:   0.58 kB
+dist/assets/index-CFUO8rAY.css           113.74 kB │ gzip:  18.47 kB
+dist/assets/react-vendor-D5SslO5G.js       0.03 kB │ gzip:   0.05 kB
+dist/assets/form-vendor-D5SslO5G.js        0.03 kB │ gzip:   0.05 kB
+dist/assets/router-vendor-ppixSUau.js     21.56 kB │ gzip:   8.03 kB
+dist/assets/query-vendor-HV8EkYfY.js      27.81 kB │ gzip:   8.50 kB
+dist/assets/utils-vendor-DFPXRRfK.js      78.81 kB │ gzip:  24.90 kB
+dist/assets/ui-vendor-Bc-gs1AP.js        277.19 kB │ gzip:  87.49 kB
+dist/assets/index-Dec_G9Jy.js          1,063.76 kB │ gzip: 282.03 kB
+
+(!) Some chunks are larger than 1000 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 10.97s
+[4/7] integration tests
+2026-04-06 14:26:05,014 - __main__ - INFO - ============================================================
+2026-04-06 14:26:05,015 - __main__ - INFO - Integration Test Suite
+2026-04-06 14:26:05,015 - __main__ - INFO - ============================================================
+2026-04-06 14:26:05,015 - __main__ - INFO - 
+[Test 1] Health Check
+2026-04-06 14:26:05,037 - httpx - INFO - HTTP Request: GET http://localhost:8000/database/health "HTTP/1.1 200 OK"
+2026-04-06 14:26:05,038 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:05,038 - __main__ - INFO - 
+[Test 2] Login
+2026-04-06 14:26:05,076 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/auth/login "HTTP/1.1 302 Found"
+2026-04-06 14:26:05,081 - __main__ - INFO - ✓ Login successful via /auth/login redirect token
+2026-04-06 14:26:05,081 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:05,082 - __main__ - INFO - 
+[Test 3] Create Project
+2026-04-06 14:26:05,127 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/manuscripts/projects "HTTP/1.1 201 Created"
+2026-04-06 14:26:05,127 - __main__ - INFO - ✓ Created project: proj-816956d7
+2026-04-06 14:26:05,127 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:05,127 - __main__ - INFO - 
+[Test 4] Create Paper
+2026-04-06 14:26:05,151 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/manuscripts/papers "HTTP/1.1 200 OK"
+2026-04-06 14:26:05,151 - __main__ - INFO - ✓ Created paper: 2806af64-32f5-4da1-8319-bd1b8581b453
+2026-04-06 14:26:05,152 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:05,152 - __main__ - INFO - 
+[Test 5] Create Document
+2026-04-06 14:26:05,199 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents "HTTP/1.1 201 Created"
+2026-04-06 14:26:05,201 - __main__ - INFO - ✓ Created document: c18add81-2247-4efc-9f9c-1900a0dca232
+2026-04-06 14:26:05,201 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:05,201 - __main__ - INFO - 
+[Test 6] List Documents
+2026-04-06 14:26:05,221 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents "HTTP/1.1 200 OK"
+2026-04-06 14:26:05,222 - __main__ - INFO - ✓ Listed 3 documents
+2026-04-06 14:26:05,222 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:05,223 - __main__ - INFO - 
+[Test 7] Search Documents
+2026-04-06 14:26:05,256 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents/search?q=Integration "HTTP/1.1 200 OK"
+2026-04-06 14:26:05,257 - __main__ - INFO - ✓ Search found 3 results
+2026-04-06 14:26:05,257 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:05,257 - __main__ - INFO - 
+[Test 7.2] Advanced Search Filters
+2026-04-06 14:26:05,278 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents/search?q=Integration&tag=test&permission=team&created_from=2026-04-06 "HTTP/1.1 200 OK"
+2026-04-06 14:26:05,279 - __main__ - INFO - ✓ Search found 1 results
+2026-04-06 14:26:05,279 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:05,279 - __main__ - INFO - 
+[Test 7.3] Search Highlight Snippet
+2026-04-06 14:26:05,279 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:05,279 - __main__ - INFO - 
+[Test 7.5] Presigned Upload + Download
+2026-04-06 14:26:05,992 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents/c18add81-2247-4efc-9f9c-1900a0dca232/upload-url "HTTP/1.1 200 OK"
+2026-04-06 14:26:05,993 - __main__ - INFO - ✓ Received upload URL for integration-test.pdf
+2026-04-06 14:26:06,020 - httpx - INFO - HTTP Request: PUT http://localhost:9000/documents/documents/dev-user/c18add81-2247-4efc-9f9c-1900a0dca232/v1-integration-test.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20260406%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T142605Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host&X-Amz-Signature=724aa27ed346dbc3b6fbd065b2085c579eff8e0c9a0050724e030c42603efe9c "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,020 - __main__ - INFO - ✓ Uploaded bytes to presigned URL
+2026-04-06 14:26:06,068 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents/c18add81-2247-4efc-9f9c-1900a0dca232/upload-complete "HTTP/1.1 201 Created"
+2026-04-06 14:26:06,069 - __main__ - INFO - ✓ Confirmed upload for version 1
+2026-04-06 14:26:06,099 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents/c18add81-2247-4efc-9f9c-1900a0dca232/download-url "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,100 - __main__ - INFO - ✓ Received download URL
+2026-04-06 14:26:06,105 - httpx - INFO - HTTP Request: GET http://localhost:9000/documents/documents/dev-user/c18add81-2247-4efc-9f9c-1900a0dca232/v1-integration-test.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20260406%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T142606Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host&X-Amz-Signature=05fe6c08275a487b383647288ee37478762cf0949bc69da3571baddc264cc379 "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,105 - __main__ - INFO - ✓ Downloaded bytes from presigned URL
+2026-04-06 14:26:06,106 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:06,106 - __main__ - INFO - 
+[Test 7.6] Team Permission via Project Membership
+2026-04-06 14:26:06,147 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/auth/login?user_id=team-editor&email=team-editor%40example.com&name=Team+Editor&role=user "HTTP/1.1 302 Found"
+2026-04-06 14:26:06,148 - __main__ - INFO - ✓ Login successful via /auth/login redirect token
+2026-04-06 14:26:06,173 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/manuscripts/projects/proj-816956d7/members "HTTP/1.1 201 Created"
+2026-04-06 14:26:06,174 - __main__ - INFO - ✓ Added project member: team-editor (editor)
+2026-04-06 14:26:06,194 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents/search?q=Integration "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,195 - __main__ - INFO - ✓ Search found 1 results
+2026-04-06 14:26:06,214 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/manuscripts/papers "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,214 - __main__ - INFO - ✓ Created paper: b2f9355e-0e99-4f5f-87d0-1310924b784f
+2026-04-06 14:26:06,239 - httpx - INFO - HTTP Request: PATCH http://localhost:8000/api/v1/documents/c18add81-2247-4efc-9f9c-1900a0dca232 "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,240 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:06,240 - __main__ - INFO - 
+[Test 7.7] Document Access Sharing
+2026-04-06 14:26:06,281 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/auth/login?user_id=shared-reader&email=shared-reader%40example.com&name=Shared+Reader&role=user "HTTP/1.1 302 Found"
+2026-04-06 14:26:06,282 - __main__ - INFO - ✓ Login successful via /auth/login redirect token
+2026-04-06 14:26:06,300 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/users/search?q=shared-reader&limit=5 "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,334 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents/c18add81-2247-4efc-9f9c-1900a0dca232/share "HTTP/1.1 201 Created"
+2026-04-06 14:26:06,348 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents/c18add81-2247-4efc-9f9c-1900a0dca232/share "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,366 - httpx - INFO - HTTP Request: DELETE http://localhost:8000/api/v1/documents/c18add81-2247-4efc-9f9c-1900a0dca232/share/shared-reader "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,367 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:06,367 - __main__ - INFO - 
+[Test 7.8] Version Restore
+2026-04-06 14:26:06,380 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents/c18add81-2247-4efc-9f9c-1900a0dca232/versions "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,403 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents/c18add81-2247-4efc-9f9c-1900a0dca232/versions/7a5c0992-eca6-4978-bd43-3b4e0add0963/restore "HTTP/1.1 201 Created"
+2026-04-06 14:26:06,441 - httpx - INFO - HTTP Request: POST http://localhost:8000/api/v1/documents/c18add81-2247-4efc-9f9c-1900a0dca232/download-url "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,442 - __main__ - INFO - ✓ Received download URL
+2026-04-06 14:26:06,445 - httpx - INFO - HTTP Request: GET http://localhost:9000/documents/documents/dev-user/c18add81-2247-4efc-9f9c-1900a0dca232/v1-integration-test.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=minioadmin%2F20260406%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260406T142606Z&X-Amz-Expires=900&X-Amz-SignedHeaders=host&X-Amz-Signature=05fe6c08275a487b383647288ee37478762cf0949bc69da3571baddc264cc379 "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,445 - __main__ - INFO - ✓ Downloaded bytes from presigned URL
+2026-04-06 14:26:06,445 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:06,445 - __main__ - INFO - 
+[Test 8] Data Persistence (Refresh)
+2026-04-06 14:26:06,456 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,457 - __main__ - INFO - ✓ Listed 3 documents
+2026-04-06 14:26:06,466 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/documents "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,467 - __main__ - INFO - ✓ Listed 3 documents
+2026-04-06 14:26:06,467 - __main__ - INFO - ✓ PASSED (Data persisted: 3 documents)
+2026-04-06 14:26:06,467 - __main__ - INFO - 
+[Test 9] Soft Delete Document
+2026-04-06 14:26:06,486 - httpx - INFO - HTTP Request: DELETE http://localhost:8000/api/v1/documents/c18add81-2247-4efc-9f9c-1900a0dca232 "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,487 - __main__ - INFO - ✓ Soft deleted document: c18add81-2247-4efc-9f9c-1900a0dca232
+2026-04-06 14:26:06,487 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:06,487 - __main__ - INFO - 
+[Test 10] Activity Tracking
+2026-04-06 14:26:06,506 - httpx - INFO - HTTP Request: GET http://localhost:8000/api/v1/admin/activity/events?limit=5 "HTTP/1.1 200 OK"
+2026-04-06 14:26:06,507 - __main__ - INFO - ✓ Retrieved 5 activity events
+2026-04-06 14:26:06,507 - __main__ - INFO - ✓ PASSED
+2026-04-06 14:26:06,507 - __main__ - INFO - 
+============================================================
+2026-04-06 14:26:06,507 - __main__ - INFO - Results: 16 passed, 0 failed
+2026-04-06 14:26:06,507 - __main__ - INFO - ============================================================
+[5/7] readiness gate
+{"status":"ready","checks":{"database":"healthy","storage":"healthy"},"timestamp":"2026-04-06T14:26:06.652269+00:00"}[6/7] migration reversibility dry-run
+time="2026-04-06T14:26:07Z" level=warning msg="/workspaces/researchworkspace/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+NOTICE:  database "migration_probe" does not exist, skipping
+DROP DATABASE
+time="2026-04-06T14:26:08Z" level=warning msg="/workspaces/researchworkspace/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+CREATE DATABASE
+[migration] upgrade head
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> a0da2fc2e882, add manuscript models
+INFO  [alembic.runtime.migration] Running upgrade a0da2fc2e882 -> 9f31a1d2c4e0, add project owner user id
+INFO  [alembic.runtime.migration] Running upgrade 9f31a1d2c4e0 -> b7c4d8e1f2a9, add activity events table
+INFO  [alembic.runtime.migration] Running upgrade b7c4d8e1f2a9 -> e3b7c1a4d2f6, add search records table
+INFO  [alembic.runtime.migration] Running upgrade e3b7c1a4d2f6 -> f4a9c2d3e6b1, add documents and document versions tables
+Traceback (most recent call last):
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 550, in _prepare_and_execute
+    self._rows = deque(await prepared_stmt.fetch(*parameters))
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py", line 177, in fetch
+    data = await self.__bind_execute(args, 0, timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py", line 268, in __bind_execute
+    data, status, _ = await self.__do_execute(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/asyncpg/prepared_stmt.py", line 257, in __do_execute
+    return await executor(protocol)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "asyncpg/protocol/protocol.pyx", line 205, in bind_execute
+asyncpg.exceptions.DatatypeMismatchError: column "is_deleted" is of type boolean but default expression is of type integer
+HINT:  You will need to rewrite or cast the expression.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 585, in execute
+    self._adapt_connection.await_(
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 563, in _prepare_and_execute
+    self._handle_exception(error)
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 513, in _handle_exception
+    self._adapt_connection._handle_exception(error)
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 797, in _handle_exception
+    raise translated_error from error
+sqlalchemy.dialects.postgresql.asyncpg.AsyncAdapt_asyncpg_dbapi.ProgrammingError: <class 'asyncpg.exceptions.DatatypeMismatchError'>: column "is_deleted" is of type boolean but default expression is of type integer
+HINT:  You will need to rewrite or cast the expression.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/workspaces/researchworkspace/.venv/bin/alembic", line 6, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/config.py", line 1047, in main
+    CommandLine(prog=prog).main(argv=argv)
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/config.py", line 1037, in main
+    self.run_cmd(cfg, options)
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/config.py", line 971, in run_cmd
+    fn(
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/command.py", line 483, in upgrade
+    script.run_env()
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/script/base.py", line 545, in run_env
+    util.load_python_file(self.dir, "env.py")
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 116, in load_python_file
+    module = load_module_py(module_id, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/util/pyfiles.py", line 136, in load_module_py
+    spec.loader.exec_module(module)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/workspaces/researchworkspace/app/backend/alembic/env.py", line 66, in <module>
+    run_migrations()
+  File "/workspaces/researchworkspace/app/backend/alembic/env.py", line 63, in run_migrations
+    asyncio.run(run_migrations_online())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/app/backend/alembic/env.py", line 53, in run_migrations_online
+    await connection.run_sync(lambda sync_conn: context.run_migrations())
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py", line 888, in run_sync
+    return await greenlet_spawn(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 201, in greenlet_spawn
+    result = context.throw(*sys.exc_info())
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/app/backend/alembic/env.py", line 53, in <lambda>
+    await connection.run_sync(lambda sync_conn: context.run_migrations())
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 8, in run_migrations
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/runtime/environment.py", line 969, in run_migrations
+    self.get_context().run_migrations(**kw)
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/runtime/migration.py", line 626, in run_migrations
+    step.migration_fn(**kw)
+  File "/workspaces/researchworkspace/app/backend/alembic/versions/f4a9c2d3e6b1_add_documents_and_versions_tables.py", line 23, in upgrade
+    op.create_table(
+  File "<string>", line 8, in create_table
+  File "<string>", line 3, in create_table
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/operations/ops.py", line 1331, in create_table
+    return operations.invoke(op)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/operations/base.py", line 452, in invoke
+    return fn(self, operation)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/operations/toimpl.py", line 140, in create_table
+    operations.impl.create_table(table, **kw)
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/ddl/impl.py", line 442, in create_table
+    self._exec(schema.CreateTable(table, **kw))
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/alembic/ddl/impl.py", line 256, in _exec
+    return conn.execute(construct, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1419, in execute
+    return meth(
+           ^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/sql/ddl.py", line 187, in _execute_on_connection
+    return connection._execute_ddl(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1530, in _execute_ddl
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 585, in execute
+    self._adapt_connection.await_(
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 563, in _prepare_and_execute
+    self._handle_exception(error)
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 513, in _handle_exception
+    self._adapt_connection._handle_exception(error)
+  File "/workspaces/researchworkspace/.venv/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 797, in _handle_exception
+    raise translated_error from error
+sqlalchemy.exc.ProgrammingError: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError) <class 'asyncpg.exceptions.DatatypeMismatchError'>: column "is_deleted" is of type boolean but default expression is of type integer
+HINT:  You will need to rewrite or cast the expression.
+[SQL: 
+CREATE TABLE documents (
+	id VARCHAR(36) NOT NULL, 
+	owner_user_id VARCHAR(255) NOT NULL, 
+	project_id VARCHAR(36), 
+	title VARCHAR(500) NOT NULL, 
+	description TEXT, 
+	tags TEXT, 
+	status VARCHAR(50) NOT NULL, 
+	permission VARCHAR(50) NOT NULL, 
+	storage_provider VARCHAR(50) NOT NULL, 
+	bucket_name VARCHAR(255), 
+	object_key VARCHAR(1024), 
+	is_deleted BOOLEAN DEFAULT 0 NOT NULL, 
+	deleted_at TIMESTAMP WITH TIME ZONE, 
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+	updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+	PRIMARY KEY (id), 
+	FOREIGN KEY(project_id) REFERENCES projects (id)
+)
+
+]
+(Background on this error at: https://sqlalche.me/e/20/f405)
