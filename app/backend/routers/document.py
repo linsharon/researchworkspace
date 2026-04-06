@@ -6,7 +6,9 @@ from uuid import uuid4
 
 from dependencies.auth import get_current_user
 from dependencies.database import get_db
+from core.config import settings
 from fastapi import APIRouter, Depends, HTTPException, Query
+from models.auth import User
 from models.document import Document, DocumentAccessGrant, DocumentVersion
 from models.manuscript import Project
 from schemas.auth import UserResponse
@@ -24,6 +26,7 @@ from schemas.document import (
     DocumentVersionResponse,
 )
 from schemas.storage import FileUpDownRequest
+from services.rate_limit import rate_limiter
 from services.storage import StorageService
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -276,6 +279,19 @@ async def search_documents(
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
+    if settings.search_rate_limit_enabled:
+        allowed, _remaining, retry_after = await rate_limiter.allow(
+            scope="documents.search",
+            key=current_user.id,
+            max_requests=max(1, settings.search_rate_limit_max_requests),
+            window_seconds=max(1, settings.search_rate_limit_window_seconds),
+        )
+        if not allowed:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Search rate limit exceeded, retry after {retry_after} seconds",
+            )
+
     effective_owner_user_id = current_user.id
     if owner_user_id:
         if current_user.role != "admin" and owner_user_id != current_user.id:
@@ -490,9 +506,25 @@ async def list_document_shares(
     """List all access grants for a document (owner only)."""
     await get_owned_document_or_404(session, document_id, current_user.id)
     result = await session.execute(
-        select(DocumentAccessGrant).where(DocumentAccessGrant.document_id == document_id)
+        select(DocumentAccessGrant, User)
+        .outerjoin(User, User.id == DocumentAccessGrant.grantee_user_id)
+        .where(DocumentAccessGrant.document_id == document_id)
     )
-    return result.scalars().all()
+    items: List[DocumentShareResponse] = []
+    for grant, user in result.all():
+        items.append(
+            DocumentShareResponse(
+                document_id=grant.document_id,
+                grantee_user_id=grant.grantee_user_id,
+                grantee_email=user.email if user else None,
+                grantee_name=user.name if user else None,
+                granted_by_user_id=grant.granted_by_user_id,
+                access_level=grant.access_level,
+                created_at=grant.created_at,
+                updated_at=grant.updated_at,
+            )
+        )
+    return items
 
 
 @router.post("/{document_id}/share", response_model=DocumentShareResponse, status_code=201)
@@ -509,7 +541,6 @@ async def grant_document_access(
         raise HTTPException(status_code=400, detail="Cannot share document with yourself")
 
     # Check grantee exists
-    from models.auth import User
     grantee_result = await session.execute(select(User).where(User.id == payload.grantee_user_id))
     if grantee_result.scalar_one_or_none() is None:
         raise HTTPException(status_code=404, detail="Grantee user not found")
@@ -527,7 +558,18 @@ async def grant_document_access(
         existing.granted_by_user_id = current_user.id
         await session.commit()
         await session.refresh(existing)
-        return existing
+        grantee_result = await session.execute(select(User).where(User.id == payload.grantee_user_id))
+        grantee = grantee_result.scalar_one_or_none()
+        return DocumentShareResponse(
+            document_id=existing.document_id,
+            grantee_user_id=existing.grantee_user_id,
+            grantee_email=grantee.email if grantee else None,
+            grantee_name=grantee.name if grantee else None,
+            granted_by_user_id=existing.granted_by_user_id,
+            access_level=existing.access_level,
+            created_at=existing.created_at,
+            updated_at=existing.updated_at,
+        )
 
     grant = DocumentAccessGrant(
         id=str(uuid4()),
@@ -539,7 +581,18 @@ async def grant_document_access(
     session.add(grant)
     await session.commit()
     await session.refresh(grant)
-    return grant
+    grantee_result = await session.execute(select(User).where(User.id == payload.grantee_user_id))
+    grantee = grantee_result.scalar_one_or_none()
+    return DocumentShareResponse(
+        document_id=grant.document_id,
+        grantee_user_id=grant.grantee_user_id,
+        grantee_email=grantee.email if grantee else None,
+        grantee_name=grantee.name if grantee else None,
+        granted_by_user_id=grant.granted_by_user_id,
+        access_level=grant.access_level,
+        created_at=grant.created_at,
+        updated_at=grant.updated_at,
+    )
 
 
 @router.delete("/{document_id}/share/{grantee_user_id}", status_code=200)

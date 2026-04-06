@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional, Union
 from urllib.parse import urljoin
@@ -88,13 +89,51 @@ class StorageService:
                 raise
 
         # MinIO/S3 path
+        if request.visibility == "public" and not settings.allow_public_buckets:
+            raise ValueError("Public buckets are disabled by policy")
+
         try:
             self.s3_client.create_bucket(Bucket=request.bucket_name)
         except Exception:
             # Bucket may already exist; keep operation idempotent for staging/dev
             pass
 
-        return BucketResponse(bucket_name=request.bucket_name, created_at=datetime.now(timezone.utc).isoformat())
+        await self._apply_bucket_visibility_policy(request.bucket_name, request.visibility)
+
+        return BucketResponse(
+            bucket_name=request.bucket_name,
+            visibility=request.visibility,
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    async def _apply_bucket_visibility_policy(self, bucket_name: str, visibility: str) -> None:
+        """Apply explicit bucket policy to avoid accidental public exposure."""
+        if visibility == "private":
+            # Private mode: remove bucket policy to fall back to authenticated access only.
+            try:
+                self.s3_client.delete_bucket_policy(Bucket=bucket_name)
+            except Exception:
+                # Some backends may not have a policy yet; keep behavior idempotent.
+                pass
+            return
+
+        # Public read is only enabled when explicitly allowed.
+        else:
+            # Public read is only enabled when explicitly allowed.
+            policy = {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Sid": "PublicReadObjects",
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": ["s3:GetObject"],
+                        "Resource": [f"arn:aws:s3:::{bucket_name}/*"],
+                    }
+                ],
+            }
+
+        self.s3_client.put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(policy))
 
     async def list_buckets(self) -> BucketListResponse:
         """

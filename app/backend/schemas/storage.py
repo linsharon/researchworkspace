@@ -21,7 +21,7 @@ class OSSBaseModel(BaseModel):
 class BucketRequest(OSSBaseModel):
     """Request to create bucket"""
 
-    visibility: Literal["public", "private"] = "public"
+    visibility: Literal["public", "private"] = "private"
 
 
 class BucketResponse(BucketRequest):

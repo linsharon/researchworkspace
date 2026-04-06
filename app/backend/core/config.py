@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     admin_user_email: str = ""
     oss_service_url: str = ""
     oss_api_key: str = ""
+    search_rate_limit_enabled: bool = True
+    search_rate_limit_window_seconds: int = 60
+    search_rate_limit_max_requests: int = 60
+    allow_public_buckets: bool = False
 
     # Database Configuration
     database_url: str = "sqlite+aiosqlite:///./app.db"
