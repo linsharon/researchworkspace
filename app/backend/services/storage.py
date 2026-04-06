@@ -1,9 +1,13 @@
 import logging
+import os
+from datetime import datetime, timedelta, timezone
 from typing import Literal, Optional, Union
 from urllib.parse import urljoin
 
+import boto3
 import httpx
 import mimetypes
+from botocore.client import Config
 from core.config import settings
 from schemas.storage import (
     BucketInfo,
@@ -28,26 +32,69 @@ class StorageService:
     """Service for handling file upload and display with ObjectStorage service integration."""
 
     def __init__(self):
-        if not settings.oss_service_url or not settings.oss_api_key:
-            raise ValueError("OSS service not configured. Set OSS_SERVICE_URL and OSS_API_KEY.")
+        self.oss_service_url = os.getenv("OSS_SERVICE_URL", "")
+        self.oss_api_key = os.getenv("OSS_API_KEY", "")
 
-        self.headers = {
-            "Authorization": f"Bearer {settings.oss_api_key}",
-            "Content-Type": "application/json",
-        }
+        self.storage_provider = os.getenv("STORAGE_PROVIDER", "minio").lower()
+        self.minio_endpoint = os.getenv("MINIO_ENDPOINT", "http://minio:9000")
+        self.minio_public_endpoint = os.getenv("MINIO_PUBLIC_ENDPOINT", "http://localhost:9000")
+        self.minio_access_key = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
+        self.minio_secret_key = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+        self.minio_region = os.getenv("MINIO_REGION", "us-east-1")
+
+        if self.storage_provider not in {"minio", "s3", "oss"}:
+            raise ValueError("Invalid STORAGE_PROVIDER. Supported: minio, s3, oss")
+
+        if self.storage_provider == "oss":
+            if not self.oss_service_url or not self.oss_api_key:
+                raise ValueError("OSS service not configured. Set OSS_SERVICE_URL and OSS_API_KEY.")
+            self.headers = {
+                "Authorization": f"Bearer {self.oss_api_key}",
+                "Content-Type": "application/json",
+            }
+        else:
+            s3_config = Config(signature_version="s3v4", s3={"addressing_style": "path"})
+            # Internal client for bucket/object operations in container network.
+            self.s3_client = boto3.client(
+                "s3",
+                endpoint_url=self.minio_endpoint,
+                aws_access_key_id=self.minio_access_key,
+                aws_secret_access_key=self.minio_secret_key,
+                region_name=self.minio_region,
+                config=s3_config,
+            )
+            # Public client for presigned URLs consumed by browser/tests outside container network.
+            self.s3_public_client = boto3.client(
+                "s3",
+                endpoint_url=self.minio_public_endpoint,
+                aws_access_key_id=self.minio_access_key,
+                aws_secret_access_key=self.minio_secret_key,
+                region_name=self.minio_region,
+                config=s3_config,
+            )
 
     async def create_bucket(self, request: BucketRequest) -> BucketResponse:
         """
         Create a bucket name
         """
-        endpoint = "api/v1/infra/client/oss/buckets"
-        payload = {"bucket_name": request.bucket_name, "visibility": request.visibility}
+        if self.storage_provider == "oss":
+            endpoint = "api/v1/infra/client/oss/buckets"
+            payload = {"bucket_name": request.bucket_name, "visibility": request.visibility}
+            try:
+                result = await self._apost_oss_service(endpoint, payload)
+                return BucketResponse(bucket_name=result.get("bucket_name"), created_at=result.get("created_at"))
+            except Exception as e:
+                logger.error(f"Failed to create bucket: {e}")
+                raise
+
+        # MinIO/S3 path
         try:
-            result = await self._apost_oss_service(endpoint, payload)
-            return BucketResponse(bucket_name=result.get("bucket_name"), created_at=result.get("created_at"))
-        except Exception as e:
-            logger.error(f"Failed to create bucket: {e}")
-            raise
+            self.s3_client.create_bucket(Bucket=request.bucket_name)
+        except Exception:
+            # Bucket may already exist; keep operation idempotent for staging/dev
+            pass
+
+        return BucketResponse(bucket_name=request.bucket_name, created_at=datetime.now(timezone.utc).isoformat())
 
     async def list_buckets(self) -> BucketListResponse:
         """
@@ -134,42 +181,68 @@ class StorageService:
         """
         Create presigned URL for file upload with access URL.
         """
-        endpoint = f"/api/v1/infra/client/oss/buckets/{request.bucket_name}/objects/upload_url"
-        payload = {"expires_in": 0, "object_key": request.object_key}
+        if self.storage_provider == "oss":
+            endpoint = f"/api/v1/infra/client/oss/buckets/{request.bucket_name}/objects/upload_url"
+            payload = {"expires_in": 0, "object_key": request.object_key}
+            try:
+                result = await self._apost_oss_service(endpoint, payload)
+                return FileUpDownResponse(
+                    upload_url=result.get("upload_url"),
+                    expires_at=result.get("expires_at"),
+                )
+            except Exception as e:
+                logger.error(f"Failed to create upload URL: {e}")
+                raise
+
         try:
-            result = await self._apost_oss_service(endpoint, payload)
-            # Format response according to ObjectStorage service response
-            return FileUpDownResponse(
-                upload_url=result.get("upload_url"),
-                expires_at=result.get("expires_at"),
+            await self.create_bucket(BucketRequest(bucket_name=request.bucket_name, visibility="private"))
+            expires_in = int(os.getenv("PRESIGNED_URL_EXPIRES_IN", "900"))
+            upload_url = self.s3_public_client.generate_presigned_url(
+                "put_object",
+                Params={"Bucket": request.bucket_name, "Key": request.object_key},
+                ExpiresIn=expires_in,
             )
+            expires_at = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
+            return FileUpDownResponse(upload_url=upload_url, expires_at=expires_at)
         except Exception as e:
-            logger.error(f"Failed to create upload URL: {e}")
+            logger.error(f"Failed to create MinIO/S3 upload URL: {e}")
             raise
 
     async def create_download_url(self, request: FileUpDownRequest) -> FileUpDownResponse:
         """
         Create presigned URL for file download with access URL.
         """
-        endpoint = f"/api/v1/infra/client/oss/buckets/{request.bucket_name}/objects/download_url"
-        content_type, _ = mimetypes.guess_type(str(request.object_key))
-        if not content_type:
-            content_type = "application/octet-stream"
-        payload = {
-            "content_type": content_type,  # like "image/jpeg"
-            "expires_in": 0,
-            "object_key": request.object_key,
-        }
-        try:
-            result = await self._apost_oss_service(endpoint, payload)
-            # Format response according to ObjectStorage service response
-            return FileUpDownResponse(
-                download_url=result.get("download_url"),
-                expires_at=result.get("expires_at"),
-            )
+        if self.storage_provider == "oss":
+            endpoint = f"/api/v1/infra/client/oss/buckets/{request.bucket_name}/objects/download_url"
+            content_type, _ = mimetypes.guess_type(str(request.object_key))
+            if not content_type:
+                content_type = "application/octet-stream"
+            payload = {
+                "content_type": content_type,
+                "expires_in": 0,
+                "object_key": request.object_key,
+            }
+            try:
+                result = await self._apost_oss_service(endpoint, payload)
+                return FileUpDownResponse(
+                    download_url=result.get("download_url"),
+                    expires_at=result.get("expires_at"),
+                )
+            except Exception as e:
+                logger.error(f"Failed to create download URL: {e}")
+                raise
 
+        try:
+            expires_in = int(os.getenv("PRESIGNED_URL_EXPIRES_IN", "900"))
+            download_url = self.s3_public_client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": request.bucket_name, "Key": request.object_key},
+                ExpiresIn=expires_in,
+            )
+            expires_at = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
+            return FileUpDownResponse(download_url=download_url, expires_at=expires_at)
         except Exception as e:
-            logger.error(f"Failed to create upload URL: {e}")
+            logger.error(f"Failed to create MinIO/S3 download URL: {e}")
             raise
 
     async def _aget_oss_service(self, endpoint: str, params: dict) -> dict:
@@ -189,7 +262,7 @@ class StorageService:
         payload: Optional[dict] = None,
     ) -> Union[dict, list]:
         """统一的 OSS 服务请求方法"""
-        url = urljoin(settings.oss_service_url, endpoint)
+        url = urljoin(self.oss_service_url, endpoint)
 
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:

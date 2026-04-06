@@ -13,11 +13,13 @@ Tests the complete workflow:
 
 import argparse
 import asyncio
+import hashlib
 import json
 import logging
 import sys
 from datetime import datetime
 from typing import Optional
+from urllib.parse import parse_qs, urlparse
 import httpx
 import uuid
 
@@ -57,21 +59,33 @@ class TestClient:
             return False
 
     async def dev_login(self, user_id: str = None) -> bool:
-        """Perform dev login (only works in dev mode)."""
+        """Perform login using auth fallback redirect flow in non-OIDC environments."""
         try:
-            user_id = user_id or f"user-{uuid.uuid4().hex[:8]}"
-            response = self.client.post(
-                f"{self.backend_url}/api/v1/auth/dev-login",
-                json={"user_id": user_id, "email": f"{user_id}@test.local"},
+            # The backend currently exposes /api/v1/auth/login.
+            # In fallback mode this endpoint returns a 302 to frontend callback with token in query.
+            response = self.client.get(
+                f"{self.backend_url}/api/v1/auth/login",
+                follow_redirects=False,
             )
-            if response.status_code == 200:
-                data = response.json()
-                self.token = data.get("access_token")
-                logger.info(f"✓ Login successful for {user_id}")
-                return True
-            else:
-                logger.error(f"Login failed: {response.text}")
+
+            if response.status_code not in (301, 302, 303, 307, 308):
+                logger.error(f"Login failed: expected redirect, got {response.status_code} - {response.text}")
                 return False
+
+            location = response.headers.get("location", "")
+            if not location:
+                logger.error("Login failed: missing redirect location")
+                return False
+
+            query = parse_qs(urlparse(location).query)
+            token = (query.get("token") or [None])[0]
+            if not token:
+                logger.error(f"Login failed: token not found in redirect URL: {location}")
+                return False
+
+            self.token = token
+            logger.info("✓ Login successful via /auth/login redirect token")
+            return True
         except Exception as e:
             logger.error(f"Login error: {e}")
             return False
@@ -156,7 +170,13 @@ class TestClient:
             )
             if response.status_code == 200:
                 data = response.json()
-                documents = data.get("items", [])
+                if isinstance(data, list):
+                    documents = data
+                elif isinstance(data, dict):
+                    documents = data.get("items", [])
+                else:
+                    logger.error(f"Unexpected list response type: {type(data)}")
+                    return None
                 logger.info(f"✓ Listed {len(documents)} documents")
                 return documents
             else:
@@ -185,6 +205,90 @@ class TestClient:
             logger.error(f"Error searching: {e}")
             return None
 
+    async def get_upload_url(self, document_id: str, filename: str, bucket_name: str = "documents") -> Optional[dict]:
+        """Get a presigned upload URL for a document version."""
+        try:
+            response = self.client.post(
+                f"{self.backend_url}/api/v1/documents/{document_id}/upload-url",
+                headers=self._headers(),
+                json={"filename": filename, "bucket_name": bucket_name},
+            )
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"✓ Received upload URL for {filename}")
+                return data
+            logger.error(f"Upload URL failed: {response.status_code} - {response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting upload URL: {e}")
+            return None
+
+    async def upload_bytes_to_presigned_url(self, upload_url: str, content: bytes, content_type: str) -> bool:
+        """Upload raw bytes directly to object storage via presigned URL."""
+        try:
+            response = self.client.put(
+                upload_url,
+                content=content,
+                headers={"Content-Type": content_type},
+            )
+            if response.status_code in (200, 204):
+                logger.info("✓ Uploaded bytes to presigned URL")
+                return True
+            logger.error(f"Presigned upload failed: {response.status_code} - {response.text}")
+            return False
+        except Exception as e:
+            logger.error(f"Error uploading to presigned URL: {e}")
+            return False
+
+    async def upload_complete(self, document_id: str, payload: dict) -> Optional[dict]:
+        """Finalize an uploaded document version."""
+        try:
+            response = self.client.post(
+                f"{self.backend_url}/api/v1/documents/{document_id}/upload-complete",
+                headers=self._headers(),
+                json=payload,
+            )
+            if response.status_code == 201:
+                data = response.json()
+                logger.info(f"✓ Confirmed upload for version {data['version_number']}")
+                return data
+            logger.error(f"Upload complete failed: {response.status_code} - {response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error confirming upload: {e}")
+            return None
+
+    async def get_download_url(self, bucket_name: str, object_key: str) -> Optional[str]:
+        """Get a presigned download URL."""
+        try:
+            response = self.client.post(
+                f"{self.backend_url}/api/v1/storage/download-url",
+                headers=self._headers(),
+                json={"bucket_name": bucket_name, "object_key": object_key},
+            )
+            if response.status_code == 200:
+                data = response.json()
+                logger.info("✓ Received download URL")
+                return data.get("download_url")
+            logger.error(f"Download URL failed: {response.status_code} - {response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting download URL: {e}")
+            return None
+
+    async def download_bytes(self, download_url: str) -> Optional[bytes]:
+        """Download raw bytes from object storage via presigned URL."""
+        try:
+            response = self.client.get(download_url)
+            if response.status_code == 200:
+                logger.info("✓ Downloaded bytes from presigned URL")
+                return response.content
+            logger.error(f"Presigned download failed: {response.status_code} - {response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error downloading from presigned URL: {e}")
+            return None
+
     async def soft_delete_document(self, document_id: str) -> bool:
         """Soft delete a document."""
         try:
@@ -192,7 +296,7 @@ class TestClient:
                 f"{self.backend_url}/api/v1/documents/{document_id}",
                 headers=self._headers(),
             )
-            if response.status_code == 204:
+            if response.status_code in (200, 204):
                 logger.info(f"✓ Soft deleted document: {document_id}")
                 return True
             else:
@@ -312,6 +416,50 @@ async def run_tests(backend_url: str, frontend_url: str, verbose: bool = False) 
             test_passed += 1
         else:
             logger.warning("⊘ SKIPPED (no search results)")
+
+        # Test 7.5: Presigned Upload + Download
+        logger.info("\n[Test 7.5] Presigned Upload + Download")
+        if document_id:
+            file_bytes = b"%PDF-1.4\n% Research Workspace Test PDF\n"
+            checksum = hashlib.sha256(file_bytes).hexdigest()
+            upload_init = await client.get_upload_url(document_id, "integration-test.pdf")
+            if upload_init and await client.upload_bytes_to_presigned_url(
+                upload_init["upload_url"],
+                file_bytes,
+                "application/pdf",
+            ):
+                completed = await client.upload_complete(
+                    document_id,
+                    {
+                        "bucket_name": upload_init["bucket_name"],
+                        "object_key": upload_init["object_key"],
+                        "filename": "integration-test.pdf",
+                        "content_type": "application/pdf",
+                        "size_bytes": len(file_bytes),
+                        "checksum": checksum,
+                        "change_note": "Integration test real object upload",
+                    },
+                )
+                if completed:
+                    download_url = await client.get_download_url(
+                        upload_init["bucket_name"],
+                        upload_init["object_key"],
+                    )
+                    downloaded = await client.download_bytes(download_url) if download_url else None
+                    if downloaded == file_bytes:
+                        logger.info("✓ PASSED")
+                        test_passed += 1
+                    else:
+                        logger.error("✗ FAILED - downloaded bytes mismatch")
+                        test_failed += 1
+                else:
+                    logger.error("✗ FAILED - upload-complete failed")
+                    test_failed += 1
+            else:
+                logger.error("✗ FAILED - presigned upload failed")
+                test_failed += 1
+        else:
+            logger.warning("⊘ SKIPPED (no document)")
 
         # Test 8: Data Persistence (simulate refresh)
         logger.info("\n[Test 8] Data Persistence (Refresh)")

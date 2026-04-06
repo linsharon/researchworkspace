@@ -16,7 +16,7 @@ class DocumentCreate(BaseModel):
     project_id: Optional[str] = None
     status: DocumentStatus = "draft"
     permission: DocumentPermission = "private"
-    storage_provider: str = "oss"
+    storage_provider: str = "minio"
     bucket_name: Optional[str] = None
     object_key: Optional[str] = None
 

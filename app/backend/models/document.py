@@ -18,7 +18,7 @@ class Document(Base):
     status = Column(String(50), nullable=False, default="draft")
     permission = Column(String(50), nullable=False, default="private")
 
-    storage_provider = Column(String(50), nullable=False, default="oss")
+    storage_provider = Column(String(50), nullable=False, default="minio")
     bucket_name = Column(String(255), nullable=True)
     object_key = Column(String(1024), nullable=True)
 

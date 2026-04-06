@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import time
@@ -33,17 +34,26 @@ async def initialize_database():
         return
     start_time = time.time()
     logger.debug("[DB_OP] Starting database initialization")
-    try:
-        logger.info("🔧 Starting database initialization...")
-        await db_manager.init_db()
-        logger.info("🔧 Database connection initialized, now creating tables if tables not exist...")
-        await db_manager.create_tables()
-        logger.info("🔧 Table creation completed")
-        logger.info("Database initialized successfully")
-        logger.debug(f"[DB_OP] Database initialization completed in {time.time() - start_time:.4f}s")
-    except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
-        raise
+    max_retries = int(os.getenv("DB_INIT_MAX_RETRIES", "10"))
+    retry_delay = float(os.getenv("DB_INIT_RETRY_DELAY_SECONDS", "2"))
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info("🔧 Starting database initialization...")
+            await db_manager.init_db()
+            logger.info("🔧 Database connection initialized, now creating tables if tables not exist...")
+            await db_manager.create_tables()
+            logger.info("🔧 Table creation completed")
+            logger.info("Database initialized successfully")
+            logger.debug(f"[DB_OP] Database initialization completed in {time.time() - start_time:.4f}s")
+            return
+        except Exception as e:
+            logger.warning(f"Database init attempt {attempt}/{max_retries} failed: {e}")
+            if attempt == max_retries:
+                logger.error(f"Failed to initialize database after {max_retries} attempts: {e}")
+                raise
+            await db_manager.close_db()
+            await asyncio.sleep(retry_delay)
 
 
 async def close_database():

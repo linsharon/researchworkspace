@@ -66,6 +66,20 @@ export interface PagedDocumentResponse {
   items: DocumentItem[];
 }
 
+export interface DocumentUploadInitResponse {
+  bucket_name: string;
+  object_key: string;
+  upload_url: string;
+  expires_at: string;
+  suggested_version_number: number;
+}
+
+export interface FileTransferResponse {
+  upload_url?: string;
+  download_url?: string;
+  expires_at: string;
+}
+
 export const documentAPI = {
   async create(payload: {
     title: string;
@@ -166,6 +180,31 @@ export const documentAPI = {
     }
   },
 
+  async uploadInit(
+    documentId: string,
+    payload: {
+      filename: string;
+      content_type?: string;
+      bucket_name?: string;
+      object_prefix?: string;
+    }
+  ): Promise<DocumentUploadInitResponse> {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/${documentId}/upload-url`, payload, buildConfig());
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async uploadToPresignedUrl(uploadUrl: string, file: File): Promise<void> {
+    await axios.put(uploadUrl, file, {
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+    });
+  },
+
   async uploadComplete(
     documentId: string,
     payload: {
@@ -184,6 +223,18 @@ export const documentAPI = {
         payload,
         buildConfig()
       );
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async getDownloadUrl(payload: {
+    bucket_name: string;
+    object_key: string;
+  }): Promise<FileTransferResponse> {
+    try {
+      const response = await axios.post(`/api/v1/storage/download-url`, payload, buildConfig());
       return response.data;
     } catch (error) {
       return handleApiError(error);

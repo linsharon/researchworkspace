@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from typing import List
 from uuid import uuid4
 
-from core.config import settings
 from dependencies.auth import get_current_user
 from dependencies.database import get_db
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -242,15 +241,16 @@ async def create_document_upload_url(
 ):
     document = await get_owned_document_or_404(session, document_id, current_user.id)
 
-    if not settings.oss_service_url or not settings.oss_api_key:
-        raise HTTPException(status_code=503, detail="OSS service is not configured")
-
     next_version = await get_next_document_version(session, document.id)
     safe_filename = sanitize_filename(payload.filename)
     prefix = (payload.object_prefix or f"documents/{current_user.id}/{document.id}").strip("/")
     object_key = f"{prefix}/v{next_version}-{safe_filename}"
 
-    storage_service = StorageService()
+    try:
+        storage_service = StorageService()
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
     upload_data = await storage_service.create_upload_url(
         FileUpDownRequest(bucket_name=payload.bucket_name, object_key=object_key)
     )

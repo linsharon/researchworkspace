@@ -46,6 +46,13 @@ services:
     environment:
       DATABASE_URL: postgresql://rw_user:${DB_PASSWORD:-dev_password_123}@postgres:5432/research_workspace
       REDIS_URL: redis://redis:6379/0
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-minio}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      PRESIGNED_URL_EXPIRES_IN: ${PRESIGNED_URL_EXPIRES_IN:-900}
       ENVIRONMENT: staging
       DEBUG: "true"
       HOST: 0.0.0.0
@@ -83,7 +90,30 @@ services:
       start_period: 10s
     networks:
       - rw-network
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # MinIO Object Storage (Phase 2)
+  minio:
+    image: minio/minio:latest
+    container_name: rw-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rw-network
+    profiles:
+      - minio
 
   # Frontend (optional - only if not running locally)
   frontend:
@@ -128,6 +158,8 @@ volumes:
   backend_uploads:
     driver: local
   backend_logs:
+    driver: local
+  minio_data:
     driver: local
 
 networks:

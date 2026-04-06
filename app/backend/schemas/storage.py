@@ -1,4 +1,3 @@
-import os
 import re
 from typing import Literal
 
@@ -65,11 +64,16 @@ class FileUpDownRequest(OSSBaseModel):
         if not v or len(v.strip()) == 0:
             raise ValueError("object_key cannot be empty")
 
-        base_name = os.path.basename(v.strip())
-        if not base_name:
+        raw_key = v.strip().replace("\\", "/")
+        if not raw_key:
             raise ValueError("object_key cannot be empty")
 
-        safe_object_key = re.sub(r"[^A-Za-z0-9._-]", "-", base_name)
+        segments = [seg for seg in raw_key.split("/") if seg]
+        if not segments:
+            raise ValueError("object_key cannot be empty")
+
+        safe_segments = [re.sub(r"[^A-Za-z0-9._-]", "-", seg) for seg in segments]
+        safe_object_key = "/".join(safe_segments)
 
         if len(safe_object_key) > 255:
             raise ValueError("object_key too long")

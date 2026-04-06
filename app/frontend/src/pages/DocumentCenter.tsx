@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
@@ -36,8 +36,11 @@ function readableDate(value: string | undefined | null) {
 }
 
 export default function DocumentCenter() {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [uploadingDocumentId, setUploadingDocumentId] = useState<string | null>(null);
+  const [uploadTargetDoc, setUploadTargetDoc] = useState<DocumentItem | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<DocumentStatus | "all">("all");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -190,27 +193,46 @@ export default function DocumentCenter() {
     }
   };
 
-  const handleSimulateUploadComplete = async (doc: DocumentItem) => {
-    const stamp = Date.now();
-    const objectKey = `documents/${doc.owner_user_id}/${doc.id}/manual-v${stamp}.pdf`;
+  const handleUploadFile = async (doc: DocumentItem, file: File) => {
+    setUploadingDocumentId(doc.id);
     try {
-      await documentAPI.uploadComplete(doc.id, {
+      const init = await documentAPI.uploadInit(doc.id, {
+        filename: file.name,
+        content_type: file.type || "application/octet-stream",
         bucket_name: "documents",
-        object_key: objectKey,
-        filename: `manual-v${stamp}.pdf`,
-        content_type: "application/pdf",
-        size_bytes: 1024,
-        change_note: "Manual upload-complete simulation",
       });
-      toast.success("Version appended via upload-complete");
+
+      await documentAPI.uploadToPresignedUrl(init.upload_url, file);
+
+      await documentAPI.uploadComplete(doc.id, {
+        bucket_name: init.bucket_name,
+        object_key: init.object_key,
+        filename: file.name,
+        content_type: file.type || "application/octet-stream",
+        size_bytes: file.size,
+        change_note: `Uploaded via browser at ${new Date().toISOString()}`,
+      });
+
+      toast.success("File uploaded and version appended");
       if (selectedDoc?.id === doc.id) {
         await loadVersions(doc);
       }
       await loadDocuments(offset);
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      toast.error(detail || "Failed to append version");
+      toast.error(detail || "Failed to upload file");
+    } finally {
+      setUploadingDocumentId(null);
+      setUploadTargetDoc(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
+  };
+
+  const handleSelectUploadDocument = (doc: DocumentItem) => {
+    setUploadTargetDoc(doc);
+    fileInputRef.current?.click();
   };
 
   return (
@@ -234,6 +256,17 @@ export default function DocumentCenter() {
             </Button>
           </div>
         </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file || !uploadTargetDoc) return;
+            void handleUploadFile(uploadTargetDoc, file);
+          }}
+        />
 
         <Card className="border-slate-700/50">
           <CardHeader className="pb-2">
@@ -322,8 +355,14 @@ export default function DocumentCenter() {
                             <Button variant="outline" size="sm" onClick={() => void loadVersions(doc)}>
                               Versions
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => void handleSimulateUploadComplete(doc)}>
-                              <Upload className="w-3 h-3 mr-1" /> Add Version
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={uploadingDocumentId === doc.id}
+                              onClick={() => handleSelectUploadDocument(doc)}
+                            >
+                              <Upload className="w-3 h-3 mr-1" />
+                              {uploadingDocumentId === doc.id ? "Uploading..." : "Upload Version"}
                             </Button>
                             <Button variant="destructive" size="sm" onClick={() => void handleDelete(doc)}>
                               <Trash2 className="w-3 h-3 mr-1" /> Delete
