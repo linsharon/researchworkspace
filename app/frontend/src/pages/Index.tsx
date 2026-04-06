@@ -14,7 +14,14 @@ import {
   type WorkflowStep,
   type ArtifactType,
 } from "@/lib/data";
-import { noteAPI, paperAPI, type Note } from "@/lib/manuscript-api";
+import {
+  conceptAPI,
+  noteAPI,
+  paperAPI,
+  searchRecordAPI,
+  type Note,
+  type Paper as ApiPaper,
+} from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
 
 type MetricKey =
@@ -39,10 +46,6 @@ type LatestArtifactItem = {
   badgeClass: string;
 };
 
-const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
-const CONCEPTS_STORAGE_KEY = "rw-concepts";
-const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
-const CONCEPTS_UPDATED_EVENT = "concepts-updated";
 const NOTES_UPDATED_EVENT = "notes-updated";
 const LOGIN_KEY = "rw-current-login-at";
 const ONLINE_TOTAL_KEY = "rw-online-total-seconds";
@@ -61,6 +64,26 @@ function noteToArtifact(note: Note): Artifact {
     description: note.description || note.content || "Saved note",
     updatedAt: formatDateOnly(note.updated_at),
     content: note.content || note.description,
+  };
+}
+
+function paperToArtifact(paper: ApiPaper): Artifact {
+  return {
+    id: `entry-paper-${paper.id}`,
+    title: paper.title,
+    type: "entry-paper",
+    projectId: paper.project_id,
+    sourceStep: 3,
+    description: [
+      paper.is_entry_paper ? "Entry Paper" : null,
+      paper.is_expanded_paper ? "Expanded Paper" : null,
+      paper.journal,
+      paper.year ? String(paper.year) : null,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    updatedAt: new Date().toISOString().split("T")[0],
+    content: "",
   };
 }
 
@@ -182,36 +205,23 @@ export default function Dashboard() {
 
   useEffect(() => {
     const loadDashboard = async () => {
-      let localArtifacts: Artifact[] = [];
       let conceptsCount = 0;
+      let searchRecordsCount = 0;
       let papers: Awaited<ReturnType<typeof paperAPI.list>> = [];
       let noteArtifacts: Artifact[] = [];
 
-      if (typeof window !== "undefined") {
-        try {
-          const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-          const parsed = saved ? JSON.parse(saved) : [];
-          localArtifacts = Array.isArray(parsed) ? parsed : [];
-        } catch {
-          localArtifacts = [];
-        }
+      try {
+        const concepts = await conceptAPI.list(project.id);
+        conceptsCount = concepts.length;
+      } catch {
+        conceptsCount = 0;
+      }
 
-        try {
-          const conceptsGlobal = window.localStorage.getItem(CONCEPTS_STORAGE_KEY);
-          const conceptsProject = window.localStorage.getItem(`rw-concepts-${project.id}`);
-          const parsedGlobal = conceptsGlobal ? JSON.parse(conceptsGlobal) : [];
-          const parsedProject = conceptsProject ? JSON.parse(conceptsProject) : [];
-          const merged = [
-            ...(Array.isArray(parsedGlobal) ? parsedGlobal : []),
-            ...(Array.isArray(parsedProject) ? parsedProject : []),
-          ];
-          const keySet = new Set(
-            merged.map((c: { id?: string; name?: string }) => c.id || c.name)
-          );
-          conceptsCount = keySet.size;
-        } catch {
-          conceptsCount = 0;
-        }
+      try {
+        const records = await searchRecordAPI.list(project.id);
+        searchRecordsCount = records.length;
+      } catch {
+        searchRecordsCount = 0;
       }
 
       try {
@@ -227,10 +237,14 @@ export default function Dashboard() {
         papers = [];
       }
 
+      const literatureArtifacts = papers
+        .filter((paper) => paper.is_entry_paper || paper.is_expanded_paper)
+        .map(paperToArtifact);
+
       const staticProjectArtifacts = DUMMY_ARTIFACTS.filter((a) => a.projectId === project.id);
       const mergedArtifacts = Array.from(
         new Map(
-          [...staticProjectArtifacts, ...localArtifacts, ...noteArtifacts].map((artifact) => [artifact.id, artifact])
+          [...staticProjectArtifacts, ...literatureArtifacts, ...noteArtifacts].map((artifact) => [artifact.id, artifact])
         ).values()
       );
 
@@ -247,7 +261,7 @@ export default function Dashboard() {
         purposes: mergedArtifacts.filter((a) => a.type === "purpose").length,
         keywords: mergedArtifacts.filter((a) => a.type === "keyword").length,
         concepts: conceptsCount,
-        searchRecords: mergedArtifacts.filter((a) => a.type === "search-log").length,
+        searchRecords: searchRecordsCount,
         candidatePapers: papers.length,
         entryPapers: Math.max(entryCountFromArtifacts, entryCountFromPapers),
         expandedPapers: papers.filter((p) => p.is_expanded_paper).length,
@@ -294,13 +308,9 @@ export default function Dashboard() {
       const reload = () => {
         void loadDashboard();
       };
-      window.addEventListener(ARTIFACTS_UPDATED_EVENT, reload);
-      window.addEventListener(CONCEPTS_UPDATED_EVENT, reload);
       window.addEventListener(NOTES_UPDATED_EVENT, reload);
       window.addEventListener("storage", reload);
       return () => {
-        window.removeEventListener(ARTIFACTS_UPDATED_EVENT, reload);
-        window.removeEventListener(CONCEPTS_UPDATED_EVENT, reload);
         window.removeEventListener(NOTES_UPDATED_EVENT, reload);
         window.removeEventListener("storage", reload);
       };
@@ -445,6 +455,13 @@ export default function Dashboard() {
             <div className="p-6">
               <h2 className="text-white text-lg font-semibold mb-1">{t("dashboard.heroTitle")}</h2>
               <p className="text-white/80 text-xs max-w-md">{t("dashboard.heroDesc")}</p>
+              <div className="mt-3">
+                <Link to="/documents">
+                  <Button size="sm" className="h-7 text-xs bg-white/90 text-slate-900 hover:bg-white">
+                    Open Document Center
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>

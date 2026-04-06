@@ -21,7 +21,6 @@ import {
 import { AlertCircle, ArrowUpDown, BookOpen, Clock, ExternalLink } from "lucide-react";
 import { paperAPI } from "@/lib/manuscript-api";
 import type { Paper } from "@/lib/manuscript-api";
-import type { Artifact } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -63,8 +62,6 @@ interface Step3Props {
 }
 
 export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
-  const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
-  const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
   const READING_STATUSES: Array<Paper["reading_status"]> = ["To Read", "Reading", "Completed"];
   const navigate = useNavigate();
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -95,71 +92,6 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
     }
   }, [papers]);
 
-  const getLiteratureArtifactId = (paperId: string) => `entry-paper-${paperId}`;
-
-  const paperToLiteratureArtifact = (paper: Paper): Artifact => ({
-    id: getLiteratureArtifactId(paper.id),
-    title: paper.title,
-    type: "entry-paper",
-    projectId: paper.project_id,
-    sourceStep: 3,
-    description: [
-      paper.is_entry_paper ? "Entry Paper" : null,
-      paper.is_expanded_paper ? "Expanded Paper" : null,
-      paper.journal,
-      paper.year ? String(paper.year) : null,
-    ]
-      .filter(Boolean)
-      .join(" · "),
-    updatedAt: new Date().toISOString().split("T")[0],
-    content: JSON.stringify(
-      {
-        authors: paper.authors,
-        journal: paper.journal,
-        year: paper.year,
-        discoveryPath: paper.discovery_path,
-        discoveryNote: paper.discovery_note,
-        readingStatus: paper.reading_status,
-        paperKind: {
-          entry: paper.is_entry_paper,
-          expanded: paper.is_expanded_paper,
-        },
-      },
-      null,
-      2
-    ),
-  });
-
-  const persistArtifacts = (updater: (prev: Artifact[]) => Artifact[]) => {
-    if (typeof window === "undefined") return;
-
-    let existing: Artifact[] = [];
-    try {
-      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-      const parsed = saved ? JSON.parse(saved) : [];
-      existing = Array.isArray(parsed) ? parsed : [];
-    } catch {
-      existing = [];
-    }
-
-    const next = updater(existing);
-    window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(next));
-    window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
-  };
-
-  const syncLiteratureArtifacts = (items: Paper[]) => {
-    persistArtifacts((prev) => {
-      const otherArtifacts = prev.filter(
-        (artifact) =>
-          artifact.type !== "entry-paper" || artifact.projectId !== projectId
-      );
-      const literatureArtifacts = items
-        .filter((paper) => paper.is_entry_paper || paper.is_expanded_paper)
-        .map(paperToLiteratureArtifact);
-      return [...otherArtifacts, ...literatureArtifacts];
-    });
-  };
-
   useEffect(() => {
     loadPapers();
   }, [projectId]);
@@ -172,7 +104,6 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
         (paper) => paper.is_entry_paper || paper.is_expanded_paper
       );
       setPapers(readingPapers);
-      syncLiteratureArtifacts(readingPapers);
     } catch (error) {
       console.error("Failed to load papers:", error);
     } finally {
@@ -293,7 +224,6 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
       const updated = await paperAPI.update(paper.id, { reading_status: nextStatus });
       const nextPapers = papers.map((item) => (item.id === paper.id ? updated : item));
       setPapers(nextPapers);
-      syncLiteratureArtifacts(nextPapers);
       toast.success(`Reading status updated to ${nextStatus}`);
     } catch (error) {
       console.error("Failed to update reading status:", error);
@@ -347,30 +277,11 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
 
       setPapers(nextPapers);
       setSelectedPaperIds([]);
-      syncLiteratureArtifacts(nextPapers);
       toast.success("Selected papers removed successfully");
     } catch (error) {
       console.error("Failed to remove selected papers:", error);
       toast.error("Failed to remove selected papers");
     }
-  };
-
-  const handleBatchAddArtifacts = () => {
-    if (!selectedPaperIds.length) return;
-
-    const selectedPapers = papers.filter((paper) => selectedPaperIds.includes(paper.id));
-    persistArtifacts((prev) => {
-      const artifactMap = new Map(prev.map((artifact) => [artifact.id, artifact]));
-      selectedPapers.forEach((paper) => {
-        const artifact = paperToLiteratureArtifact(paper);
-        artifactMap.set(artifact.id, artifact);
-      });
-      return Array.from(artifactMap.values());
-    });
-
-    window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
-    toast.success(`Added ${selectedPapers.length} paper(s) to Artifact Center`);
-    setSelectedPaperIds([]);
   };
 
   return (
@@ -486,16 +397,6 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                 </label>
                 {selectedPaperIds.length > 0 && (
                   <div className="ml-auto flex items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      className="h-7 px-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleBatchAddArtifacts();
-                      }}
-                    >
-                      Add to Artifact Center
-                    </Button>
                     <button
                       type="button"
                       className="inline-flex items-center h-7 px-2 text-xs rounded-md border border-rose-400/40 text-rose-400 hover:bg-rose-500/10"

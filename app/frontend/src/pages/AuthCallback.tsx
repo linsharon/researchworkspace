@@ -1,10 +1,25 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { client } from '../lib/api';
+import { setAuthSession } from '../lib/session';
 
 export default function AuthCallback() {
+  const navigate = useNavigate();
+
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const expiresAtRaw = params.get('expires_at');
+    const expiresAt = expiresAtRaw ? Number(expiresAtRaw) : null;
+
+    if (token) {
+      setAuthSession(token, Number.isFinite(expiresAt) ? expiresAt : null);
+      navigate('/', { replace: true });
+      return;
+    }
+
     client.auth.login();
-  }, []);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">

@@ -15,6 +15,11 @@ import PdfManager from './pages/PdfManager';
 import NotFound from './pages/NotFound';
 import AuthCallback from './pages/AuthCallback';
 import AuthError from './pages/AuthError';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedAdminRoute from './components/ProtectedAdminRoute';
+import AdminActivity from './pages/AdminActivity';
+import DocumentCenter from './pages/DocumentCenter';
 // MODULE_IMPORTS_START
 // MODULE_IMPORTS_END
 
@@ -24,29 +29,33 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     {/* MODULE_PROVIDERS_START */}
     {/* MODULE_PROVIDERS_END */}
-    <I18nProvider>
-      <TooltipProvider>
-        <Toaster />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/workflow/:projectId/:step" element={<WorkflowWorkspace />} />
-            <Route path="/artifacts" element={<ArtifactCenter />} />
-            <Route path="/paper/:paperId" element={<PaperWorkspace />} />
-            <Route path="/paper-read/:projectId/:paperId" element={<PaperReadPage />} />
-            <Route path="/pdf/:paperId" element={<PdfViewer />} />
-            <Route path="/pdf-manager" element={<PdfManager />} />
-            <Route path="/visualization" element={<VisualizationBoard />} />
-            <Route path="/draft" element={<DraftStudio />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/auth/error" element={<AuthError />} />
-            {/* MODULE_ROUTES_START */}
-            {/* MODULE_ROUTES_END */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </I18nProvider>
+    <AuthProvider>
+      <I18nProvider>
+        <TooltipProvider>
+          <Toaster />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/workflow/:projectId/:step" element={<ProtectedRoute><WorkflowWorkspace /></ProtectedRoute>} />
+              <Route path="/artifacts" element={<ProtectedRoute><ArtifactCenter /></ProtectedRoute>} />
+              <Route path="/paper/:paperId" element={<ProtectedRoute><PaperWorkspace /></ProtectedRoute>} />
+              <Route path="/paper-read/:projectId/:paperId" element={<ProtectedRoute><PaperReadPage /></ProtectedRoute>} />
+              <Route path="/pdf/:paperId" element={<ProtectedRoute><PdfViewer /></ProtectedRoute>} />
+              <Route path="/pdf-manager" element={<ProtectedRoute><PdfManager /></ProtectedRoute>} />
+              <Route path="/visualization" element={<ProtectedRoute><VisualizationBoard /></ProtectedRoute>} />
+              <Route path="/draft" element={<ProtectedRoute><DraftStudio /></ProtectedRoute>} />
+              <Route path="/admin/activity" element={<ProtectedAdminRoute><AdminActivity /></ProtectedAdminRoute>} />
+              <Route path="/documents" element={<ProtectedRoute><DocumentCenter /></ProtectedRoute>} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/auth/error" element={<AuthError />} />
+              {/* MODULE_ROUTES_START */}
+              {/* MODULE_ROUTES_END */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </I18nProvider>
+    </AuthProvider>
     {/* MODULE_PROVIDERS_CLOSE */}
   </QueryClientProvider>
 );

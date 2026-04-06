@@ -3,10 +3,46 @@
  */
 
 import axios, { AxiosError } from "axios";
+import { getAPIBaseURL } from "./config";
+import { clearAuthSession, getAuthToken } from "./session";
 
 const API_BASE_URL = "/api/v1/manuscripts";
-// Keep requests short so offline back-end quickly falls back to localStorage.
-axios.defaults.timeout = 2500;
+const ENABLE_LOCAL_FALLBACK =
+  import.meta.env.DEV && import.meta.env.VITE_ENABLE_LOCAL_FALLBACK === "true";
+// In production, backend is authoritative and fallback is disabled.
+axios.defaults.timeout = ENABLE_LOCAL_FALLBACK ? 2500 : 10000;
+axios.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  const baseURL = getAPIBaseURL();
+  if (baseURL) {
+    config.baseURL = baseURL;
+  }
+
+  return config;
+});
+
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      clearAuthSession();
+      if (typeof window !== "undefined") {
+        const baseURL = getAPIBaseURL();
+        const loginPath = `${baseURL}/api/v1/auth/login`;
+        const isOnAuthRoute = window.location.pathname.startsWith("/auth/");
+        if (!isOnAuthRoute) {
+          window.location.href = loginPath;
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 const STORAGE_KEYS = {
   papers: "rw-manuscript-papers",
@@ -79,6 +115,16 @@ export interface Concept {
   created_at: string;
 }
 
+export interface SearchRecord {
+  id: string;
+  project_id: string;
+  database: string;
+  query: string;
+  results: number;
+  relevant: number;
+  searched_at: string;
+}
+
 interface StoredConcept extends Concept {
   project_id: string;
 }
@@ -107,6 +153,7 @@ const makeId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 const shouldFallbackToLocal = (error: unknown) => {
+  if (!ENABLE_LOCAL_FALLBACK) return false;
   if (!canUseStorage()) return false;
   if (!axios.isAxiosError(error)) return false;
 
@@ -538,6 +585,55 @@ export const conceptAPI = {
           .filter((concept) => concept.project_id === projectId)
           .map(({ project_id: _projectId, ...concept }) => concept)
     );
+  },
+
+  update: async (
+    conceptId: string,
+    data: { title?: string; description?: string; definition?: string }
+  ): Promise<Concept> => {
+    const response = await axios.put(`${API_BASE_URL}/concepts/${conceptId}`, data);
+    return response.data;
+  },
+
+  delete: async (conceptId: string): Promise<void> => {
+    await axios.delete(`${API_BASE_URL}/concepts/${conceptId}`);
+  },
+};
+
+export const searchRecordAPI = {
+  create: async (data: {
+    project_id: string;
+    database: string;
+    query: string;
+    results?: number;
+    relevant?: number;
+  }): Promise<SearchRecord> => {
+    const response = await axios.post(`${API_BASE_URL}/search-records`, data);
+    return response.data;
+  },
+
+  list: async (projectId: string): Promise<SearchRecord[]> => {
+    const response = await axios.get(`${API_BASE_URL}/search-records`, {
+      params: { project_id: projectId },
+    });
+    return response.data;
+  },
+
+  update: async (
+    recordId: string,
+    data: {
+      database?: string;
+      query?: string;
+      results?: number;
+      relevant?: number;
+    }
+  ): Promise<SearchRecord> => {
+    const response = await axios.put(`${API_BASE_URL}/search-records/${recordId}`, data);
+    return response.data;
+  },
+
+  delete: async (recordId: string): Promise<void> => {
+    await axios.delete(`${API_BASE_URL}/search-records/${recordId}`);
   },
 };
 

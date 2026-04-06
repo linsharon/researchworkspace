@@ -5,17 +5,21 @@ import pkgutil
 import traceback
 from contextlib import asynccontextmanager
 from datetime import datetime
+from time import perf_counter
+from uuid import uuid4
 
 from core.config import settings
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRouter
+import models
 
 # MODULE_IMPORTS_START
 from services.database import initialize_database, close_database
 from services.mock_data import initialize_mock_data
 from services.auth import initialize_admin_user
+from services.activity import extract_user_id_from_bearer_token, log_activity_event
 # MODULE_IMPORTS_END
 
 
@@ -96,6 +100,44 @@ app.add_middleware(
     expose_headers=["*"],
 )
 # MODULE_MIDDLEWARE_END
+
+
+@app.middleware("http")
+async def activity_event_middleware(request: Request, call_next):
+    """Capture request-level activity events for auditing and diagnostics."""
+    request_id = request.headers.get("x-request-id") or str(uuid4())
+    request.state.request_id = request_id
+
+    start = perf_counter()
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    error_type = None
+
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        response.headers["X-Request-ID"] = request_id
+        return response
+    except Exception as exc:
+        error_type = type(exc).__name__
+        raise
+    finally:
+        if request.url.path.startswith("/api/"):
+            user_id = extract_user_id_from_bearer_token(request.headers.get("authorization"))
+            client_host = request.client.host if request.client else None
+            duration_ms = int((perf_counter() - start) * 1000)
+
+            await log_activity_event(
+                event_type="api.request",
+                action=request.method,
+                path=request.url.path,
+                status_code=status_code,
+                user_id=user_id,
+                request_id=request_id,
+                ip_address=client_host,
+                user_agent=request.headers.get("user-agent"),
+                error_type=error_type,
+                duration_ms=duration_ms,
+            )
 
 
 # Auto-discover and include all routers from the local `routers` package

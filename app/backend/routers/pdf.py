@@ -7,9 +7,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from dependencies.auth import get_current_user
+from schemas.auth import UserResponse
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +77,9 @@ def _resolve_path(filename: str) -> Path:
 # ============================================================
 
 @router.get("/list", response_model=PDFListResponse)
-async def list_pdfs():
+async def list_pdfs(
+    _current_user: UserResponse = Depends(get_current_user),
+):
     """List all PDF files in the uploads directory."""
     files: List[PDFFileInfo] = []
     if UPLOADS_DIR.exists():
@@ -92,7 +96,10 @@ async def list_pdfs():
 
 
 @router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(
+    file: UploadFile = File(...),
+    _current_user: UserResponse = Depends(get_current_user),
+):
     """Upload a PDF file to the uploads directory."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
@@ -122,7 +129,10 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 
 @router.get("/download/{filename}")
-async def download_pdf(filename: str):
+async def download_pdf(
+    filename: str,
+    _current_user: UserResponse = Depends(get_current_user),
+):
     """Download a PDF file as an attachment."""
     try:
         file_path = _resolve_path(filename)
@@ -140,7 +150,10 @@ async def download_pdf(filename: str):
 
 
 @router.get("/view/{filename}")
-async def view_pdf(filename: str):
+async def view_pdf(
+    filename: str,
+    _current_user: UserResponse = Depends(get_current_user),
+):
     """Serve a PDF file inline so the browser can display it."""
     try:
         file_path = _resolve_path(filename)
@@ -158,7 +171,10 @@ async def view_pdf(filename: str):
 
 
 @router.delete("/delete/{filename}")
-async def delete_pdf(filename: str):
+async def delete_pdf(
+    filename: str,
+    _current_user: UserResponse = Depends(get_current_user),
+):
     """Delete a PDF file from the uploads directory."""
     try:
         file_path = _resolve_path(filename)

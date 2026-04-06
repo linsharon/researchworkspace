@@ -13,6 +13,7 @@ class Project(Base):
     __tablename__ = "projects"
 
     id = Column(String(36), primary_key=True, index=True)
+    owner_user_id = Column(String(255), nullable=True, index=True)
     title = Column(String(500), nullable=False)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -21,6 +22,7 @@ class Project(Base):
     papers = relationship("Paper", back_populates="project", cascade="all, delete-orphan")
     notes = relationship("Note", back_populates="project", cascade="all, delete-orphan")
     concepts = relationship("Concept", back_populates="project", cascade="all, delete-orphan")
+    search_records = relationship("SearchRecord", back_populates="project", cascade="all, delete-orphan")
 
 
 class Paper(Base):
@@ -103,3 +105,21 @@ class Concept(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     project = relationship("Project", back_populates="concepts")
+
+
+class SearchRecord(Base):
+    """Search log records for literature discovery."""
+
+    __tablename__ = "search_records"
+
+    id = Column(String(36), primary_key=True, index=True)
+    project_id = Column(String(36), ForeignKey("projects.id"), nullable=False)
+    database = Column(String(255), nullable=False)
+    query = Column(Text, nullable=False)
+    results = Column(Integer, nullable=False, default=0)
+    relevant = Column(Integer, nullable=False, default=0)
+    searched_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    project = relationship("Project", back_populates="search_records")

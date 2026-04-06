@@ -4,8 +4,12 @@ import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { paperAPI, conceptAPI, projectAPI } from "@/lib/manuscript-api";
-import type { Paper as ApiPaper } from "@/lib/manuscript-api";
+import { paperAPI, conceptAPI, projectAPI, searchRecordAPI } from "@/lib/manuscript-api";
+import type {
+  Concept as ApiConcept,
+  Paper as ApiPaper,
+  SearchRecord as ApiSearchRecord,
+} from "@/lib/manuscript-api";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -448,8 +452,50 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     externalSourceUrl?: string;
   };
 
-  const CONCEPTS_STORAGE_KEY = `rw-concepts-${projectId}`;
-  const SEARCH_RECORDS_STORAGE_KEY = `rw-search-records-${projectId}`;
+  type ConceptItem = {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    color: string;
+  };
+
+  const defaultConceptColor = "#6366f1";
+  const defaultConceptCategory = "Construct";
+
+  const parseConceptDefinition = (definition?: string): { category: string; color: string } => {
+    if (!definition) {
+      return { category: defaultConceptCategory, color: defaultConceptColor };
+    }
+
+    try {
+      const parsed = JSON.parse(definition) as { category?: string; color?: string };
+      return {
+        category: parsed.category || defaultConceptCategory,
+        color: parsed.color || defaultConceptColor,
+      };
+    } catch {
+      return { category: defaultConceptCategory, color: defaultConceptColor };
+    }
+  };
+
+  const toApiConceptPayload = (concept: { name: string; description: string; category: string; color: string }) => ({
+    title: concept.name,
+    description: concept.description,
+    definition: JSON.stringify({ category: concept.category, color: concept.color }),
+  });
+
+  const apiConceptToLocal = (concept: ApiConcept): ConceptItem => {
+    const meta = parseConceptDefinition(concept.definition);
+    return {
+      id: concept.id,
+      name: concept.title,
+      description: concept.description || "",
+      category: meta.category,
+      color: meta.color,
+    };
+  };
+
   const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
   const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
   const [searchParams, setSearchParams] = useSearchParams();
@@ -469,17 +515,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   });
   const [newKeyword, setNewKeyword] = useState("");
   const [keywords, setKeywords] = useState<Keyword[]>([...DUMMY_KEYWORDS]);
-  const [searchRecords, setSearchRecords] = useState<SearchRecord[]>(() => {
-    if (typeof window === "undefined") return [...DUMMY_SEARCH_RECORDS];
-    try {
-      const saved = window.localStorage.getItem(SEARCH_RECORDS_STORAGE_KEY);
-      if (!saved) return [...DUMMY_SEARCH_RECORDS];
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) && parsed.length ? parsed : [...DUMMY_SEARCH_RECORDS];
-    } catch {
-      return [...DUMMY_SEARCH_RECORDS];
-    }
-  });
+  const [searchRecords, setSearchRecords] = useState<SearchRecord[]>([]);
   const [entryPapers, setEntryPapers] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"keywords" | "search" | "candidates">(() => {
     const tab = searchParams.get("tab");
@@ -487,17 +523,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   });
 
   // Concepts state
-  const [concepts, setConcepts] = useState<Array<{ id: string; name: string; description: string; category: string; color: string }>>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = window.localStorage.getItem(CONCEPTS_STORAGE_KEY);
-      if (!saved) return [];
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
+  const [concepts, setConcepts] = useState<ConceptItem[]>([]);
   const [showConceptDialog, setShowConceptDialog] = useState(false);
   const [conceptName, setConceptName] = useState("");
   const [conceptDescription, setConceptDescription] = useState("");
@@ -517,35 +543,47 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     { value: "#ef4444", label: "Red" },
   ];
 
-  const handleAddConcept = () => {
+  const handleAddConcept = async () => {
     if (!conceptName.trim()) return;
     const trimmed = conceptName.trim();
     const existing = conceptByNameMap.get(trimmed.toLowerCase());
 
     if (existing) {
-      setConcepts((prev) =>
-        prev.map((c) =>
-          c.id === existing.id
-            ? {
-                ...c,
-                description: conceptDescription.trim() || c.description,
-                category: conceptCategory,
-                color: conceptColor,
-              }
-            : c
-        )
-      );
+      const updatedLocal = {
+        ...existing,
+        description: conceptDescription.trim() || existing.description,
+        category: conceptCategory,
+        color: conceptColor,
+      };
+      setConcepts((prev) => prev.map((c) => (c.id === existing.id ? updatedLocal : c)));
+      try {
+        await conceptAPI.update(
+          existing.id,
+          toApiConceptPayload(updatedLocal)
+        );
+      } catch {
+        toast.error("更新概念失败");
+      }
     } else {
-      setConcepts([
-        ...concepts,
-        {
-          id: `concept-${Date.now()}`,
-          name: trimmed,
-          description: conceptDescription.trim(),
-          category: conceptCategory,
-          color: conceptColor,
-        },
-      ]);
+      try {
+        const created = await conceptAPI.create({
+          ...toApiConceptPayload({
+            name: trimmed,
+            description: conceptDescription.trim(),
+            category: conceptCategory,
+            color: conceptColor,
+          }),
+          project_id: projectId,
+        });
+        setConcepts((prev) => [...prev, apiConceptToLocal(created)]);
+      } catch (error) {
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status === 401) {
+          toast.error("请先登录后再添加概念");
+        } else {
+          toast.error("创建概念失败");
+        }
+      }
     }
 
     if (!srKeywords.includes(trimmed)) {
@@ -614,14 +652,37 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const highlightedSearchQuery = (searchParams.get("searchQuery") || "").trim();
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify(concepts));
-  }, [concepts]);
+    if (!projectId) return;
+    conceptAPI
+      .list(projectId)
+      .then((items) => {
+        setConcepts(items.map(apiConceptToLocal));
+      })
+      .catch(() => {
+        setConcepts([]);
+      });
+  }, [projectId]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(SEARCH_RECORDS_STORAGE_KEY, JSON.stringify(searchRecords));
-  }, [searchRecords, SEARCH_RECORDS_STORAGE_KEY]);
+    if (!projectId) return;
+    searchRecordAPI
+      .list(projectId)
+      .then((items) => {
+        setSearchRecords(
+          items.map((item: ApiSearchRecord) => ({
+            id: item.id,
+            database: item.database,
+            query: item.query,
+            results: item.results,
+            relevant: item.relevant,
+            date: item.searched_at.includes("T") ? item.searched_at.split("T")[0] : item.searched_at,
+          }))
+        );
+      })
+      .catch(() => {
+        setSearchRecords([]);
+      });
+  }, [projectId]);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -827,6 +888,35 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     setConcepts((prev) =>
       prev.map((c) => (c.id === editingConceptId ? { ...c, ...patch } : c))
     );
+  };
+
+  const handleDeleteConcept = async (conceptId: string) => {
+    const next = concepts.filter((c) => c.id !== conceptId);
+    setConcepts(next);
+    if (editingConceptId === conceptId) {
+      setShowConceptDetailDialog(false);
+      setEditingConceptId(null);
+    }
+    try {
+      await conceptAPI.delete(conceptId);
+    } catch {
+      toast.error("删除概念失败");
+    }
+  };
+
+  const handleSaveConceptDetails = async () => {
+    if (!editingConceptId) return;
+    const concept = concepts.find((c) => c.id === editingConceptId);
+    if (!concept) return;
+
+    try {
+      await conceptAPI.update(editingConceptId, toApiConceptPayload(concept));
+      setShowConceptDetailDialog(false);
+      setEditingConceptId(null);
+      toast.success("概念已保存");
+    } catch {
+      toast.error("保存概念失败");
+    }
   };
 
   const conceptByNameMap = new Map(concepts.map((c) => [c.name.toLowerCase(), c]));
@@ -1151,17 +1241,27 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       }
 
       setSearchRecordOffsets((prev) => ({ ...prev, [record.id]: currentOffset + 10 }));
+      const nextResults = totalResults || record.results;
+      const nextRelevant = Math.max(record.relevant, imported.length);
       setSearchRecords((prev) =>
         prev.map((r) =>
           r.id === record.id
             ? {
                 ...r,
-                results: totalResults || r.results,
-                relevant: Math.max(r.relevant, imported.length),
+                results: nextResults,
+                relevant: nextRelevant,
               }
             : r
         )
       );
+      try {
+        await searchRecordAPI.update(record.id, {
+          results: nextResults,
+          relevant: nextRelevant,
+        });
+      } catch {
+        toast.error("更新 Search Log 统计失败");
+      }
 
       toast.success(`已导入 ${imported.length} 篇候选文献`, {
         description: duplicateCount > 0 ? `跳过重复文献 ${duplicateCount} 篇` : `来自 ${record.database}`,
@@ -1196,7 +1296,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     return nextRecord;
   };
 
-  const handleDeleteSearchRecord = (searchRecordId: string) => {
+  const handleDeleteSearchRecord = async (searchRecordId: string) => {
     const linkedCount = linkedCandidateCount(searchRecordId);
     if (linkedCount > 0) {
       toast.error("无法删除该 Search Record", {
@@ -1210,10 +1310,15 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       delete next[searchRecordId];
       return next;
     });
+    try {
+      await searchRecordAPI.delete(searchRecordId);
+    } catch {
+      toast.error("删除 Search Log 失败");
+    }
     toast.success("Search Record 已删除");
   };
 
-  const handleAddSearchRecord = () => {
+  const handleAddSearchRecord = async () => {
     const newRecord = buildSearchRecordFromCurrentForm();
     if (!newRecord) return;
 
@@ -1227,8 +1332,28 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       }
     });
 
-    setSearchRecords([...searchRecords, newRecord]);
-    setSearchRecordOffsets((prev) => ({ ...prev, [newRecord.id]: 0 }));
+    try {
+      const created = await searchRecordAPI.create({
+        project_id: projectId,
+        database: newRecord.database,
+        query: newRecord.query,
+        results: newRecord.results,
+        relevant: newRecord.relevant,
+      });
+      const localRecord = {
+        id: created.id,
+        database: created.database,
+        query: created.query,
+        results: created.results,
+        relevant: created.relevant,
+        date: created.searched_at.includes("T") ? created.searched_at.split("T")[0] : created.searched_at,
+      };
+      setSearchRecords((prev) => [...prev, localRecord]);
+      setSearchRecordOffsets((prev) => ({ ...prev, [localRecord.id]: 0 }));
+    } catch {
+      toast.error("创建 Search Log 失败");
+      return;
+    }
     setShowSearchDialog(false);
     resetSearchRecordForm();
   };
@@ -1246,11 +1371,32 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       }
     });
 
-    setSearchRecords((prev) => [...prev, newRecord]);
-    setSearchRecordOffsets((prev) => ({ ...prev, [newRecord.id]: 0 }));
+    let createdRecord: SearchRecord;
+    try {
+      const created = await searchRecordAPI.create({
+        project_id: projectId,
+        database: newRecord.database,
+        query: newRecord.query,
+        results: newRecord.results,
+        relevant: newRecord.relevant,
+      });
+      createdRecord = {
+        id: created.id,
+        database: created.database,
+        query: created.query,
+        results: created.results,
+        relevant: created.relevant,
+        date: created.searched_at.includes("T") ? created.searched_at.split("T")[0] : created.searched_at,
+      };
+      setSearchRecords((prev) => [...prev, createdRecord]);
+      setSearchRecordOffsets((prev) => ({ ...prev, [createdRecord.id]: 0 }));
+    } catch {
+      toast.error("创建 Search Log 失败");
+      return;
+    }
     setShowSearchDialog(false);
     resetSearchRecordForm();
-    const pullSucceeded = await pullReferencesForSearchRecord(newRecord, "first");
+    const pullSucceeded = await pullReferencesForSearchRecord(createdRecord, "first");
     if (pullSucceeded) {
       navigateToCandidatesTab();
     }
@@ -1292,22 +1438,36 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     }
   };
 
-  const handleSaveEditedSearchRecord = () => {
+  const handleSaveEditedSearchRecord = async () => {
     if (!editingSearchRecordId) return;
     const db = srDatabase === "Other" ? srCustomDb || "Other" : srDatabase;
+    const nextQuery = srBooleanString.trim();
+    const nextResults = parseInt(srTotalResults) || 0;
+    const nextRelevant = parseInt(srRelevantResults) || 0;
     setSearchRecords((prev) =>
       prev.map((record) =>
         record.id === editingSearchRecordId
           ? {
               ...record,
               database: db,
-              query: srBooleanString || record.query,
-              results: parseInt(srTotalResults) || 0,
-              relevant: parseInt(srRelevantResults) || 0,
+              query: nextQuery || record.query,
+              results: nextResults,
+              relevant: nextRelevant,
             }
           : record
       )
     );
+    try {
+      await searchRecordAPI.update(editingSearchRecordId, {
+        database: db,
+        query: nextQuery || undefined,
+        results: nextResults,
+        relevant: nextRelevant,
+      });
+    } catch {
+      toast.error("保存 Search Log 失败");
+      return;
+    }
     setShowEditSearchDialog(false);
     setEditingSearchRecordId(null);
     resetSearchRecordForm();
@@ -1951,7 +2111,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     {concept.name}
                     <span className="ml-1 text-[10px] opacity-70">{concept.category}</span>
                     <button
-                      onClick={() => setConcepts(concepts.filter((c) => c.id !== concept.id))}
+                      onClick={() => void handleDeleteConcept(concept.id)}
                       className="ml-1 hover:opacity-60"
                     >
                       <X className="w-2.5 h-2.5" />
@@ -2598,7 +2758,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  handleAddConcept();
+                  void handleAddConcept();
                 }
               }}
             />
@@ -2672,7 +2832,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           <div className="flex gap-2 pt-1">
             <Button
               className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
-              onClick={handleAddConcept}
+              onClick={() => void handleAddConcept()}
               disabled={!conceptName.trim()}
             >
               <Lightbulb className="w-3 h-3 mr-1" />
@@ -3187,10 +3347,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             <div className="flex gap-2 pt-1">
               <Button
                 className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
-                onClick={() => {
-                  setShowConceptDetailDialog(false);
-                  setEditingConceptId(null);
-                }}
+                onClick={() => void handleSaveConceptDetails()}
               >
                 Save
               </Button>

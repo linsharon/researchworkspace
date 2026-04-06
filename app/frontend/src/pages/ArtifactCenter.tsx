@@ -23,7 +23,7 @@ import {
   type Artifact,
   type ArtifactType,
 } from "@/lib/data";
-import { noteAPI } from "@/lib/manuscript-api";
+import { noteAPI, paperAPI, projectAPI } from "@/lib/manuscript-api";
 import type { Note } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +49,37 @@ function noteToArtifact(note: Note): Artifact {
   };
 }
 
+function paperToArtifact(paper: {
+  id: string;
+  title: string;
+  project_id: string;
+  journal?: string;
+  year?: number;
+  is_entry_paper: boolean;
+  is_expanded_paper: boolean;
+  discovery_note?: string;
+}): Artifact {
+  return {
+    id: `entry-paper-${paper.id}`,
+    title: paper.title,
+    type: "entry-paper",
+    projectId: paper.project_id,
+    sourceStep: 3,
+    description:
+      paper.discovery_note ||
+      [
+        paper.is_entry_paper ? "Entry Paper" : null,
+        paper.is_expanded_paper ? "Expanded Paper" : null,
+        paper.journal,
+        paper.year ? String(paper.year) : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    updatedAt: new Date().toISOString().split("T")[0],
+    content: "",
+  };
+}
+
 const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
   { value: "purpose", label: "Purposes" },
@@ -71,8 +102,6 @@ const FILTER_MAP: Record<string, ArtifactType[]> = {
 };
 
 export default function ArtifactCenter() {
-  const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
-  const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
   const CONCEPTS_STORAGE_KEY = "rw-concepts";
   const CONCEPTS_UPDATED_EVENT = "concepts-updated";
   const NOTES_UPDATED_EVENT = "notes-updated";
@@ -131,29 +160,21 @@ export default function ArtifactCenter() {
 
   useEffect(() => {
     const loadSavedNotes = async () => {
-      let savedEntryArtifacts: Artifact[] = [];
-
-      if (typeof window !== "undefined") {
-        try {
-          const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-          const parsed = saved ? JSON.parse(saved) : [];
-          savedEntryArtifacts = Array.isArray(parsed) ? parsed : [];
-        } catch {
-          savedEntryArtifacts = [];
-        }
-      }
-
       try {
+        const projects = await projectAPI.list();
+        const allPapers = await Promise.all(projects.map((project) => paperAPI.list(project.id)));
+        const literatureArtifacts = allPapers
+          .flat()
+          .filter((paper) => paper.is_entry_paper || paper.is_expanded_paper)
+          .map((paper) => paperToArtifact(paper));
         const savedNotes = await noteAPI.listAll();
         const savedNoteArtifacts = savedNotes.map(noteToArtifact);
-        const merged = [...STATIC_ARTIFACTS, ...savedEntryArtifacts, ...savedNoteArtifacts];
+        const merged = [...STATIC_ARTIFACTS, ...literatureArtifacts, ...savedNoteArtifacts];
         const deduped = Array.from(new Map(merged.map((artifact) => [artifact.id, artifact])).values());
         setArtifacts(deduped);
       } catch (error) {
         console.error("Failed to load notes for Artifact Center:", error);
-        const merged = [...STATIC_ARTIFACTS, ...savedEntryArtifacts];
-        const deduped = Array.from(new Map(merged.map((artifact) => [artifact.id, artifact])).values());
-        setArtifacts(deduped);
+        setArtifacts([...STATIC_ARTIFACTS]);
       }
     };
 
@@ -163,14 +184,9 @@ export default function ArtifactCenter() {
       const onNotesUpdated = () => {
         loadSavedNotes();
       };
-      const onArtifactsUpdated = () => {
-        loadSavedNotes();
-      };
       window.addEventListener(NOTES_UPDATED_EVENT, onNotesUpdated);
-      window.addEventListener(ARTIFACTS_UPDATED_EVENT, onArtifactsUpdated);
       return () => {
         window.removeEventListener(NOTES_UPDATED_EVENT, onNotesUpdated);
-        window.removeEventListener(ARTIFACTS_UPDATED_EVENT, onArtifactsUpdated);
       };
     }
   }, []);
@@ -257,6 +273,16 @@ export default function ArtifactCenter() {
         await noteAPI.delete(artifactId);
       } catch (error) {
         console.error("Failed to delete note artifact:", error);
+        return;
+      }
+    }
+
+    if (artifact?.type === "entry-paper") {
+      const paperId = artifact.id.replace(/^entry-paper-/, "");
+      try {
+        await paperAPI.update(paperId, { is_entry_paper: false, is_expanded_paper: false });
+      } catch (error) {
+        console.error("Failed to delete literature artifact:", error);
         return;
       }
     }

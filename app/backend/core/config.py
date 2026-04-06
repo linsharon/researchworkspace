@@ -17,6 +17,20 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
+    # Auth / OIDC
+    oidc_client_id: str = ""
+    oidc_client_secret: str = ""
+    oidc_issuer_url: str = ""
+    oidc_scope: str = "openid profile email"
+    frontend_url: str = "http://127.0.0.1:5173"
+    jwt_secret_key: str = "dev-secret-key-change-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60
+    admin_user_id: str = ""
+    admin_user_email: str = ""
+    oss_service_url: str = ""
+    oss_api_key: str = ""
+
     # Database Configuration
     database_url: str = "sqlite+aiosqlite:///./app.db"
 

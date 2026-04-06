@@ -1,7 +1,7 @@
 import logging
 import os
 from typing import Optional
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import httpx
 from core.auth import (
@@ -73,9 +73,85 @@ def derive_name_from_email(email: str) -> str:
     return email.split("@", 1)[0] if email else ""
 
 
+def is_oidc_configured() -> bool:
+    return bool(
+        settings.oidc_client_id
+        and settings.oidc_client_secret
+        and settings.oidc_issuer_url
+    )
+
+
+def is_dev_auth_fallback_enabled() -> bool:
+    explicit_flag = os.getenv("ENABLE_DEV_AUTH_FALLBACK", "").lower()
+    if explicit_flag in ("true", "1", "yes", "on"):
+        return True
+    if explicit_flag in ("false", "0", "no", "off"):
+        return False
+    environment = os.getenv("ENVIRONMENT", "").lower()
+    return bool(settings.debug or environment in {"dev", "development", "local"})
+
+
+def get_frontend_base_url(request: Request) -> str:
+    origin = request.headers.get("origin")
+    if origin:
+        return origin.rstrip("/")
+
+    referer = request.headers.get("referer")
+    if referer:
+        parsed = urlparse(referer)
+        if parsed.scheme and parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}"
+
+    if settings.frontend_url:
+        return settings.frontend_url.rstrip("/")
+
+    return get_dynamic_backend_url(request)
+
+
+async def perform_dev_login(request: Request, db: AsyncSession) -> RedirectResponse:
+    auth_service = AuthService(db)
+
+    dev_user_id = os.getenv("DEV_AUTH_USER_ID", "dev-user")
+    dev_user_email = os.getenv("DEV_AUTH_USER_EMAIL", "dev.user@example.com")
+    dev_user_name = os.getenv("DEV_AUTH_USER_NAME", "Dev User")
+    dev_user_role = os.getenv("DEV_AUTH_USER_ROLE", "admin")
+
+    user = await auth_service.get_or_create_user(
+        platform_sub=dev_user_id,
+        email=dev_user_email,
+        name=dev_user_name,
+    )
+    if dev_user_role and user.role != dev_user_role:
+        user.role = dev_user_role
+        await db.commit()
+        await db.refresh(user)
+
+    app_token, expires_at, _ = await auth_service.issue_app_token(user=user)
+    fragment = urlencode(
+        {
+            "token": app_token,
+            "expires_at": int(expires_at.timestamp()),
+            "token_type": "Bearer",
+        }
+    )
+
+    frontend_base = get_frontend_base_url(request)
+    redirect_url = f"{frontend_base}/auth/callback?{fragment}"
+    logger.warning("[login] OIDC is not configured; using development auth fallback for user=%s", dev_user_id)
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
+
+
 @router.get("/login")
 async def login(request: Request, db: AsyncSession = Depends(get_db)):
     """Start OIDC login flow with PKCE."""
+    if not is_oidc_configured():
+        if not is_dev_auth_fallback_enabled():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="OIDC login is not configured. Set OIDC_CLIENT_ID, OIDC_CLIENT_SECRET and OIDC_ISSUER_URL.",
+            )
+        return await perform_dev_login(request, db)
+
     state = generate_state()
     nonce = generate_nonce()
     code_verifier = generate_code_verifier()
@@ -322,5 +398,7 @@ async def get_current_user_info(current_user: UserResponse = Depends(get_current
 @router.get("/logout")
 async def logout():
     """Logout user."""
+    if not is_oidc_configured():
+        return {"redirect_url": settings.frontend_url or "/"}
     logout_url = build_logout_url()
     return {"redirect_url": logout_url}

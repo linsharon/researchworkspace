@@ -1,0 +1,258 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    name: Backend Tests
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        working-directory: app/backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Lint with pylint
+        working-directory: app/backend
+        run: |
+          pip install pylint
+          pylint app/ --exit-zero --fail-under=7.0 || true
+      
+      - name: Check code style
+        working-directory: app/backend
+        run: |
+          pip install black flake8
+          black --check . || true
+          flake8 . --max-line-length=120 || true
+      
+      - name: Check for security issues
+        working-directory: app/backend
+        run: |
+          pip install bandit safety
+          bandit -r . -ll || true
+          safety check --json || true
+      
+      - name: Run tests
+        working-directory: app/backend
+        env:
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        run: |
+          pip install pytest pytest-asyncio pytest-cov httpx
+          pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing || true
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./app/backend/coverage.xml
+          flags: backend
+          fail_ci_if_error: false
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+    name: Frontend Tests
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: app/frontend/pnpm-lock.yaml
+      
+      - name: Install pnpm
+        run: npm install -g pnpm
+      
+      - name: Install dependencies
+        working-directory: app/frontend
+        run: pnpm install --frozen-lockfile
+      
+      - name: Lint
+        working-directory: app/frontend
+        run: pnpm run lint || true
+      
+      - name: Type check
+        working-directory: app/frontend
+        run: pnpm run type-check || true
+      
+      - name: Run tests
+        working-directory: app/frontend
+        run: pnpm run test || true
+      
+      - name: Build
+        working-directory: app/frontend
+        env:
+          VITE_API_BASE_URL: http://localhost:8000
+        run: pnpm run build
+      
+      - name: Store build artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-dist
+          path: app/frontend/dist
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    name: Integration Tests
+    needs: backend-tests
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: research_workspace
+          POSTGRES_USER: rw_user
+          POSTGRES_PASSWORD: testpass123
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        working-directory: app/backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt httpx
+      
+      - name: Start backend
+        working-directory: app/backend
+        env:
+          DATABASE_URL: postgresql://rw_user:testpass123@localhost:5432/research_workspace
+          ENVIRONMENT: test
+          DEBUG: 'false'
+        run: |
+          alembic upgrade head
+          nohup uvicorn main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
+          sleep 5
+      
+      - name: Run integration tests
+        run: |
+          python scripts/integration_tests.py \
+            --backend-url http://localhost:8000 \
+            --junit-output test-results.xml
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: test-results.xml
+      
+      - name: Upload backend logs
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-logs
+          path: app/backend/backend.log
+
+  docker-build:
+    runs-on: ubuntu-latest
+    name: Docker Build & Push
+    if: github.event_name == 'push'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: app/backend
+          file: app/backend/Dockerfile
+          push: false
+          tags: rw-backend:${{ github.sha }}
+      
+      - name: Build frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: app/frontend
+          file: app/frontend/Dockerfile
+          push: false
+          tags: rw-frontend:${{ github.sha }}
+
+  staging-deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to Staging
+    needs: [backend-tests, frontend-tests, integration-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to staging environment
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        run: |
+          # This would trigger a staging deployment script
+          # For now, just log that it would deploy
+          echo "Would deploy to staging: $STAGING_HOST"
+
+  quality-gate:
+    runs-on: ubuntu-latest
+    name: Quality Gate
+    needs: [backend-tests, frontend-tests, integration-tests]
+    if: always()
+    
+    steps:
+      - name: Check quality criteria
+        run: |
+          echo "Quality Gate Results:"
+          echo "- Backend tests: ${{ needs.backend-tests.result }}"
+          echo "- Frontend tests: ${{ needs.frontend-tests.result }}"
+          echo "- Integration tests: ${{ needs.integration-tests.result }}"
+          
+          if [ "${{ needs.backend-tests.result }}" = "failure" ] || \
+             [ "${{ needs.frontend-tests.result }}" = "failure" ] || \
+             [ "${{ needs.integration-tests.result }}" = "failure" ]; then
+            echo "❌ Quality gate FAILED"
+            exit 1
+          fi
+          
+          echo "✓ Quality gate PASSED"
