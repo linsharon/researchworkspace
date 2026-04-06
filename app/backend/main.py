@@ -17,7 +17,6 @@ import models
 
 # MODULE_IMPORTS_START
 from services.database import initialize_database, close_database
-from services.mock_data import initialize_mock_data
 from services.auth import initialize_admin_user
 from services.activity import extract_user_id_from_bearer_token, log_activity_event
 # MODULE_IMPORTS_END
@@ -71,7 +70,6 @@ async def lifespan(app: FastAPI):
 
     # MODULE_STARTUP_START
     await initialize_database()
-    await initialize_mock_data()
     await initialize_admin_user()
     # MODULE_STARTUP_END
 

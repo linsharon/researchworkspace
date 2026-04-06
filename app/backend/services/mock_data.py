@@ -17,7 +17,16 @@ MAX_CONCURRENT_LOADS = 5
 
 
 async def initialize_mock_data():
-    """Populate tables with mock JSON data when they are empty."""
+    """Populate tables with JSON data when explicitly enabled.
+
+    This loader is disabled by default in runtime startup flows.
+    Set MGX_ENABLE_MOCK_DATA=true to run it intentionally.
+    """
+    enable_flag = os.getenv("MGX_ENABLE_MOCK_DATA", "").lower()
+    if enable_flag not in {"true", "1", "yes", "on"}:
+        logger.info("Mock data initialization is disabled (set MGX_ENABLE_MOCK_DATA=true to enable)")
+        return
+
     if "MGX_IGNORE_INIT_DATA" in os.environ:
         logger.info("Ignore initialize data")
         return
