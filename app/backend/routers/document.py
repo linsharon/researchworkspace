@@ -7,13 +7,14 @@ from uuid import uuid4
 from dependencies.auth import get_current_user
 from dependencies.database import get_db
 from core.config import settings
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from models.auth import User
 from models.document import Document, DocumentAccessGrant, DocumentVersion
 from models.manuscript import Project
 from schemas.auth import UserResponse
 from schemas.document import (
     DocumentCreate,
+    DocumentDownloadRequest,
     DocumentListResponse,
     DocumentResponse,
     DocumentShareCreate,
@@ -23,9 +24,11 @@ from schemas.document import (
     DocumentUploadInitResponse,
     DocumentUpdate,
     DocumentVersionCreate,
+    DocumentVersionRestoreRequest,
     DocumentVersionResponse,
 )
-from schemas.storage import FileUpDownRequest
+from schemas.storage import FileUpDownRequest, FileUpDownResponse
+from services.activity import log_activity_event
 from services.rate_limit import rate_limiter
 from services.storage import StorageService
 from sqlalchemy import func, select
@@ -178,6 +181,45 @@ def parse_datetime_filter(value: str, end_of_day: bool = False) -> datetime:
         raise HTTPException(status_code=400, detail=f"Invalid datetime filter: {value}") from exc
 
 
+async def log_document_activity(
+    request: Request,
+    *,
+    event_type: str,
+    action: str,
+    user_id: str,
+    resource_type: str,
+    resource_id: str,
+    status_code: int = 200,
+) -> None:
+    await log_activity_event(
+        event_type=event_type,
+        action=action,
+        path=request.url.path,
+        status_code=status_code,
+        user_id=user_id,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        request_id=getattr(request.state, "request_id", None),
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        error_type=None,
+        duration_ms=None,
+    )
+
+
+async def get_document_version_or_404(session: AsyncSession, document_id: str, version_id: str) -> DocumentVersion:
+    result = await session.execute(
+        select(DocumentVersion).where(
+            DocumentVersion.id == version_id,
+            DocumentVersion.document_id == document_id,
+        )
+    )
+    version = result.scalar_one_or_none()
+    if not version:
+        raise HTTPException(status_code=404, detail="Document version not found")
+    return version
+
+
 async def get_next_document_version(session: AsyncSession, document_id: str) -> int:
     result = await session.execute(
         select(func.max(DocumentVersion.version_number)).where(DocumentVersion.document_id == document_id)
@@ -189,6 +231,7 @@ async def get_next_document_version(session: AsyncSession, document_id: str) -> 
 @router.post("", response_model=DocumentResponse, status_code=201)
 async def create_document(
     payload: DocumentCreate,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -214,6 +257,15 @@ async def create_document(
     session.add(document)
     await session.commit()
     await session.refresh(document)
+    await log_document_activity(
+        request,
+        event_type="document.lifecycle",
+        action="create",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=document.id,
+        status_code=201,
+    )
     return document
 
 
@@ -459,6 +511,7 @@ async def create_document_upload_url(
 async def confirm_document_upload_complete(
     document_id: str,
     payload: DocumentUploadCompleteRequest,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -485,7 +538,61 @@ async def confirm_document_upload_complete(
 
     await session.commit()
     await session.refresh(version)
+    await log_document_activity(
+        request,
+        event_type="document.version",
+        action="upload_complete",
+        user_id=current_user.id,
+        resource_type="document_version",
+        resource_id=version.id,
+        status_code=201,
+    )
     return version
+
+
+@router.post("/{document_id}/download-url", response_model=FileUpDownResponse)
+async def create_document_download_url(
+    document_id: str,
+    payload: DocumentDownloadRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    document = await get_document_with_access_or_404(session, document_id, current_user.id)
+
+    bucket_name = document.bucket_name
+    object_key = document.object_key
+    resource_type = "document"
+    resource_id = document.id
+
+    if payload.version_id:
+        version = await get_document_version_or_404(session, document.id, payload.version_id)
+        bucket_name = version.bucket_name
+        object_key = version.object_key
+        resource_type = "document_version"
+        resource_id = version.id
+
+    if not bucket_name or not object_key:
+        raise HTTPException(status_code=400, detail="No file available for download")
+
+    try:
+        storage_service = StorageService()
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    download_data = await storage_service.create_download_url(
+        FileUpDownRequest(bucket_name=bucket_name, object_key=object_key)
+    )
+    await log_document_activity(
+        request,
+        event_type="document.access",
+        action="download",
+        user_id=current_user.id,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        status_code=200,
+    )
+    return download_data
 
 
 @router.get("/{document_id}", response_model=DocumentResponse)
@@ -531,6 +638,7 @@ async def list_document_shares(
 async def grant_document_access(
     document_id: str,
     payload: DocumentShareCreate,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -560,6 +668,15 @@ async def grant_document_access(
         await session.refresh(existing)
         grantee_result = await session.execute(select(User).where(User.id == payload.grantee_user_id))
         grantee = grantee_result.scalar_one_or_none()
+        await log_document_activity(
+            request,
+            event_type="document.permission",
+            action="share_update",
+            user_id=current_user.id,
+            resource_type="document",
+            resource_id=document_id,
+            status_code=201,
+        )
         return DocumentShareResponse(
             document_id=existing.document_id,
             grantee_user_id=existing.grantee_user_id,
@@ -583,6 +700,15 @@ async def grant_document_access(
     await session.refresh(grant)
     grantee_result = await session.execute(select(User).where(User.id == payload.grantee_user_id))
     grantee = grantee_result.scalar_one_or_none()
+    await log_document_activity(
+        request,
+        event_type="document.permission",
+        action="share_grant",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=document_id,
+        status_code=201,
+    )
     return DocumentShareResponse(
         document_id=grant.document_id,
         grantee_user_id=grant.grantee_user_id,
@@ -599,6 +725,7 @@ async def grant_document_access(
 async def revoke_document_access(
     document_id: str,
     grantee_user_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -615,6 +742,15 @@ async def revoke_document_access(
         raise HTTPException(status_code=404, detail="Grant not found")
     await session.delete(grant)
     await session.commit()
+    await log_document_activity(
+        request,
+        event_type="document.permission",
+        action="share_revoke",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=document_id,
+        status_code=200,
+    )
     return {"message": "Access revoked"}
 
 
@@ -622,6 +758,7 @@ async def revoke_document_access(
 async def update_document(
     document_id: str,
     payload: DocumentUpdate,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -643,12 +780,22 @@ async def update_document(
 
     await session.commit()
     await session.refresh(document)
+    await log_document_activity(
+        request,
+        event_type="document.lifecycle",
+        action="update",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=document.id,
+        status_code=200,
+    )
     return document
 
 
 @router.delete("/{document_id}")
 async def soft_delete_document(
     document_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -657,12 +804,22 @@ async def soft_delete_document(
     document.deleted_at = datetime.now(timezone.utc)
 
     await session.commit()
+    await log_document_activity(
+        request,
+        event_type="document.lifecycle",
+        action="soft_delete",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=document.id,
+        status_code=200,
+    )
     return {"message": "Document moved to recycle bin"}
 
 
 @router.post("/{document_id}/restore", response_model=DocumentResponse)
 async def restore_document(
     document_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -676,6 +833,15 @@ async def restore_document(
 
     await session.commit()
     await session.refresh(document)
+    await log_document_activity(
+        request,
+        event_type="document.lifecycle",
+        action="restore",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=document.id,
+        status_code=200,
+    )
     return document
 
 
@@ -683,6 +849,7 @@ async def restore_document(
 async def create_document_version(
     document_id: str,
     payload: DocumentVersionCreate,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -715,6 +882,15 @@ async def create_document_version(
 
     await session.commit()
     await session.refresh(version)
+    await log_document_activity(
+        request,
+        event_type="document.version",
+        action="create",
+        user_id=current_user.id,
+        resource_type="document_version",
+        resource_id=version.id,
+        status_code=201,
+    )
     return version
 
 
@@ -734,10 +910,59 @@ async def list_document_versions(
     return result.scalars().all()
 
 
+@router.post("/{document_id}/versions/{version_id}/restore", response_model=DocumentVersionResponse, status_code=201)
+async def restore_document_version(
+    document_id: str,
+    version_id: str,
+    payload: DocumentVersionRestoreRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    document = await get_document_with_access_or_404(session, document_id, current_user.id, require_write=True)
+    if document.status == "archived":
+        raise HTTPException(status_code=400, detail="Archived document does not accept version restore")
+
+    source_version = await get_document_version_or_404(session, document.id, version_id)
+    next_version = await get_next_document_version(session, document.id)
+    restore_note = payload.change_note or f"Restored from version {source_version.version_number}"
+
+    version = DocumentVersion(
+        id=str(uuid4()),
+        document_id=document.id,
+        version_number=next_version,
+        filename=source_version.filename,
+        content_type=source_version.content_type,
+        size_bytes=source_version.size_bytes,
+        checksum=source_version.checksum,
+        bucket_name=source_version.bucket_name,
+        object_key=source_version.object_key,
+        change_note=restore_note,
+        created_by_user_id=current_user.id,
+    )
+    session.add(version)
+    document.bucket_name = source_version.bucket_name
+    document.object_key = source_version.object_key
+
+    await session.commit()
+    await session.refresh(version)
+    await log_document_activity(
+        request,
+        event_type="document.version",
+        action="restore",
+        user_id=current_user.id,
+        resource_type="document_version",
+        resource_id=version.id,
+        status_code=201,
+    )
+    return version
+
+
 @router.post("/{document_id}/status", response_model=DocumentResponse)
 async def change_document_status(
     document_id: str,
     payload: DocumentUpdate,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -750,4 +975,13 @@ async def change_document_status(
 
     await session.commit()
     await session.refresh(document)
+    await log_document_activity(
+        request,
+        event_type="document.lifecycle",
+        action="status_change",
+        user_id=current_user.id,
+        resource_type="document",
+        resource_id=document.id,
+        status_code=200,
+    )
     return document

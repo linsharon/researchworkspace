@@ -143,6 +143,10 @@ class DocumentDownloadRequest(BaseModel):
     version_id: Optional[str] = None
 
 
+class DocumentVersionRestoreRequest(BaseModel):
+    change_note: Optional[str] = None
+
+
 class DocumentUploadInitRequest(BaseModel):
     filename: str
     content_type: Optional[str] = None

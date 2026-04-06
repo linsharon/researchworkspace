@@ -12,6 +12,8 @@ class ActivityEvent(Base):
     path = Column(String(512), nullable=False)
     status_code = Column(Integer, nullable=False)
     user_id = Column(String(255), nullable=True, index=True)
+    resource_type = Column(String(100), nullable=True, index=True)
+    resource_id = Column(String(255), nullable=True, index=True)
     request_id = Column(String(100), nullable=True, index=True)
     ip_address = Column(String(64), nullable=True)
     user_agent = Column(Text, nullable=True)

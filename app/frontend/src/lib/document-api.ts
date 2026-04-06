@@ -254,12 +254,22 @@ export const documentAPI = {
     }
   },
 
-  async getDownloadUrl(payload: {
-    bucket_name: string;
-    object_key: string;
-  }): Promise<FileTransferResponse> {
+  async getDocumentDownloadUrl(documentId: string, payload?: { version_id?: string }): Promise<FileTransferResponse> {
     try {
-      const response = await axios.post(`/api/v1/storage/download-url`, payload, buildConfig());
+      const response = await axios.post(`${API_BASE_URL}/${documentId}/download-url`, payload ?? {}, buildConfig());
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async restoreVersion(documentId: string, versionId: string, payload?: { change_note?: string }): Promise<DocumentVersionItem> {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/${documentId}/versions/${versionId}/restore`,
+        payload ?? {},
+        buildConfig()
+      );
       return response.data;
     } catch (error) {
       return handleApiError(error);

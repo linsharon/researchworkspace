@@ -20,6 +20,8 @@ class ActivityEventResponse(BaseModel):
     path: str
     status_code: int
     user_id: Optional[str]
+    resource_type: Optional[str]
+    resource_id: Optional[str]
     request_id: Optional[str]
     ip_address: Optional[str]
     user_agent: Optional[str]
@@ -54,6 +56,8 @@ async def list_activity_events(
     user_id: Optional[str] = Query(None),
     event_type: Optional[str] = Query(None),
     path: Optional[str] = Query(None),
+    resource_type: Optional[str] = Query(None),
+    resource_id: Optional[str] = Query(None),
     from_time: Optional[str] = Query(None, description="ISO datetime"),
     to_time: Optional[str] = Query(None, description="ISO datetime"),
     limit: int = Query(100, ge=1, le=500),
@@ -74,6 +78,12 @@ async def list_activity_events(
     if path:
         query = query.where(ActivityEvent.path.ilike(f"%{path}%"))
         count_query = count_query.where(ActivityEvent.path.ilike(f"%{path}%"))
+    if resource_type:
+        query = query.where(ActivityEvent.resource_type == resource_type)
+        count_query = count_query.where(ActivityEvent.resource_type == resource_type)
+    if resource_id:
+        query = query.where(ActivityEvent.resource_id == resource_id)
+        count_query = count_query.where(ActivityEvent.resource_id == resource_id)
 
     parsed_from: Optional[datetime] = None
     parsed_to: Optional[datetime] = None

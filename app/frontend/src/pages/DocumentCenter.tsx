@@ -371,22 +371,14 @@ export default function DocumentCenter() {
   };
 
   const handleDownload = async (params: {
-    bucketName?: string | null;
-    objectKey?: string | null;
+    documentId: string;
+    versionId?: string;
     filename: string;
     requestKey: string;
   }) => {
-    if (!params.bucketName || !params.objectKey) {
-      toast.error("No uploaded file available for download");
-      return;
-    }
-
     setDownloadingKey(params.requestKey);
     try {
-      const response = await documentAPI.getDownloadUrl({
-        bucket_name: params.bucketName,
-        object_key: params.objectKey,
-      });
+      const response = await documentAPI.getDocumentDownloadUrl(params.documentId, params.versionId ? { version_id: params.versionId } : undefined);
       if (!response.download_url) {
         toast.error("Download URL is unavailable");
         return;
@@ -397,6 +389,20 @@ export default function DocumentCenter() {
       toast.error(detail || "Failed to download file");
     } finally {
       setDownloadingKey(null);
+    }
+  };
+
+  const handleRestoreVersion = async (doc: DocumentItem, version: DocumentVersionItem) => {
+    try {
+      await documentAPI.restoreVersion(doc.id, version.id, {
+        change_note: `Restored from v${version.version_number}`,
+      });
+      toast.success(`Restored ${doc.title} to v${version.version_number}`);
+      await loadVersions(doc);
+      await loadDocuments(offset);
+    } catch (error: unknown) {
+      const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      toast.error(detail || "Failed to restore version");
     }
   };
 
@@ -581,8 +587,7 @@ export default function DocumentCenter() {
                               size="sm"
                               disabled={!doc.bucket_name || !doc.object_key || downloadingKey === `doc-${doc.id}`}
                               onClick={() => void handleDownload({
-                                bucketName: doc.bucket_name,
-                                objectKey: doc.object_key,
+                                documentId: doc.id,
                                 filename: `${doc.title}.bin`,
                                 requestKey: `doc-${doc.id}`,
                               })}
@@ -692,14 +697,22 @@ export default function DocumentCenter() {
                             variant="outline"
                             disabled={!version.bucket_name || !version.object_key || downloadingKey === `version-${version.id}`}
                             onClick={() => void handleDownload({
-                              bucketName: version.bucket_name,
-                              objectKey: version.object_key,
+                              documentId: version.document_id,
+                              versionId: version.id,
                               filename: version.filename,
                               requestKey: `version-${version.id}`,
                             })}
                           >
                             <Download className="w-3 h-3 mr-1" />
                             {downloadingKey === `version-${version.id}` ? "Downloading..." : "Download Version"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void handleRestoreVersion(selectedDoc, version)}
+                          >
+                            <RotateCcw className="w-3 h-3 mr-1" />
+                            Restore Version
                           </Button>
                         </div>
                       </div>

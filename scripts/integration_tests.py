@@ -261,13 +261,14 @@ class TestClient:
             logger.error(f"Error confirming upload: {e}")
             return None
 
-    async def get_download_url(self, bucket_name: str, object_key: str) -> Optional[str]:
-        """Get a presigned download URL."""
+    async def get_document_download_url(self, document_id: str, version_id: Optional[str] = None) -> Optional[str]:
+        """Get a presigned download URL through the document-scoped endpoint."""
         try:
+            payload = {"version_id": version_id} if version_id else {}
             response = self.client.post(
-                f"{self.backend_url}/api/v1/storage/download-url",
+                f"{self.backend_url}/api/v1/documents/{document_id}/download-url",
                 headers=self._headers(),
-                json={"bucket_name": bucket_name, "object_key": object_key},
+                json=payload,
             )
             if response.status_code == 200:
                 data = response.json()
@@ -277,6 +278,37 @@ class TestClient:
             return None
         except Exception as e:
             logger.error(f"Error getting download URL: {e}")
+            return None
+
+    async def list_document_versions(self, document_id: str) -> Optional[list]:
+        """List document versions."""
+        try:
+            response = self.client.get(
+                f"{self.backend_url}/api/v1/documents/{document_id}/versions",
+                headers=self._headers(),
+            )
+            if response.status_code == 200:
+                return response.json()
+            logger.error(f"List versions failed: {response.status_code} - {response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error listing versions: {e}")
+            return None
+
+    async def restore_document_version(self, document_id: str, version_id: str, change_note: Optional[str] = None) -> Optional[dict]:
+        """Restore a previous version as the latest document version."""
+        try:
+            response = self.client.post(
+                f"{self.backend_url}/api/v1/documents/{document_id}/versions/{version_id}/restore",
+                headers=self._headers(),
+                json={"change_note": change_note} if change_note else {},
+            )
+            if response.status_code == 201:
+                return response.json()
+            logger.error(f"Restore version failed: {response.status_code} - {response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error restoring version: {e}")
             return None
 
     async def download_bytes(self, download_url: str) -> Optional[bytes]:
@@ -475,10 +507,7 @@ async def run_tests(backend_url: str, frontend_url: str, verbose: bool = False) 
                     },
                 )
                 if completed:
-                    download_url = await client.get_download_url(
-                        upload_init["bucket_name"],
-                        upload_init["object_key"],
-                    )
+                    download_url = await client.get_document_download_url(document_id)
                     downloaded = await client.download_bytes(download_url) if download_url else None
                     if downloaded == file_bytes:
                         logger.info("✓ PASSED")
@@ -559,6 +588,35 @@ async def run_tests(backend_url: str, frontend_url: str, verbose: bool = False) 
         else:
             logger.warning("⊘ SKIPPED (no document)")
 
+        # Test 7.7: Version Restore
+        logger.info("\n[Test 7.7] Version Restore")
+        if document_id:
+            versions = await client.list_document_versions(document_id)
+            if versions and len(versions) >= 1:
+                source_version = versions[0]
+                restored = await client.restore_document_version(
+                    document_id,
+                    source_version["id"],
+                    change_note=f"Restored from v{source_version['version_number']}",
+                )
+                if restored and restored.get("version_number", 0) > source_version["version_number"]:
+                    restored_download_url = await client.get_document_download_url(document_id, restored["id"])
+                    restored_downloaded = await client.download_bytes(restored_download_url) if restored_download_url else None
+                    if restored_downloaded == file_bytes:
+                        logger.info("✓ PASSED")
+                        test_passed += 1
+                    else:
+                        logger.error("✗ FAILED - restored version download mismatch")
+                        test_failed += 1
+                else:
+                    logger.error("✗ FAILED - restore endpoint did not create a newer version")
+                    test_failed += 1
+            else:
+                logger.error("✗ FAILED - no versions available to restore")
+                test_failed += 1
+        else:
+            logger.warning("⊘ SKIPPED (no document)")
+
         # Test 8: Data Persistence (simulate refresh)
         logger.info("\n[Test 8] Data Persistence (Refresh)")
         documents_before = await client.list_documents()
@@ -588,11 +646,19 @@ async def run_tests(backend_url: str, frontend_url: str, verbose: bool = False) 
         logger.info("\n[Test 10] Activity Tracking")
         events = await client.get_activity_events(5)
         if events and len(events.get("items", [])) > 0:
-            logger.info("✓ PASSED")
-            test_passed += 1
-            if verbose:
-                for event in events["items"][:3]:
-                    logger.info(f"  - {event['action']} {event['path']} ({event['status_code']})")
+            has_document_resource = any(event.get("resource_type") and event.get("resource_id") for event in events["items"])
+            if has_document_resource:
+                logger.info("✓ PASSED")
+                test_passed += 1
+                if verbose:
+                    for event in events["items"][:3]:
+                        logger.info(
+                            f"  - {event['action']} {event['path']} ({event['status_code']}) "
+                            f"resource={event.get('resource_type')}:{event.get('resource_id')}"
+                        )
+            else:
+                logger.error("✗ FAILED - activity events missing resource fields")
+                test_failed += 1
         else:
             logger.warning("⊘ SKIPPED (no events)")
 
