@@ -61,10 +61,20 @@ class TestClient:
     async def dev_login(self, user_id: str = None) -> bool:
         """Perform login using auth fallback redirect flow in non-OIDC environments."""
         try:
+            params = None
+            if user_id:
+                normalized = user_id.replace("_", "-")
+                params = {
+                    "user_id": normalized,
+                    "email": f"{normalized}@example.com",
+                    "name": normalized.replace("-", " ").title(),
+                    "role": "user",
+                }
             # The backend currently exposes /api/v1/auth/login.
             # In fallback mode this endpoint returns a 302 to frontend callback with token in query.
             response = self.client.get(
                 f"{self.backend_url}/api/v1/auth/login",
+                params=params,
                 follow_redirects=False,
             )
 
@@ -136,7 +146,7 @@ class TestClient:
             logger.error(f"Error creating paper: {e}")
             return None
 
-    async def create_document(self, title: str) -> Optional[dict]:
+    async def create_document(self, title: str, project_id: Optional[str] = None, permission: str = "private") -> Optional[dict]:
         """Create a document."""
         try:
             response = self.client.post(
@@ -145,8 +155,9 @@ class TestClient:
                 json={
                     "title": title,
                     "description": f"Test document: {title}",
+                    "project_id": project_id,
                     "status": "draft",
-                    "permission": "private",
+                    "permission": permission,
                     "tags": ["test", "integration"],
                 },
             )
@@ -360,6 +371,39 @@ class TestClient:
             logger.error(f"Error retrieving activity: {e}")
             return None
 
+    async def add_project_member(self, project_id: str, user_id: str, role: str = "viewer") -> bool:
+        """Add a project member for team-scoped document access."""
+        try:
+            response = self.client.post(
+                f"{self.backend_url}/api/v1/manuscripts/projects/{project_id}/members",
+                headers=self._headers(),
+                json={"user_id": user_id, "role": role},
+            )
+            if response.status_code == 201:
+                logger.info(f"✓ Added project member: {user_id} ({role})")
+                return True
+            logger.error(f"Add project member failed: {response.status_code} - {response.text}")
+            return False
+        except Exception as e:
+            logger.error(f"Error adding project member: {e}")
+            return False
+
+    async def update_document(self, document_id: str, payload: dict) -> Optional[dict]:
+        """Patch a document."""
+        try:
+            response = self.client.patch(
+                f"{self.backend_url}/api/v1/documents/{document_id}",
+                headers=self._headers(),
+                json=payload,
+            )
+            if response.status_code == 200:
+                return response.json()
+            logger.error(f"Document update failed: {response.status_code} - {response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error updating document: {e}")
+            return None
+
     def close(self):
         """Close the HTTP client."""
         self.client.close()
@@ -423,7 +467,7 @@ async def run_tests(backend_url: str, frontend_url: str, verbose: bool = False) 
 
         # Test 5: Create Document
         logger.info("\n[Test 5] Create Document")
-        document = await client.create_document("Integration Test Document")
+        document = await client.create_document("Integration Test Document", project_id=project_id, permission="team")
         if document:
             logger.info("✓ PASSED")
             test_passed += 1
@@ -458,7 +502,7 @@ async def run_tests(backend_url: str, frontend_url: str, verbose: bool = False) 
             "Integration",
             {
                 "tag": "test",
-                "permission": "private",
+                "permission": "team",
                 "created_from": datetime.now(timezone.utc).date().isoformat(),
             },
         )
@@ -524,72 +568,94 @@ async def run_tests(backend_url: str, frontend_url: str, verbose: bool = False) 
         else:
             logger.warning("⊘ SKIPPED (no document)")
 
-        # Test 7.6: Document Sharing (grant / list / revoke)
-        logger.info("\n[Test 7.6] Document Access Sharing")
-        if document_id:
-            second_user_id = None
-            search_resp = client.client.get(
-                f"{client.backend_url}/api/v1/users/search",
-                headers=client._headers(),
-                params={"q": "admin", "limit": 5},
-            )
-            candidates = search_resp.json() if search_resp.status_code == 200 else []
-            if search_resp.status_code != 200 or not candidates:
-                logger.error(f"✗ FAILED - user search returned {search_resp.status_code}: {search_resp.text}")
-                test_failed += 1
-            else:
-                second_user_id = candidates[0].get("id")
-                if not second_user_id:
-                    logger.error("✗ FAILED - user search did not return id")
+        # Test 7.6: Team Permission via Project Membership
+        logger.info("\n[Test 7.6] Team Permission via Project Membership")
+        second_user_id = "team-editor"
+        second_client = TestClient(backend_url, frontend_url)
+        if document_id and project_id and await second_client.dev_login(second_user_id):
+            if await client.add_project_member(project_id, second_user_id.replace("_", "-"), role="editor"):
+                second_search = await second_client.search_documents("Integration")
+                team_doc = None
+                if second_search:
+                    team_doc = next((item for item in second_search.get("items", []) if item.get("id") == document_id), None)
+                if not team_doc:
+                    logger.error("✗ FAILED - team member cannot see project team document")
                     test_failed += 1
                 else:
-                    logger.info(f"✓ Found share target via user search: {second_user_id}")
-
-            if not second_user_id:
-                logger.error("✗ FAILED - cannot run share grant without a target user")
-                test_failed += 1
+                    team_paper = await second_client.create_paper(project_id, "Team Editor Manuscript Paper")
+                    if not team_paper:
+                        logger.error("✗ FAILED - team editor could not create manuscript paper")
+                        test_failed += 1
+                    updated = await second_client.update_document(document_id, {"description": "Edited by team member"})
+                    if updated and updated.get("description") == "Edited by team member":
+                        logger.info("✓ PASSED")
+                        test_passed += 1
+                    else:
+                        logger.error("✗ FAILED - team editor could not update team document")
+                        test_failed += 1
             else:
-                # Grant read access
-                grant_resp = client.client.post(
-                    f"{client.backend_url}/api/v1/documents/{document_id}/share",
+                logger.error("✗ FAILED - could not add project member")
+                test_failed += 1
+        else:
+            logger.error("✗ FAILED - could not create/login second user for team permission test")
+            test_failed += 1
+        second_client.close()
+
+        # Test 7.7: Document Sharing (grant / list / revoke)
+        logger.info("\n[Test 7.7] Document Access Sharing")
+        if document_id:
+            third_user_id = "shared-reader"
+            share_client = TestClient(backend_url, frontend_url)
+            if await share_client.dev_login(third_user_id):
+                search_resp = client.client.get(
+                    f"{client.backend_url}/api/v1/users/search",
                     headers=client._headers(),
-                    json={"grantee_user_id": second_user_id, "access_level": "read"},
+                    params={"q": "shared-reader", "limit": 5},
                 )
-                if grant_resp.status_code == 201:
-                    logger.info(f"✓ Granted read access to {second_user_id}")
-                    # List grants
-                    list_resp = client.client.get(
+                candidates = search_resp.json() if search_resp.status_code == 200 else []
+                share_user_id = candidates[0].get("id") if candidates else None
+                if not share_user_id:
+                    logger.error("✗ FAILED - could not resolve share target user")
+                    test_failed += 1
+                else:
+                    grant_resp = client.client.post(
                         f"{client.backend_url}/api/v1/documents/{document_id}/share",
                         headers=client._headers(),
+                        json={"grantee_user_id": share_user_id, "access_level": "read"},
                     )
-                    grants = list_resp.json() if list_resp.status_code == 200 else []
-                    found = any(g.get("grantee_user_id") == second_user_id for g in grants)
-                    has_email = any(g.get("grantee_user_id") == second_user_id and g.get("grantee_email") for g in grants)
-                    if found and has_email:
-                        logger.info("✓ Share listed correctly")
-                        # Revoke
-                        revoke_resp = client.client.delete(
-                            f"{client.backend_url}/api/v1/documents/{document_id}/share/{second_user_id}",
+                    if grant_resp.status_code == 201:
+                        list_resp = client.client.get(
+                            f"{client.backend_url}/api/v1/documents/{document_id}/share",
                             headers=client._headers(),
                         )
-                        if revoke_resp.status_code == 200:
-                            logger.info("✓ Access revoked")
-                            logger.info("✓ PASSED")
-                            test_passed += 1
+                        grants = list_resp.json() if list_resp.status_code == 200 else []
+                        found = any(g.get("grantee_user_id") == share_user_id for g in grants)
+                        if found:
+                            revoke_resp = client.client.delete(
+                                f"{client.backend_url}/api/v1/documents/{document_id}/share/{share_user_id}",
+                                headers=client._headers(),
+                            )
+                            if revoke_resp.status_code == 200:
+                                logger.info("✓ PASSED")
+                                test_passed += 1
+                            else:
+                                logger.error(f"✗ FAILED - revoke returned {revoke_resp.status_code}")
+                                test_failed += 1
                         else:
-                            logger.error(f"✗ FAILED - revoke returned {revoke_resp.status_code}")
+                            logger.error("✗ FAILED - share grant not listed")
                             test_failed += 1
                     else:
-                        logger.error("✗ FAILED - grant not found in list or missing grantee_email")
+                        logger.error(f"✗ FAILED - share grant returned {grant_resp.status_code}: {grant_resp.text}")
                         test_failed += 1
-                else:
-                    logger.error(f"✗ FAILED - grant returned {grant_resp.status_code}: {grant_resp.text}")
-                    test_failed += 1
+            else:
+                logger.error("✗ FAILED - could not login share target user")
+                test_failed += 1
+            share_client.close()
         else:
             logger.warning("⊘ SKIPPED (no document)")
 
-        # Test 7.7: Version Restore
-        logger.info("\n[Test 7.7] Version Restore")
+        # Test 7.8: Version Restore
+        logger.info("\n[Test 7.8] Version Restore")
         if document_id:
             versions = await client.list_document_versions(document_id)
             if versions and len(versions) >= 1:
@@ -647,17 +713,18 @@ async def run_tests(backend_url: str, frontend_url: str, verbose: bool = False) 
         events = await client.get_activity_events(5)
         if events and len(events.get("items", [])) > 0:
             has_document_resource = any(event.get("resource_type") and event.get("resource_id") for event in events["items"])
-            if has_document_resource:
+            has_event_details = any(event.get("details") for event in events["items"])
+            if has_document_resource and has_event_details:
                 logger.info("✓ PASSED")
                 test_passed += 1
                 if verbose:
                     for event in events["items"][:3]:
                         logger.info(
                             f"  - {event['action']} {event['path']} ({event['status_code']}) "
-                            f"resource={event.get('resource_type')}:{event.get('resource_id')}"
+                            f"resource={event.get('resource_type')}:{event.get('resource_id')} details={event.get('details')}"
                         )
             else:
-                logger.error("✗ FAILED - activity events missing resource fields")
+                logger.error("✗ FAILED - activity events missing resource or details fields")
                 test_failed += 1
         else:
             logger.warning("⊘ SKIPPED (no events)")

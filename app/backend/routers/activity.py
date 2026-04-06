@@ -1,5 +1,6 @@
+import json
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from dependencies.auth import get_admin_user
 from dependencies.database import get_db
@@ -22,6 +23,7 @@ class ActivityEventResponse(BaseModel):
     user_id: Optional[str]
     resource_type: Optional[str]
     resource_id: Optional[str]
+    details: Optional[dict[str, Any]]
     request_id: Optional[str]
     ip_address: Optional[str]
     user_agent: Optional[str]
@@ -35,6 +37,19 @@ class ActivityEventResponse(BaseModel):
         if hasattr(value, "isoformat"):
             return value.isoformat()
         return value
+
+    @field_validator("details", mode="before")
+    @classmethod
+    def parse_details(cls, value):
+        if value is None or isinstance(value, dict):
+            return value
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                return {"raw": value}
+            return parsed if isinstance(parsed, dict) else {"value": parsed}
+        return {"value": value}
 
     class Config:
         from_attributes = True
@@ -55,6 +70,7 @@ class ActivitySummaryResponse(BaseModel):
 async def list_activity_events(
     user_id: Optional[str] = Query(None),
     event_type: Optional[str] = Query(None),
+    action: Optional[str] = Query(None),
     path: Optional[str] = Query(None),
     resource_type: Optional[str] = Query(None),
     resource_id: Optional[str] = Query(None),
@@ -75,6 +91,9 @@ async def list_activity_events(
     if event_type:
         query = query.where(ActivityEvent.event_type == event_type)
         count_query = count_query.where(ActivityEvent.event_type == event_type)
+    if action:
+        query = query.where(ActivityEvent.action == action)
+        count_query = count_query.where(ActivityEvent.action == action)
     if path:
         query = query.where(ActivityEvent.path.ilike(f"%{path}%"))
         count_query = count_query.where(ActivityEvent.path.ilike(f"%{path}%"))
@@ -107,7 +126,28 @@ async def list_activity_events(
     )
     items = result.scalars().all()
 
-    return ActivityEventListResponse(total=total, items=items)
+    response_items = [
+        ActivityEventResponse(
+            id=item.id,
+            event_type=item.event_type,
+            action=item.action,
+            path=item.path,
+            status_code=item.status_code,
+            user_id=item.user_id,
+            resource_type=item.resource_type,
+            resource_id=item.resource_id,
+            details=item.details_json,
+            request_id=item.request_id,
+            ip_address=item.ip_address,
+            user_agent=item.user_agent,
+            error_type=item.error_type,
+            duration_ms=item.duration_ms,
+            created_at=item.created_at,
+        )
+        for item in items
+    ]
+
+    return ActivityEventListResponse(total=total, items=response_items)
 
 
 @router.get("/summary", response_model=ActivitySummaryResponse)

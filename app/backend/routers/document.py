@@ -1,16 +1,16 @@
 import json
 import re
 from datetime import date, datetime, time, timezone
-from typing import List
+from typing import Any, List
 from uuid import uuid4
 
-from dependencies.auth import get_current_user
-from dependencies.database import get_db
 from core.config import settings
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from dependencies.auth import get_current_user
+from dependencies.database import get_db
 from models.auth import User
 from models.document import Document, DocumentAccessGrant, DocumentVersion
-from models.manuscript import Project
+from models.manuscript import Project, ProjectMember
 from schemas.auth import UserResponse
 from schemas.document import (
     DocumentCreate,
@@ -31,7 +31,7 @@ from schemas.storage import FileUpDownRequest, FileUpDownResponse
 from services.activity import log_activity_event
 from services.rate_limit import rate_limiter
 from services.storage import StorageService
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
@@ -62,6 +62,42 @@ async def ensure_owned_project_or_404(session: AsyncSession, project_id: str, us
     return project
 
 
+async def get_project_collaboration_role(session: AsyncSession, project_id: str, user_id: str) -> str | None:
+    project_result = await session.execute(select(Project).where(Project.id == project_id))
+    project = project_result.scalar_one_or_none()
+    if not project:
+        return None
+
+    if not project.owner_user_id:
+        project.owner_user_id = user_id
+        await session.commit()
+        await session.refresh(project)
+
+    if project.owner_user_id == user_id:
+        return "editor"
+
+    member_result = await session.execute(
+        select(ProjectMember.role).where(
+            ProjectMember.project_id == project_id,
+            ProjectMember.user_id == user_id,
+        )
+    )
+    return member_result.scalar_one_or_none()
+
+
+async def ensure_project_write_access_or_404(session: AsyncSession, project_id: str, user_id: str) -> Project:
+    project_result = await session.execute(select(Project).where(Project.id == project_id))
+    project = project_result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    role = await get_project_collaboration_role(session, project_id, user_id)
+    if role != "editor":
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    return project
+
+
 async def get_owned_document_or_404(
     session: AsyncSession,
     document_id: str,
@@ -80,6 +116,77 @@ async def get_owned_document_or_404(
     return document
 
 
+async def resolve_document_access(
+    session: AsyncSession,
+    document: Document,
+    user_id: str,
+) -> tuple[str, bool] | None:
+    if document.owner_user_id == user_id:
+        return ("owner", True)
+
+    grant_result = await session.execute(
+        select(DocumentAccessGrant.access_level).where(
+            DocumentAccessGrant.document_id == document.id,
+            DocumentAccessGrant.grantee_user_id == user_id,
+        )
+    )
+    shared_access = grant_result.scalar_one_or_none()
+
+    project_role = None
+    if document.permission == "team" and document.project_id:
+        project_role = await get_project_collaboration_role(session, document.project_id, user_id)
+
+    if shared_access == "edit" or project_role == "editor":
+        return ("edit", False)
+    if shared_access == "read" or project_role == "viewer":
+        return ("read", False)
+    if document.permission == "public":
+        return ("read", False)
+    return None
+
+
+async def annotate_document_access(session: AsyncSession, document: Document, user_id: str) -> Document:
+    access = await resolve_document_access(session, document, user_id)
+    if access:
+        setattr(document, "effective_access_level", access[0])
+        setattr(document, "is_owner", access[1])
+    return document
+
+
+def build_document_access_condition(user_id: str):
+    shared_exists = (
+        select(DocumentAccessGrant.id)
+        .where(
+            DocumentAccessGrant.document_id == Document.id,
+            DocumentAccessGrant.grantee_user_id == user_id,
+        )
+        .exists()
+    )
+    team_owner_exists = (
+        select(Project.id)
+        .where(
+            Project.id == Document.project_id,
+            Project.owner_user_id == user_id,
+        )
+        .exists()
+    )
+    team_member_exists = (
+        select(ProjectMember.id)
+        .where(
+            ProjectMember.project_id == Document.project_id,
+            ProjectMember.user_id == user_id,
+        )
+        .exists()
+    )
+
+    return or_(
+        Document.owner_user_id == user_id,
+        shared_exists,
+        and_(Document.permission == "team", or_(team_owner_exists, team_member_exists)),
+        Document.permission == "public",
+    )
+
+
 async def get_document_with_access_or_404(
     session: AsyncSession,
     document_id: str,
@@ -87,7 +194,7 @@ async def get_document_with_access_or_404(
     require_write: bool = False,
     include_deleted: bool = False,
 ) -> Document:
-    """Return document if user owns it, has a share grant, or document is public.
+    """Return document if user owns it, has a share grant, belongs to the project team, or document is public.
     Sets synthetic attributes `effective_access_level` and `is_owner` on the returned object.
     """
     result = await session.execute(
@@ -97,30 +204,12 @@ async def get_document_with_access_or_404(
     if not document or (document.is_deleted and not include_deleted):
         raise HTTPException(status_code=404, detail="Document not found")
 
-    if document.owner_user_id == user_id:
-        setattr(document, "effective_access_level", "owner")
-        setattr(document, "is_owner", True)
-        return document
-
-    # Public documents are readable by all authenticated users
-    if document.permission == "public" and not require_write:
-        setattr(document, "effective_access_level", "read")
-        setattr(document, "is_owner", False)
-        return document
-
-    # Check explicit share grant
-    grant_result = await session.execute(
-        select(DocumentAccessGrant).where(
-            DocumentAccessGrant.document_id == document_id,
-            DocumentAccessGrant.grantee_user_id == user_id,
-        )
-    )
-    grant = grant_result.scalar_one_or_none()
-    if grant:
-        if require_write and grant.access_level != "edit":
+    access = await resolve_document_access(session, document, user_id)
+    if access:
+        if require_write and access[0] not in {"edit", "owner"}:
             raise HTTPException(status_code=403, detail="You have read-only access to this document")
-        setattr(document, "effective_access_level", grant.access_level)
-        setattr(document, "is_owner", False)
+        setattr(document, "effective_access_level", access[0])
+        setattr(document, "is_owner", access[1])
         return document
 
     raise HTTPException(status_code=404, detail="Document not found")
@@ -189,6 +278,7 @@ async def log_document_activity(
     user_id: str,
     resource_type: str,
     resource_id: str,
+    details: dict[str, Any] | None = None,
     status_code: int = 200,
 ) -> None:
     await log_activity_event(
@@ -199,6 +289,7 @@ async def log_document_activity(
         user_id=user_id,
         resource_type=resource_type,
         resource_id=resource_id,
+        details=details,
         request_id=getattr(request.state, "request_id", None),
         ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
@@ -236,7 +327,7 @@ async def create_document(
     current_user: UserResponse = Depends(get_current_user),
 ):
     if payload.project_id:
-        await ensure_owned_project_or_404(session, payload.project_id, current_user.id)
+        await ensure_project_write_access_or_404(session, payload.project_id, current_user.id)
 
     ensure_permission_allowed(payload.permission, current_user, payload.project_id)
     ensure_status_allowed(payload.status, current_user)
@@ -264,6 +355,12 @@ async def create_document(
         user_id=current_user.id,
         resource_type="document",
         resource_id=document.id,
+        details={
+            "title": document.title,
+            "permission": document.permission,
+            "status": document.status,
+            "project_id": document.project_id,
+        },
         status_code=201,
     )
     return document
@@ -277,41 +374,20 @@ async def list_documents(
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    stmt = select(Document).where(Document.owner_user_id == current_user.id)
+    if include_shared:
+        stmt = select(Document).where(build_document_access_condition(current_user.id))
+    else:
+        stmt = select(Document).where(Document.owner_user_id == current_user.id)
     if project_id:
         stmt = stmt.where(Document.project_id == project_id)
     if not include_deleted:
         stmt = stmt.where(Document.is_deleted.is_(False))
 
     result = await session.execute(stmt.order_by(Document.updated_at.desc(), Document.created_at.desc()))
-    owned_docs: List[Document] = list(result.scalars().all())
-    for doc in owned_docs:
-        setattr(doc, "effective_access_level", "owner")
-        setattr(doc, "is_owner", True)
-
-    if not include_shared:
-        return owned_docs
-
-    # Fetch documents this user has an explicit share grant for
-    shared_stmt = (
-        select(Document, DocumentAccessGrant.access_level)
-        .join(DocumentAccessGrant, DocumentAccessGrant.document_id == Document.id)
-        .where(
-            DocumentAccessGrant.grantee_user_id == current_user.id,
-            Document.is_deleted.is_(False),
-        )
-    )
-    shared_result = await session.execute(shared_stmt)
-    shared_docs: List[Document] = []
-    owned_ids = {d.id for d in owned_docs}
-    for row in shared_result.all():
-        doc, access_level = row[0], row[1]
-        if doc.id not in owned_ids:
-            setattr(doc, "effective_access_level", access_level)
-            setattr(doc, "is_owner", False)
-            shared_docs.append(doc)
-
-    return owned_docs + shared_docs
+    documents = list(result.scalars().all())
+    for document in documents:
+        await annotate_document_access(session, document, current_user.id)
+    return documents
 
 
 @router.get("/search", response_model=DocumentListResponse)
@@ -344,17 +420,15 @@ async def search_documents(
                 detail=f"Search rate limit exceeded, retry after {retry_after} seconds",
             )
 
-    effective_owner_user_id = current_user.id
+    effective_owner_user_id = None
     if owner_user_id:
         if current_user.role != "admin" and owner_user_id != current_user.id:
             raise HTTPException(status_code=403, detail="Only admin can query other owners")
         effective_owner_user_id = owner_user_id
 
-    stmt = select(Document).where(Document.owner_user_id == effective_owner_user_id, Document.is_deleted.is_(False))
-    count_stmt = select(func.count()).select_from(Document).where(
-        Document.owner_user_id == effective_owner_user_id,
-        Document.is_deleted.is_(False),
-    )
+    access_condition = build_document_access_condition(current_user.id)
+    stmt = select(Document).where(access_condition, Document.is_deleted.is_(False))
+    count_stmt = select(func.count()).select_from(Document).where(access_condition, Document.is_deleted.is_(False))
     use_postgres_fts_ordering = False
     fts_vector = None
     fts_query = None
@@ -363,6 +437,9 @@ async def search_documents(
     if project_id:
         stmt = stmt.where(Document.project_id == project_id)
         count_stmt = count_stmt.where(Document.project_id == project_id)
+    if effective_owner_user_id:
+        stmt = stmt.where(Document.owner_user_id == effective_owner_user_id)
+        count_stmt = count_stmt.where(Document.owner_user_id == effective_owner_user_id)
     if status:
         stmt = stmt.where(Document.status == status)
         count_stmt = count_stmt.where(Document.status == status)
@@ -445,10 +522,14 @@ async def search_documents(
             document = row[0]
             search_highlight = row[1] if len(row) > 1 else None
             setattr(document, "search_highlight", search_highlight)
+            await annotate_document_access(session, document, current_user.id)
             items.append(document)
         return DocumentListResponse(total=total, items=items)
 
-    return DocumentListResponse(total=total, items=result.scalars().all())
+    items = list(result.scalars().all())
+    for document in items:
+        await annotate_document_access(session, document, current_user.id)
+    return DocumentListResponse(total=total, items=items)
 
 
 @router.get("/recycle-bin", response_model=DocumentListResponse)
@@ -482,7 +563,7 @@ async def create_document_upload_url(
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    document = await get_owned_document_or_404(session, document_id, current_user.id)
+    document = await get_document_with_access_or_404(session, document_id, current_user.id, require_write=True)
 
     next_version = await get_next_document_version(session, document.id)
     safe_filename = sanitize_filename(payload.filename)
@@ -515,7 +596,7 @@ async def confirm_document_upload_complete(
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    document = await get_owned_document_or_404(session, document_id, current_user.id)
+    document = await get_document_with_access_or_404(session, document_id, current_user.id, require_write=True)
     next_version = await get_next_document_version(session, document.id)
 
     version = DocumentVersion(
@@ -545,6 +626,12 @@ async def confirm_document_upload_complete(
         user_id=current_user.id,
         resource_type="document_version",
         resource_id=version.id,
+        details={
+            "document_id": document.id,
+            "version_number": version.version_number,
+            "filename": version.filename,
+            "change_note": version.change_note,
+        },
         status_code=201,
     )
     return version
@@ -590,6 +677,11 @@ async def create_document_download_url(
         user_id=current_user.id,
         resource_type=resource_type,
         resource_id=resource_id,
+        details={
+            "document_id": document.id,
+            "version_id": payload.version_id,
+            "effective_access_level": getattr(document, "effective_access_level", None),
+        },
         status_code=200,
     )
     return download_data
@@ -675,6 +767,10 @@ async def grant_document_access(
             user_id=current_user.id,
             resource_type="document",
             resource_id=document_id,
+            details={
+                "grantee_user_id": payload.grantee_user_id,
+                "access_level": existing.access_level,
+            },
             status_code=201,
         )
         return DocumentShareResponse(
@@ -707,6 +803,10 @@ async def grant_document_access(
         user_id=current_user.id,
         resource_type="document",
         resource_id=document_id,
+        details={
+            "grantee_user_id": payload.grantee_user_id,
+            "access_level": payload.access_level,
+        },
         status_code=201,
     )
     return DocumentShareResponse(
@@ -749,6 +849,9 @@ async def revoke_document_access(
         user_id=current_user.id,
         resource_type="document",
         resource_id=document_id,
+        details={
+            "grantee_user_id": grantee_user_id,
+        },
         status_code=200,
     )
     return {"message": "Access revoked"}
@@ -765,8 +868,19 @@ async def update_document(
     document = await get_document_with_access_or_404(session, document_id, current_user.id, require_write=True)
 
     update_data = payload.model_dump(exclude_unset=True)
+    before_snapshot = {
+        "title": document.title,
+        "description": document.description,
+        "status": document.status,
+        "permission": document.permission,
+        "tags": json.loads(document.tags) if document.tags else [],
+        "bucket_name": document.bucket_name,
+        "object_key": document.object_key,
+    }
 
     if "permission" in update_data:
+        if not getattr(document, "is_owner", False):
+            raise HTTPException(status_code=403, detail="Only the owner can change document permission")
         effective_project_id = update_data.get("project_id", document.project_id)
         ensure_permission_allowed(update_data["permission"], current_user, effective_project_id)
 
@@ -787,6 +901,19 @@ async def update_document(
         user_id=current_user.id,
         resource_type="document",
         resource_id=document.id,
+        details={
+            "before": before_snapshot,
+            "after": {
+                "title": document.title,
+                "description": document.description,
+                "status": document.status,
+                "permission": document.permission,
+                "tags": json.loads(document.tags) if document.tags else [],
+                "bucket_name": document.bucket_name,
+                "object_key": document.object_key,
+            },
+            "changed_fields": list(update_data.keys()),
+        },
         status_code=200,
     )
     return document
@@ -811,6 +938,10 @@ async def soft_delete_document(
         user_id=current_user.id,
         resource_type="document",
         resource_id=document.id,
+        details={
+            "title": document.title,
+            "deleted_at": document.deleted_at.isoformat() if document.deleted_at else None,
+        },
         status_code=200,
     )
     return {"message": "Document moved to recycle bin"}
@@ -840,6 +971,10 @@ async def restore_document(
         user_id=current_user.id,
         resource_type="document",
         resource_id=document.id,
+        details={
+            "title": document.title,
+            "status": document.status,
+        },
         status_code=200,
     )
     return document
@@ -853,7 +988,7 @@ async def create_document_version(
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    document = await get_owned_document_or_404(session, document_id, current_user.id)
+    document = await get_document_with_access_or_404(session, document_id, current_user.id, require_write=True)
 
     if document.status == "archived":
         raise HTTPException(status_code=400, detail="Archived document does not accept new versions")
@@ -889,6 +1024,12 @@ async def create_document_version(
         user_id=current_user.id,
         resource_type="document_version",
         resource_id=version.id,
+        details={
+            "document_id": document.id,
+            "version_number": version.version_number,
+            "filename": version.filename,
+            "change_note": version.change_note,
+        },
         status_code=201,
     )
     return version
@@ -900,7 +1041,7 @@ async def list_document_versions(
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    document = await get_owned_document_or_404(session, document_id, current_user.id, include_deleted=True)
+    document = await get_document_with_access_or_404(session, document_id, current_user.id, include_deleted=True)
 
     result = await session.execute(
         select(DocumentVersion)
@@ -953,6 +1094,13 @@ async def restore_document_version(
         user_id=current_user.id,
         resource_type="document_version",
         resource_id=version.id,
+        details={
+            "document_id": document.id,
+            "restored_from_version_id": source_version.id,
+            "restored_from_version_number": source_version.version_number,
+            "new_version_number": version.version_number,
+            "change_note": version.change_note,
+        },
         status_code=201,
     )
     return version
@@ -969,7 +1117,8 @@ async def change_document_status(
     if payload.status is None:
         raise HTTPException(status_code=400, detail="status is required")
 
-    document = await get_owned_document_or_404(session, document_id, current_user.id)
+    document = await get_document_with_access_or_404(session, document_id, current_user.id, require_write=True)
+    previous_status = document.status
     ensure_status_transition_allowed(document.status, payload.status, current_user)
     document.status = payload.status
 
@@ -982,6 +1131,10 @@ async def change_document_status(
         user_id=current_user.id,
         resource_type="document",
         resource_id=document.id,
+        details={
+            "from_status": previous_status,
+            "to_status": payload.status,
+        },
         status_code=200,
     )
     return document

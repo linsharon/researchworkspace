@@ -1,18 +1,21 @@
 """Manuscript API router - papers, notes, highlights, concepts management."""
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from core.database import db_manager
 from dependencies.auth import get_current_user
 from dependencies.database import get_db
-from models.manuscript import Paper, Note, Highlight, Concept, Project, SearchRecord
+from models.auth import User
+from models.manuscript import Concept, Highlight, Note, Paper, Project, ProjectMember, SearchRecord
 from schemas.auth import UserResponse
+from services.activity import log_activity_event
 
 # ============================================================
 # Pydantic Schemas
@@ -94,6 +97,37 @@ class ProjectResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+ProjectMemberRole = Literal["viewer", "editor"]
+
+
+class ProjectMemberCreate(BaseModel):
+    user_id: str
+    role: ProjectMemberRole = "viewer"
+
+
+class ProjectMemberUpdate(BaseModel):
+    role: ProjectMemberRole
+
+
+class ProjectMemberResponse(BaseModel):
+    id: str
+    project_id: str
+    user_id: str
+    email: Optional[str] = None
+    name: Optional[str] = None
+    role: ProjectMemberRole
+    added_by_user_id: str
+    created_at: str
+    updated_at: str
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def convert_member_datetime(cls, value):
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+        return value
 
 
 class NoteCreate(BaseModel):
@@ -265,6 +299,175 @@ async def get_owned_project_or_404(session: AsyncSession, project_id: str, user_
     return project
 
 
+def project_read_condition(user_id: str):
+    member_exists = (
+        select(ProjectMember.id)
+        .where(
+            ProjectMember.project_id == Project.id,
+            ProjectMember.user_id == user_id,
+        )
+        .exists()
+    )
+    return or_(Project.owner_user_id == user_id, member_exists)
+
+
+def project_write_condition(user_id: str):
+    editor_exists = (
+        select(ProjectMember.id)
+        .where(
+            ProjectMember.project_id == Project.id,
+            ProjectMember.user_id == user_id,
+            ProjectMember.role == "editor",
+        )
+        .exists()
+    )
+    return or_(Project.owner_user_id == user_id, editor_exists)
+
+
+async def get_project_with_access_or_404(
+    session: AsyncSession,
+    project_id: str,
+    user_id: str,
+    require_write: bool = False,
+) -> Project:
+    result = await session.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    if not project.owner_user_id:
+        project.owner_user_id = user_id
+        await session.commit()
+        await session.refresh(project)
+        return project
+
+    if project.owner_user_id == user_id:
+        return project
+
+    member_result = await session.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == user_id,
+        )
+    )
+    member = member_result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if require_write and member.role != "editor":
+        raise HTTPException(status_code=403, detail="Project is read-only for current member role")
+    return project
+
+
+async def build_project_member_response(session: AsyncSession, member: ProjectMember) -> ProjectMemberResponse:
+    user_result = await session.execute(select(User).where(User.id == member.user_id))
+    user = user_result.scalar_one_or_none()
+    return ProjectMemberResponse(
+        id=member.id,
+        project_id=member.project_id,
+        user_id=member.user_id,
+        email=user.email if user else None,
+        name=user.name if user else None,
+        role=member.role,
+        added_by_user_id=member.added_by_user_id,
+        created_at=member.created_at,
+        updated_at=member.updated_at,
+    )
+
+
+def _to_audit_value(value):
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return value
+
+
+def serialize_paper_for_audit(paper: Paper) -> dict:
+    return {
+        "id": paper.id,
+        "project_id": paper.project_id,
+        "title": paper.title,
+        "authors": paper.authors,
+        "year": paper.year,
+        "journal": paper.journal,
+        "abstract": paper.abstract,
+        "url": paper.url,
+        "pdf_path": paper.pdf_path,
+        "discovery_path": paper.discovery_path,
+        "discovery_note": paper.discovery_note,
+        "is_entry_paper": paper.is_entry_paper,
+        "is_expanded_paper": paper.is_expanded_paper,
+        "reading_status": paper.reading_status,
+        "relevance": paper.relevance,
+        "created_at": _to_audit_value(paper.created_at),
+        "updated_at": _to_audit_value(paper.updated_at),
+    }
+
+
+def serialize_note_for_audit(note: Note) -> dict:
+    return {
+        "id": note.id,
+        "paper_id": note.paper_id,
+        "project_id": note.project_id,
+        "title": note.title,
+        "description": note.description,
+        "note_type": note.note_type,
+        "page": note.page,
+        "keywords": note.keywords,
+        "citations": note.citations,
+        "content": note.content,
+        "created_at": _to_audit_value(note.created_at),
+        "updated_at": _to_audit_value(note.updated_at),
+    }
+
+
+def serialize_concept_for_audit(concept: Concept) -> dict:
+    return {
+        "id": concept.id,
+        "project_id": concept.project_id,
+        "title": concept.title,
+        "description": concept.description,
+        "definition": concept.definition,
+        "created_at": _to_audit_value(concept.created_at),
+        "updated_at": _to_audit_value(concept.updated_at),
+    }
+
+
+async def record_manuscript_write_activity(
+    *,
+    request: Request,
+    current_user: UserResponse,
+    action: str,
+    resource_type: str,
+    resource_id: str,
+    project_id: str,
+    before: Optional[dict],
+    after: Optional[dict],
+    changed_fields: Optional[list[str]] = None,
+) -> None:
+    details = {
+        "project_id": project_id,
+        "before": before,
+        "after": after,
+    }
+    if changed_fields is not None:
+        details["changed_fields"] = changed_fields
+
+    await log_activity_event(
+        event_type="manuscript.write",
+        action=action,
+        path=request.url.path,
+        status_code=200,
+        user_id=current_user.id,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        details=details,
+        request_id=getattr(request.state, "request_id", None),
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        error_type=None,
+        duration_ms=None,
+    )
+
+
 # --- Papers ---
 
 @router.post("/papers", response_model=PaperResponse)
@@ -274,7 +477,7 @@ async def create_paper(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Create a new paper"""
-    await get_owned_project_or_404(session, paper.project_id, current_user.id)
+    await get_project_with_access_or_404(session, paper.project_id, current_user.id, require_write=True)
     db_paper = Paper(
         id=str(uuid4()),
         title=paper.title,
@@ -301,7 +504,7 @@ async def list_papers(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """List all papers for a project"""
-    await get_owned_project_or_404(session, project_id, current_user.id)
+    await get_project_with_access_or_404(session, project_id, current_user.id)
     result = await session.execute(
         select(Paper).where(Paper.project_id == project_id)
     )
@@ -316,7 +519,7 @@ async def list_entry_papers(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """List entry papers and expanded papers for reading"""
-    await get_owned_project_or_404(session, project_id, current_user.id)
+    await get_project_with_access_or_404(session, project_id, current_user.id)
     result = await session.execute(
         select(Paper).where(
             (Paper.project_id == project_id)
@@ -337,7 +540,7 @@ async def get_paper(
     result = await session.execute(
         select(Paper)
         .join(Project, Paper.project_id == Project.id)
-        .where(Paper.id == paper_id, Project.owner_user_id == current_user.id)
+        .where(Paper.id == paper_id, project_read_condition(current_user.id))
     )
     paper = result.scalar_one_or_none()
     if not paper:
@@ -349,6 +552,7 @@ async def get_paper(
 async def update_paper(
     paper_id: str,
     paper_update: PaperUpdate,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -356,24 +560,37 @@ async def update_paper(
     result = await session.execute(
         select(Paper)
         .join(Project, Paper.project_id == Project.id)
-        .where(Paper.id == paper_id, Project.owner_user_id == current_user.id)
+        .where(Paper.id == paper_id, project_write_condition(current_user.id))
     )
     db_paper = result.scalar_one_or_none()
     if not db_paper:
         raise HTTPException(status_code=404, detail="Paper not found")
-    
+
+    before = serialize_paper_for_audit(db_paper)
     update_data = paper_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_paper, key, value)
-    
+
     await session.commit()
     await session.refresh(db_paper)
+    await record_manuscript_write_activity(
+        request=request,
+        current_user=current_user,
+        action="paper_update",
+        resource_type="paper",
+        resource_id=db_paper.id,
+        project_id=db_paper.project_id,
+        before=before,
+        after=serialize_paper_for_audit(db_paper),
+        changed_fields=sorted(update_data.keys()),
+    )
     return db_paper
 
 
 @router.delete("/papers/{paper_id}")
 async def delete_paper(
     paper_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -381,14 +598,25 @@ async def delete_paper(
     result = await session.execute(
         select(Paper)
         .join(Project, Paper.project_id == Project.id)
-        .where(Paper.id == paper_id, Project.owner_user_id == current_user.id)
+        .where(Paper.id == paper_id, project_write_condition(current_user.id))
     )
     db_paper = result.scalar_one_or_none()
     if not db_paper:
         raise HTTPException(status_code=404, detail="Paper not found")
-    
+
+    before = serialize_paper_for_audit(db_paper)
     await session.delete(db_paper)
     await session.commit()
+    await record_manuscript_write_activity(
+        request=request,
+        current_user=current_user,
+        action="paper_delete",
+        resource_type="paper",
+        resource_id=paper_id,
+        project_id=before["project_id"],
+        before=before,
+        after=None,
+    )
     return {"message": "Paper deleted"}
 
 
@@ -401,7 +629,7 @@ async def create_note(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Create a new note"""
-    await get_owned_project_or_404(session, note.project_id, current_user.id)
+    await get_project_with_access_or_404(session, note.project_id, current_user.id, require_write=True)
 
     paper_result = await session.execute(
         select(Paper).where(Paper.id == note.paper_id, Paper.project_id == note.project_id)
@@ -436,7 +664,7 @@ async def list_notes(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """List notes for a paper or project."""
-    query = select(Note).join(Project, Note.project_id == Project.id).where(Project.owner_user_id == current_user.id)
+    query = select(Note).join(Project, Note.project_id == Project.id).where(project_read_condition(current_user.id))
     if paper_id:
         query = query.where(Note.paper_id == paper_id)
     if project_id:
@@ -458,7 +686,7 @@ async def get_note(
     result = await session.execute(
         select(Note)
         .join(Project, Note.project_id == Project.id)
-        .where(Note.id == note_id, Project.owner_user_id == current_user.id)
+        .where(Note.id == note_id, project_read_condition(current_user.id))
     )
     note = result.scalar_one_or_none()
     if not note:
@@ -470,6 +698,7 @@ async def get_note(
 async def update_note(
     note_id: str,
     note_update: NoteUpdate,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -477,24 +706,37 @@ async def update_note(
     result = await session.execute(
         select(Note)
         .join(Project, Note.project_id == Project.id)
-        .where(Note.id == note_id, Project.owner_user_id == current_user.id)
+        .where(Note.id == note_id, project_write_condition(current_user.id))
     )
     db_note = result.scalar_one_or_none()
     if not db_note:
         raise HTTPException(status_code=404, detail="Note not found")
-    
+
+    before = serialize_note_for_audit(db_note)
     update_data = note_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_note, key, value)
-    
+
     await session.commit()
     await session.refresh(db_note)
+    await record_manuscript_write_activity(
+        request=request,
+        current_user=current_user,
+        action="note_update",
+        resource_type="note",
+        resource_id=db_note.id,
+        project_id=db_note.project_id,
+        before=before,
+        after=serialize_note_for_audit(db_note),
+        changed_fields=sorted(update_data.keys()),
+    )
     return db_note
 
 
 @router.delete("/notes/{note_id}")
 async def delete_note(
     note_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -502,14 +744,25 @@ async def delete_note(
     result = await session.execute(
         select(Note)
         .join(Project, Note.project_id == Project.id)
-        .where(Note.id == note_id, Project.owner_user_id == current_user.id)
+        .where(Note.id == note_id, project_write_condition(current_user.id))
     )
     db_note = result.scalar_one_or_none()
     if not db_note:
         raise HTTPException(status_code=404, detail="Note not found")
-    
+
+    before = serialize_note_for_audit(db_note)
     await session.delete(db_note)
     await session.commit()
+    await record_manuscript_write_activity(
+        request=request,
+        current_user=current_user,
+        action="note_delete",
+        resource_type="note",
+        resource_id=note_id,
+        project_id=before["project_id"],
+        before=before,
+        after=None,
+    )
     return {"message": "Note deleted"}
 
 
@@ -525,7 +778,7 @@ async def create_highlight(
     paper_result = await session.execute(
         select(Paper)
         .join(Project, Paper.project_id == Project.id)
-        .where(Paper.id == highlight.paper_id, Project.owner_user_id == current_user.id)
+        .where(Paper.id == highlight.paper_id, project_write_condition(current_user.id))
     )
     paper = paper_result.scalar_one_or_none()
     if not paper:
@@ -556,7 +809,7 @@ async def list_highlights(
         select(Highlight)
         .join(Paper, Highlight.paper_id == Paper.id)
         .join(Project, Paper.project_id == Project.id)
-        .where(Highlight.paper_id == paper_id, Project.owner_user_id == current_user.id)
+        .where(Highlight.paper_id == paper_id, project_read_condition(current_user.id))
     )
     highlights = result.scalars().all()
     return highlights
@@ -573,7 +826,7 @@ async def delete_highlight(
         select(Highlight)
         .join(Paper, Highlight.paper_id == Paper.id)
         .join(Project, Paper.project_id == Project.id)
-        .where(Highlight.id == highlight_id, Project.owner_user_id == current_user.id)
+        .where(Highlight.id == highlight_id, project_write_condition(current_user.id))
     )
     db_highlight = result.scalar_one_or_none()
     if not db_highlight:
@@ -593,7 +846,7 @@ async def create_concept(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Create a new concept"""
-    await get_owned_project_or_404(session, concept.project_id, current_user.id)
+    await get_project_with_access_or_404(session, concept.project_id, current_user.id, require_write=True)
     db_concept = Concept(
         id=str(uuid4()),
         project_id=concept.project_id,
@@ -614,7 +867,7 @@ async def list_concepts(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """List all concepts for a project"""
-    await get_owned_project_or_404(session, project_id, current_user.id)
+    await get_project_with_access_or_404(session, project_id, current_user.id)
     result = await session.execute(
         select(Concept).where(Concept.project_id == project_id)
     )
@@ -626,6 +879,7 @@ async def list_concepts(
 async def update_concept(
     concept_id: str,
     concept_update: ConceptUpdate,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -633,24 +887,37 @@ async def update_concept(
     result = await session.execute(
         select(Concept)
         .join(Project, Concept.project_id == Project.id)
-        .where(Concept.id == concept_id, Project.owner_user_id == current_user.id)
+        .where(Concept.id == concept_id, project_write_condition(current_user.id))
     )
     db_concept = result.scalar_one_or_none()
     if not db_concept:
         raise HTTPException(status_code=404, detail="Concept not found")
 
+    before = serialize_concept_for_audit(db_concept)
     update_data = concept_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_concept, key, value)
 
     await session.commit()
     await session.refresh(db_concept)
+    await record_manuscript_write_activity(
+        request=request,
+        current_user=current_user,
+        action="concept_update",
+        resource_type="concept",
+        resource_id=db_concept.id,
+        project_id=db_concept.project_id,
+        before=before,
+        after=serialize_concept_for_audit(db_concept),
+        changed_fields=sorted(update_data.keys()),
+    )
     return db_concept
 
 
 @router.delete("/concepts/{concept_id}")
 async def delete_concept(
     concept_id: str,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -658,14 +925,25 @@ async def delete_concept(
     result = await session.execute(
         select(Concept)
         .join(Project, Concept.project_id == Project.id)
-        .where(Concept.id == concept_id, Project.owner_user_id == current_user.id)
+        .where(Concept.id == concept_id, project_write_condition(current_user.id))
     )
     db_concept = result.scalar_one_or_none()
     if not db_concept:
         raise HTTPException(status_code=404, detail="Concept not found")
 
+    before = serialize_concept_for_audit(db_concept)
     await session.delete(db_concept)
     await session.commit()
+    await record_manuscript_write_activity(
+        request=request,
+        current_user=current_user,
+        action="concept_delete",
+        resource_type="concept",
+        resource_id=concept_id,
+        project_id=before["project_id"],
+        before=before,
+        after=None,
+    )
     return {"message": "Concept deleted"}
 
 
@@ -678,7 +956,7 @@ async def create_search_record(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Create a search record"""
-    await get_owned_project_or_404(session, payload.project_id, current_user.id)
+    await get_project_with_access_or_404(session, payload.project_id, current_user.id, require_write=True)
     record = SearchRecord(
         id=str(uuid4()),
         project_id=payload.project_id,
@@ -700,7 +978,7 @@ async def list_search_records(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """List search records for a project"""
-    await get_owned_project_or_404(session, project_id, current_user.id)
+    await get_project_with_access_or_404(session, project_id, current_user.id)
     result = await session.execute(
         select(SearchRecord)
         .where(SearchRecord.project_id == project_id)
@@ -720,7 +998,7 @@ async def update_search_record(
     result = await session.execute(
         select(SearchRecord)
         .join(Project, SearchRecord.project_id == Project.id)
-        .where(SearchRecord.id == record_id, Project.owner_user_id == current_user.id)
+        .where(SearchRecord.id == record_id, project_write_condition(current_user.id))
     )
     record = result.scalar_one_or_none()
     if not record:
@@ -745,7 +1023,7 @@ async def delete_search_record(
     result = await session.execute(
         select(SearchRecord)
         .join(Project, SearchRecord.project_id == Project.id)
-        .where(SearchRecord.id == record_id, Project.owner_user_id == current_user.id)
+        .where(SearchRecord.id == record_id, project_write_condition(current_user.id))
     )
     record = result.scalar_one_or_none()
     if not record:
@@ -798,7 +1076,11 @@ async def list_projects(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """List all projects"""
-    result = await session.execute(select(Project).where(Project.owner_user_id == current_user.id))
+    result = await session.execute(
+        select(Project)
+        .where(project_read_condition(current_user.id))
+        .order_by(Project.updated_at.desc(), Project.created_at.desc())
+    )
     return result.scalars().all()
 
 
@@ -809,7 +1091,7 @@ async def get_project(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Get a specific project"""
-    project = await get_owned_project_or_404(session, project_id, current_user.id)
+    project = await get_project_with_access_or_404(session, project_id, current_user.id)
     return project
 
 
@@ -821,10 +1103,181 @@ async def update_project(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Update a project"""
-    project = await get_owned_project_or_404(session, project_id, current_user.id)
+    project = await get_project_with_access_or_404(session, project_id, current_user.id, require_write=True)
     update_data = project_update.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(project, key, value)
     await session.commit()
     await session.refresh(project)
     return project
+
+
+@router.get("/projects/{project_id}/members", response_model=List[ProjectMemberResponse])
+async def list_project_members(
+    project_id: str,
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    project = await get_owned_project_or_404(session, project_id, current_user.id)
+    result = await session.execute(
+        select(ProjectMember)
+        .where(ProjectMember.project_id == project.id)
+        .order_by(ProjectMember.created_at.asc())
+    )
+    members = result.scalars().all()
+    return [await build_project_member_response(session, member) for member in members]
+
+
+@router.post("/projects/{project_id}/members", response_model=ProjectMemberResponse, status_code=201)
+async def add_project_member(
+    project_id: str,
+    payload: ProjectMemberCreate,
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    project = await get_owned_project_or_404(session, project_id, current_user.id)
+    if payload.user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Project owner is already an implicit member")
+
+    user_result = await session.execute(select(User).where(User.id == payload.user_id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    existing_result = await session.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == payload.user_id,
+        )
+    )
+    member = existing_result.scalar_one_or_none()
+    previous_role = member.role if member else None
+    created = False
+
+    if member:
+        member.role = payload.role
+        member.added_by_user_id = current_user.id
+    else:
+        member = ProjectMember(
+            id=str(uuid4()),
+            project_id=project.id,
+            user_id=payload.user_id,
+            role=payload.role,
+            added_by_user_id=current_user.id,
+        )
+        session.add(member)
+        created = True
+
+    await session.commit()
+    await session.refresh(member)
+    await log_activity_event(
+        event_type="project.permission",
+        action="member_grant" if created else "member_update",
+        path=request.url.path,
+        status_code=201,
+        user_id=current_user.id,
+        resource_type="project",
+        resource_id=project.id,
+        details={
+            "member_user_id": payload.user_id,
+            "role": payload.role,
+            "previous_role": previous_role,
+        },
+        request_id=getattr(request.state, "request_id", None),
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        error_type=None,
+        duration_ms=None,
+    )
+    return await build_project_member_response(session, member)
+
+
+@router.patch("/projects/{project_id}/members/{member_user_id}", response_model=ProjectMemberResponse)
+async def update_project_member(
+    project_id: str,
+    member_user_id: str,
+    payload: ProjectMemberUpdate,
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    project = await get_owned_project_or_404(session, project_id, current_user.id)
+    result = await session.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == member_user_id,
+        )
+    )
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="Project member not found")
+
+    previous_role = member.role
+    member.role = payload.role
+    member.added_by_user_id = current_user.id
+    await session.commit()
+    await session.refresh(member)
+    await log_activity_event(
+        event_type="project.permission",
+        action="member_update",
+        path=request.url.path,
+        status_code=200,
+        user_id=current_user.id,
+        resource_type="project",
+        resource_id=project.id,
+        details={
+            "member_user_id": member_user_id,
+            "previous_role": previous_role,
+            "role": payload.role,
+        },
+        request_id=getattr(request.state, "request_id", None),
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        error_type=None,
+        duration_ms=None,
+    )
+    return await build_project_member_response(session, member)
+
+
+@router.delete("/projects/{project_id}/members/{member_user_id}")
+async def remove_project_member(
+    project_id: str,
+    member_user_id: str,
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    project = await get_owned_project_or_404(session, project_id, current_user.id)
+    result = await session.execute(
+        select(ProjectMember).where(
+            ProjectMember.project_id == project.id,
+            ProjectMember.user_id == member_user_id,
+        )
+    )
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="Project member not found")
+
+    removed_role = member.role
+    await session.delete(member)
+    await session.commit()
+    await log_activity_event(
+        event_type="project.permission",
+        action="member_revoke",
+        path=request.url.path,
+        status_code=200,
+        user_id=current_user.id,
+        resource_type="project",
+        resource_id=project.id,
+        details={
+            "member_user_id": member_user_id,
+            "removed_role": removed_role,
+        },
+        request_id=getattr(request.state, "request_id", None),
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        error_type=None,
+        duration_ms=None,
+    )
+    return {"message": "Project member removed"}

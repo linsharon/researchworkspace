@@ -7,10 +7,8 @@ import { getAPIBaseURL } from "./config";
 import { clearAuthSession, getAuthToken } from "./session";
 
 const API_BASE_URL = "/api/v1/manuscripts";
-const ENABLE_LOCAL_FALLBACK =
-  import.meta.env.DEV && import.meta.env.VITE_ENABLE_LOCAL_FALLBACK === "true";
-// In production, backend is authoritative and fallback is disabled.
-axios.defaults.timeout = ENABLE_LOCAL_FALLBACK ? 2500 : 10000;
+// M3 backend-first mode: backend is authoritative in all environments.
+axios.defaults.timeout = 10000;
 axios.interceptors.request.use((config) => {
   const token = getAuthToken();
   if (token) {
@@ -80,6 +78,26 @@ export interface Project {
   description?: string;
   created_at: string;
   updated_at: string;
+}
+
+export type ProjectMemberRole = "viewer" | "editor";
+
+export interface ProjectMember {
+  id: string;
+  project_id: string;
+  user_id: string;
+  email?: string;
+  name?: string;
+  role: ProjectMemberRole;
+  added_by_user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserSearchItem {
+  id: string;
+  email: string;
+  name?: string;
 }
 
 export interface Note {
@@ -152,42 +170,11 @@ const nowIso = () => new Date().toISOString();
 const makeId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
-const shouldFallbackToLocal = (error: unknown) => {
-  if (!ENABLE_LOCAL_FALLBACK) return false;
-  if (!canUseStorage()) return false;
-  if (!axios.isAxiosError(error)) return false;
-
-  if (error.code === "ECONNABORTED") return true;
-  if (!error.response) return true;
-
-  const status = error.response.status;
-  const requestUrl = (error.config?.url || "").toLowerCase();
-  const payload =
-    typeof error.response.data === "string"
-      ? error.response.data
-      : JSON.stringify(error.response.data || "");
-  const message = `${error.message || ""} ${payload}`.toLowerCase();
-
-  // Vite proxy/back-end offline often surfaces as 5xx with ECONNREFUSED in payload.
-  if (status >= 500) return true;
-  if (status === 404 && requestUrl.includes("/api/v1/manuscripts")) return true;
-  if (/econnrefused|proxy|failed to fetch|network error|socket hang up|timeout/.test(message)) {
-    return true;
-  }
-
-  return false;
-};
-
 const withLocalFallback = async <T>(
   remote: () => Promise<T>,
   fallback: () => T | Promise<T>
 ): Promise<T> => {
-  try {
-    return await remote();
-  } catch (error) {
-    if (!shouldFallbackToLocal(error)) throw error;
-    return await fallback();
-  }
+  return await remote();
 };
 
 const sortByUpdatedDesc = <T extends { updated_at?: string; created_at?: string }>(items: T[]) =>
@@ -738,5 +725,36 @@ export const projectAPI = {
         return updated;
       }
     );
+  },
+
+  listMembers: async (projectId: string): Promise<ProjectMember[]> => {
+    const response = await axios.get(`${API_BASE_URL}/projects/${projectId}/members`);
+    return response.data;
+  },
+
+  addMember: async (
+    projectId: string,
+    data: { user_id: string; role: ProjectMemberRole }
+  ): Promise<ProjectMember> => {
+    const response = await axios.post(`${API_BASE_URL}/projects/${projectId}/members`, data);
+    return response.data;
+  },
+
+  updateMember: async (
+    projectId: string,
+    memberUserId: string,
+    data: { role: ProjectMemberRole }
+  ): Promise<ProjectMember> => {
+    const response = await axios.patch(`${API_BASE_URL}/projects/${projectId}/members/${memberUserId}`, data);
+    return response.data;
+  },
+
+  removeMember: async (projectId: string, memberUserId: string): Promise<void> => {
+    await axios.delete(`${API_BASE_URL}/projects/${projectId}/members/${memberUserId}`);
+  },
+
+  searchUsers: async (q: string, limit = 8): Promise<UserSearchItem[]> => {
+    const response = await axios.get(`/api/v1/users/search`, { params: { q, limit } });
+    return response.data;
   },
 };

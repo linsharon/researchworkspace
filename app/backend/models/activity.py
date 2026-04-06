@@ -14,6 +14,7 @@ class ActivityEvent(Base):
     user_id = Column(String(255), nullable=True, index=True)
     resource_type = Column(String(100), nullable=True, index=True)
     resource_id = Column(String(255), nullable=True, index=True)
+    details_json = Column(Text, nullable=True)
     request_id = Column(String(100), nullable=True, index=True)
     ip_address = Column(String(64), nullable=True)
     user_agent = Column(Text, nullable=True)

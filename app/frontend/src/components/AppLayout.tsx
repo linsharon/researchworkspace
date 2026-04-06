@@ -17,6 +17,7 @@ import {
   Archive,
   FileText,
   Map,
+  Users,
   ChevronDown,
   CheckCircle2,
   Plus,
@@ -201,6 +202,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
             >
               <LayoutDashboard className="w-4 h-4 shrink-0" />
               <span className="truncate">{t("nav.dashboard")}</span>
+            </div>
+          </Link>
+
+          <Link to="/projects/members" className="mt-2 block">
+            <div
+              className={cn(
+                "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border",
+                location.pathname === "/projects/members"
+                  ? "bg-violet-600/20 text-violet-300 border-violet-600/40"
+                  : "text-slate-400 border-slate-700/40 hover:bg-slate-800/60 hover:text-slate-200"
+              )}
+            >
+              <Users className="w-4 h-4 shrink-0" />
+              <span className="truncate">Project Members</span>
             </div>
           </Link>
 

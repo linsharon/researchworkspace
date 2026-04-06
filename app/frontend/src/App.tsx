@@ -20,6 +20,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import AdminActivity from './pages/AdminActivity';
 import DocumentCenter from './pages/DocumentCenter';
+import ProjectMembers from './pages/ProjectMembers';
 // MODULE_IMPORTS_START
 // MODULE_IMPORTS_END
 
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="/draft" element={<ProtectedRoute><DraftStudio /></ProtectedRoute>} />
               <Route path="/admin/activity" element={<ProtectedAdminRoute><AdminActivity /></ProtectedAdminRoute>} />
               <Route path="/documents" element={<ProtectedRoute><DocumentCenter /></ProtectedRoute>} />
+              <Route path="/projects/members" element={<ProtectedRoute><ProjectMembers /></ProtectedRoute>} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/auth/error" element={<AuthError />} />
               {/* MODULE_ROUTES_START */}

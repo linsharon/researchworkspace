@@ -21,6 +21,9 @@ interface ActivityEvent {
   path: string;
   status_code: number;
   user_id?: string | null;
+  resource_type?: string | null;
+  resource_id?: string | null;
+  details?: Record<string, unknown> | null;
   request_id?: string | null;
   duration_ms?: number | null;
   created_at: string;
@@ -36,7 +39,11 @@ export default function AdminActivity() {
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [userIdFilter, setUserIdFilter] = useState('');
+  const [eventTypeFilter, setEventTypeFilter] = useState('');
+  const [actionFilter, setActionFilter] = useState('');
   const [pathFilter, setPathFilter] = useState('');
+  const [resourceTypeFilter, setResourceTypeFilter] = useState('');
 
   const baseURL = getAPIBaseURL();
 
@@ -60,7 +67,11 @@ export default function AdminActivity() {
         params: {
           limit: 50,
           offset,
+          user_id: userIdFilter || undefined,
+          event_type: eventTypeFilter || undefined,
+          action: actionFilter || undefined,
           path: pathFilter || undefined,
+          resource_type: resourceTypeFilter || undefined,
         },
       });
       setEvents(response.data.items);
@@ -77,7 +88,7 @@ export default function AdminActivity() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-6xl mx-auto space-y-4">
+      <div className="p-6 max-w-7xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-slate-100">Admin Activity Audit</h1>
           <Button onClick={() => { void fetchSummary(); void fetchEvents(0); }} size="sm">
@@ -102,14 +113,49 @@ export default function AdminActivity() {
 
         <Card className="border-slate-700/50">
           <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2">
+              <Input
+                value={userIdFilter}
+                onChange={(e) => setUserIdFilter(e.target.value)}
+                placeholder="Filter by user ID"
+              />
+              <Input
+                value={eventTypeFilter}
+                onChange={(e) => setEventTypeFilter(e.target.value)}
+                placeholder="Filter by event type"
+              />
+              <Input
+                value={actionFilter}
+                onChange={(e) => setActionFilter(e.target.value)}
+                placeholder="Filter by action"
+              />
               <Input
                 value={pathFilter}
                 onChange={(e) => setPathFilter(e.target.value)}
                 placeholder="Filter by path (e.g. /api/v1/manuscripts)"
-                className="max-w-md"
               />
+              <Input
+                value={resourceTypeFilter}
+                onChange={(e) => setResourceTypeFilter(e.target.value)}
+                placeholder="Filter by resource type"
+              />
+            </div>
+            <div className="flex items-center gap-2 pt-2">
               <Button size="sm" variant="outline" onClick={() => void fetchEvents(0)}>Apply</Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setUserIdFilter('');
+                  setEventTypeFilter('');
+                  setActionFilter('');
+                  setPathFilter('');
+                  setResourceTypeFilter('');
+                  void fetchEvents(0);
+                }}
+              >
+                Reset
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -119,13 +165,20 @@ export default function AdminActivity() {
               {!loading && events.map((event) => (
                 <div key={event.id} className="rounded border border-slate-700/50 p-3 text-sm">
                   <div className="flex items-center gap-2 flex-wrap">
+                    <Badge>{event.event_type}</Badge>
                     <Badge variant="outline">{event.action}</Badge>
                     <Badge variant={event.status_code < 400 ? 'secondary' : 'destructive'}>{event.status_code}</Badge>
                     <span className="text-slate-300">{event.path}</span>
+                    {event.resource_type && <Badge variant="secondary">{event.resource_type}</Badge>}
                   </div>
                   <div className="mt-1 text-xs text-slate-400">
-                    {event.created_at} | user: {event.user_id || 'anonymous'} | req: {event.request_id || '-'} | {event.duration_ms ?? 0} ms
+                    {event.created_at} | user: {event.user_id || 'anonymous'} | resource: {event.resource_id || '-'} | req: {event.request_id || '-'} | {event.duration_ms ?? 0} ms
                   </div>
+                  {event.details && (
+                    <pre className="mt-2 overflow-x-auto rounded bg-slate-950/70 p-2 text-[11px] text-slate-300">
+                      {JSON.stringify(event.details, null, 2)}
+                    </pre>
+                  )}
                 </div>
               ))}
             </div>

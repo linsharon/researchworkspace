@@ -1,7 +1,7 @@
 from models.activity import ActivityEvent
 from models.auth import OIDCState, User
 from models.document import Document, DocumentAccessGrant, DocumentVersion
-from models.manuscript import Concept, Highlight, Note, Paper, Project, SearchRecord
+from models.manuscript import Concept, Highlight, Note, Paper, Project, ProjectMember, SearchRecord
 
 __all__ = [
     "ActivityEvent",
@@ -15,5 +15,6 @@ __all__ = [
     "Note",
     "Paper",
     "Project",
+    "ProjectMember",
     "SearchRecord",
 ]

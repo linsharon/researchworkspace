@@ -59,6 +59,8 @@ export interface DocumentItem {
   bucket_name?: string | null;
   object_key?: string | null;
   search_highlight?: string | null;
+  effective_access_level: "read" | "edit" | "owner";
+  is_owner: boolean;
   is_deleted: boolean;
   deleted_at?: string | null;
   created_at: string;

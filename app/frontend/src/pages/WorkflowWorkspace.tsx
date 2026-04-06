@@ -97,6 +97,80 @@ import Step3ReadFoundPapers from "@/components/workflow/Step3ReadFoundPapers";
 
 // Paper decision history — shared localStorage key with Step 3
 const PAPER_DECISIONS_KEY = "rw-paper-decisions";
+const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
+const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
+const WORKFLOW_CACHE_META_KEY = "rw-workflow-cache-meta";
+const WORKFLOW_CACHE_VERSION = "m3-2026-04-06";
+const WORKFLOW_AUX_CACHE_KEYS = [PAPER_DECISIONS_KEY, ARTIFACTS_STORAGE_KEY] as const;
+
+type WorkflowCacheMeta = {
+  marker: "workflow-aux-cache";
+  version: string;
+  lastCheckedAt: string;
+  lastInvalidatedAt?: string;
+  reason?: string;
+  invalidatedKeys?: string[];
+};
+
+const writeWorkflowCacheMeta = (partial: Partial<WorkflowCacheMeta>) => {
+  if (typeof window === "undefined") return;
+  let previous: WorkflowCacheMeta | null = null;
+  try {
+    const raw = window.localStorage.getItem(WORKFLOW_CACHE_META_KEY);
+    previous = raw ? (JSON.parse(raw) as WorkflowCacheMeta) : null;
+  } catch {
+    previous = null;
+  }
+
+  const next: WorkflowCacheMeta = {
+    marker: "workflow-aux-cache",
+    version: WORKFLOW_CACHE_VERSION,
+    lastCheckedAt: new Date().toISOString(),
+    lastInvalidatedAt: previous?.lastInvalidatedAt,
+    reason: previous?.reason,
+    invalidatedKeys: previous?.invalidatedKeys,
+    ...partial,
+  };
+  window.localStorage.setItem(WORKFLOW_CACHE_META_KEY, JSON.stringify(next));
+};
+
+const clearWorkflowAuxCaches = (reason: string) => {
+  if (typeof window === "undefined") return;
+
+  WORKFLOW_AUX_CACHE_KEYS.forEach((key) => {
+    window.localStorage.removeItem(key);
+  });
+  window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+  writeWorkflowCacheMeta({
+    lastInvalidatedAt: new Date().toISOString(),
+    reason,
+    invalidatedKeys: [...WORKFLOW_AUX_CACHE_KEYS],
+  });
+};
+
+const ensureWorkflowAuxCacheVersion = () => {
+  if (typeof window === "undefined") return;
+
+  let meta: WorkflowCacheMeta | null = null;
+  try {
+    const raw = window.localStorage.getItem(WORKFLOW_CACHE_META_KEY);
+    meta = raw ? (JSON.parse(raw) as WorkflowCacheMeta) : null;
+  } catch {
+    meta = null;
+  }
+
+  if (!meta) {
+    writeWorkflowCacheMeta({ reason: "initialized", invalidatedKeys: [] });
+    return;
+  }
+
+  if (meta.version !== WORKFLOW_CACHE_VERSION) {
+    clearWorkflowAuxCaches(`version-mismatch:${meta.version}->${WORKFLOW_CACHE_VERSION}`);
+    return;
+  }
+
+  writeWorkflowCacheMeta({});
+};
 
 const recordPaperDecision = (title: string, decision: string, projectId: string) => {
   if (typeof window === "undefined") return;
@@ -166,11 +240,22 @@ export default function WorkflowWorkspace() {
       .catch(() => {});
   }, [projectId]);
 
+  useEffect(() => {
+    ensureWorkflowAuxCacheVersion();
+  }, []);
+
+  const handleClearWorkflowCaches = () => {
+    clearWorkflowAuxCaches("manual-clear");
+    toast.success("Workflow 辅助缓存已清理", {
+      description: "已清除决策历史和 Artifact 本地缓存。",
+    });
+  };
+
   return (
     <AppLayout>
       <div className="p-6 max-w-5xl mx-auto space-y-5">
         {/* Step Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-violet-700 flex items-center justify-center text-xl">
               {stepMeta.icon}
@@ -186,24 +271,30 @@ export default function WorkflowWorkspace() {
               </p>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-1 text-xs whitespace-nowrap">
-            <span className="font-semibold text-slate-400 mr-1">Workflow:</span>
-            {workflowMenuItems.map((item, index) => (
-              <div key={item.step} className="flex items-center gap-1">
-                {index > 0 && <span className="text-slate-600">&gt;</span>}
-                <Link
-                  to={`/workflow/${projectId}/${item.step}`}
-                  className={cn(
-                    "px-1.5 py-0.5 rounded transition-colors",
-                    item.step === currentStep
-                      ? "bg-violet-700 text-white font-medium"
-                      : "text-slate-500 hover:text-slate-200 hover:bg-slate-700/60"
-                  )}
-                >
-                  {item.label}
-                </Link>
-              </div>
-            ))}
+          <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-1 text-xs whitespace-nowrap">
+              <span className="font-semibold text-slate-400 mr-1">Workflow:</span>
+              {workflowMenuItems.map((item, index) => (
+                <div key={item.step} className="flex items-center gap-1">
+                  {index > 0 && <span className="text-slate-600">&gt;</span>}
+                  <Link
+                    to={`/workflow/${projectId}/${item.step}`}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded transition-colors",
+                      item.step === currentStep
+                        ? "bg-violet-700 text-white font-medium"
+                        : "text-slate-500 hover:text-slate-200 hover:bg-slate-700/60"
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                </div>
+              ))}
+            </div>
+            <Button variant="outline" size="sm" onClick={handleClearWorkflowCaches}>
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              清理缓存
+            </Button>
           </div>
         </div>
 
@@ -273,7 +364,6 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
   };
 
   const handleGeneratePurposeCard = () => {
-    const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
     const title =
       selected.length
         ? `Research Purpose: ${selected.slice(0, 2).join(", ")}${selected.length > 2 ? "..." : ""}`
@@ -496,13 +586,11 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     };
   };
 
-  const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
-  const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
   const [searchParams, setSearchParams] = useSearchParams();
   const [addedToCenterIds, setAddedToCenterIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set<string>();
     try {
-      const saved = window.localStorage.getItem("rw-artifacts");
+      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
       const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
       return new Set(
         (Array.isArray(parsed) ? parsed : [])
@@ -1187,28 +1275,6 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         const doiUrl = doi ? `https://doi.org/${encodeURIComponent(doi)}` : undefined;
         const externalSourceUrl = buildDatabaseSearchUrl(record.database, normalizedQuery, doi, title);
 
-        const fallbackPaper: CandidatePaper = {
-          id: `paper-${Date.now()}-${Math.random()}`,
-          title,
-          authors,
-          year,
-          journal,
-          abstract: "",
-          researchQuestion: "",
-          theory: "",
-          method: "",
-          findings: "",
-          relevance: undefined,
-          isEntryPaper: false,
-          annotations: [],
-          discoveryPath: record.database,
-          discoveryNote: `From Search Log: ${normalizedQuery}`,
-          searchRecordId: record.id,
-          doi,
-          doiUrl,
-          externalSourceUrl: item.URL || externalSourceUrl,
-        };
-
         try {
           const created = await paperAPI.create({
             title,
@@ -1227,7 +1293,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             externalSourceUrl: item.URL || externalSourceUrl,
           });
         } catch {
-          imported.push(fallbackPaper);
+          failedCount += 1;
         }
 
         if (doiLower) existingByDoi.add(doiLower);
@@ -1235,10 +1301,17 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       }
 
       if (!imported.length) {
-        toast.info("本次结果全部是重复文献，未新增 candidate papers");
-      } else {
-        setCandidatePapers((prev) => [...prev, ...imported]);
+        if (failedCount > 0) {
+          toast.error("候选文献写入失败，未新增数据", {
+            description: `${failedCount} 篇写入后端失败`,
+          });
+        } else {
+          toast.info("本次结果全部是重复文献，未新增 candidate papers");
+        }
+        return true;
       }
+
+      setCandidatePapers((prev) => [...prev, ...imported]);
 
       setSearchRecordOffsets((prev) => ({ ...prev, [record.id]: currentOffset + 10 }));
       const nextResults = totalResults || record.results;
@@ -1264,7 +1337,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       }
 
       toast.success(`已导入 ${imported.length} 篇候选文献`, {
-        description: duplicateCount > 0 ? `跳过重复文献 ${duplicateCount} 篇` : `来自 ${record.database}`,
+        description:
+          failedCount > 0
+            ? `${failedCount} 篇写入后端失败，已跳过`
+            : duplicateCount > 0
+              ? `跳过重复文献 ${duplicateCount} 篇`
+              : `来自 ${record.database}`,
       });
       return true;
     } catch {
@@ -1550,26 +1628,8 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       const localPaper = apiPaperToLocal(created);
       setCandidatePapers((prev) => [...prev, { ...localPaper, searchRecordId: newPaperSearchRecordId || undefined }]);
     } catch {
-      // fallback: add locally with temp id
-      const newPaper: CandidatePaper = {
-        id: `paper-${Date.now()}`,
-        title: newPaperTitle.trim(),
-        authors: newPaperAuthors.split(",").map((a) => a.trim()).filter(Boolean),
-        year: parseInt(newPaperYear) || new Date().getFullYear(),
-        journal: newPaperJournal.trim() || "Unknown",
-        abstract: "",
-        researchQuestion: "",
-        theory: "",
-        method: "",
-        findings: "",
-        relevance: undefined,
-        isEntryPaper: false,
-        annotations: [],
-        discoveryPath: resolvedDiscoveryPath,
-        discoveryNote: resolvedDiscoveryNote,
-        searchRecordId: newPaperSearchRecordId || undefined,
-      };
-      setCandidatePapers((prev) => [...prev, newPaper]);
+      toast.error("新增论文失败，请稍后重试");
+      return;
     }
     setShowAddPaperDialog(false);
     setNewPaperTitle("");
@@ -1645,24 +1705,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             searchRecordId: bulkSearchRecordId || undefined,
           });
         } catch {
-          imported.push({
-            id: `paper-${Date.now()}-${Math.random()}`,
-            title,
-            authors,
-            year: year || new Date().getFullYear(),
-            journal: journal || "Unknown",
-            abstract: "",
-            researchQuestion: "",
-            theory: "",
-            method: "",
-            findings: "",
-            relevance: undefined,
-            isEntryPaper: false,
-            annotations: [],
-            discoveryPath: resolvedDiscoveryPath,
-            discoveryNote: resolvedDiscoveryNote,
-            searchRecordId: bulkSearchRecordId || undefined,
-          });
+          failedCount += 1;
         }
       } catch {
         failedCount += 1;

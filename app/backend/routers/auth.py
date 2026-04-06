@@ -111,10 +111,10 @@ def get_frontend_base_url(request: Request) -> str:
 async def perform_dev_login(request: Request, db: AsyncSession) -> RedirectResponse:
     auth_service = AuthService(db)
 
-    dev_user_id = os.getenv("DEV_AUTH_USER_ID", "dev-user")
-    dev_user_email = os.getenv("DEV_AUTH_USER_EMAIL", "dev.user@example.com")
-    dev_user_name = os.getenv("DEV_AUTH_USER_NAME", "Dev User")
-    dev_user_role = os.getenv("DEV_AUTH_USER_ROLE", "admin")
+    dev_user_id = request.query_params.get("user_id") or os.getenv("DEV_AUTH_USER_ID", "dev-user")
+    dev_user_email = request.query_params.get("email") or os.getenv("DEV_AUTH_USER_EMAIL", "dev.user@example.com")
+    dev_user_name = request.query_params.get("name") or os.getenv("DEV_AUTH_USER_NAME", "Dev User")
+    dev_user_role = request.query_params.get("role") or os.getenv("DEV_AUTH_USER_ROLE", "admin")
 
     user = await auth_service.get_or_create_user(
         platform_sub=dev_user_id,

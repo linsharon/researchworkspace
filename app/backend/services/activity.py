@@ -1,4 +1,5 @@
 import logging
+import json
 from typing import Optional
 
 from core.auth import AccessTokenError, decode_access_token
@@ -37,6 +38,7 @@ async def log_activity_event(
     user_id: Optional[str],
     resource_type: Optional[str] = None,
     resource_id: Optional[str] = None,
+    details: Optional[dict] = None,
     request_id: Optional[str],
     ip_address: Optional[str],
     user_agent: Optional[str],
@@ -57,6 +59,7 @@ async def log_activity_event(
                 user_id=user_id,
                 resource_type=resource_type,
                 resource_id=resource_id,
+                details_json=json.dumps(details, ensure_ascii=True, sort_keys=True, default=str) if details else None,
                 request_id=request_id,
                 ip_address=ip_address,
                 user_agent=user_agent,

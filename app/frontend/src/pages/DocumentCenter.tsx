@@ -80,6 +80,7 @@ export default function DocumentCenter() {
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [newTags, setNewTags] = useState("");
+  const [newProjectId, setNewProjectId] = useState("");
   const [newPermission, setNewPermission] = useState<DocumentPermission>("private");
 
   const [selectedDoc, setSelectedDoc] = useState<DocumentItem | null>(null);
@@ -254,15 +255,21 @@ export default function DocumentCenter() {
 
     setCreating(true);
     try {
+      if (newPermission === "team" && !newProjectId.trim()) {
+        toast.error("Team document requires a project ID");
+        return;
+      }
       await documentAPI.create({
         title,
         description: newDescription.trim() || undefined,
         tags,
+        project_id: newProjectId.trim() || undefined,
         permission: newPermission,
       });
       setNewTitle("");
       setNewDescription("");
       setNewTags("");
+      setNewProjectId("");
       setNewPermission("private");
       toast.success("Document created");
       await loadDocuments(0);
@@ -457,6 +464,7 @@ export default function DocumentCenter() {
                 </SelectContent>
               </Select>
             </div>
+            <Input value={newProjectId} onChange={(e) => setNewProjectId(e.target.value)} placeholder="Project ID (required for team permission)" />
             <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" />
             <Input value={newTags} onChange={(e) => setNewTags(e.target.value)} placeholder="Tags (comma separated)" />
             <Button size="sm" onClick={() => void handleCreateDocument()} disabled={creating}>
@@ -555,8 +563,10 @@ export default function DocumentCenter() {
                               <h3 className="text-sm font-medium text-slate-100">{doc.title}</h3>
                               <Badge variant="secondary">{doc.status}</Badge>
                               <Badge variant="outline">{doc.permission}</Badge>
+                              <Badge variant="outline">{doc.effective_access_level}</Badge>
                             </div>
                             <p className="text-xs text-slate-400">Updated: {readableDate(doc.updated_at)}</p>
+                            <p className="text-xs text-slate-500">Owner: {doc.owner_user_id}{doc.project_id ? ` | Project: ${doc.project_id}` : ""}</p>
                             {doc.search_highlight && (
                               <p className="text-xs leading-5 text-slate-300">
                                 Match: {renderHighlightedSnippet(doc.search_highlight)}
@@ -567,7 +577,7 @@ export default function DocumentCenter() {
                             )}
                           </div>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <Select value={doc.status} onValueChange={(v) => void handleStatusChange(doc, v as DocumentStatus)}>
+                            <Select value={doc.status} onValueChange={(v) => void handleStatusChange(doc, v as DocumentStatus)} disabled={doc.effective_access_level === "read"}>
                               <SelectTrigger className="w-[130px] h-8"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 {statusOptions.filter((item) => item.value !== "all").map((item) => (
@@ -578,7 +588,7 @@ export default function DocumentCenter() {
                             <Button variant="outline" size="sm" onClick={() => void loadVersions(doc)}>
                               Versions
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => void loadShares(doc)}>
+                            <Button variant="outline" size="sm" disabled={!doc.is_owner} onClick={() => void loadShares(doc)}>
                               <Share2 className="w-3 h-3 mr-1" />
                               Share
                             </Button>
@@ -598,13 +608,13 @@ export default function DocumentCenter() {
                             <Button
                               variant="outline"
                               size="sm"
-                              disabled={uploadingDocumentId === doc.id}
+                              disabled={uploadingDocumentId === doc.id || doc.effective_access_level === "read"}
                               onClick={() => handleSelectUploadDocument(doc)}
                             >
                               <Upload className="w-3 h-3 mr-1" />
                               {uploadingDocumentId === doc.id ? "Uploading..." : "Upload Version"}
                             </Button>
-                            <Button variant="destructive" size="sm" onClick={() => void handleDelete(doc)}>
+                            <Button variant="destructive" size="sm" disabled={!doc.is_owner} onClick={() => void handleDelete(doc)}>
                               <Trash2 className="w-3 h-3 mr-1" /> Delete
                             </Button>
                           </div>
@@ -709,6 +719,7 @@ export default function DocumentCenter() {
                           <Button
                             size="sm"
                             variant="outline"
+                            disabled={selectedDoc?.effective_access_level === "read"}
                             onClick={() => void handleRestoreVersion(selectedDoc, version)}
                           >
                             <RotateCcw className="w-3 h-3 mr-1" />
