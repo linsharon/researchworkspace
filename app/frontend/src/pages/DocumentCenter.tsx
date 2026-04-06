@@ -15,6 +15,7 @@ import {
   type DocumentPermission,
   type DocumentShareItem,
   type DocumentStatus,
+  type UserSearchItem,
   type DocumentVersionItem,
 } from "@/lib/document-api";
 
@@ -88,7 +89,10 @@ export default function DocumentCenter() {
   const [shareDoc, setShareDoc] = useState<DocumentItem | null>(null);
   const [shares, setShares] = useState<DocumentShareItem[]>([]);
   const [sharesLoading, setSharesLoading] = useState(false);
-  const [newGranteeId, setNewGranteeId] = useState("");
+  const [shareQuery, setShareQuery] = useState("");
+  const [shareCandidates, setShareCandidates] = useState<UserSearchItem[]>([]);
+  const [shareSearchLoading, setShareSearchLoading] = useState(false);
+  const [selectedCandidate, setSelectedCandidate] = useState<UserSearchItem | null>(null);
   const [newGrantLevel, setNewGrantLevel] = useState<DocumentAccessLevel>("read");
 
   const totalPages = useMemo(() => Math.max(Math.ceil(total / PAGE_SIZE), 1), [total]);
@@ -149,7 +153,9 @@ export default function DocumentCenter() {
   const loadShares = async (doc: DocumentItem) => {
     setShareDoc(doc);
     setSharesLoading(true);
-    setNewGranteeId("");
+    setShareQuery("");
+    setShareCandidates([]);
+    setSelectedCandidate(null);
     setNewGrantLevel("read");
     try {
       const data = await documentAPI.listShares(doc.id);
@@ -164,17 +170,19 @@ export default function DocumentCenter() {
   };
 
   const handleGrantShare = async () => {
-    if (!shareDoc || !newGranteeId.trim()) {
-      toast.error("User ID is required");
+    if (!shareDoc || !selectedCandidate?.id) {
+      toast.error("Please select a user to grant access");
       return;
     }
     try {
       await documentAPI.grantShare(shareDoc.id, {
-        grantee_user_id: newGranteeId.trim(),
+        grantee_user_id: selectedCandidate.id,
         access_level: newGrantLevel,
       });
       toast.success("Access granted");
-      setNewGranteeId("");
+      setShareQuery("");
+      setShareCandidates([]);
+      setSelectedCandidate(null);
       await loadShares(shareDoc);
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -193,6 +201,39 @@ export default function DocumentCenter() {
       toast.error(detail || "Failed to revoke access");
     }
   };
+
+  useEffect(() => {
+    const keyword = shareQuery.trim();
+    if (!keyword || keyword.length < 2) {
+      setShareCandidates([]);
+      setShareSearchLoading(false);
+      return;
+    }
+
+    let active = true;
+    setShareSearchLoading(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const users = await documentAPI.searchUsers(keyword, 8);
+        if (active) {
+          setShareCandidates(users);
+        }
+      } catch (error) {
+        if (active) {
+          setShareCandidates([]);
+        }
+      } finally {
+        if (active) {
+          setShareSearchLoading(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [shareQuery]);
 
   useEffect(() => {
     void loadDocuments(0);
@@ -682,9 +723,12 @@ export default function DocumentCenter() {
                   <div className="flex gap-1 flex-wrap">
                     <Input
                       className="flex-1 min-w-[140px] h-7 text-xs"
-                      placeholder="User ID to grant"
-                      value={newGranteeId}
-                      onChange={(e) => setNewGranteeId(e.target.value)}
+                      placeholder="Search user by email/name"
+                      value={shareQuery}
+                      onChange={(e) => {
+                        setShareQuery(e.target.value);
+                        setSelectedCandidate(null);
+                      }}
                     />
                     <Select value={newGrantLevel} onValueChange={(v) => setNewGrantLevel(v as DocumentAccessLevel)}>
                       <SelectTrigger className="w-[90px] h-7 text-xs">
@@ -699,6 +743,40 @@ export default function DocumentCenter() {
                       Grant
                     </Button>
                   </div>
+
+                  {shareSearchLoading && <p className="text-[11px] text-slate-400">Searching users...</p>}
+                  {!shareSearchLoading && shareQuery.trim().length >= 2 && shareCandidates.length === 0 && (
+                    <p className="text-[11px] text-slate-500">No users matched your query.</p>
+                  )}
+                  {shareCandidates.length > 0 && (
+                    <div className="space-y-1">
+                      {shareCandidates.map((candidate) => {
+                        const isSelected = selectedCandidate?.id === candidate.id;
+                        return (
+                          <button
+                            key={candidate.id}
+                            type="button"
+                            className={`w-full text-left p-1.5 rounded border text-xs transition ${
+                              isSelected
+                                ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-200"
+                                : "border-slate-700/50 bg-slate-900/40 text-slate-300 hover:border-slate-500/60"
+                            }`}
+                            onClick={() => setSelectedCandidate(candidate)}
+                          >
+                            <div className="font-medium truncate">{candidate.email}</div>
+                            <div className="text-[10px] text-slate-400 truncate">
+                              {candidate.name || "(no name)"} · {candidate.id}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {selectedCandidate && (
+                    <p className="text-[11px] text-emerald-300">
+                      Selected: {selectedCandidate.email} ({selectedCandidate.id})
+                    </p>
+                  )}
 
                   {sharesLoading ? (
                     <p className="text-xs text-slate-400">Loading…</p>

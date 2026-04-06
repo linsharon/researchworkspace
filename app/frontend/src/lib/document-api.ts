@@ -40,6 +40,12 @@ export interface DocumentShareItem {
   updated_at: string;
 }
 
+export interface UserSearchItem {
+  id: string;
+  email: string;
+  name?: string | null;
+}
+
 export interface DocumentItem {
   id: string;
   owner_user_id: string;
@@ -281,6 +287,18 @@ export const documentAPI = {
   async revokeShare(documentId: string, granteeUserId: string): Promise<void> {
     try {
       await axios.delete(`${API_BASE_URL}/${documentId}/share/${granteeUserId}`, buildConfig());
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  async searchUsers(q: string, limit = 8): Promise<UserSearchItem[]> {
+    try {
+      const response = await axios.get(`/api/v1/users/search`, {
+        ...buildConfig(),
+        params: { q, limit },
+      });
+      return response.data;
     } catch (error) {
       return handleApiError(error);
     }

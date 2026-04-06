@@ -497,43 +497,65 @@ async def run_tests(backend_url: str, frontend_url: str, verbose: bool = False) 
 
         # Test 7.6: Document Sharing (grant / list / revoke)
         logger.info("\n[Test 7.6] Document Access Sharing")
-        second_user_id = "admin-staging"
         if document_id:
-            # Grant read access
-            grant_resp = client.client.post(
-                f"{client.backend_url}/api/v1/documents/{document_id}/share",
+            second_user_id = None
+            search_resp = client.client.get(
+                f"{client.backend_url}/api/v1/users/search",
                 headers=client._headers(),
-                json={"grantee_user_id": second_user_id, "access_level": "read"},
+                params={"q": "admin", "limit": 5},
             )
-            if grant_resp.status_code == 201:
-                logger.info(f"✓ Granted read access to {second_user_id}")
-                # List grants
-                list_resp = client.client.get(
+            candidates = search_resp.json() if search_resp.status_code == 200 else []
+            if search_resp.status_code != 200 or not candidates:
+                logger.error(f"✗ FAILED - user search returned {search_resp.status_code}: {search_resp.text}")
+                test_failed += 1
+            else:
+                second_user_id = candidates[0].get("id")
+                if not second_user_id:
+                    logger.error("✗ FAILED - user search did not return id")
+                    test_failed += 1
+                else:
+                    logger.info(f"✓ Found share target via user search: {second_user_id}")
+
+            if not second_user_id:
+                logger.error("✗ FAILED - cannot run share grant without a target user")
+                test_failed += 1
+            else:
+                # Grant read access
+                grant_resp = client.client.post(
                     f"{client.backend_url}/api/v1/documents/{document_id}/share",
                     headers=client._headers(),
+                    json={"grantee_user_id": second_user_id, "access_level": "read"},
                 )
-                grants = list_resp.json() if list_resp.status_code == 200 else []
-                found = any(g.get("grantee_user_id") == second_user_id for g in grants)
-                if found:
-                    logger.info("✓ Share listed correctly")
-                    # Revoke
-                    revoke_resp = client.client.delete(
-                        f"{client.backend_url}/api/v1/documents/{document_id}/share/{second_user_id}",
+                if grant_resp.status_code == 201:
+                    logger.info(f"✓ Granted read access to {second_user_id}")
+                    # List grants
+                    list_resp = client.client.get(
+                        f"{client.backend_url}/api/v1/documents/{document_id}/share",
                         headers=client._headers(),
                     )
-                    if revoke_resp.status_code == 200:
-                        logger.info("✓ Access revoked")
-                        logger.info("✓ PASSED")
-                        test_passed += 1
+                    grants = list_resp.json() if list_resp.status_code == 200 else []
+                    found = any(g.get("grantee_user_id") == second_user_id for g in grants)
+                    has_email = any(g.get("grantee_user_id") == second_user_id and g.get("grantee_email") for g in grants)
+                    if found and has_email:
+                        logger.info("✓ Share listed correctly")
+                        # Revoke
+                        revoke_resp = client.client.delete(
+                            f"{client.backend_url}/api/v1/documents/{document_id}/share/{second_user_id}",
+                            headers=client._headers(),
+                        )
+                        if revoke_resp.status_code == 200:
+                            logger.info("✓ Access revoked")
+                            logger.info("✓ PASSED")
+                            test_passed += 1
+                        else:
+                            logger.error(f"✗ FAILED - revoke returned {revoke_resp.status_code}")
+                            test_failed += 1
                     else:
-                        logger.error(f"✗ FAILED - revoke returned {revoke_resp.status_code}")
+                        logger.error("✗ FAILED - grant not found in list or missing grantee_email")
                         test_failed += 1
                 else:
-                    logger.error("✗ FAILED - grant not found in list")
+                    logger.error(f"✗ FAILED - grant returned {grant_resp.status_code}: {grant_resp.text}")
                     test_failed += 1
-            else:
-                logger.error(f"✗ FAILED - grant returned {grant_resp.status_code}: {grant_resp.text}")
-                test_failed += 1
         else:
             logger.warning("⊘ SKIPPED (no document)")
 
