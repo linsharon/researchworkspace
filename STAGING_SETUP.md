@@ -52,6 +52,8 @@ exit
 ```bash
 # Backend health check
 curl http://localhost:8000/database/health
+curl http://localhost:8000/ops/health/live
+curl http://localhost:8000/ops/health/ready
 
 # Frontend (if running with frontend profile)
 docker-compose --profile frontend up -d
@@ -221,8 +223,23 @@ DATABASE_URL=postgresql://rw_user:password@postgres:5432/research_workspace
 REDIS_URL=redis://redis:6379/0
 ENVIRONMENT=staging
 DEBUG=true
+CORS_ALLOW_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+MAX_UPLOAD_SIZE_MB=50
+ALLOWED_UPLOAD_MIME_TYPES=application/pdf,text/plain
 ADMIN_USER_EMAIL=admin@local.test
 ```
+
+## Backup & Restore Drill
+
+```bash
+# Backup
+./scripts/backup_postgres.sh
+
+# Restore
+./scripts/restore_postgres.sh backups/postgres/<dump-file>.dump
+```
+
+Detailed runbook: `BACKUP_RESTORE_PLAYBOOK.md`
 
 ### Frontend (.env)
 ```

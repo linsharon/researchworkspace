@@ -20,10 +20,10 @@
 - [x] Status state-machine (draft/review/published/archived)
 - [x] Tags and search support
 - [ ] File storage moved to S3/OSS (currently local uploads)
-- [ ] Presigned URLs for secure upload/download
+- [x] Presigned URLs for secure upload/download
 - [ ] Virus scanning on upload
-- [ ] File size limits enforced
-- [ ] Backup strategy documented
+- [x] File size limits enforced
+- [x] Backup strategy documented
 
 ## Phase 3: Activity Tracking ✓
 - [x] ActivityEvent model with all required fields

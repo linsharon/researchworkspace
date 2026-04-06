@@ -19,6 +19,7 @@ import models
 from services.database import initialize_database, close_database
 from services.auth import initialize_admin_user
 from services.activity import extract_user_id_from_bearer_token, log_activity_event
+from services.runtime_checks import validate_runtime_configuration
 # MODULE_IMPORTS_END
 
 
@@ -69,6 +70,7 @@ async def lifespan(app: FastAPI):
     logger.info("=== Application startup initiated ===")
 
     # MODULE_STARTUP_START
+    validate_runtime_configuration()
     await initialize_database()
     await initialize_admin_user()
     # MODULE_STARTUP_END
@@ -89,14 +91,29 @@ app = FastAPI(
 
 
 # MODULE_MIDDLEWARE_START
-app.add_middleware(
-    CORSMiddleware,
-    allow_origin_regex=r".*",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
+environment = (settings.environment or "development").strip().lower()
+production_like = environment in {"prod", "production", "staging"}
+configured_origins = settings.cors_allow_origin_list
+
+if production_like:
+    allow_origins = configured_origins or [settings.frontend_url]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allow_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r".*",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
 # MODULE_MIDDLEWARE_END
 
 

@@ -109,6 +109,6 @@ Acceptance:
 - [x] Plan committed
 - [x] M1 core done (auth + ownership isolation for manuscript APIs)
 - [x] M2 foundation done (activity_events table + request middleware + admin query API)
-- [~] M3 in progress (auth/session + protected routes + Step3/ArtifactCenter cleanup + Step2 concepts/search logs + dashboard key metrics moved to backend APIs)
-- [~] M4 started (document metadata + versioning + soft delete/restore + search/recycle-bin pagination + upload callback confirm APIs + permission/status guardrails)
-- [ ] M5 pending
+- [x] M3 done (frontend backend-first persistence and workflow cache governance)
+- [x] M4 done (document metadata/version lifecycle + upload/download safety checks + soft delete/restore + permission/status guardrails)
+- [~] M5 in progress (runtime config contract checks + health probes + backup/restore playbook and scripts)

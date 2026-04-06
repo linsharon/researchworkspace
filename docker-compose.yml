@@ -55,6 +55,9 @@ services:
       PRESIGNED_URL_EXPIRES_IN: ${PRESIGNED_URL_EXPIRES_IN:-900}
       ENVIRONMENT: staging
       DEBUG: "true"
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-50}
+      ALLOWED_UPLOAD_MIME_TYPES: ${ALLOWED_UPLOAD_MIME_TYPES:-application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document}
       HOST: 0.0.0.0
       PORT: 8000
       FRONTEND_URL: http://localhost:3000

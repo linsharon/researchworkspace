@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime
 from typing import List, Literal, Optional
 
@@ -150,8 +151,21 @@ class DocumentVersionRestoreRequest(BaseModel):
 class DocumentUploadInitRequest(BaseModel):
     filename: str
     content_type: Optional[str] = None
+    size_bytes: Optional[int] = Field(default=None, ge=0)
     bucket_name: str = "documents"
     object_prefix: Optional[str] = None
+
+    @field_validator("filename")
+    @classmethod
+    def validate_filename(cls, value):
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("filename is required")
+        if len(normalized) > 255:
+            raise ValueError("filename too long")
+        if "/" in normalized or "\\" in normalized:
+            raise ValueError("filename must not contain path separators")
+        return re.sub(r"[^A-Za-z0-9._-]", "-", normalized)
 
 
 class DocumentUploadInitResponse(BaseModel):
@@ -167,9 +181,21 @@ class DocumentUploadCompleteRequest(BaseModel):
     object_key: str
     filename: str
     content_type: Optional[str] = None
-    size_bytes: Optional[int] = None
+    size_bytes: Optional[int] = Field(default=None, ge=0)
     checksum: Optional[str] = None
     change_note: Optional[str] = None
+
+    @field_validator("filename")
+    @classmethod
+    def validate_complete_filename(cls, value):
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("filename is required")
+        if len(normalized) > 255:
+            raise ValueError("filename too long")
+        if "/" in normalized or "\\" in normalized:
+            raise ValueError("filename must not contain path separators")
+        return re.sub(r"[^A-Za-z0-9._-]", "-", normalized)
 
 
 class DocumentListResponse(BaseModel):

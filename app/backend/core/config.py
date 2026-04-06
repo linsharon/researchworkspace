@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     app_name: str = "FastAPI Modular Template"
     debug: bool = False
     version: str = "1.0.0"
+    environment: str = "development"
 
     # Server
     host: str = "0.0.0.0"
@@ -34,6 +35,9 @@ class Settings(BaseSettings):
     search_rate_limit_window_seconds: int = 60
     search_rate_limit_max_requests: int = 60
     allow_public_buckets: bool = False
+    cors_allow_origins: str = ""
+    max_upload_size_mb: int = 50
+    allowed_upload_mime_types: str = "application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
     # Database Configuration
     database_url: str = "sqlite+aiosqlite:///./app.db"
@@ -55,6 +59,20 @@ class Settings(BaseSettings):
             # Use localhost for external callbacks instead of 0.0.0.0
             display_host = "127.0.0.1" if self.host == "0.0.0.0" else self.host
             return os.environ.get("PYTHON_BACKEND_URL", f"http://{display_host}:{self.port}")
+
+    @property
+    def cors_allow_origin_list(self) -> list[str]:
+        if not self.cors_allow_origins:
+            return []
+        return [item.strip() for item in self.cors_allow_origins.split(",") if item.strip()]
+
+    @property
+    def allowed_upload_mime_type_set(self) -> set[str]:
+        return {
+            item.strip().lower()
+            for item in self.allowed_upload_mime_types.split(",")
+            if item.strip()
+        }
 
     class Config:
         case_sensitive = False

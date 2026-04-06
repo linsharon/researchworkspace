@@ -251,6 +251,28 @@ def sanitize_filename(filename: str) -> str:
     return safe[:255]
 
 
+def validate_upload_constraints(filename: str, content_type: str | None, size_bytes: int | None) -> None:
+    if len(filename) > 255:
+        raise HTTPException(status_code=400, detail="filename too long")
+
+    if size_bytes is not None:
+        max_bytes = settings.max_upload_size_mb * 1024 * 1024
+        if size_bytes > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Maximum allowed size is {settings.max_upload_size_mb} MB",
+            )
+
+    if content_type:
+        allowed_types = settings.allowed_upload_mime_type_set
+        normalized_type = content_type.lower().strip()
+        if allowed_types and normalized_type not in allowed_types:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Unsupported content type: {content_type}",
+            )
+
+
 def parse_datetime_filter(value: str, end_of_day: bool = False) -> datetime:
     normalized = value.strip()
     if not normalized:
@@ -564,6 +586,7 @@ async def create_document_upload_url(
     current_user: UserResponse = Depends(get_current_user),
 ):
     document = await get_document_with_access_or_404(session, document_id, current_user.id, require_write=True)
+    validate_upload_constraints(payload.filename, payload.content_type, payload.size_bytes)
 
     next_version = await get_next_document_version(session, document.id)
     safe_filename = sanitize_filename(payload.filename)
@@ -597,7 +620,17 @@ async def confirm_document_upload_complete(
     current_user: UserResponse = Depends(get_current_user),
 ):
     document = await get_document_with_access_or_404(session, document_id, current_user.id, require_write=True)
+    validate_upload_constraints(payload.filename, payload.content_type, payload.size_bytes)
     next_version = await get_next_document_version(session, document.id)
+
+    try:
+        storage_service = StorageService()
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    object_exists = await storage_service.object_exists(payload.bucket_name, payload.object_key)
+    if not object_exists:
+        raise HTTPException(status_code=400, detail="Uploaded object not found in storage")
 
     version = DocumentVersion(
         id=str(uuid4()),

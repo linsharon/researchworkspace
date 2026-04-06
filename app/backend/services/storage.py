@@ -9,6 +9,7 @@ import boto3
 import httpx
 import mimetypes
 from botocore.client import Config
+from botocore.exceptions import ClientError
 from core.config import settings
 from schemas.storage import (
     BucketInfo,
@@ -283,6 +284,23 @@ class StorageService:
         except Exception as e:
             logger.error(f"Failed to create MinIO/S3 download URL: {e}")
             raise
+
+    async def object_exists(self, bucket_name: str, object_key: str) -> bool:
+        """Check whether an object exists in configured storage backend."""
+        if self.storage_provider == "oss":
+            try:
+                await self.get_object_info(ObjectRequest(bucket_name=bucket_name, object_key=object_key))
+                return True
+            except Exception:
+                return False
+
+        try:
+            self.s3_client.head_object(Bucket=bucket_name, Key=object_key)
+            return True
+        except ClientError:
+            return False
+        except Exception:
+            return False
 
     async def _aget_oss_service(self, endpoint: str, params: dict) -> dict:
         return await self._arequest_oss_service("GET", endpoint, params=params)
