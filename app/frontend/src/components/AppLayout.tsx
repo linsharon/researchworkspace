@@ -72,7 +72,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const isPremiumUser = Boolean(user?.is_premium);
+  const isPremiumUser = Boolean(user?.is_premium) || user?.role === "admin";
   const hasReachedFreeProjectLimit = !isPremiumUser && projects.length >= 1;
 
   const reloadProjects = async () => {

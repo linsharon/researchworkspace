@@ -96,12 +96,12 @@ export default function DraftStudio() {
                     className={cn(
                       "p-3 rounded-lg border transition-all cursor-pointer group",
                       isInserted
-                        ? "border-emerald-200 bg-emerald-50/50"
+                        ? "border-cyan-500"
                         : "border-slate-700/50 bg-[#0d1b30] hover:border-cyan-600 hover:shadow-sm"
                     )}
                   >
                     <div className="flex items-start gap-2">
-                      <GripVertical className="w-3 h-3 text-slate-300 mt-0.5 shrink-0" />
+                      <GripVertical className="w-3 h-3 text-white mt-0.5 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <Badge
                           variant="secondary"
@@ -117,14 +117,14 @@ export default function DraftStudio() {
                           className={cn(
                             "text-xs font-medium line-clamp-2",
                             isInserted
-                              ? "text-emerald-700"
-                              : "text-slate-700 group-hover:text-cyan-300"
+                              ? "text-cyan-300"
+                              : "text-slate-300 group-hover:text-cyan-300"
                           )}
                         >
                           {artifact.title}
                         </p>
                         {isInserted && (
-                          <div className="flex items-center gap-1 mt-1 text-[10px] text-emerald-600">
+                          <div className="flex items-center gap-1 mt-1 text-[10px] text-cyan-400">
                             <CheckCircle2 className="w-3 h-3" />
                             Inserted
                           </div>

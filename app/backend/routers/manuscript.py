@@ -1378,7 +1378,7 @@ async def create_project(
         await session.refresh(existing)
         return existing
 
-    if not current_user.is_premium:
+    if not current_user.is_premium and current_user.role != "admin":
         owned_result = await session.execute(
             select(Project.id).where(Project.owner_user_id == current_user.id).limit(1)
         )
@@ -1450,7 +1450,7 @@ async def delete_project(
     current_user: UserResponse = Depends(get_current_user),
 ):
     """Delete a project and all dependent manuscript data (premium only)."""
-    if not current_user.is_premium:
+    if not current_user.is_premium and current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Premium subscription required to delete projects",

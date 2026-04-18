@@ -216,7 +216,7 @@ function AuthenticatedLanding() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
-  const isPremiumUser = Boolean(user?.is_premium);
+  const isPremiumUser = Boolean(user?.is_premium) || user?.role === "admin";
   const totalProjects = useMemo(() => projects.length, [projects.length]);
   const hasReachedFreeProjectLimit = !isPremiumUser && totalProjects >= 1;
 
