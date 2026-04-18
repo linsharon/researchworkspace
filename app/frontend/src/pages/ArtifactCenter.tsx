@@ -110,6 +110,7 @@ export default function ArtifactCenter() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const tabFromUrl = searchParams.get("tab") || "all";
+  const projectIdFromUrl = searchParams.get("projectId") || "";
   const [filter, setFilter] = useState(tabFromUrl);
   const [searchQuery, setSearchQuery] = useState("");
   const [artifacts, setArtifacts] = useState<Artifact[]>([...STATIC_ARTIFACTS]);
@@ -180,21 +181,28 @@ export default function ArtifactCenter() {
   useEffect(() => {
     const loadSavedNotes = async () => {
       try {
-        const projects = await projectAPI.list();
-        const allPapers = await Promise.all(projects.map((project) => paperAPI.list(project.id)));
-        const literatureArtifacts = allPapers
-          .flat()
+        const papers = projectIdFromUrl
+          ? await paperAPI.list(projectIdFromUrl)
+          : (await Promise.all((await projectAPI.list()).map((project) => paperAPI.list(project.id)))).flat();
+        const literatureArtifacts = papers
           .filter((paper) => paper.is_entry_paper || paper.is_expanded_paper)
           .map((paper) => paperToArtifact(paper));
-        const savedNotes = await noteAPI.listAll();
+        const savedNotes = projectIdFromUrl
+          ? await noteAPI.listByProject(projectIdFromUrl)
+          : await noteAPI.listAll();
         const savedNoteArtifacts = savedNotes.map(noteToArtifact);
-        const localArtifacts = loadLocalArtifacts();
+        const localArtifacts = loadLocalArtifacts().filter(
+          (artifact) => !projectIdFromUrl || artifact.projectId === projectIdFromUrl
+        );
         const merged = [...STATIC_ARTIFACTS, ...localArtifacts, ...literatureArtifacts, ...savedNoteArtifacts];
         const deduped = Array.from(new Map(merged.map((artifact) => [artifact.id, artifact])).values());
         setArtifacts(deduped);
       } catch (error) {
         console.error("Failed to load notes for Artifact Center:", error);
-        setArtifacts([...STATIC_ARTIFACTS, ...loadLocalArtifacts()]);
+        setArtifacts([
+          ...STATIC_ARTIFACTS,
+          ...loadLocalArtifacts().filter((artifact) => !projectIdFromUrl || artifact.projectId === projectIdFromUrl),
+        ]);
       }
     };
 
@@ -213,7 +221,7 @@ export default function ArtifactCenter() {
         window.removeEventListener("storage", onNotesUpdated);
       };
     }
-  }, []);
+  }, [projectIdFromUrl]);
 
   const filteredArtifacts = artifacts.filter((a) => {
     const matchesFilter =

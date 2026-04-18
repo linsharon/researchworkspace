@@ -1,5 +1,5 @@
 import { ReactNode, useState, useRef, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/lib/i18n";
@@ -40,6 +40,8 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t, lang, setLang } = useI18n();
   const { user, logout } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -79,8 +81,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
     const workflowMatch = location.pathname.match(/^\/workflow\/([^/]+)\//);
     if (workflowMatch?.[1]) {
       setActiveProjectId(workflowMatch[1]);
+      return;
     }
-  }, [location.pathname]);
+
+    if (location.pathname === "/artifacts") {
+      const projectIdFromQuery = searchParams.get("projectId");
+      if (projectIdFromQuery) {
+        setActiveProjectId(projectIdFromQuery);
+      }
+    }
+  }, [location.pathname, searchParams]);
 
   // Language switcher state
   const [showLangSwitcher, setShowLangSwitcher] = useState(false);
@@ -157,21 +167,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
   };
 
   const NAV_ITEMS = [
-    { path: activeProject.id ? `/workflow/${activeProject.id}/1` : "/", label: t("nav.purpose"), icon: Target },
-    { path: activeProject.id ? `/workflow/${activeProject.id}/2` : "/", label: t("nav.discover"), icon: Search },
-    { path: activeProject.id ? `/workflow/${activeProject.id}/3` : "/", label: t("nav.read"), icon: BookOpen },
-    { path: activeProject.id ? `/workflow/${activeProject.id}/4` : "/", label: t("nav.expand"), icon: Network },
-    { path: activeProject.id ? `/workflow/${activeProject.id}/5` : "/", label: t("nav.visualize"), icon: Eye },
-    { path: activeProject.id ? `/workflow/${activeProject.id}/6` : "/", label: t("nav.draft"), icon: PenTool },
+    { id: "wf-purpose", path: activeProject.id ? `/workflow/${activeProject.id}/1` : "/", label: t("nav.purpose"), icon: Target },
+    { id: "wf-discover", path: activeProject.id ? `/workflow/${activeProject.id}/2` : "/", label: t("nav.discover"), icon: Search },
+    { id: "wf-read", path: activeProject.id ? `/workflow/${activeProject.id}/3` : "/", label: t("nav.read"), icon: BookOpen },
+    { id: "wf-expand", path: activeProject.id ? `/workflow/${activeProject.id}/4` : "/", label: t("nav.expand"), icon: Network },
+    { id: "wf-visualize", path: activeProject.id ? `/workflow/${activeProject.id}/5` : "/", label: t("nav.visualize"), icon: Eye },
+    { id: "wf-draft", path: activeProject.id ? `/workflow/${activeProject.id}/6` : "/", label: t("nav.draft"), icon: PenTool },
   ];
 
+  const withProjectScope = (tab: string) =>
+    activeProject.id ? `/artifacts?tab=${tab}&projectId=${activeProject.id}` : `/artifacts?tab=${tab}`;
+
   const ARTIFACT_NAV_ITEMS = [
-    { path: "/artifacts?tab=all", label: t("nav.allArtifacts"), icon: Archive },
-    { path: "/artifacts?tab=purpose", label: t("nav.purposeCards"), icon: Target },
-    { path: "/artifacts?tab=search", label: t("nav.searchLogs"), icon: Search },
-    { path: "/artifacts?tab=notes", label: t("nav.notes"), icon: FileText },
-    { path: "/artifacts?tab=drafts", label: t("nav.drafts"), icon: PenTool },
-    { path: "/artifacts?tab=visual", label: t("nav.visualizations"), icon: Map },
+    { path: withProjectScope("all"), label: t("nav.allArtifacts"), icon: Archive },
+    { path: withProjectScope("purpose"), label: t("nav.purposeCards"), icon: Target },
+    { path: withProjectScope("search"), label: t("nav.searchLogs"), icon: Search },
+    { path: withProjectScope("notes"), label: t("nav.notes"), icon: FileText },
+    { path: withProjectScope("drafts"), label: t("nav.drafts"), icon: PenTool },
+    { path: withProjectScope("visual"), label: t("nav.visualizations"), icon: Map },
   ];
 
   return (
@@ -258,6 +271,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       onClick={() => {
                         setActiveProjectId(proj.id);
                         setShowProjectSwitcher(false);
+                        if (location.pathname.startsWith("/workflow/")) {
+                          const stepMatch = location.pathname.match(/^\/workflow\/[^/]+\/(\d+)/);
+                          const step = stepMatch?.[1] || "1";
+                          navigate(`/workflow/${proj.id}/${step}`);
+                          return;
+                        }
+
+                        if (location.pathname === "/artifacts") {
+                          const tab = searchParams.get("tab") || "all";
+                          navigate(`/artifacts?tab=${tab}&projectId=${proj.id}`);
+                        }
                       }}
                       data-selected={proj.id === activeProjectId}
                       className={cn(
@@ -356,7 +380,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               const isCurrent = stepNum === activeProject.currentStep;
 
               return (
-                <Link key={item.path} to={item.path}>
+                <Link key={item.id} to={item.path}>
                   <div
                     data-selected={isActive}
                     className={cn(
@@ -562,6 +586,29 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto">{children}</main>
+
+        <footer className="h-10 border-t border-slate-700/30 bg-[#050b18] px-4 flex items-center justify-center">
+          <p className="text-[11px] text-slate-400">
+            {lang === "zh" ? "版权所有" : "Copyright"} © {new Date().getFullYear()} ·
+            <a
+              href="https://researchic.com"
+              target="_blank"
+              rel="noreferrer"
+              className="ml-1 text-cyan-300 hover:text-cyan-200"
+            >
+              {lang === "zh" ? "西西弗斯林" : "Sisyphus Lynn"}
+            </a>
+            <span className="mx-2 text-slate-500">·</span>
+            <a
+              href="https://www.paypal.com/ncp/payment/M4RT9PJLJHSG2"
+              target="_blank"
+              rel="noreferrer"
+              className="text-amber-300 hover:text-amber-200"
+            >
+              {lang === "zh" ? "打赏" : "Donate"}
+            </a>
+          </p>
+        </footer>
       </div>
 
       {/* Floating AI Assistant */}
