@@ -41,9 +41,50 @@ export default function PaperReadingArea({
   onAskAI,
 }: PaperReadingAreaProps) {
   const [titleExpanded, setTitleExpanded] = useState(false);
+  const [resolvedPdfUrl, setResolvedPdfUrl] = useState<string | null>(null);
+  const [resolvingPdfUrl, setResolvingPdfUrl] = useState(false);
 
   useEffect(() => {
     setTitleExpanded(false);
+  }, [paper.pdf_path]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const resolveUrl = async () => {
+      if (!paper.pdf_path) {
+        setResolvedPdfUrl(null);
+        return;
+      }
+
+      if (!pdfAPI.isStorageRef(paper.pdf_path)) {
+        setResolvedPdfUrl(pdfAPI.viewUrl(paper.pdf_path));
+        return;
+      }
+
+      try {
+        setResolvingPdfUrl(true);
+        const url = await pdfAPI.getStorageDownloadUrl(paper.pdf_path);
+        if (!cancelled) {
+          setResolvedPdfUrl(url);
+        }
+      } catch (error) {
+        console.error("Failed to resolve storage PDF URL:", error);
+        if (!cancelled) {
+          setResolvedPdfUrl(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setResolvingPdfUrl(false);
+        }
+      }
+    };
+
+    void resolveUrl();
+
+    return () => {
+      cancelled = true;
+    };
   }, [paper.pdf_path]);
 
   const handleUploadPDF = async () => {
@@ -163,33 +204,43 @@ export default function PaperReadingArea({
       <div className="flex-1 overflow-hidden flex flex-col">
         {paper.pdf_path ? (
           <div className="flex-1 min-h-0 p-2">
-            <PdfViewer
-              className="h-full rounded-lg border border-slate-700/50"
-              onAskAiSelection={text => {
-                onTextSelected?.(text);
-                onAskAI?.(text);
-              }}
-              onConceptCreated={() => {
-                onChanged();
-                onConceptCreated?.();
-              }}
-              onHighlightCreated={highlight => {
-                onChanged();
-                onTextSelected?.(highlight.text);
-                onHighlightCreated?.(highlight);
-              }}
-              onNoteCreated={() => {
-                onChanged();
-                onNoteCreated?.();
-              }}
-              onSelectionChange={text => onTextSelected?.(text)}
-              paperId={paper.id}
-              pdfUrl={pdfAPI.viewUrl(paper.pdf_path)}
-              projectId={projectId}
-              showTitleBar={false}
-              showToolbar={false}
-              title={paper.pdf_path}
-            />
+            {resolvingPdfUrl ? (
+              <div className="h-full flex items-center justify-center text-sm text-slate-400">
+                Resolving PDF URL...
+              </div>
+            ) : resolvedPdfUrl ? (
+              <PdfViewer
+                className="h-full rounded-lg border border-slate-700/50"
+                onAskAiSelection={text => {
+                  onTextSelected?.(text);
+                  onAskAI?.(text);
+                }}
+                onConceptCreated={() => {
+                  onChanged();
+                  onConceptCreated?.();
+                }}
+                onHighlightCreated={highlight => {
+                  onChanged();
+                  onTextSelected?.(highlight.text);
+                  onHighlightCreated?.(highlight);
+                }}
+                onNoteCreated={() => {
+                  onChanged();
+                  onNoteCreated?.();
+                }}
+                onSelectionChange={text => onTextSelected?.(text)}
+                paperId={paper.id}
+                pdfUrl={resolvedPdfUrl}
+                projectId={projectId}
+                showTitleBar={false}
+                showToolbar={false}
+                title={paper.pdf_path}
+              />
+            ) : (
+              <div className="h-full flex items-center justify-center text-sm text-rose-400">
+                Failed to resolve PDF preview URL.
+              </div>
+            )}
           </div>
         ) : (
           <div className="h-full flex items-center justify-center">

@@ -80,11 +80,18 @@ class RPApi {
   async logout() {
     try {
       clearAuthSession();
-      const response = await this.client.get(
-        `${this.getBaseURL()}/api/v1/auth/logout`
-      );
-      // The backend will redirect to OIDC provider logout
-      window.location.href = response.data.redirect_url;
+      const base = this.getBaseURL();
+
+      // Local-only logout by default: keep third-party browser sessions (e.g., Gmail) untouched.
+      try {
+        await this.client.get(`${base}/api/v1/auth/logout`, {
+          params: { local_only: true },
+        });
+      } catch {
+        // Ignore backend logout errors for local session logout.
+      }
+
+      window.location.replace('/');
     } catch (error) {
       throw new Error(error.response?.data?.detail || 'Failed to logout');
     }

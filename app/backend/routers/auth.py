@@ -18,7 +18,7 @@ from core.auth import (
 from core.config import settings
 from core.database import get_db
 from dependencies.auth import get_current_user
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from models.auth import User
 from schemas.auth import (
@@ -394,9 +394,19 @@ async def get_current_user_info(current_user: UserResponse = Depends(get_current
 
 
 @router.get("/logout")
-async def logout():
-    """Logout user."""
-    if not is_oidc_configured():
-        return {"redirect_url": settings.frontend_url or "/"}
+async def logout(
+    request: Request,
+    local_only: bool = Query(default=True),
+):
+    """Logout user.
+
+    - local_only=true (default): local app logout only; keeps IdP/browser account sessions intact.
+    - local_only=false: perform IdP logout redirect.
+    """
+    frontend_base = get_frontend_base_url(request)
+
+    if local_only or not is_oidc_configured():
+        return {"redirect_url": frontend_base or "/"}
+
     logout_url = build_logout_url()
     return {"redirect_url": logout_url}
