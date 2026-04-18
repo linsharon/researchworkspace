@@ -4,7 +4,9 @@
  */
 
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Upload,
   FileText,
@@ -13,6 +15,9 @@ import {
   ChevronUp,
   RefreshCw,
   Trash2,
+  Copy,
+  Check,
+  AlertCircle,
 } from "lucide-react";
 import type { Paper, Highlight } from "@/lib/manuscript-api";
 import { paperAPI } from "@/lib/manuscript-api";
@@ -29,6 +34,77 @@ interface PaperReadingAreaProps {
   onAskAI?: (text: string) => void;
 }
 
+const stringifyErrorData = (value: unknown): string => {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+};
+
+const formatUploadErrorLog = (error: unknown, paper: Paper, file: File): string => {
+  const lines = [
+    "[Paper PDF Upload Error]",
+    `timestamp: ${new Date().toISOString()}`,
+    `paperId: ${paper.id}`,
+    `projectId: ${paper.project_id}`,
+    `paperTitle: ${paper.title}`,
+    `fileName: ${file.name}`,
+    `fileSizeBytes: ${file.size}`,
+    `fileType: ${file.type || "unknown"}`,
+    `pageUrl: ${typeof window !== "undefined" ? window.location.href : "unknown"}`,
+  ];
+
+  if (axios.isAxiosError(error)) {
+    lines.push(`errorType: AxiosError`);
+    lines.push(`message: ${error.message}`);
+    lines.push(`code: ${error.code || "unknown"}`);
+
+    if (error.config?.method) {
+      lines.push(`requestMethod: ${error.config.method.toUpperCase()}`);
+    }
+    if (error.config?.baseURL || error.config?.url) {
+      lines.push(`requestUrl: ${(error.config.baseURL || "") + (error.config.url || "")}`);
+    }
+    if (error.response) {
+      lines.push(`status: ${error.response.status}`);
+      lines.push(`statusText: ${error.response.statusText || "unknown"}`);
+      const requestId = error.response.headers?.["x-request-id"] || error.response.headers?.["X-Request-ID"];
+      if (requestId) {
+        lines.push(`requestId: ${requestId}`);
+      }
+      const detail =
+        typeof error.response.data === "object" && error.response.data !== null && "detail" in error.response.data
+          ? String((error.response.data as { detail?: unknown }).detail)
+          : undefined;
+      if (detail) {
+        lines.push(`detail: ${detail}`);
+      }
+      lines.push("responseData:");
+      lines.push(stringifyErrorData(error.response.data));
+    } else if (error.request) {
+      lines.push("status: no-response");
+      lines.push("detail: Request was sent but no response was received.");
+    }
+  } else if (error instanceof Error) {
+    lines.push(`errorType: ${error.name}`);
+    lines.push(`message: ${error.message}`);
+    if (error.stack) {
+      lines.push("stack:");
+      lines.push(error.stack);
+    }
+  } else {
+    lines.push(`errorType: ${typeof error}`);
+    lines.push(`message: ${stringifyErrorData(error)}`);
+  }
+
+  return lines.join("\n");
+};
+
 export default function PaperReadingArea({
   paper,
   projectId = "proj-1",
@@ -42,6 +118,8 @@ export default function PaperReadingArea({
   const [titleExpanded, setTitleExpanded] = useState(false);
   const [resolvedPdfUrl, setResolvedPdfUrl] = useState<string | null>(null);
   const [resolvingPdfUrl, setResolvingPdfUrl] = useState(false);
+  const [uploadErrorLog, setUploadErrorLog] = useState<string | null>(null);
+  const [copiedUploadLog, setCopiedUploadLog] = useState(false);
 
   useEffect(() => {
     setTitleExpanded(false);
@@ -95,17 +173,29 @@ export default function PaperReadingArea({
       if (!file) return;
 
       try {
+        setUploadErrorLog(null);
+        setCopiedUploadLog(false);
         await paperAPI.uploadPdf(paper.id, file);
         onChanged();
       } catch (error) {
         console.error("PDF upload failed:", error);
-        const message =
-          (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
-          "Failed to upload PDF. Please try again.";
-        alert(message);
+        setUploadErrorLog(formatUploadErrorLog(error, paper, file));
       }
     };
     input.click();
+  };
+
+  const handleCopyUploadLog = async () => {
+    if (!uploadErrorLog) return;
+
+    try {
+      await navigator.clipboard.writeText(uploadErrorLog);
+      setCopiedUploadLog(true);
+      window.setTimeout(() => setCopiedUploadLog(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy upload error log:", error);
+      alert("Failed to copy the upload error log. You can still select and copy it manually.");
+    }
   };
 
   const handleReplacePDF = async () => {
@@ -195,6 +285,29 @@ export default function PaperReadingArea({
       </>
 
       <div className="flex-1 overflow-hidden flex flex-col">
+        {uploadErrorLog ? (
+          <div className="px-4 pt-4">
+            <Alert className="border-rose-500/40 bg-rose-950/30 text-rose-100">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>PDF upload failed</AlertTitle>
+              <AlertDescription>
+                <p className="mb-3 text-sm text-rose-100/90">
+                  Detailed error log is shown below. Copy it and paste it into codespace for further debugging.
+                </p>
+                <div className="mb-3 flex flex-wrap gap-2">
+                  <Button className="h-8" onClick={handleCopyUploadLog} size="sm" variant="outline">
+                    {copiedUploadLog ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedUploadLog ? "Copied" : "Copy Error Log"}
+                  </Button>
+                </div>
+                <pre className="max-h-56 overflow-auto rounded-md border border-rose-400/30 bg-slate-950/80 p-3 text-xs leading-5 text-rose-100 whitespace-pre-wrap break-words">
+                  {uploadErrorLog}
+                </pre>
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : null}
+
         {paper.pdf_path ? (
           <div className="flex-1 min-h-0 p-2">
             {resolvingPdfUrl ? (
