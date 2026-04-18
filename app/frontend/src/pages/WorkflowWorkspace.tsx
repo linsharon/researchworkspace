@@ -5264,11 +5264,12 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                         }}
                         role="button"
                         tabIndex={0}
+                        data-selected={selectedPaperId === paper.id ? "true" : undefined}
                         className={cn(
-                          "w-full text-left rounded-lg border p-3 transition-all",
+                          "w-full text-left rounded-lg border p-3 transition-all record-item",
                           selectedPaperId === paper.id
-                            ? "border-cyan-600 bg-blue-50/60"
-                            : "border-slate-700/50 hover:border-slate-300"
+                            ? "border-cyan-600 bg-blue-950/40"
+                            : "border-slate-700/50"
                         )}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -5277,7 +5278,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                               <Link
                                 to={`/paper-read/${projectId}/${paper.id}`}
                                 onClick={(event) => event.stopPropagation()}
-                                className="text-sm font-semibold text-slate-100 hover:text-blue-700 hover:underline"
+                                className="text-sm font-semibold text-slate-100 hover:underline record-item-title"
                               >
                                 {paper.title}
                               </Link>
