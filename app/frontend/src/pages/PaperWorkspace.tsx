@@ -343,7 +343,7 @@ export default function PaperWorkspace() {
 
           <Card className="border-slate-700/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-semibold text-purple-700 uppercase tracking-wider">
+              <CardTitle className="text-xs font-semibold text-cyan-700 uppercase tracking-wider">
                 Theory / Framework
               </CardTitle>
             </CardHeader>

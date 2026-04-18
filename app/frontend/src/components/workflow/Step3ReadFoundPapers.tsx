@@ -428,7 +428,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                 data-selected={selectedPaperIds.includes(paper.id)}
                 className={cn(
                   "record-item border border-slate-700/50 hover:shadow-lg transition-shadow cursor-pointer",
-                  selectedPaperIds.includes(paper.id) && "border-violet-600/50"
+                  selectedPaperIds.includes(paper.id) && "border-cyan-600/50"
                 )}
                 onClick={() => handleReadPaper(paper.id)}
               >
@@ -557,7 +557,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                   {paper.discovery_note && (
                     <button
                       type="button"
-                      className="block w-full rounded bg-slate-800/40 p-3 text-left text-sm italic text-slate-400 hover:bg-violet-600/10 hover:text-cyan-200 transition-colors"
+                      className="block w-full rounded bg-slate-800/40 p-3 text-left text-sm italic text-slate-400 hover:bg-cyan-600/10 hover:text-cyan-200 transition-colors"
                       onClick={(e) => handleNoteClick(e, paper)}
                     >
                       Note: {paper.discovery_note}

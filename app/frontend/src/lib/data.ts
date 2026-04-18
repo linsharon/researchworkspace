@@ -126,7 +126,7 @@ export const ARTIFACT_TYPE_META: Record<
 > = {
   purpose: { label: "Purpose Card", color: "text-blue-700", bgColor: "bg-blue-50" },
   keyword: { label: "Keyword Set", color: "text-indigo-700", bgColor: "bg-indigo-50" },
-  "search-log": { label: "Search Log", color: "text-purple-700", bgColor: "bg-purple-50" },
+  "search-log": { label: "Search Log", color: "text-cyan-700", bgColor: "bg-cyan-50" },
   "entry-paper": { label: "Entry Paper Card", color: "text-emerald-700", bgColor: "bg-emerald-50" },
   "literature-note": { label: "Literature Note", color: "text-amber-700", bgColor: "bg-amber-50" },
   "permanent-note": { label: "Permanent Note", color: "text-rose-700", bgColor: "bg-rose-50" },

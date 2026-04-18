@@ -2732,7 +2732,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                             {paper.discoveryPath && (
                               <Badge
                                 variant="outline"
-                                className="text-[10px] border-purple-300 text-purple-600"
+                                className="text-[10px] border-cyan-300 text-cyan-600"
                               >
                                 via {paper.discoveryPath}
                               </Badge>
@@ -2783,7 +2783,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                             </p>
                           )}
                           {paper.discoveryNote && (
-                            <p className="text-[10px] text-purple-500 mt-1 italic">
+                            <p className="text-[10px] text-cyan-500 mt-1 italic">
                               📝 {paper.discoveryNote}
                             </p>
                           )}
@@ -3615,7 +3615,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   className={cn(
                     "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
                     newPaperDiscoveryPath === path
-                      ? "border-purple-400 bg-purple-50/50"
+                      ? "border-cyan-400 bg-cyan-50/50"
                       : "border-slate-700/50 hover:border-slate-300"
                   )}
                 >
@@ -3624,7 +3624,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     name="new-paper-discovery"
                     checked={newPaperDiscoveryPath === path}
                     onChange={() => setNewPaperDiscoveryPath(path)}
-                    className="accent-purple-600"
+                    className="accent-cyan-600"
                   />
                   {path}
                 </label>
@@ -3737,7 +3737,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 className={cn(
                   "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
                   discoveryPathValue === path
-                    ? "border-purple-400 bg-purple-50/50"
+                    ? "border-cyan-400 bg-cyan-50/50"
                     : "border-slate-700/50 hover:border-slate-300"
                 )}
               >
@@ -3746,7 +3746,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   name="discovery-path"
                   checked={discoveryPathValue === path}
                   onChange={() => setDiscoveryPathValue(path)}
-                  className="accent-purple-600"
+                  className="accent-cyan-600"
                 />
                 {path}
               </label>
@@ -3764,7 +3764,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           </div>
           <div className="flex gap-2 pt-2">
             <Button
-              className="bg-purple-600 hover:bg-purple-700 text-white text-xs"
+              className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
               onClick={handleSaveDiscoveryPath}
             >
               <Save className="w-3 h-3 mr-1" />
@@ -5162,7 +5162,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                       "h-4 px-1 text-[9px] leading-none align-middle",
                       record.source === "auto"
                         ? "border-blue-300 text-blue-600"
-                        : "border-purple-300 text-purple-600"
+                        : "border-cyan-300 text-cyan-600"
                     )}
                   >
                     {record.source === "auto" ? "Auto" : "Manual"}
@@ -5916,7 +5916,7 @@ function VisualizeWorkspace() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-[10px] h-6 px-2 border-purple-300 text-purple-600 hover:bg-purple-50"
+                                className="text-[10px] h-6 px-2 border-cyan-300 text-cyan-600 hover:bg-cyan-50"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   handleAddFileToVisualArtifacts(i);
@@ -5943,7 +5943,7 @@ function VisualizeWorkspace() {
             <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-purple-500" />
+                  <Sparkles className="w-4 h-4 text-cyan-500" />
                   AI Summarize Notes (Premium)
                 </CardTitle>
               </CardHeader>
@@ -5953,7 +5953,7 @@ function VisualizeWorkspace() {
                 </p>
                 <Button
                   size="sm"
-                  className="w-full text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                  className="w-full text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
                   onClick={handleAiSummarize}
                   disabled={aiSummarizing}
                 >
@@ -5961,14 +5961,14 @@ function VisualizeWorkspace() {
                   {aiSummarizing ? "Summarizing..." : "Generate AI Summary & Insights"}
                 </Button>
                 {aiSummaryResult && (
-                  <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <div className="mt-3 p-3 bg-cyan-50 border border-cyan-200 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-semibold text-purple-700 uppercase">AI Result</span>
-                      <button onClick={() => setAiSummaryResult(null)} className="hover:bg-purple-100 rounded p-0.5">
-                        <X className="w-3 h-3 text-purple-400" />
+                      <span className="text-[10px] font-semibold text-cyan-700 uppercase">AI Result</span>
+                      <button onClick={() => setAiSummaryResult(null)} className="hover:bg-cyan-100 rounded p-0.5">
+                        <X className="w-3 h-3 text-cyan-400" />
                       </button>
                     </div>
-                    <pre className="text-[10px] text-purple-800 whitespace-pre-wrap leading-relaxed">{aiSummaryResult}</pre>
+                    <pre className="text-[10px] text-cyan-800 whitespace-pre-wrap leading-relaxed">{aiSummaryResult}</pre>
                   </div>
                 )}
               </CardContent>
@@ -6152,7 +6152,7 @@ function VisualizeWorkspace() {
                   {/* AI Auto-fill Button */}
                   <Button
                     size="sm"
-                    className="text-xs bg-purple-600 hover:bg-purple-700 text-white"
+                    className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
                     onClick={handleAiSearchSynthesis}
                     disabled={aiSearching || synthSelectedPapers.length === 0}
                   >
@@ -6330,7 +6330,7 @@ function VisualizeWorkspace() {
                       <div className="flex items-center gap-2">
                         <h4 className="text-xs font-semibold text-slate-200">{tool.name}</h4>
                         {tool.source === "user" && (
-                          <Badge variant="outline" className="text-[8px] px-1 py-0 border-purple-300 text-purple-600">
+                          <Badge variant="outline" className="text-[8px] px-1 py-0 border-cyan-300 text-cyan-600">
                             Custom
                           </Badge>
                         )}
@@ -7145,7 +7145,7 @@ function DraftWorkspaceInline() {
                 <Separator className="my-2" />
                 <Button
                   size="sm"
-                  className="w-full text-xs h-7 bg-purple-600 hover:bg-purple-700 text-white"
+                  className="w-full text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
                   onClick={handleAiCheck}
                   disabled={aiChecking}
                 >
@@ -7199,7 +7199,7 @@ function DraftWorkspaceInline() {
                 <Separator className="my-2" />
                 <Button
                   size="sm"
-                  className="w-full text-xs h-7 bg-purple-600 hover:bg-purple-700 text-white"
+                  className="w-full text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
                   onClick={handleAiCheck}
                   disabled={aiChecking}
                 >
@@ -7304,7 +7304,7 @@ function DraftWorkspaceInline() {
                   </Button>
                   <Button
                     size="sm"
-                    className="w-full text-xs h-7 bg-purple-600 hover:bg-purple-700 text-white"
+                    className="w-full text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
                     onClick={handleAiCheck}
                     disabled={aiChecking}
                   >
@@ -7318,20 +7318,20 @@ function DraftWorkspaceInline() {
 
           {/* AI Check Result */}
           {aiCheckResult && (
-            <Card className="border-purple-200 bg-purple-50/30">
+            <Card className="border-cyan-200 bg-cyan-50/30">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+                  <CardTitle className="text-xs font-semibold text-cyan-700 flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
                     AI Analysis Result
                   </CardTitle>
-                  <button onClick={() => setAiCheckResult(null)} className="hover:bg-purple-100 rounded p-0.5">
-                    <X className="w-3 h-3 text-purple-400" />
+                  <button onClick={() => setAiCheckResult(null)} className="hover:bg-cyan-100 rounded p-0.5">
+                    <X className="w-3 h-3 text-cyan-400" />
                   </button>
                 </div>
               </CardHeader>
               <CardContent>
-                <pre className="text-[10px] text-purple-800 whitespace-pre-wrap leading-relaxed">
+                <pre className="text-[10px] text-cyan-800 whitespace-pre-wrap leading-relaxed">
                   {aiCheckResult}
                 </pre>
               </CardContent>

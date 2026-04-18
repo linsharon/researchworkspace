@@ -224,14 +224,14 @@ export default function PDFHighlightReader({
               <TooltipTrigger asChild>
                 <Dialog open={showConceptDialog} onOpenChange={setShowConceptDialog}>
                   <button className="p-1.5 hover:bg-gray-100 rounded" onClick={() => setShowConceptDialog(true)}>
-                    <Sparkles className="h-4 w-4 text-purple-600" />
+                    <Sparkles className="h-4 w-4 text-cyan-600" />
                   </button>
                   <DialogContent className="max-w-lg">
                     <DialogHeader>
                       <DialogTitle>Add Concept</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3">
-                      <div className="p-3 bg-violet-50 border border-violet-200 rounded text-sm italic text-violet-900">"{selectedText}"</div>
+                      <div className="p-3 bg-cyan-50 border border-cyan-200 rounded text-sm italic text-cyan-900">"{selectedText}"</div>
                       <Input value={conceptTitle} onChange={(e) => setConceptTitle(e.target.value)} placeholder="Concept title" />
                       <Select value={conceptCategory} onValueChange={setConceptCategory}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
