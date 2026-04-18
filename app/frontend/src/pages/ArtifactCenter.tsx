@@ -23,8 +23,8 @@ import {
   type Artifact,
   type ArtifactType,
 } from "@/lib/data";
-import { noteAPI, paperAPI, projectAPI } from "@/lib/manuscript-api";
-import type { Note } from "@/lib/manuscript-api";
+import { conceptAPI, noteAPI, paperAPI, projectAPI } from "@/lib/manuscript-api";
+import type { Concept as ApiConcept, Note } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
 
 const STATIC_ARTIFACTS = DUMMY_ARTIFACTS.filter(
@@ -80,6 +80,47 @@ function paperToArtifact(paper: {
   };
 }
 
+const defaultConceptCategory = "Concept";
+const defaultConceptColor = "#6366f1";
+
+function parseConceptDefinition(definition?: string): { category: string; color: string } {
+  if (!definition) {
+    return { category: defaultConceptCategory, color: defaultConceptColor };
+  }
+
+  try {
+    const parsed = JSON.parse(definition) as { category?: string; color?: string };
+    return {
+      category: parsed.category || defaultConceptCategory,
+      color: parsed.color || defaultConceptColor,
+    };
+  } catch {
+    return { category: defaultConceptCategory, color: defaultConceptColor };
+  }
+}
+
+function apiConceptToLocal(concept: ApiConcept) {
+  const meta = parseConceptDefinition(concept.definition);
+  return {
+    id: concept.id,
+    name: concept.title,
+    description: concept.description || "",
+    category: meta.category,
+    color: meta.color,
+  };
+}
+
+function localConceptToApiPayload(concept: { name: string; description: string; category: string; color: string }) {
+  return {
+    title: concept.name,
+    description: concept.description,
+    definition: JSON.stringify({
+      category: concept.category || defaultConceptCategory,
+      color: concept.color || defaultConceptColor,
+    }),
+  };
+}
+
 const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
   { value: "purpose", label: "Purposes" },
@@ -102,8 +143,6 @@ const FILTER_MAP: Record<string, ArtifactType[]> = {
 };
 
 export default function ArtifactCenter() {
-  const CONCEPTS_STORAGE_KEY = "rw-concepts";
-  const CONCEPTS_UPDATED_EVENT = "concepts-updated";
   const NOTES_UPDATED_EVENT = "notes-updated";
   const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
   const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
@@ -152,31 +191,27 @@ export default function ArtifactCenter() {
     window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
   };
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const loadConcepts = () => {
-      try {
-        const saved = window.localStorage.getItem(CONCEPTS_STORAGE_KEY);
-        if (!saved) {
-          setConcepts([]);
-          return;
-        }
-        const parsed = JSON.parse(saved);
-        setConcepts(Array.isArray(parsed) ? parsed : []);
-      } catch {
-        setConcepts([]);
+  const loadApiConcepts = async () => {
+    try {
+      if (projectIdFromUrl) {
+        const projectConcepts = await conceptAPI.list(projectIdFromUrl);
+        setConcepts(projectConcepts.map(apiConceptToLocal));
+        return;
       }
-    };
 
-    loadConcepts();
-    window.addEventListener("storage", loadConcepts);
-    window.addEventListener(CONCEPTS_UPDATED_EVENT, loadConcepts);
-    return () => {
-      window.removeEventListener("storage", loadConcepts);
-      window.removeEventListener(CONCEPTS_UPDATED_EVENT, loadConcepts);
-    };
-  }, []);
+      const projects = await projectAPI.list();
+      const allConcepts = await Promise.all(projects.map((project) => conceptAPI.list(project.id)));
+      const merged = allConcepts.flat().map(apiConceptToLocal);
+      const deduped = Array.from(new Map(merged.map((concept) => [concept.id, concept])).values());
+      setConcepts(deduped);
+    } catch {
+      setConcepts([]);
+    }
+  };
+
+  useEffect(() => {
+    void loadApiConcepts();
+  }, [projectIdFromUrl]);
 
   useEffect(() => {
     const loadSavedNotes = async () => {
@@ -236,20 +271,6 @@ export default function ArtifactCenter() {
   const selected = artifacts.find((a) => a.id === selectedArtifact);
   const selectedConcept = concepts.find((c) => c.id === selectedConceptId) || null;
 
-  const persistConcepts = (
-    updater:
-      | Array<{ id: string; name: string; description: string; category: string; color: string }>
-      | ((prev: Array<{ id: string; name: string; description: string; category: string; color: string }>) => Array<{ id: string; name: string; description: string; category: string; color: string }>)
-  ) => {
-    setConcepts((prev) => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify(next));
-      }
-      return next;
-    });
-  };
-
   const openConceptDialog = (conceptId: string, mode: "view" | "edit") => {
     const concept = concepts.find((c) => c.id === conceptId);
     if (!concept) return;
@@ -264,32 +285,40 @@ export default function ArtifactCenter() {
     setShowConceptDialog(true);
   };
 
-  const handleDeleteConcept = (conceptId: string) => {
-    persistConcepts((prev) => prev.filter((c) => c.id !== conceptId));
+  const handleDeleteConcept = async (conceptId: string) => {
+    setConcepts((prev) => prev.filter((c) => c.id !== conceptId));
+    try {
+      await conceptAPI.delete(conceptId);
+    } catch {
+      await loadApiConcepts();
+    }
+
     if (selectedConceptId === conceptId) {
       setShowConceptDialog(false);
       setSelectedConceptId(null);
     }
   };
 
-  const handleSaveConcept = () => {
+  const handleSaveConcept = async () => {
     if (!selectedConceptId) return;
     const trimmedName = conceptForm.name.trim();
     if (!trimmedName) return;
 
-    persistConcepts((prev) =>
-      prev.map((c) =>
-        c.id === selectedConceptId
-          ? {
-              ...c,
-              name: trimmedName,
-              description: conceptForm.description.trim(),
-              category: conceptForm.category.trim() || "Concept",
-              color: conceptForm.color,
-            }
-          : c
-      )
-    );
+    const nextConcept = {
+      name: trimmedName,
+      description: conceptForm.description.trim(),
+      category: conceptForm.category.trim() || defaultConceptCategory,
+      color: conceptForm.color,
+    };
+
+    setConcepts((prev) => prev.map((c) => (c.id === selectedConceptId ? { ...c, ...nextConcept } : c)));
+
+    try {
+      await conceptAPI.update(selectedConceptId, localConceptToApiPayload(nextConcept));
+    } catch {
+      await loadApiConcepts();
+    }
+
     setShowConceptDialog(false);
     setSelectedConceptId(null);
   };

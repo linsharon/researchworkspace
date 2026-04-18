@@ -62,7 +62,10 @@ export default function PaperReadingArea({
         onChanged();
       } catch (error) {
         console.error("PDF upload failed:", error);
-        alert("Failed to upload PDF. Please try again.");
+        const message =
+          (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+          "Failed to upload PDF. Please try again.";
+        alert(message);
       }
     };
     input.click();

@@ -222,6 +222,8 @@ export default function WorkflowWorkspace() {
   const { projectId = "proj-1", step } = useParams<{ projectId: string; step: string }>();
   const currentStep = (parseInt(step || "1") as WorkflowStep) || 1;
   const stepMeta = STEP_META[currentStep];
+  const nextStep = currentStep < 6 ? ((currentStep + 1) as WorkflowStep) : null;
+  const nextStepMeta = nextStep ? STEP_META[nextStep] : null;
 
   // Ensure the project row exists in DB on first visit
   useEffect(() => {
@@ -288,6 +290,27 @@ export default function WorkflowWorkspace() {
         {currentStep === 4 && <ExpandWorkspace projectId={projectId} />}
         {currentStep === 5 && <VisualizeWorkspace />}
         {currentStep === 6 && <DraftWorkspaceInline />}
+
+        <div className="border border-slate-700/50 rounded-xl bg-[#0d1b30] p-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs text-slate-400">{nextStep ? "Next Step" : "Workflow Complete"}</p>
+            <p className="text-sm text-slate-200 font-medium">
+              {nextStepMeta ? `Step ${nextStep}: ${nextStepMeta.label}` : "You are at the final step."}
+            </p>
+          </div>
+          {nextStep ? (
+            <Link to={`/workflow/${projectId}/${nextStep}`}>
+              <Button className="bg-violet-700 hover:bg-violet-800 text-white">
+                {`Go to Step ${nextStep}`}
+                <ArrowRight className="w-4 h-4 ml-1.5" />
+              </Button>
+            </Link>
+          ) : (
+            <Link to="/">
+              <Button variant="outline">Back to Dashboard</Button>
+            </Link>
+          )}
+        </div>
       </div>
     </AppLayout>
   );

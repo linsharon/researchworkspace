@@ -72,6 +72,18 @@ def _resolve_path(filename: str) -> Path:
     return resolved
 
 
+def _looks_like_pdf(content: bytes) -> bool:
+    """Best-effort PDF detection.
+
+    Many valid PDFs include leading whitespace/BOM bytes before the "%PDF" header,
+    so we scan the first 1KB instead of requiring a strict offset-0 match.
+    """
+    if not content:
+        return False
+    header_window = content[:1024]
+    return header_window.find(b"%PDF") != -1
+
+
 # ============================================================
 # Endpoints
 # ============================================================
@@ -109,15 +121,10 @@ async def upload_pdf(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # Accept only PDF content types
-    allowed_types = {"application/pdf", "application/octet-stream", "binary/octet-stream"}
-    if file.content_type and file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
-
     content = await file.read()
 
     # Validate PDF magic bytes
-    if not content.startswith(b"%PDF"):
+    if not _looks_like_pdf(content):
         raise HTTPException(status_code=400, detail="File does not appear to be a valid PDF")
 
     dest = UPLOADS_DIR / safe_name
