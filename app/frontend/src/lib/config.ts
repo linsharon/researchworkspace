@@ -7,8 +7,20 @@ let runtimeConfig: {
 let configLoading = true;
 
 // Default fallback configuration
+const resolveDefaultApiBaseUrl = (): string => {
+  if (typeof window === 'undefined') return '';
+  const host = window.location.hostname.toLowerCase();
+
+  // Production Vercel frontend is static-only; send API calls to backend service.
+  if (host === 'researchworkspace.vercel.app') {
+    return 'https://researchworkspace.onrender.com';
+  }
+
+  return '';
+};
+
 const defaultConfig = {
-  API_BASE_URL: '',
+  API_BASE_URL: resolveDefaultApiBaseUrl(),
 };
 
 // Function to load runtime configuration
