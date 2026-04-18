@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
   Tag,
   X,
 } from "lucide-react";
-import { DUMMY_PAPERS } from "@/lib/data";
+import { paperAPI, type Paper as ApiPaper } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
 
 // Tag Input Component
@@ -93,7 +93,28 @@ function TagInput({
 
 export default function PdfViewer() {
   const { paperId } = useParams<{ paperId: string }>();
-  const paper = DUMMY_PAPERS.find((p) => p.id === paperId) || DUMMY_PAPERS[0];
+  const [paper, setPaper] = useState<ApiPaper | null>(null);
+  const [loadingPaper, setLoadingPaper] = useState(true);
+
+  useEffect(() => {
+    const loadPaper = async () => {
+      if (!paperId) {
+        setPaper(null);
+        setLoadingPaper(false);
+        return;
+      }
+      try {
+        const item = await paperAPI.get(paperId);
+        setPaper(item);
+      } catch {
+        setPaper(null);
+      } finally {
+        setLoadingPaper(false);
+      }
+    };
+
+    void loadPaper();
+  }, [paperId]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -101,33 +122,7 @@ export default function PdfViewer() {
 
   // Highlights
   const [highlights, setHighlights] = useState([
-    {
-      id: "h-1",
-      text: "self-regulated learning remains underexplored",
-      note: "This is the gap I want to investigate further",
-      page: 3,
-      color: "yellow" as const,
-      tags: ["gap", "SRL"],
-      citation: `${paper.authors[0]} (${paper.year})`,
-    },
-    {
-      id: "h-2",
-      text: "personalization algorithms",
-      note: "Key mechanism — how does personalization affect SRL?",
-      page: 5,
-      color: "green" as const,
-      tags: ["mechanism", "personalization"],
-      citation: `${paper.authors[0]} (${paper.year})`,
-    },
-    {
-      id: "h-3",
-      text: "AI tutoring systems improve test scores by 0.3-0.5 SD on average",
-      note: "Quantitative evidence of performance improvement",
-      page: 8,
-      color: "yellow" as const,
-      tags: ["evidence", "performance"],
-      citation: `${paper.authors[0]} (${paper.year})`,
-    },
+    
   ]);
   const [showNewHighlight, setShowNewHighlight] = useState(false);
   const [newHText, setNewHText] = useState("");
@@ -147,7 +142,7 @@ export default function PdfViewer() {
   const [permNoteTags, setPermNoteTags] = useState<string[]>([]);
   const [permNoteSaved, setPermNoteSaved] = useState(false);
 
-  const citation = `${paper.authors[0]} (${paper.year})`;
+  const citation = paper ? `${paper.authors?.[0] || "Unknown"} (${paper.year || "n.d."})` : "";
 
   const handleAddHighlight = () => {
     if (newHText.trim()) {
@@ -169,6 +164,27 @@ export default function PdfViewer() {
       setShowNewHighlight(false);
     }
   };
+
+  if (loadingPaper) {
+    return (
+      <AppLayout>
+        <div className="p-6 text-sm text-slate-400">Loading paper...</div>
+      </AppLayout>
+    );
+  }
+
+  if (!paper) {
+    return (
+      <AppLayout>
+        <div className="p-6">
+          <div className="rounded-lg border border-slate-700/50 p-6 text-center">
+            <h2 className="text-lg font-semibold text-slate-100">Paper not found</h2>
+            <p className="text-sm text-slate-400 mt-2">This page only shows real paper records from your project data.</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -219,11 +235,13 @@ export default function PdfViewer() {
                 </div>
                 <Button
                   className="gap-2"
+                  disabled={!paper.pdf_path}
                   onClick={() => {
-                    const url = pdfAPI.downloadUrl("sample_research_paper.pdf");
+                    if (!paper.pdf_path) return;
+                    const url = pdfAPI.downloadUrl(paper.pdf_path);
                     const link = document.createElement("a");
                     link.href = url;
-                    link.download = "sample_research_paper.pdf";
+                    link.download = paper.pdf_path;
                     link.click();
                   }}
                   size="sm"
@@ -235,7 +253,7 @@ export default function PdfViewer() {
               </div>
 
               <iframe
-                src={pdfAPI.viewUrl("sample_research_paper.pdf") + `#page=${currentPage}`}
+                src={paper.pdf_path ? pdfAPI.viewUrl(paper.pdf_path) + `#page=${currentPage}` : "about:blank"}
                 title={`${paper.title} PDF`}
                 className="h-full w-full border-0 flex-1 min-h-0"
               />

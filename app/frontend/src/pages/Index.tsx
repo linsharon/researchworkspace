@@ -7,8 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, Clock, FileText, TrendingUp } from "lucide-react";
 import {
-  DUMMY_PROJECT,
-  DUMMY_ARTIFACTS,
   ARTIFACT_TYPE_META,
   type Artifact,
   type WorkflowStep,
@@ -18,9 +16,11 @@ import {
   conceptAPI,
   noteAPI,
   paperAPI,
+  projectAPI,
   searchRecordAPI,
   type Note,
   type Paper as ApiPaper,
+  type Project,
 } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
 
@@ -107,7 +107,7 @@ function formatDateTime(value: string | null) {
 
 export default function Dashboard() {
   const { t } = useI18n();
-  const project = DUMMY_PROJECT;
+  const [project, setProject] = useState<Project | null>(null);
   const [counts, setCounts] = useState<Record<MetricKey, number>>({
     purposes: 0,
     keywords: 0,
@@ -155,7 +155,7 @@ export default function Dashboard() {
     6: t("step.6.short"),
   };
 
-  const stepLabel = t(`step.${project.currentStep}.label`);
+  const stepLabel = project ? t(`step.${project.currentStep}.label`) : "--";
 
   const artifactTypeLabels: Record<ArtifactType, string> = {
     purpose: t("artifact.purpose"),
@@ -203,8 +203,46 @@ export default function Dashboard() {
     };
   }, []);
 
+  // Load project from backend
+  useEffect(() => {
+    const loadProject = async () => {
+      try {
+        const projects = await projectAPI.list();
+        if (projects.length > 0) {
+          setProject(projects[0]);
+        } else {
+          // No projects found - dashboard will show empty state
+          setProject(null);
+        }
+      } catch (err) {
+        console.error("Failed to load projects:", err);
+        setProject(null);
+      }
+    };
+
+    loadProject();
+  }, []);
+
   useEffect(() => {
     const loadDashboard = async () => {
+      if (!project) {
+        // No project selected, clear dashboard data
+        setCounts({
+          purposes: 0,
+          keywords: 0,
+          concepts: 0,
+          searchRecords: 0,
+          candidatePapers: 0,
+          entryPapers: 0,
+          expandedPapers: 0,
+          visuals: 0,
+          notes: 0,
+          drafts: 0,
+        });
+        setLatestItems([]);
+        return;
+      }
+
       let conceptsCount = 0;
       let searchRecordsCount = 0;
       let papers: Awaited<ReturnType<typeof paperAPI.list>> = [];
@@ -241,10 +279,9 @@ export default function Dashboard() {
         .filter((paper) => paper.is_entry_paper || paper.is_expanded_paper)
         .map(paperToArtifact);
 
-      const staticProjectArtifacts = DUMMY_ARTIFACTS.filter((a) => a.projectId === project.id);
       const mergedArtifacts = Array.from(
         new Map(
-          [...staticProjectArtifacts, ...literatureArtifacts, ...noteArtifacts].map((artifact) => [artifact.id, artifact])
+          [...literatureArtifacts, ...noteArtifacts].map((artifact) => [artifact.id, artifact])
         ).values()
       );
 
@@ -315,15 +352,26 @@ export default function Dashboard() {
         window.removeEventListener("storage", reload);
       };
     }
-  }, [project.id]);
+  }, [project]);
 
   return (
     <AppLayout>
       <div className="p-6 max-w-5xl mx-auto space-y-6">
+        {!project ? (
+          <Card className="border-slate-700/50">
+            <CardContent className="p-8 text-center space-y-3">
+              <h2 className="text-lg font-semibold text-slate-100">No project data yet</h2>
+              <p className="text-sm text-slate-400">
+                Create your first project and start adding papers, notes, and artifacts. This dashboard only shows your real project data.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-100">{project.title}</h1>
-            <p className="text-sm text-slate-400 mt-1 max-w-xl">{project.goal}</p>
+            <p className="text-sm text-slate-400 mt-1 max-w-xl">{project.description || ""}</p>
           </div>
         </div>
 
@@ -465,6 +513,8 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
     </AppLayout>
   );

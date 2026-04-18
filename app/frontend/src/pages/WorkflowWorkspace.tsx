@@ -71,7 +71,6 @@ import {
 import {
   STEP_META,
   ARTIFACT_TYPE_META,
-  DUMMY_PROJECT,
   DUMMY_PAPERS,
   DUMMY_KEYWORDS,
   DUMMY_SEARCH_RECORDS,
@@ -235,9 +234,20 @@ export default function WorkflowWorkspace() {
   // Ensure the project row exists in DB on first visit
   useEffect(() => {
     if (!projectId) return;
-    projectAPI
-      .ensure({ id: projectId, title: DUMMY_PROJECT.title, description: DUMMY_PROJECT.goal })
-      .catch(() => {});
+    const ensureProject = async () => {
+      try {
+        const existing = await projectAPI.get(projectId);
+        await projectAPI.ensure({
+          id: projectId,
+          title: existing.title || "Untitled Project",
+          description: existing.description || "",
+        });
+      } catch {
+        await projectAPI.ensure({ id: projectId, title: "Untitled Project", description: "" });
+      }
+    };
+
+    void ensureProject();
   }, [projectId]);
 
   useEffect(() => {

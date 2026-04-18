@@ -31,7 +31,8 @@ import {
   Send,
   Minimize2,
 } from "lucide-react";
-import { DUMMY_PROJECT, DUMMY_PROJECTS, type WorkflowStep, type ProjectItem } from "@/lib/data";
+import { type WorkflowStep, type ProjectItem } from "@/lib/data";
+import { projectAPI } from "@/lib/manuscript-api";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -42,15 +43,37 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { t, lang, setLang } = useI18n();
   const { user, logout } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const project = DUMMY_PROJECT;
 
   // Project switcher state
   const [showProjectSwitcher, setShowProjectSwitcher] = useState(false);
-  const [projects, setProjects] = useState<ProjectItem[]>([...DUMMY_PROJECTS]);
-  const [activeProjectId, setActiveProjectId] = useState("proj-1");
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [activeProjectId, setActiveProjectId] = useState("");
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [newProjectGoal, setNewProjectGoal] = useState("");
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const items = await projectAPI.list();
+        const mapped: ProjectItem[] = items.map((item) => ({
+          id: item.id,
+          title: item.title,
+          goal: item.description || "",
+          currentStep: 1,
+          updatedAt: (item.updated_at || "").split("T")[0] || new Date().toISOString().split("T")[0],
+        }));
+        setProjects(mapped);
+        if (mapped.length > 0) {
+          setActiveProjectId((prev) => prev || mapped[0].id);
+        }
+      } catch {
+        setProjects([]);
+      }
+    };
+
+    void loadProjects();
+  }, []);
 
   // Language switcher state
   const [showLangSwitcher, setShowLangSwitcher] = useState(false);
@@ -77,7 +100,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }, [chatMessages, showChat]);
 
-  const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0];
+  const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0] || {
+    id: "",
+    title: lang === "zh" ? "暂无项目" : "No Project",
+    goal: lang === "zh" ? "请先创建项目以开始工作流。" : "Create a project to start the workflow.",
+    currentStep: 1 as WorkflowStep,
+    updatedAt: new Date().toISOString().split("T")[0],
+  };
 
   const handleCreateProject = () => {
     if (!newProjectTitle.trim()) return;
@@ -122,12 +151,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
   };
 
   const NAV_ITEMS = [
-    { path: `/workflow/${activeProjectId}/1`, label: t("nav.purpose"), icon: Target },
-    { path: `/workflow/${activeProjectId}/2`, label: t("nav.discover"), icon: Search },
-    { path: `/workflow/${activeProjectId}/3`, label: t("nav.read"), icon: BookOpen },
-    { path: `/workflow/${activeProjectId}/4`, label: t("nav.expand"), icon: Network },
-    { path: `/workflow/${activeProjectId}/5`, label: t("nav.visualize"), icon: Eye },
-    { path: `/workflow/${activeProjectId}/6`, label: t("nav.draft"), icon: PenTool },
+    { path: activeProject.id ? `/workflow/${activeProject.id}/1` : "/", label: t("nav.purpose"), icon: Target },
+    { path: activeProject.id ? `/workflow/${activeProject.id}/2` : "/", label: t("nav.discover"), icon: Search },
+    { path: activeProject.id ? `/workflow/${activeProject.id}/3` : "/", label: t("nav.read"), icon: BookOpen },
+    { path: activeProject.id ? `/workflow/${activeProject.id}/4` : "/", label: t("nav.expand"), icon: Network },
+    { path: activeProject.id ? `/workflow/${activeProject.id}/5` : "/", label: t("nav.visualize"), icon: Eye },
+    { path: activeProject.id ? `/workflow/${activeProject.id}/6` : "/", label: t("nav.draft"), icon: PenTool },
   ];
 
   const ARTIFACT_NAV_ITEMS = [
@@ -336,8 +365,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 (item.path !== "/" && location.pathname.startsWith(item.path));
               const Icon = item.icon;
               const stepNum = idx;
-              const isCompleted = stepNum > 0 && stepNum < project.currentStep;
-              const isCurrent = stepNum === project.currentStep;
+              const isCompleted = stepNum > 0 && stepNum < activeProject.currentStep;
+              const isCurrent = stepNum === activeProject.currentStep;
 
               return (
                 <Link key={item.path} to={item.path}>

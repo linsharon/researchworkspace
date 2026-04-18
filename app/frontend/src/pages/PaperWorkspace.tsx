@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
   Tag,
   X,
 } from "lucide-react";
-import { DUMMY_PAPERS, DUMMY_PROJECT } from "@/lib/data";
+import { paperAPI, projectAPI, type Paper as ApiPaper, type Project } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
 
 // Tag Input Component
@@ -93,15 +93,40 @@ function TagInput({
 
 export default function PaperWorkspace() {
   const { paperId } = useParams<{ paperId: string }>();
-  const paper = DUMMY_PAPERS.find((p) => p.id === paperId) || DUMMY_PAPERS[0];
+  const [paper, setPaper] = useState<ApiPaper | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
+  const [loadingPaper, setLoadingPaper] = useState(true);
+
+  useEffect(() => {
+    const loadPaper = async () => {
+      if (!paperId) {
+        setPaper(null);
+        setLoadingPaper(false);
+        return;
+      }
+      try {
+        const nextPaper = await paperAPI.get(paperId);
+        setPaper(nextPaper);
+        if (nextPaper.project_id) {
+          try {
+            const nextProject = await projectAPI.get(nextPaper.project_id);
+            setProject(nextProject);
+          } catch {
+            setProject(null);
+          }
+        }
+      } catch {
+        setPaper(null);
+      } finally {
+        setLoadingPaper(false);
+      }
+    };
+
+    void loadPaper();
+  }, [paperId]);
 
   // Annotations with tags
-  const [annotations, setAnnotations] = useState(
-    paper.annotations.map((ann) => ({
-      ...ann,
-      tags: ann.id === "ann-1" ? ["gap", "SRL"] : ["mechanism"],
-    }))
-  );
+  const [annotations, setAnnotations] = useState<Array<{ id: string; text: string; note: string; color: "yellow" | "green"; tags: string[] }>>([]);
   const [showNewAnnotation, setShowNewAnnotation] = useState(false);
   const [newAnnText, setNewAnnText] = useState("");
   const [newAnnNote, setNewAnnNote] = useState("");
@@ -110,18 +135,7 @@ export default function PaperWorkspace() {
   const [importedFromPdf, setImportedFromPdf] = useState(false);
 
   // Literature Notes
-  const [litNotes, setLitNotes] = useState([
-    {
-      id: "pln-1",
-      title: "Key Gap: SRL underexplored",
-      content:
-        paper.id === "paper-1"
-          ? "Key takeaway: AI tutoring improves test scores but SRL impact is underexplored. The gap between performance outcomes and process outcomes is significant."
-          : "",
-      tags: ["gap", "SRL", "key-finding"],
-      createdAt: "2026-03-02",
-    },
-  ]);
+  const [litNotes, setLitNotes] = useState<Array<{ id: string; title: string; content: string; tags: string[]; createdAt: string }>>([]);
   const [showNewLitNote, setShowNewLitNote] = useState(false);
   const [newLitTitle, setNewLitTitle] = useState("");
   const [newLitContent, setNewLitContent] = useState("");
@@ -157,23 +171,7 @@ export default function PaperWorkspace() {
   };
 
   const handleImportFromPdf = () => {
-    const pdfHighlights = [
-      {
-        id: `ann-import-${Date.now()}-1`,
-        text: "AI-powered adaptive learning systems show promise in improving test scores",
-        note: "(Imported from PDF) — Performance improvement claim",
-        color: "yellow" as const,
-        tags: ["imported", "performance"],
-      },
-      {
-        id: `ann-import-${Date.now()}-2`,
-        text: "personalization algorithms, student engagement metrics, and learning outcome measurements",
-        note: "(Imported from PDF) — Three key themes identified",
-        color: "green" as const,
-        tags: ["imported", "themes"],
-      },
-    ];
-    setAnnotations([...annotations, ...pdfHighlights]);
+    setAnnotations((prev) => [...prev]);
     setImportedFromPdf(true);
   };
 
@@ -215,6 +213,27 @@ export default function PaperWorkspace() {
     }
   };
 
+  if (loadingPaper) {
+    return (
+      <AppLayout>
+        <div className="p-6 text-sm text-slate-400">Loading paper...</div>
+      </AppLayout>
+    );
+  }
+
+  if (!paper) {
+    return (
+      <AppLayout>
+        <div className="p-6">
+          <div className="rounded-lg border border-slate-700/50 p-6 text-center">
+            <h2 className="text-lg font-semibold text-slate-100">Paper not found</h2>
+            <p className="text-sm text-slate-400 mt-2">This page only shows real paper records from your project data.</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="p-6 max-w-5xl mx-auto space-y-5">
@@ -229,7 +248,7 @@ export default function PaperWorkspace() {
         {/* Paper Header */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            {paper.isEntryPaper && (
+            {paper.is_entry_paper && (
               <Badge className="text-xs bg-violet-700 text-white">
                 Entry Paper
               </Badge>
@@ -246,12 +265,12 @@ export default function PaperWorkspace() {
                   "border-slate-300 text-slate-500"
               )}
             >
-              {paper.relevance} relevance
+              {paper.relevance || "unknown"} relevance
             </Badge>
           </div>
           <h1 className="text-xl font-bold text-slate-100">{paper.title}</h1>
           <p className="text-sm text-slate-500">
-            {paper.authors.join(", ")} ({paper.year}) — {paper.journal}
+            {(paper.authors || []).join(", ")} ({paper.year || "n.d."}) — {paper.journal || ""}
           </p>
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" size="sm" className="text-xs">
@@ -528,7 +547,7 @@ export default function PaperWorkspace() {
           <CardContent>
             <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg">
               <p className="text-xs text-slate-600">
-                <strong>Project:</strong> {DUMMY_PROJECT.title}
+                <strong>Project:</strong> {project?.title || ""}
               </p>
               <p className="text-xs text-slate-600 mt-1">
                 <strong>Connection:</strong> This paper provides a comprehensive
