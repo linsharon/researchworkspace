@@ -2685,13 +2685,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 {sortedCandidatePapers.map((paper) => (
                   <div
                     key={paper.id}
+                    data-selected={entryPapers.includes(paper.id) || selectedPaperIds.includes(paper.id) ? "true" : undefined}
                     className={cn(
-                      "p-4 rounded-lg border transition-all",
+                      "p-4 rounded-lg border transition-all record-item",
                       entryPapers.includes(paper.id)
                         ? "border-cyan-600 bg-blue-50/30"
                         : selectedPaperIds.includes(paper.id)
-                          ? "border-emerald-400 bg-emerald-50/20"
-                          : "border-slate-700/50 hover:border-slate-300"
+                          ? "border-cyan-500/60 bg-cyan-950/20"
+                          : "border-slate-700/50"
                     )}
                   >
                     <div>
@@ -2743,7 +2744,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                             href={resolveCandidateExternalUrl(paper)}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex max-w-full items-center gap-1 mb-1 text-sm font-medium text-slate-100 hover:text-blue-700 hover:underline"
+                            className="inline-flex max-w-full items-center gap-1 mb-1 text-sm font-medium text-slate-100 hover:underline record-item-title"
                           >
                             <span className="min-w-0 truncate">{paper.title}</span>
                             <ExternalLink className="w-3 h-3 shrink-0" />
@@ -5140,7 +5141,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
         const isExpanded = Boolean(existing?.is_expanded_paper);
         const externalUrl = resolveExternalPaperUrl(record.url, record.title);
         return (
-          <div key={record.id} className="rounded-lg border border-slate-700/50 p-3">
+          <div key={record.id} className="rounded-lg border border-slate-700/50 p-3 record-item">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="inline-flex items-center gap-1">
@@ -5149,12 +5150,12 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                       href={externalUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-sm font-semibold text-slate-100 hover:text-blue-700 hover:underline"
+                      className="text-sm font-semibold text-slate-100 hover:underline record-item-title"
                     >
                       {record.title}
                     </a>
                   ) : (
-                    <h4 className="text-sm font-semibold text-slate-100">{record.title}</h4>
+                    <h4 className="text-sm font-semibold text-slate-100 record-item-title">{record.title}</h4>
                   )}
                   <Badge
                     variant="outline"
@@ -5841,10 +5842,10 @@ function VisualizeWorkspace() {
                 <ScrollArea className="max-h-[400px]">
                   <div className="space-y-2">
                     {sortedPapers.map((paper) => (
-                      <div key={paper.id} className="p-3 rounded-lg border border-slate-700/50 hover:border-slate-300 transition-all">
+                      <div key={paper.id} className="p-3 rounded-lg border border-slate-700/50 transition-all record-item">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-xs font-medium text-slate-200 line-clamp-1">{paper.title}</h4>
+                            <h4 className="text-xs font-medium text-slate-200 line-clamp-1 record-item-title">{paper.title}</h4>
                             <p className="text-[10px] text-slate-500">{paper.authors.join(", ")} ({paper.year})</p>
                           </div>
                           <div className="flex gap-2 shrink-0">
