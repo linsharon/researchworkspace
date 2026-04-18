@@ -104,6 +104,7 @@ const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
 const WORKFLOW_CACHE_META_KEY = "rw-workflow-cache-meta";
 const WORKFLOW_CACHE_VERSION = "m3-2026-04-06";
 const DISCOVER_KEYWORDS_STORAGE_KEY_PREFIX = "rw-discover-keywords";
+const SEARCH_RECORD_PURPOSE_LINKS_KEY_PREFIX = "rw-search-record-purpose-links";
 const WORKFLOW_AUX_CACHE_KEYS = [PAPER_DECISIONS_KEY, ARTIFACTS_STORAGE_KEY] as const;
 
 type WorkflowCacheMeta = {
@@ -644,8 +645,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const [showConceptDialog, setShowConceptDialog] = useState(false);
   const [conceptName, setConceptName] = useState("");
   const [conceptDescription, setConceptDescription] = useState("");
-  const [conceptCategory, setConceptCategory] = useState("Construct");
-  const [conceptColor, setConceptColor] = useState("#6366f1");
+  const [conceptCategory, setConceptCategory] = useState("Keyword");
+  const [conceptColor, setConceptColor] = useState("#22d3ee");
+  const [conceptPurposeCardId, setConceptPurposeCardId] = useState("");
   const [editingConceptId, setEditingConceptId] = useState<string | null>(null);
   const [showConceptDetailDialog, setShowConceptDetailDialog] = useState(false);
   const [keywordsHydrated, setKeywordsHydrated] = useState(false);
@@ -663,6 +665,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   ];
 
   const handleAddConcept = async () => {
+    if (purposeCards.length === 0) {
+      toast.error("请先在 Step 1 创建至少一个 Purpose Card");
+      return;
+    }
+    if (!conceptPurposeCardId) {
+      toast.error("请先选择要关联的 Purpose Card");
+      return;
+    }
     if (!conceptName.trim()) return;
     const trimmed = conceptName.trim();
     const existing = conceptByNameMap.get(trimmed.toLowerCase());
@@ -708,12 +718,32 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     if (!srKeywords.includes(trimmed)) {
       setSrKeywords((prev) => [...prev, trimmed]);
     }
+    setKeywords((prev) => {
+      const exists = prev.some((item) => normalizeKeywordTerm(item.term) === normalizeKeywordTerm(trimmed));
+      if (exists) {
+        return prev.map((item) =>
+          normalizeKeywordTerm(item.term) === normalizeKeywordTerm(trimmed)
+            ? { ...item, purposeCardId: conceptPurposeCardId }
+            : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          id: `kw-${Date.now()}`,
+          term: trimmed,
+          category: conceptCategory,
+          purposeCardId: conceptPurposeCardId,
+        },
+      ];
+    });
     setNewKeyword("");
     setShowConceptDialog(false);
     setConceptName("");
     setConceptDescription("");
     setConceptCategory("Keyword");
     setConceptColor("#22d3ee");
+    setConceptPurposeCardId("");
   };
 
   // Candidate papers state
@@ -790,8 +820,26 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const highlightedSearchQuery = (searchParams.get("searchQuery") || "").trim();
 
   const keywordsStorageKey = `${DISCOVER_KEYWORDS_STORAGE_KEY_PREFIX}:${projectId}`;
+  const searchRecordPurposeLinksKey = `${SEARCH_RECORD_PURPOSE_LINKS_KEY_PREFIX}:${projectId}`;
 
   const normalizeKeywordTerm = (value: string) => value.trim().toLowerCase();
+
+  const loadSearchRecordPurposeLinks = (): Record<string, string> => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = window.localStorage.getItem(searchRecordPurposeLinksKey);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, string>;
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const saveSearchRecordPurposeLinks = (next: Record<string, string>) => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(searchRecordPurposeLinksKey, JSON.stringify(next));
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -839,6 +887,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     searchRecordAPI
       .list(projectId)
       .then((items) => {
+        const purposeMap = loadSearchRecordPurposeLinks();
         setSearchRecords(
           items.map((item: ApiSearchRecord) => ({
             id: item.id,
@@ -847,13 +896,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             results: item.results,
             relevant: item.relevant,
             date: item.searched_at.includes("T") ? item.searched_at.split("T")[0] : item.searched_at,
+            purposeCardId: purposeMap[item.id],
           }))
         );
       })
       .catch(() => {
         setSearchRecords([]);
       });
-  }, [projectId]);
+  }, [projectId, searchRecordPurposeLinksKey]);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -1038,10 +1088,15 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   }, [projectId]);
 
   const handleOpenAddConceptDialog = (prefill?: string) => {
+    if (purposeCards.length === 0) {
+      toast.error("请先在 Step 1 创建至少一个 Purpose Card");
+      return;
+    }
     setConceptName(prefill?.trim() || "");
     setConceptDescription("");
     setConceptCategory("Keyword");
     setConceptColor("#22d3ee");
+    setConceptPurposeCardId(purposeCards[0]?.id || "");
     setShowConceptDialog(true);
   };
 
@@ -1160,7 +1215,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   };
 
   const openAddSearchRecordDialog = () => {
+    if (purposeCards.length === 0) {
+      toast.error("请先在 Step 1 创建至少一个 Purpose Card");
+      return;
+    }
     resetSearchRecordForm();
+    setSrPurposeCardId(purposeCards[0]?.id || "");
     setShowSearchDialog(true);
   };
 
@@ -1439,6 +1499,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   };
 
   const buildSearchRecordFromCurrentForm = () => {
+    if (purposeCards.length === 0) {
+      toast.error("请先在 Step 1 创建至少一个 Purpose Card");
+      return null;
+    }
+    if (!srPurposeCardId) {
+      toast.error("请为该 Search Log 选择关联的 Purpose Card");
+      return null;
+    }
     const db = srDatabase === "Other" ? srCustomDb || "Other" : srDatabase;
     const query = srBooleanString.trim() || buildBooleanStringFromSelected(srKeywords, srConnector).trim();
 
@@ -1474,6 +1542,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       delete next[searchRecordId];
       return next;
     });
+    const nextPurposeMap = loadSearchRecordPurposeLinks();
+    delete nextPurposeMap[searchRecordId];
+    saveSearchRecordPurposeLinks(nextPurposeMap);
     try {
       await searchRecordAPI.delete(searchRecordId);
     } catch {
@@ -1494,7 +1565,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         if (!exists) {
           next = [
             ...next,
-            { id: `kw-${Date.now()}-${Math.random()}`, term: kw, category: "Custom" },
+            {
+              id: `kw-${Date.now()}-${Math.random()}`,
+              term: kw,
+              category: "Custom",
+              purposeCardId: srPurposeCardId || undefined,
+            },
           ];
         }
       });
@@ -1516,7 +1592,13 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         results: created.results,
         relevant: created.relevant,
         date: created.searched_at.includes("T") ? created.searched_at.split("T")[0] : created.searched_at,
+        purposeCardId: newRecord.purposeCardId,
       };
+      if (newRecord.purposeCardId) {
+        const nextPurposeMap = loadSearchRecordPurposeLinks();
+        nextPurposeMap[created.id] = newRecord.purposeCardId;
+        saveSearchRecordPurposeLinks(nextPurposeMap);
+      }
       setSearchRecords((prev) => [...prev, localRecord]);
       setSearchRecordOffsets((prev) => ({ ...prev, [localRecord.id]: 0 }));
     } catch {
@@ -1538,7 +1620,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         if (!exists) {
           next = [
             ...next,
-            { id: `kw-${Date.now()}-${Math.random()}`, term: kw, category: "Custom" },
+            {
+              id: `kw-${Date.now()}-${Math.random()}`,
+              term: kw,
+              category: "Custom",
+              purposeCardId: srPurposeCardId || undefined,
+            },
           ];
         }
       });
@@ -1561,7 +1648,13 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         results: created.results,
         relevant: created.relevant,
         date: created.searched_at.includes("T") ? created.searched_at.split("T")[0] : created.searched_at,
+        purposeCardId: newRecord.purposeCardId,
       };
+      if (newRecord.purposeCardId) {
+        const nextPurposeMap = loadSearchRecordPurposeLinks();
+        nextPurposeMap[created.id] = newRecord.purposeCardId;
+        saveSearchRecordPurposeLinks(nextPurposeMap);
+      }
       setSearchRecords((prev) => [...prev, createdRecord]);
       setSearchRecordOffsets((prev) => ({ ...prev, [createdRecord.id]: 0 }));
     } catch {
@@ -1640,6 +1733,13 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         results: nextResults,
         relevant: nextRelevant,
       });
+      const nextPurposeMap = loadSearchRecordPurposeLinks();
+      if (nextPurposeCardId) {
+        nextPurposeMap[editingSearchRecordId] = nextPurposeCardId;
+      } else {
+        delete nextPurposeMap[editingSearchRecordId];
+      }
+      saveSearchRecordPurposeLinks(nextPurposeMap);
     } catch {
       toast.error("保存 Search Log 失败");
       return;
@@ -2153,6 +2253,11 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         </div>
 
         <TabsContent value="keywords" className="mt-4 space-y-4">
+          {purposeCards.length === 0 && (
+            <div className="rounded-lg border border-amber-300/40 bg-amber-50/10 p-3 text-xs text-amber-300">
+              请先在 Step 1 创建至少一个 Purpose Card，之后才能新增并关联 keyword。
+            </div>
+          )}
           <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold">
@@ -2169,23 +2274,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      if (newKeyword.trim()) {
-                        setKeywords((prev) => {
-                          const term = newKeyword.trim();
-                          if (!term) return prev;
-                          const exists = prev.some((item) => normalizeKeywordTerm(item.term) === normalizeKeywordTerm(term));
-                          if (exists) return prev;
-                          return [
-                            ...prev,
-                            {
-                              id: `kw-${Date.now()}`,
-                              term,
-                              category: "Custom",
-                            },
-                          ];
-                        });
-                        setNewKeyword("");
-                      }
+                      handleOpenAddConceptDialog(newKeyword);
                     }
                   }}
                 />
@@ -2245,6 +2334,11 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         </TabsContent>
 
         <TabsContent value="search" className="mt-4 space-y-4">
+          {purposeCards.length === 0 && (
+            <div className="rounded-lg border border-amber-300/40 bg-amber-50/10 p-3 text-xs text-amber-300">
+              请先在 Step 1 创建至少一个 Purpose Card，之后才能新增并关联 Search Log。
+            </div>
+          )}
           <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -2862,8 +2956,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setShowConceptDialog(false);
           setConceptName("");
           setConceptDescription("");
-          setConceptCategory("Construct");
-          setConceptColor("#6366f1");
+          setConceptCategory("Keyword");
+          setConceptColor("#22d3ee");
+          setConceptPurposeCardId("");
         }}
         title="Add a new keyword"
       >
@@ -2938,6 +3033,24 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-700">Associate to Purpose Card</label>
+            <Select
+              value={conceptPurposeCardId || PURPOSE_CARD_NONE}
+              onValueChange={(value) => setConceptPurposeCardId(value === PURPOSE_CARD_NONE ? "" : value)}
+            >
+              <SelectTrigger className="text-sm h-9">
+                <SelectValue placeholder="Select a purpose card..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={PURPOSE_CARD_NONE}>Select...</SelectItem>
+                {purposeCards.map((card) => (
+                  <SelectItem key={card.id} value={card.id}>{card.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {conceptName.trim() && (
             <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
               <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">Preview</p>
@@ -2968,8 +3081,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 setShowConceptDialog(false);
                 setConceptName("");
                 setConceptDescription("");
-                setConceptCategory("Construct");
-                setConceptColor("#6366f1");
+                setConceptCategory("Keyword");
+                setConceptColor("#22d3ee");
+                setConceptPurposeCardId("");
               }}
             >
               Cancel

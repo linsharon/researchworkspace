@@ -65,6 +65,7 @@ export interface Keyword {
   id: string;
   term: string;
   category: string;
+  purposeCardId?: string;
 }
 
 export interface SearchRecord {
