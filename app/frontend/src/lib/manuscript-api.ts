@@ -717,46 +717,62 @@ export const projectAPI = {
     title: string;
     description?: string;
   }): Promise<Project> => {
-    return withLocalFallback(
-      async () => {
-        const response = await axios.post(`${API_BASE_URL}/projects`, data);
-        return response.data;
-      },
-      () => {
-        const projects = loadCollection<Project>(STORAGE_KEYS.projects);
-        const existing = projects.find((project) => project.id === data.id);
-        const timestamp = nowIso();
-        const nextProject: Project = existing
-          ? {
-              ...existing,
-              title: data.title,
-              description: data.description,
-              updated_at: timestamp,
-            }
-          : {
-              id: data.id,
-              title: data.title,
-              description: data.description,
-              created_at: timestamp,
-              updated_at: timestamp,
-            };
-        const nextProjects = existing
-          ? projects.map((project) => (project.id === data.id ? nextProject : project))
-          : [...projects, nextProject];
-        saveCollection(STORAGE_KEYS.projects, nextProjects);
-        return nextProject;
+    const fallback = () => {
+      const projects = loadCollection<Project>(STORAGE_KEYS.projects);
+      const existing = projects.find((project) => project.id === data.id);
+      const timestamp = nowIso();
+      const nextProject: Project = existing
+        ? {
+            ...existing,
+            title: data.title,
+            description: data.description,
+            updated_at: timestamp,
+          }
+        : {
+            id: data.id,
+            title: data.title,
+            description: data.description,
+            created_at: timestamp,
+            updated_at: timestamp,
+          };
+      const nextProjects = existing
+        ? projects.map((project) => (project.id === data.id ? nextProject : project))
+        : [...projects, nextProject];
+      saveCollection(STORAGE_KEYS.projects, nextProjects);
+      return nextProject;
+    };
+
+    if (isCodespacesPreviewHost()) {
+      return fallback();
+    }
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/projects`, data);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return fallback();
       }
-    );
+      throw error;
+    }
   },
 
   list: async (): Promise<Project[]> => {
-    return withLocalFallback(
-      async () => {
-        const response = await axios.get(`${API_BASE_URL}/projects`);
-        return response.data;
-      },
-      () => sortByUpdatedDesc(loadCollection<Project>(STORAGE_KEYS.projects))
-    );
+    const fallback = () => sortByUpdatedDesc(loadCollection<Project>(STORAGE_KEYS.projects));
+
+    if (isCodespacesPreviewHost()) {
+      return fallback();
+    }
+
+    try {
+      const response = await axios.get(`${API_BASE_URL}/projects`);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return fallback();
+      }
+      throw error;
+    }
   },
 
   get: async (projectId: string): Promise<Project> => {
