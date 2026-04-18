@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 """Manuscript API router - papers, notes, highlights, concepts management."""
 
 import logging
 import re
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import TYPE_CHECKING, List, Literal, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
@@ -20,9 +22,10 @@ from dependencies.database import get_db
 from models.auth import User
 from models.manuscript import Concept, Highlight, Note, Paper, Project, ProjectMember, SearchRecord
 from schemas.auth import UserResponse
-from schemas.storage import ObjectRequest
 from services.activity import log_activity_event
-from services.storage import StorageService
+
+if TYPE_CHECKING:
+    from services.storage import StorageService
 
 # ============================================================
 # Pydantic Schemas
@@ -373,6 +376,8 @@ async def _delete_pdf_asset_if_needed(pdf_path: Optional[str], storage_service: 
             return
         bucket_name, object_key = storage_ref
         try:
+            from schemas.storage import ObjectRequest
+
             await storage_service.delete_object(
                 ObjectRequest(bucket_name=bucket_name, object_key=object_key)
             )
@@ -419,6 +424,8 @@ async def _store_paper_pdf(
 
 def _create_storage_service() -> Optional[StorageService]:
     try:
+        from services.storage import StorageService
+
         return StorageService()
     except Exception as exc:
         logger.warning("Storage service unavailable for manuscript PDF flow: %s", exc)
