@@ -718,25 +718,6 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     if (!srKeywords.includes(trimmed)) {
       setSrKeywords((prev) => [...prev, trimmed]);
     }
-    setKeywords((prev) => {
-      const exists = prev.some((item) => normalizeKeywordTerm(item.term) === normalizeKeywordTerm(trimmed));
-      if (exists) {
-        return prev.map((item) =>
-          normalizeKeywordTerm(item.term) === normalizeKeywordTerm(trimmed)
-            ? { ...item, purposeCardId: conceptPurposeCardId }
-            : item
-        );
-      }
-      return [
-        ...prev,
-        {
-          id: `kw-${Date.now()}`,
-          term: trimmed,
-          category: conceptCategory,
-          purposeCardId: conceptPurposeCardId,
-        },
-      ];
-    });
     setNewKeyword("");
     setShowConceptDialog(false);
     setConceptName("");
