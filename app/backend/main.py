@@ -257,6 +257,23 @@ async def general_exception_handler(request: Request, exc: Exception):
         )
 
 
+# Explicit exception handler for HTTPException to ensure proper JSON response format
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTPException with proper JSON response format."""
+    response_data = {"detail": exc.detail}
+    if hasattr(exc, "headers") and exc.headers:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=response_data,
+            headers=exc.headers,
+        )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=response_data,
+    )
+
+
 @app.get("/")
 def root():
     return {"message": "FastAPI Modular Template is running"}

@@ -389,17 +389,38 @@ export default function PaperReadingArea({
 
         {previewErrorLog ? (
           <div className="px-4 pt-4">
+            {paper.pdf_path?.startsWith("local://") ? (
+              <Alert className="border-yellow-500/40 bg-yellow-950/30 text-yellow-100 mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>PDF file was lost after backend update</AlertTitle>
+                <AlertDescription>
+                  <p className="mb-3 text-sm text-yellow-100/90">
+                    This PDF was stored locally and was removed when the backend was redeployed. Please re-upload the file to continue.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button className="h-8" onClick={handleUploadPDF} size="sm" variant="default">
+                      <Upload className="h-3.5 w-3.5 mr-1" />
+                      Re-upload PDF
+                    </Button>
+                    <Button className="h-8" onClick={handleCopyPreviewLog} size="sm" variant="outline">
+                      {copiedPreviewLog ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copiedPreviewLog ? "Copied" : "Copy Error Log"}
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            ) : null}
             <Alert className="border-amber-500/40 bg-amber-950/30 text-amber-100">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>PDF preview resolve failed</AlertTitle>
               <AlertDescription>
                 <p className="mb-3 text-sm text-amber-100/90">
-                  Detailed preview error log is shown below. Copy it and paste it into codespace for debugging.
+                  Detailed error log is shown below. Copy it for debugging if needed.
                 </p>
                 <div className="mb-3 flex flex-wrap gap-2">
                   <Button className="h-8" onClick={handleCopyPreviewLog} size="sm" variant="outline">
                     {copiedPreviewLog ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                    {copiedPreviewLog ? "Copied" : "Copy Preview Error Log"}
+                    {copiedPreviewLog ? "Copied" : "Copy Full Error Log"}
                   </Button>
                 </div>
                 <pre className="max-h-56 overflow-auto rounded-md border border-amber-400/30 bg-slate-950/80 p-3 text-xs leading-5 text-amber-100 whitespace-pre-wrap break-words">
