@@ -3,10 +3,21 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/lib/i18n";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Target,
   Search,
@@ -24,6 +35,7 @@ import {
   Plus,
   X,
   Crown,
+  Trash2,
   Globe,
   PanelLeftOpen,
   PanelLeftClose,
@@ -56,6 +68,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [newProjectGoal, setNewProjectGoal] = useState("");
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const isPremiumUser = Boolean(user?.is_premium);
+  const hasReachedFreeProjectLimit = !isPremiumUser && projects.length >= 1;
 
   const reloadProjects = async () => {
     try {
@@ -129,19 +147,58 @@ export default function AppLayout({ children }: AppLayoutProps) {
   };
 
   const handleCreateProject = async () => {
+    if (hasReachedFreeProjectLimit) {
+      setShowUpgradeDialog(true);
+      return;
+    }
     if (!newProjectTitle.trim()) return;
     const projectId = `proj-${Date.now()}`;
-    await projectAPI.ensure({
-      id: projectId,
-      title: newProjectTitle.trim(),
-      description: newProjectGoal.trim(),
-    });
-    await reloadProjects();
-    setActiveProjectId(projectId);
-    setNewProjectTitle("");
-    setNewProjectGoal("");
-    setShowNewProject(false);
-    setShowProjectSwitcher(false);
+    try {
+      await projectAPI.ensure({
+        id: projectId,
+        title: newProjectTitle.trim(),
+        description: newProjectGoal.trim(),
+      });
+      await reloadProjects();
+      setActiveProjectId(projectId);
+      setNewProjectTitle("");
+      setNewProjectGoal("");
+      setShowNewProject(false);
+      setShowProjectSwitcher(false);
+      toast.success(lang === "zh" ? "项目已创建" : "Project created");
+    } catch (error) {
+      const maybeMessage = error instanceof Error ? error.message : "";
+      if (maybeMessage.toLowerCase().includes("premium")) {
+        setShowUpgradeDialog(true);
+      } else {
+        toast.error(lang === "zh" ? "创建项目失败" : "Failed to create project");
+      }
+    }
+  };
+
+  const handleDeleteActiveProject = async () => {
+    if (!activeProjectId) return;
+    setDeleting(true);
+    try {
+      await projectAPI.delete(activeProjectId);
+      await reloadProjects();
+      setShowDeleteConfirm(false);
+      setShowProjectSwitcher(false);
+      toast.success(lang === "zh" ? "项目已删除" : "Project deleted");
+      if (location.pathname.startsWith("/workflow/") || location.pathname === "/artifacts") {
+        navigate("/");
+      }
+    } catch (error) {
+      const maybeMessage = error instanceof Error ? error.message : "";
+      if (maybeMessage.toLowerCase().includes("premium")) {
+        setShowDeleteConfirm(false);
+        setShowUpgradeDialog(true);
+      } else {
+        toast.error(lang === "zh" ? "删除项目失败" : "Failed to delete project");
+      }
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleSendMessage = () => {
@@ -313,15 +370,26 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     Switch to this project
                   </Button>
 
-                  {/* New project — premium only if already has a project */}
+                  {/* New project */}
                   <div className="border-t border-slate-700/40 pt-3">
                     {projects.length >= 1 && (
                       <div className="flex items-center gap-1.5 mb-2">
-                        <Badge className="text-[9px] bg-cyan-900/60 text-cyan-300 border border-cyan-700/40">
+                        <Badge
+                          className={cn(
+                            "text-[9px] border",
+                            isPremiumUser
+                              ? "bg-emerald-900/50 text-emerald-300 border-emerald-700/40"
+                              : "bg-cyan-900/60 text-cyan-300 border-cyan-700/40"
+                          )}
+                        >
                           <Crown className="w-2.5 h-2.5 mr-0.5" />
-                          Premium
+                          {isPremiumUser ? (lang === "zh" ? "Premium 已开通" : "Premium Active") : "Premium"}
                         </Badge>
-                        <span className="text-[10px] text-slate-400">Creating multiple projects requires a premium account</span>
+                        {!isPremiumUser && (
+                          <span className="text-[10px] text-slate-400">
+                            {lang === "zh" ? "创建多个项目需要 Premium" : "Creating multiple projects requires Premium"}
+                          </span>
+                        )}
                       </div>
                     )}
                     {showNewProject ? (
@@ -344,6 +412,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                             size="sm"
                             className="text-xs h-7 bg-cyan-500 hover:bg-cyan-600 text-white flex-1"
                             onClick={handleCreateProject}
+                            disabled={hasReachedFreeProjectLimit}
                           >
                             {t("app.create")}
                           </Button>
@@ -366,10 +435,34 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         variant="outline"
                         size="sm"
                         className="w-full text-xs h-8 border-dashed"
-                        onClick={() => setShowNewProject(true)}
+                        onClick={() => {
+                          if (hasReachedFreeProjectLimit) {
+                            setShowUpgradeDialog(true);
+                            return;
+                          }
+                          setShowNewProject(true);
+                        }}
                       >
                         <Plus className="w-3 h-3 mr-1" />
                         {t("app.newProject")}
+                      </Button>
+                    )}
+
+                    {activeProjectId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs h-8 border-rose-500/40 text-rose-300 hover:bg-rose-500/10 mt-2"
+                        onClick={() => {
+                          if (!isPremiumUser) {
+                            setShowUpgradeDialog(true);
+                            return;
+                          }
+                          setShowDeleteConfirm(true);
+                        }}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        {lang === "zh" ? "删除当前项目" : "Delete current project"}
                       </Button>
                     )}
                   </div>
@@ -628,6 +721,57 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </p>
         </footer>
       </div>
+
+      <AlertDialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{lang === "zh" ? "升级到 Premium" : "Upgrade to Premium"}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300">
+              {lang === "zh"
+                ? "Free 用户仅可创建 1 个项目，且不能删除项目。升级 Premium 后可创建多个项目并删除现有项目。"
+                : "Free users can create only 1 project and cannot delete projects. Upgrade to Premium for multi-project creation and deletion."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-600 text-slate-200">
+              {lang === "zh" ? "稍后再说" : "Maybe later"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-cyan-500 hover:bg-cyan-400 text-slate-900"
+              onClick={() => navigate("/premium")}
+            >
+              {lang === "zh" ? "查看 Premium 详情" : "View Premium details"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{lang === "zh" ? "确认删除项目" : "Confirm project deletion"}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300">
+              {lang === "zh"
+                ? `你将删除项目“${activeProject.title}”。该操作不可撤销，请确认。`
+                : `You are about to delete project \"${activeProject.title}\". This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-600 text-slate-200" disabled={deleting}>
+              {lang === "zh" ? "取消" : "Cancel"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 hover:bg-rose-500 text-white"
+              onClick={() => {
+                void handleDeleteActiveProject();
+              }}
+              disabled={deleting}
+            >
+              {deleting ? (lang === "zh" ? "删除中..." : "Deleting...") : (lang === "zh" ? "确认删除" : "Delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Floating AI Assistant */}
       {/* Chat Dialog */}

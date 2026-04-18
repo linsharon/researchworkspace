@@ -29,7 +29,7 @@ from schemas.auth import (
     TokenExchangeResponse,
     UserResponse,
 )
-from services.auth import AuthService
+from services.auth import AuthService, apply_system_user_flags
 from services.password_auth import hash_password, verify_password
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -164,6 +164,8 @@ async def register_with_email_password(payload: RegisterRequest, db: AsyncSessio
     )
     user.password_hash = hash_password(password)
     user.role = "user"
+    user.is_premium = False
+    apply_system_user_flags(user)
     user.last_login = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(user)
@@ -381,7 +383,8 @@ async def exchange_platform_token(payload: PlatformTokenExchangeRequest, db: Asy
     if not admin_name:
         admin_name = derive_name_from_email(admin_email)
 
-    user = User(id=platform_user_id, email=admin_email, name=admin_name, role="admin")
+    user = User(id=platform_user_id, email=admin_email, name=admin_name, role="admin", is_premium=True)
+    apply_system_user_flags(user)
     app_token, _expires_at, _ = await auth_service.issue_app_token(user=user)
 
     return TokenExchangeResponse(token=app_token)

@@ -12,6 +12,15 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+SYSTEM_ADMIN_PREMIUM_EMAIL = "pandalinjingjing@gmail.com"
+
+
+def apply_system_user_flags(user: User) -> None:
+    """Apply system-level role/subscription overrides for special accounts."""
+    normalized_email = (user.email or "").strip().lower()
+    if normalized_email == SYSTEM_ADMIN_PREMIUM_EMAIL:
+        user.role = "admin"
+        user.is_premium = True
 
 
 class AuthService:
@@ -37,6 +46,8 @@ class AuthService:
             user = User(id=platform_sub, email=email, name=name, last_login=datetime.now(timezone.utc))
             self.db.add(user)
 
+        apply_system_user_flags(user)
+
         start_time_commit = time.time()
         logger.debug("[DB_OP] Starting user commit/refresh")
         await self.db.commit()
@@ -60,6 +71,7 @@ class AuthService:
             "sub": user.id,
             "email": user.email,
             "role": user.role,
+            "is_premium": bool(getattr(user, "is_premium", False)),
         }
 
         if user.name:
@@ -129,8 +141,9 @@ async def initialize_admin_user():
 
         if user:
             # Update existing user to admin if not already
-            if user.role != "admin":
+            if user.role != "admin" or not user.is_premium:
                 user.role = "admin"
+                user.is_premium = True
                 user.email = admin_user_email  # Update email too
                 await db.commit()
                 logger.debug(f"Updated user {admin_user_id} to admin role")
@@ -138,7 +151,7 @@ async def initialize_admin_user():
                 logger.debug(f"Admin user {admin_user_id} already exists")
         else:
             # Create new admin user
-            admin_user = User(id=admin_user_id, email=admin_user_email, role="admin")
+            admin_user = User(id=admin_user_id, email=admin_user_email, role="admin", is_premium=True)
             db.add(admin_user)
             await db.commit()
             logger.debug(f"Created admin user: {admin_user_id} with email: {admin_user_email}")

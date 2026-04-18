@@ -60,6 +60,7 @@ const STORAGE_KEYS = {
   notes: "rw-manuscript-notes",
   highlights: "rw-manuscript-highlights",
   concepts: "rw-manuscript-concepts",
+  search_records: "rw-manuscript-search-records",
 } as const;
 
 // ============================================================
@@ -826,6 +827,51 @@ export const projectAPI = {
         next[index] = updated;
         saveCollection(STORAGE_KEYS.projects, next);
         return updated;
+      }
+    );
+  },
+
+  delete: async (projectId: string): Promise<void> => {
+    return withLocalFallback(
+      async () => {
+        await axios.delete(`${API_BASE_URL}/projects/${projectId}`);
+      },
+      () => {
+        const projects = loadCollection<Project>(STORAGE_KEYS.projects);
+        const papers = loadCollection<Paper>(STORAGE_KEYS.papers);
+        const notes = loadCollection<Note>(STORAGE_KEYS.notes);
+        const concepts = loadCollection<StoredConcept>(STORAGE_KEYS.concepts);
+        const records = loadCollection<SearchRecord>(STORAGE_KEYS.search_records);
+        const highlights = loadCollection<Highlight>(STORAGE_KEYS.highlights);
+
+        const paperIds = new Set(
+          papers.filter((paper) => paper.project_id === projectId).map((paper) => paper.id)
+        );
+
+        saveCollection(
+          STORAGE_KEYS.projects,
+          projects.filter((project) => project.id !== projectId)
+        );
+        saveCollection(
+          STORAGE_KEYS.papers,
+          papers.filter((paper) => paper.project_id !== projectId)
+        );
+        saveCollection(
+          STORAGE_KEYS.notes,
+          notes.filter((note) => note.project_id !== projectId)
+        );
+        saveCollection(
+          STORAGE_KEYS.concepts,
+          concepts.filter((concept) => concept.project_id !== projectId)
+        );
+        saveCollection(
+          STORAGE_KEYS.search_records,
+          records.filter((record) => record.project_id !== projectId)
+        );
+        saveCollection(
+          STORAGE_KEYS.highlights,
+          highlights.filter((highlight) => !paperIds.has(highlight.paper_id))
+        );
       }
     );
   },

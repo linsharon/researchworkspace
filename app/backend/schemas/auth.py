@@ -9,6 +9,7 @@ class UserResponse(BaseModel):
     email: str
     name: Optional[str] = None
     role: str = "user"  # user/admin
+    is_premium: bool = False
     last_login: Optional[datetime] = None
 
     class Config:

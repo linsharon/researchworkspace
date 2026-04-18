@@ -9,6 +9,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   ArrowRight,
   BarChart3,
   BookOpen,
@@ -19,6 +29,7 @@ import {
   Network,
   PenTool,
   Search,
+  Trash2,
   Users,
 } from "lucide-react";
 import { projectAPI, type Project } from "@/lib/manuscript-api";
@@ -192,16 +203,22 @@ function UnauthenticatedLanding() {
 }
 
 function AuthenticatedLanding() {
+  const { user } = useAuth();
   const { lang } = useI18n();
   const isZh = lang === "zh";
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [pendingDeleteProject, setPendingDeleteProject] = useState<Project | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
+  const isPremiumUser = Boolean(user?.is_premium);
   const totalProjects = useMemo(() => projects.length, [projects.length]);
+  const hasReachedFreeProjectLimit = !isPremiumUser && totalProjects >= 1;
 
   const loadProjects = async () => {
     setLoadingProjects(true);
@@ -220,6 +237,11 @@ function AuthenticatedLanding() {
   }, []);
 
   const handleCreateProject = async () => {
+    if (hasReachedFreeProjectLimit) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+
     const nextTitle = title.trim();
     if (!nextTitle) {
       toast.error(isZh ? "请输入项目名称" : "Please enter a project title");
@@ -235,10 +257,44 @@ function AuthenticatedLanding() {
       setDescription("");
       await loadProjects();
       navigate(`/workflow/${id}/1`);
-    } catch {
-      toast.error(isZh ? "创建项目失败，请稍后重试" : "Failed to create project");
+    } catch (error) {
+      const maybeMessage = error instanceof Error ? error.message.toLowerCase() : "";
+      if (maybeMessage.includes("premium")) {
+        setShowUpgradeDialog(true);
+      } else {
+        toast.error(isZh ? "创建项目失败，请稍后重试" : "Failed to create project");
+      }
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDeleteProject = async (project: Project) => {
+    if (!isPremiumUser) {
+      setShowUpgradeDialog(true);
+      return;
+    }
+    setPendingDeleteProject(project);
+  };
+
+  const confirmDeleteProject = async () => {
+    if (!pendingDeleteProject) return;
+    setDeletingId(pendingDeleteProject.id);
+    try {
+      await projectAPI.delete(pendingDeleteProject.id);
+      toast.success(isZh ? "项目已删除" : "Project deleted");
+      await loadProjects();
+      setPendingDeleteProject(null);
+    } catch (error) {
+      const maybeMessage = error instanceof Error ? error.message.toLowerCase() : "";
+      if (maybeMessage.includes("premium")) {
+        setPendingDeleteProject(null);
+        setShowUpgradeDialog(true);
+      } else {
+        toast.error(isZh ? "删除项目失败，请稍后重试" : "Failed to delete project");
+      }
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -246,7 +302,12 @@ function AuthenticatedLanding() {
     <AppLayout>
       <div className="p-6 max-w-6xl mx-auto space-y-6">
         <div className="rounded-2xl border border-slate-700/50 bg-gradient-to-r from-[#10243a] via-[#102b3f] to-[#172b34] p-6">
-          <p className="text-xs text-cyan-300 tracking-wider uppercase">Project Management</p>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-xs text-cyan-300 tracking-wider uppercase">Project Management</p>
+            <Badge className={isPremiumUser ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/30" : "bg-slate-700/60 text-slate-200 border-slate-500/40"}>
+              {isPremiumUser ? (isZh ? "Premium 用户" : "Premium") : (isZh ? "Free 用户" : "Free")}
+            </Badge>
+          </div>
           <h1 className="text-3xl font-bold text-slate-100 mt-2">
             {isZh ? "从新项目开始你的研究工作流" : "Start Your Workflow with a New Project"}
           </h1>
@@ -279,6 +340,11 @@ function AuthenticatedLanding() {
               <Button className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900" onClick={() => void handleCreateProject()} disabled={creating}>
                 {creating ? (isZh ? "创建中..." : "Creating...") : (isZh ? "创建并进入 Step 1" : "Create and Enter Step 1")}
               </Button>
+              {hasReachedFreeProjectLimit && (
+                <p className="text-xs text-amber-300">
+                  {isZh ? "Free 用户仅可创建 1 个项目，请升级 Premium。" : "Free plan allows only 1 project. Upgrade to Premium."}
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -323,6 +389,18 @@ function AuthenticatedLanding() {
                             <Users className="h-3 w-3 mr-1" />
                             {isZh ? "成员管理" : "Members"}
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-rose-500/40 text-rose-300 hover:bg-rose-500/10"
+                            onClick={() => void handleDeleteProject(project)}
+                            disabled={deletingId === project.id}
+                          >
+                            <Trash2 className="h-3 w-3 mr-1" />
+                            {deletingId === project.id
+                              ? (isZh ? "删除中..." : "Deleting...")
+                              : (isZh ? "删除" : "Delete")}
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -333,6 +411,57 @@ function AuthenticatedLanding() {
           </Card>
         </div>
       </div>
+
+      <AlertDialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{isZh ? "升级到 Premium" : "Upgrade to Premium"}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300">
+              {isZh
+                ? "Free 用户只能创建 1 个项目，且不支持删除项目。升级 Premium 后可创建多个项目并删除项目。"
+                : "Free users can only create 1 project and cannot delete projects. Upgrade to Premium for multi-project creation and deletion."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-600 text-slate-200">
+              {isZh ? "稍后再说" : "Maybe later"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-cyan-500 hover:bg-cyan-400 text-slate-900"
+              onClick={() => navigate("/premium")}
+            >
+              {isZh ? "查看 Premium 详情" : "View Premium details"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={Boolean(pendingDeleteProject)} onOpenChange={(open) => !open && setPendingDeleteProject(null)}>
+        <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{isZh ? "确认删除项目" : "Confirm project deletion"}</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-300">
+              {isZh
+                ? `你将删除项目“${pendingDeleteProject?.title || ""}”，该操作不可撤销。`
+                : `You are about to delete project \"${pendingDeleteProject?.title || ""}\". This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-600 text-slate-200" disabled={Boolean(deletingId)}>
+              {isZh ? "取消" : "Cancel"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 hover:bg-rose-500 text-white"
+              onClick={() => {
+                void confirmDeleteProject();
+              }}
+              disabled={Boolean(deletingId)}
+            >
+              {deletingId ? (isZh ? "删除中..." : "Deleting...") : (isZh ? "确认删除" : "Delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }

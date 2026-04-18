@@ -52,6 +52,7 @@ async def get_current_user(token: str = Depends(get_bearer_token)) -> UserRespon
         email=payload.get("email", ""),
         name=payload.get("name"),
         role=payload.get("role", "user"),
+        is_premium=bool(payload.get("is_premium", False)),
         last_login=last_login,
     )
 

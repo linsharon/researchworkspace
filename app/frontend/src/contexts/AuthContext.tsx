@@ -13,6 +13,7 @@ interface User {
   email: string;
   name?: string;
   role: string;
+  is_premium: boolean;
   last_login?: string;
 }
 
@@ -53,6 +54,7 @@ const PREVIEW_USER: User = {
   email: 'preview@local.codespaces',
   name: 'Codespaces Preview',
   role: 'admin',
+  is_premium: true,
 };
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {

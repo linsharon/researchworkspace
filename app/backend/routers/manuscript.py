@@ -1377,6 +1377,18 @@ async def create_project(
         await session.commit()
         await session.refresh(existing)
         return existing
+
+    if not current_user.is_premium:
+        owned_result = await session.execute(
+            select(Project.id).where(Project.owner_user_id == current_user.id).limit(1)
+        )
+        has_existing_project = owned_result.scalar_one_or_none() is not None
+        if has_existing_project:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Premium subscription required to create multiple projects",
+            )
+
     db_project = Project(
         id=project_id,
         owner_user_id=current_user.id,
@@ -1429,6 +1441,32 @@ async def update_project(
     await session.commit()
     await session.refresh(project)
     return project
+
+
+@router.delete("/projects/{project_id}")
+async def delete_project(
+    project_id: str,
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """Delete a project and all dependent manuscript data (premium only)."""
+    if not current_user.is_premium:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Premium subscription required to delete projects",
+        )
+
+    project = await get_owned_project_or_404(session, project_id, current_user.id)
+
+    storage_service = _create_storage_service()
+    papers_result = await session.execute(select(Paper).where(Paper.project_id == project.id))
+    papers = papers_result.scalars().all()
+    for paper in papers:
+        await _delete_pdf_asset_if_needed(paper.pdf_path, storage_service)
+
+    await session.delete(project)
+    await session.commit()
+    return {"message": "Project deleted"}
 
 
 @router.get("/projects/{project_id}/members", response_model=List[ProjectMemberResponse])
