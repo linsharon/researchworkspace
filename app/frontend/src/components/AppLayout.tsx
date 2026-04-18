@@ -52,28 +52,35 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [newProjectGoal, setNewProjectGoal] = useState("");
 
-  useEffect(() => {
-    const loadProjects = async () => {
-      try {
-        const items = await projectAPI.list();
-        const mapped: ProjectItem[] = items.map((item) => ({
-          id: item.id,
-          title: item.title,
-          goal: item.description || "",
-          currentStep: 1,
-          updatedAt: (item.updated_at || "").split("T")[0] || new Date().toISOString().split("T")[0],
-        }));
-        setProjects(mapped);
-        if (mapped.length > 0) {
-          setActiveProjectId((prev) => prev || mapped[0].id);
-        }
-      } catch {
-        setProjects([]);
+  const reloadProjects = async () => {
+    try {
+      const items = await projectAPI.list();
+      const mapped: ProjectItem[] = items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        goal: item.description || "",
+        currentStep: 1,
+        updatedAt: (item.updated_at || "").split("T")[0] || new Date().toISOString().split("T")[0],
+      }));
+      setProjects(mapped);
+      if (mapped.length > 0) {
+        setActiveProjectId((prev) => prev || mapped[0].id);
       }
-    };
+    } catch {
+      setProjects([]);
+    }
+  };
 
-    void loadProjects();
+  useEffect(() => {
+    void reloadProjects();
   }, []);
+
+  useEffect(() => {
+    const workflowMatch = location.pathname.match(/^\/workflow\/([^/]+)\//);
+    if (workflowMatch?.[1]) {
+      setActiveProjectId(workflowMatch[1]);
+    }
+  }, [location.pathname]);
 
   // Language switcher state
   const [showLangSwitcher, setShowLangSwitcher] = useState(false);
@@ -108,17 +115,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
     updatedAt: new Date().toISOString().split("T")[0],
   };
 
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
     if (!newProjectTitle.trim()) return;
-    const newProj: ProjectItem = {
-      id: `proj-${Date.now()}`,
+    const projectId = `proj-${Date.now()}`;
+    await projectAPI.ensure({
+      id: projectId,
       title: newProjectTitle.trim(),
-      goal: newProjectGoal.trim(),
-      currentStep: 1,
-      updatedAt: new Date().toISOString().split("T")[0],
-    };
-    setProjects([...projects, newProj]);
-    setActiveProjectId(newProj.id);
+      description: newProjectGoal.trim(),
+    });
+    await reloadProjects();
+    setActiveProjectId(projectId);
     setNewProjectTitle("");
     setNewProjectGoal("");
     setShowNewProject(false);
@@ -203,25 +209,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </p>
             <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform", showProjectSwitcher && "rotate-180")} />
           </button>
-          <div className="mt-2 space-y-1.5">
-            <div className="text-[10px] text-slate-500 uppercase tracking-wider">Steps</div>
-            <div className="grid grid-cols-6 gap-1">
-              {([1, 2, 3, 4, 5, 6] as WorkflowStep[]).map((step) => {
-                const isCurrent = step === activeProject.currentStep;
-                return (
-                  <div
-                    key={step}
-                    className={cn(
-                      "h-1.5 rounded-full transition-colors",
-                      isCurrent ? "bg-violet-600" : "bg-slate-700/60"
-                    )}
-                    title={`Step ${step}`}
-                  />
-                );
-              })}
-            </div>
-          </div>
-
           <Link to="/" className="mt-3 block">
             <div
               className={cn(

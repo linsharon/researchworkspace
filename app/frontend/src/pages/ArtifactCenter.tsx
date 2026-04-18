@@ -105,6 +105,8 @@ export default function ArtifactCenter() {
   const CONCEPTS_STORAGE_KEY = "rw-concepts";
   const CONCEPTS_UPDATED_EVENT = "concepts-updated";
   const NOTES_UPDATED_EVENT = "notes-updated";
+  const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
+  const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const tabFromUrl = searchParams.get("tab") || "all";
@@ -131,6 +133,23 @@ export default function ArtifactCenter() {
       setFilter(tab);
     }
   }, [searchParams]);
+
+  const loadLocalArtifacts = (): Artifact[] => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? (parsed as Artifact[]) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveLocalArtifacts = (artifactsToSave: Artifact[]) => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(artifactsToSave));
+    window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -169,12 +188,13 @@ export default function ArtifactCenter() {
           .map((paper) => paperToArtifact(paper));
         const savedNotes = await noteAPI.listAll();
         const savedNoteArtifacts = savedNotes.map(noteToArtifact);
-        const merged = [...STATIC_ARTIFACTS, ...literatureArtifacts, ...savedNoteArtifacts];
+        const localArtifacts = loadLocalArtifacts();
+        const merged = [...STATIC_ARTIFACTS, ...localArtifacts, ...literatureArtifacts, ...savedNoteArtifacts];
         const deduped = Array.from(new Map(merged.map((artifact) => [artifact.id, artifact])).values());
         setArtifacts(deduped);
       } catch (error) {
         console.error("Failed to load notes for Artifact Center:", error);
-        setArtifacts([...STATIC_ARTIFACTS]);
+        setArtifacts([...STATIC_ARTIFACTS, ...loadLocalArtifacts()]);
       }
     };
 
@@ -185,8 +205,12 @@ export default function ArtifactCenter() {
         loadSavedNotes();
       };
       window.addEventListener(NOTES_UPDATED_EVENT, onNotesUpdated);
+      window.addEventListener(ARTIFACTS_UPDATED_EVENT, onNotesUpdated);
+      window.addEventListener("storage", onNotesUpdated);
       return () => {
         window.removeEventListener(NOTES_UPDATED_EVENT, onNotesUpdated);
+        window.removeEventListener(ARTIFACTS_UPDATED_EVENT, onNotesUpdated);
+        window.removeEventListener("storage", onNotesUpdated);
       };
     }
   }, []);
@@ -285,6 +309,11 @@ export default function ArtifactCenter() {
         console.error("Failed to delete literature artifact:", error);
         return;
       }
+    }
+
+    const localArtifacts = loadLocalArtifacts();
+    if (localArtifacts.some((item) => item.id === artifactId)) {
+      saveLocalArtifacts(localArtifacts.filter((item) => item.id !== artifactId));
     }
 
     setArtifacts((prev) => prev.filter((a) => a.id !== artifactId));

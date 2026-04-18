@@ -222,14 +222,6 @@ export default function WorkflowWorkspace() {
   const { projectId = "proj-1", step } = useParams<{ projectId: string; step: string }>();
   const currentStep = (parseInt(step || "1") as WorkflowStep) || 1;
   const stepMeta = STEP_META[currentStep];
-  const workflowMenuItems: Array<{ step: WorkflowStep; label: string }> = [
-    { step: 1, label: "Purpose" },
-    { step: 2, label: "Discover" },
-    { step: 3, label: "Read" },
-    { step: 4, label: "Expand" },
-    { step: 5, label: "Visualize" },
-    { step: 6, label: "Draft" },
-  ];
 
   // Ensure the project row exists in DB on first visit
   useEffect(() => {
@@ -282,25 +274,6 @@ export default function WorkflowWorkspace() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="hidden md:flex items-center gap-1 text-xs whitespace-nowrap">
-              <span className="font-semibold text-slate-400 mr-1">Workflow:</span>
-              {workflowMenuItems.map((item, index) => (
-                <div key={item.step} className="flex items-center gap-1">
-                  {index > 0 && <span className="text-slate-600">&gt;</span>}
-                  <Link
-                    to={`/workflow/${projectId}/${item.step}`}
-                    className={cn(
-                      "px-1.5 py-0.5 rounded transition-colors",
-                      item.step === currentStep
-                        ? "bg-violet-700 text-white font-medium"
-                        : "text-slate-500 hover:text-slate-200 hover:bg-slate-700/60"
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                </div>
-              ))}
-            </div>
             <Button variant="outline" size="sm" onClick={handleClearWorkflowCaches}>
               <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
               清理缓存
