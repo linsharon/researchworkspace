@@ -2542,6 +2542,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 <div className="space-y-3">
                 {sortedSearchRecords.map((record) => {
                   const linkedCount = linkedCandidateCount(record.id);
+                  const linkedPurposeCard = purposeCards.find((card) => card.id === record.purposeCardId);
                   const cannotDeleteReason = linkedCount > 0
                     ? `已关联 ${linkedCount} 篇 candidate paper，无法删除`
                     : null;
@@ -2564,6 +2565,19 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                         <span className="text-[10px] text-slate-400">
                           {record.date}
                         </span>
+                      </div>
+                      <div className="mb-1.5">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px]",
+                            linkedPurposeCard
+                              ? "border-cyan-300/50 text-cyan-300"
+                              : "border-amber-300/40 text-amber-300"
+                          )}
+                        >
+                          Purpose: {linkedPurposeCard ? linkedPurposeCard.title : "未关联"}
+                        </Badge>
                       </div>
                       <p className="text-xs font-mono text-slate-700 mb-2">
                         {renderQueryWithConceptLinks(record.query)}
