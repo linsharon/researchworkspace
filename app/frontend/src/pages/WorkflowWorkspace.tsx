@@ -377,9 +377,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
   const [selected, setSelected] = useState<string[]>(["Find research questions"]);
   const [customPurposes, setCustomPurposes] = useState<string[]>([]);
   const [newCustomPurpose, setNewCustomPurpose] = useState("");
-  const [notes, setNotes] = useState(
-    "I want to understand how AI tutoring systems affect self-regulated learning in higher education. Specifically interested in the tension between AI scaffolding and learner autonomy."
-  );
+  const [notes, setNotes] = useState("");
   const [cardGenerated, setCardGenerated] = useState(false);
 
   const allPurposes = [...PURPOSE_OPTIONS, ...customPurposes];
@@ -748,6 +746,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const [showEditSearchDialog, setShowEditSearchDialog] = useState(false);
   const [editingSearchRecordId, setEditingSearchRecordId] = useState<string | null>(null);
   const [srKeywords, setSrKeywords] = useState<string[]>([]);
+  const PURPOSE_CARD_NONE = "__none__";
   const [srDatabase, setSrDatabase] = useState("Web of Science");
   const [srCustomDb, setSrCustomDb] = useState("");
   const [srBooleanString, setSrBooleanString] = useState("");
@@ -1170,6 +1169,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     setSrBooleanString(record.query || "");
     setSrTotalResults(String(record.results || ""));
     setSrRelevantResults(String(record.relevant || ""));
+    setSrPurposeCardId(record.purposeCardId || "");
     if (DATABASE_OPTIONS.includes(record.database as (typeof DATABASE_OPTIONS)[number])) {
       setSrDatabase(record.database);
       setSrCustomDb("");
@@ -1618,6 +1618,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     const nextQuery = srBooleanString.trim();
     const nextResults = parseInt(srTotalResults) || 0;
     const nextRelevant = parseInt(srRelevantResults) || 0;
+    const nextPurposeCardId = srPurposeCardId || undefined;
     setSearchRecords((prev) =>
       prev.map((record) =>
         record.id === editingSearchRecordId
@@ -1627,6 +1628,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               query: nextQuery || record.query,
               results: nextResults,
               relevant: nextRelevant,
+              purposeCardId: nextPurposeCardId,
             }
           : record
       )
@@ -3093,12 +3095,15 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           {purposeCards.length > 0 && (
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-600">Associated Purpose Card (optional)</label>
-              <Select value={srPurposeCardId} onValueChange={setSrPurposeCardId}>
+              <Select
+                value={srPurposeCardId || PURPOSE_CARD_NONE}
+                onValueChange={(value) => setSrPurposeCardId(value === PURPOSE_CARD_NONE ? "" : value)}
+              >
                 <SelectTrigger className="text-xs h-8">
                   <SelectValue placeholder="Select a purpose card..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value={PURPOSE_CARD_NONE}>None</SelectItem>
                   {purposeCards.map((card) => (
                     <SelectItem key={card.id} value={card.id}>{card.title}</SelectItem>
                   ))}
@@ -3273,22 +3278,27 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             </div>
           </div>
 
-          {purposeCards.length > 0 && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-600">Associated Purpose Card (optional)</label>
-              <Select value={srPurposeCardId} onValueChange={setSrPurposeCardId}>
-                <SelectTrigger className="text-xs h-8">
-                  <SelectValue placeholder="Select a purpose card..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">None</SelectItem>
-                  {purposeCards.map((card) => (
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-slate-600">Associated Purpose Card (optional)</label>
+            <Select
+              value={srPurposeCardId || PURPOSE_CARD_NONE}
+              onValueChange={(value) => setSrPurposeCardId(value === PURPOSE_CARD_NONE ? "" : value)}
+            >
+              <SelectTrigger className="text-xs h-8">
+                <SelectValue placeholder="Select a purpose card..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={PURPOSE_CARD_NONE}>None</SelectItem>
+                {purposeCards.length > 0 ? (
+                  purposeCards.map((card) => (
                     <SelectItem key={card.id} value={card.id}>{card.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+                  ))
+                ) : (
+                  <SelectItem value="__empty__" disabled>No purpose cards yet</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="flex gap-2 pt-2">
             <Button
