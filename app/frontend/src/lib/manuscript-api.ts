@@ -7,6 +7,8 @@ import { getAPIBaseURL } from "./config";
 import { clearAuthSession, getAuthToken } from "./session";
 
 const API_BASE_URL = "/api/v1/manuscripts";
+const PAPER_PDF_UPLOAD_TIMEOUT_MS = 180000;
+const PAPER_PDF_FETCH_TIMEOUT_MS = 60000;
 
 const isCodespacesPreviewHost = () => {
   if (typeof window === "undefined") return false;
@@ -365,6 +367,7 @@ export const paperAPI = {
 
     const response = await axios.post(`${API_BASE_URL}/papers/${paperId}/pdf`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      timeout: PAPER_PDF_UPLOAD_TIMEOUT_MS,
     });
     return response.data;
   },
@@ -372,6 +375,7 @@ export const paperAPI = {
   getPdfBlobUrl: async (paperId: string): Promise<string> => {
     const response = await axios.get(`${API_BASE_URL}/papers/${paperId}/pdf`, {
       responseType: "blob",
+      timeout: PAPER_PDF_FETCH_TIMEOUT_MS,
     });
     return createObjectUrl(response.data);
   },
@@ -379,6 +383,7 @@ export const paperAPI = {
   downloadPdf: async (paperId: string): Promise<{ url: string; filename?: string }> => {
     const response = await axios.get(`${API_BASE_URL}/papers/${paperId}/pdf`, {
       responseType: "blob",
+      timeout: PAPER_PDF_FETCH_TIMEOUT_MS,
     });
     return {
       url: createObjectUrl(response.data),
