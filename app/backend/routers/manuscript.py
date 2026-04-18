@@ -292,7 +292,20 @@ STORAGE_REF_PREFIX = "storage://"
 LOCAL_REF_PREFIX = "local://"
 LOCAL_PDF_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "uploads" / "paper-pdfs"
 LEGACY_PDF_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "uploads"
-LOCAL_PDF_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _get_local_pdf_uploads_dir() -> Path:
+    """Return a writable local directory for fallback PDF storage."""
+    preferred = LOCAL_PDF_UPLOADS_DIR
+    try:
+        preferred.mkdir(parents=True, exist_ok=True)
+        return preferred
+    except Exception as exc:
+        logger.warning("Preferred PDF uploads directory is not writable (%s): %s", preferred, exc)
+
+    fallback = Path("/tmp/researchworkspace-paper-pdfs")
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
 
 
 def _sanitize_pdf_filename(filename: str) -> str:
@@ -356,7 +369,8 @@ def _resolve_local_pdf_path(value: str) -> Optional[Path]:
     if not safe_name:
         return None
 
-    candidates = [LOCAL_PDF_UPLOADS_DIR / safe_name, LEGACY_PDF_UPLOADS_DIR / safe_name]
+    runtime_local_dir = _get_local_pdf_uploads_dir()
+    candidates = [runtime_local_dir / safe_name, LOCAL_PDF_UPLOADS_DIR / safe_name, LEGACY_PDF_UPLOADS_DIR / safe_name]
     for candidate in candidates:
         resolved = candidate.resolve()
         parent_resolved = candidate.parent.resolve()
@@ -415,8 +429,9 @@ async def _store_paper_pdf(
             logger.warning("Storage upload failed for paper %s, falling back to local disk: %s", paper.id, exc)
 
     local_name = f"{paper.id}-{uuid4().hex[:12]}-{safe_name}"
-    local_path = (LOCAL_PDF_UPLOADS_DIR / local_name).resolve()
-    if not str(local_path).startswith(str(LOCAL_PDF_UPLOADS_DIR.resolve())):
+    runtime_local_dir = _get_local_pdf_uploads_dir()
+    local_path = (runtime_local_dir / local_name).resolve()
+    if not str(local_path).startswith(str(runtime_local_dir.resolve())):
         raise HTTPException(status_code=400, detail="Invalid PDF path")
     local_path.write_bytes(content)
     return _make_local_ref(local_name)
