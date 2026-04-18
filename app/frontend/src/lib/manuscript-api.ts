@@ -7,6 +7,13 @@ import { getAPIBaseURL } from "./config";
 import { clearAuthSession, getAuthToken } from "./session";
 
 const API_BASE_URL = "/api/v1/manuscripts";
+
+const isCodespacesPreviewHost = () => {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname.toLowerCase();
+  return host.includes(".app.github.dev") || host.endsWith(".github.dev");
+};
+
 // M3 backend-first mode: backend is authoritative in all environments.
 axios.defaults.timeout = 10000;
 axios.interceptors.request.use((config) => {
@@ -28,6 +35,9 @@ axios.interceptors.response.use(
   (response) => response,
   (error) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
+      if (isCodespacesPreviewHost()) {
+        return Promise.reject(error);
+      }
       clearAuthSession();
       if (typeof window !== "undefined") {
         const baseURL = getAPIBaseURL();
@@ -174,7 +184,14 @@ const withLocalFallback = async <T>(
   remote: () => Promise<T>,
   fallback: () => T | Promise<T>
 ): Promise<T> => {
-  return await remote();
+  try {
+    return await remote();
+  } catch (error) {
+    if (isCodespacesPreviewHost()) {
+      return await fallback();
+    }
+    throw error;
+  }
 };
 
 const sortByUpdatedDesc = <T extends { updated_at?: string; created_at?: string }>(items: T[]) =>

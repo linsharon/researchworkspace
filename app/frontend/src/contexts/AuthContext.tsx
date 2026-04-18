@@ -42,12 +42,33 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const isCodespacesPreviewHost = () => {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname.toLowerCase();
+  return host.includes('.app.github.dev') || host.endsWith('.github.dev');
+};
+
+const PREVIEW_USER: User = {
+  id: 'codespaces-preview-user',
+  email: 'preview@local.codespaces',
+  name: 'Codespaces Preview',
+  role: 'admin',
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const checkAuthStatus = async () => {
+    if (isCodespacesPreviewHost()) {
+      setError(null);
+      setAuthSession('codespaces-preview-token');
+      setUser(PREVIEW_USER);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);

@@ -100,6 +100,7 @@ const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
 const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
 const WORKFLOW_CACHE_META_KEY = "rw-workflow-cache-meta";
 const WORKFLOW_CACHE_VERSION = "m3-2026-04-06";
+const DISCOVER_KEYWORDS_STORAGE_KEY_PREFIX = "rw-discover-keywords";
 const WORKFLOW_AUX_CACHE_KEYS = [PAPER_DECISIONS_KEY, ARTIFACTS_STORAGE_KEY] as const;
 
 type WorkflowCacheMeta = {
@@ -222,6 +223,8 @@ export default function WorkflowWorkspace() {
   const { projectId = "proj-1", step } = useParams<{ projectId: string; step: string }>();
   const currentStep = (parseInt(step || "1") as WorkflowStep) || 1;
   const stepMeta = STEP_META[currentStep];
+  const prevStep = currentStep > 1 ? ((currentStep - 1) as WorkflowStep) : null;
+  const prevStepMeta = prevStep ? STEP_META[prevStep] : null;
   const nextStep = currentStep < 6 ? ((currentStep + 1) as WorkflowStep) : null;
   const nextStepMeta = nextStep ? STEP_META[nextStep] : null;
 
@@ -297,19 +300,32 @@ export default function WorkflowWorkspace() {
             <p className="text-sm text-slate-200 font-medium">
               {nextStepMeta ? `Step ${nextStep}: ${nextStepMeta.label}` : "You are at the final step."}
             </p>
+            {prevStepMeta ? (
+              <p className="text-xs text-slate-500 mt-1">{`Last Step: Step ${prevStep} ${prevStepMeta.label}`}</p>
+            ) : null}
           </div>
-          {nextStep ? (
-            <Link to={`/workflow/${projectId}/${nextStep}`}>
-              <Button className="bg-violet-700 hover:bg-violet-800 text-white">
-                {`Go to Step ${nextStep}`}
-                <ArrowRight className="w-4 h-4 ml-1.5" />
-              </Button>
-            </Link>
-          ) : (
-            <Link to="/">
-              <Button variant="outline">Back to Dashboard</Button>
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            {prevStep ? (
+              <Link to={`/workflow/${projectId}/${prevStep}`}>
+                <Button variant="outline">
+                  <ArrowLeft className="w-4 h-4 mr-1.5" />
+                  {`Go to Step ${prevStep}`}
+                </Button>
+              </Link>
+            ) : null}
+            {nextStep ? (
+              <Link to={`/workflow/${projectId}/${nextStep}`}>
+                <Button className="bg-violet-700 hover:bg-violet-800 text-white">
+                  {`Go to Step ${nextStep}`}
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/">
+                <Button variant="outline">Back to Dashboard</Button>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </AppLayout>
@@ -608,7 +624,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     }
   });
   const [newKeyword, setNewKeyword] = useState("");
-  const [keywords, setKeywords] = useState<Keyword[]>([...DUMMY_KEYWORDS]);
+  const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [searchRecords, setSearchRecords] = useState<SearchRecord[]>([]);
   const [entryPapers, setEntryPapers] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"keywords" | "search" | "candidates">(() => {
@@ -625,6 +641,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const [conceptColor, setConceptColor] = useState("#6366f1");
   const [editingConceptId, setEditingConceptId] = useState<string | null>(null);
   const [showConceptDetailDialog, setShowConceptDetailDialog] = useState(false);
+  const [keywordsHydrated, setKeywordsHydrated] = useState(false);
 
   const CONCEPT_COLORS = [
     { value: "#6366f1", label: "Indigo" },
@@ -744,6 +761,39 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const [discoveryPathValue, setDiscoveryPathValue] = useState("Academic Database");
   const [discoveryNoteValue, setDiscoveryNoteValue] = useState("");
   const highlightedSearchQuery = (searchParams.get("searchQuery") || "").trim();
+
+  const keywordsStorageKey = `${DISCOVER_KEYWORDS_STORAGE_KEY_PREFIX}:${projectId}`;
+
+  const normalizeKeywordTerm = (value: string) => value.trim().toLowerCase();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(keywordsStorageKey);
+      if (!raw) {
+        setKeywords([...DUMMY_KEYWORDS]);
+        setKeywordsHydrated(true);
+        return;
+      }
+      const parsed = JSON.parse(raw) as Keyword[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setKeywords(parsed);
+        setKeywordsHydrated(true);
+        return;
+      }
+      setKeywords([...DUMMY_KEYWORDS]);
+      setKeywordsHydrated(true);
+    } catch {
+      setKeywords([...DUMMY_KEYWORDS]);
+      setKeywordsHydrated(true);
+    }
+  }, [keywordsStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!keywordsHydrated) return;
+    window.localStorage.setItem(keywordsStorageKey, JSON.stringify(keywords));
+  }, [keywordsStorageKey, keywords, keywordsHydrated]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -1407,13 +1457,18 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     if (!newRecord) return;
 
     // Add any new keywords to the global keywords list
-    srKeywords.forEach((kw) => {
-      if (!keywords.find((k) => k.term === kw)) {
-        setKeywords((prev) => [
-          ...prev,
-          { id: `kw-${Date.now()}-${Math.random()}`, term: kw, category: "Custom" },
-        ]);
-      }
+    setKeywords((prev) => {
+      let next = prev;
+      srKeywords.forEach((kw) => {
+        const exists = next.some((k) => normalizeKeywordTerm(k.term) === normalizeKeywordTerm(kw));
+        if (!exists) {
+          next = [
+            ...next,
+            { id: `kw-${Date.now()}-${Math.random()}`, term: kw, category: "Custom" },
+          ];
+        }
+      });
+      return next;
     });
 
     try {
@@ -1446,13 +1501,18 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     const newRecord = buildSearchRecordFromCurrentForm();
     if (!newRecord) return;
 
-    srKeywords.forEach((kw) => {
-      if (!keywords.find((k) => k.term === kw)) {
-        setKeywords((prev) => [
-          ...prev,
-          { id: `kw-${Date.now()}-${Math.random()}`, term: kw, category: "Custom" },
-        ]);
-      }
+    setKeywords((prev) => {
+      let next = prev;
+      srKeywords.forEach((kw) => {
+        const exists = next.some((k) => normalizeKeywordTerm(k.term) === normalizeKeywordTerm(kw));
+        if (!exists) {
+          next = [
+            ...next,
+            { id: `kw-${Date.now()}-${Math.random()}`, term: kw, category: "Custom" },
+          ];
+        }
+      });
+      return next;
     });
 
     let createdRecord: SearchRecord;
@@ -2078,14 +2138,20 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     if (e.key === "Enter") {
                       e.preventDefault();
                       if (newKeyword.trim()) {
-                        setKeywords([
-                          ...keywords,
-                          {
-                            id: `kw-${Date.now()}`,
-                            term: newKeyword.trim(),
-                            category: "Custom",
-                          },
-                        ]);
+                        setKeywords((prev) => {
+                          const term = newKeyword.trim();
+                          if (!term) return prev;
+                          const exists = prev.some((item) => normalizeKeywordTerm(item.term) === normalizeKeywordTerm(term));
+                          if (exists) return prev;
+                          return [
+                            ...prev,
+                            {
+                              id: `kw-${Date.now()}`,
+                              term,
+                              category: "Custom",
+                            },
+                          ];
+                        });
                         setNewKeyword("");
                       }
                     }
@@ -2106,14 +2172,20 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     <DropdownMenuItem
                       onClick={() => {
                         if (newKeyword.trim()) {
-                          setKeywords([
-                            ...keywords,
-                            {
-                              id: `kw-${Date.now()}`,
-                              term: newKeyword.trim(),
-                              category: "Custom",
-                            },
-                          ]);
+                          setKeywords((prev) => {
+                            const term = newKeyword.trim();
+                            if (!term) return prev;
+                            const exists = prev.some((item) => normalizeKeywordTerm(item.term) === normalizeKeywordTerm(term));
+                            if (exists) return prev;
+                            return [
+                              ...prev,
+                              {
+                                id: `kw-${Date.now()}`,
+                                term,
+                                category: "Custom",
+                              },
+                            ];
+                          });
                           setNewKeyword("");
                         }
                       }}
@@ -2142,7 +2214,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                       {kw.category}
                     </span>
                     <button
-                      onClick={() => setKeywords(keywords.filter((k) => k.id !== kw.id))}
+                      onClick={() => setKeywords((prev) => prev.filter((k) => k.id !== kw.id))}
                       className="ml-1 hover:text-red-500"
                     >
                       <X className="w-2.5 h-2.5" />

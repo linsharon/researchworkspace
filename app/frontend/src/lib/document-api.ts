@@ -4,6 +4,12 @@ import { clearAuthSession, getAuthToken } from "./session";
 
 const API_BASE_URL = "/api/v1/documents";
 
+const isCodespacesPreviewHost = () => {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname.toLowerCase();
+  return host.includes(".app.github.dev") || host.endsWith(".github.dev");
+};
+
 function buildConfig() {
   const token = getAuthToken();
   const baseURL = getAPIBaseURL();
@@ -15,6 +21,9 @@ function buildConfig() {
 
 function handleApiError(error: unknown): never {
   if (axios.isAxiosError(error) && error.response?.status === 401) {
+    if (isCodespacesPreviewHost()) {
+      throw error;
+    }
     clearAuthSession();
     const base = getAPIBaseURL();
     const loginPath = `${base}/api/v1/auth/login`;
