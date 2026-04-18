@@ -15,6 +15,11 @@ import {
   Lightbulb,
   Search,
   ArrowRight,
+  Target,
+  BookOpen,
+  Network,
+  Map,
+  PenLine,
 } from "lucide-react";
 import {
   DUMMY_ARTIFACTS,
@@ -413,9 +418,7 @@ export default function ArtifactCenter() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#2D6A4F] flex items-center justify-center">
-              <Archive className="w-5 h-5 text-white" />
-            </div>
+            <Archive className="w-7 h-7 text-cyan-400" />
             <div>
               <h1 className="text-xl font-bold text-slate-100">
                 Artifact Center
@@ -543,7 +546,13 @@ export default function ArtifactCenter() {
                         {typeMeta.label}
                       </Badge>
                       <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                        {stepMeta.icon} Step {artifact.sourceStep}
+                        {artifact.sourceStep === 1 && <Target className="w-3 h-3 inline mr-0.5" />}
+                        {artifact.sourceStep === 2 && <Search className="w-3 h-3 inline mr-0.5" />}
+                        {artifact.sourceStep === 3 && <BookOpen className="w-3 h-3 inline mr-0.5" />}
+                        {artifact.sourceStep === 4 && <Network className="w-3 h-3 inline mr-0.5" />}
+                        {artifact.sourceStep === 5 && <Map className="w-3 h-3 inline mr-0.5" />}
+                        {artifact.sourceStep === 6 && <PenLine className="w-3 h-3 inline mr-0.5" />}
+                        Step {artifact.sourceStep}
                       </span>
                     </div>
                     <h4 className="text-sm font-medium text-slate-200 mb-1 group-hover:text-cyan-300 transition-colors line-clamp-2">

@@ -67,6 +67,9 @@ import {
   Upload,
   X,
   Zap,
+  Map,
+  PenLine,
+  Atom,
 } from "lucide-react";
 import {
   STEP_META,
@@ -264,8 +267,13 @@ export default function WorkflowWorkspace() {
         {/* Step Header */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-600 flex items-center justify-center text-xl">
-              {stepMeta.icon}
+            <div className="flex items-center justify-center">
+              {currentStep === 1 && <Target className="w-7 h-7 text-cyan-400" />}
+              {currentStep === 2 && <Search className="w-7 h-7 text-cyan-400" />}
+              {currentStep === 3 && <BookOpen className="w-7 h-7 text-cyan-400" />}
+              {currentStep === 4 && <Network className="w-7 h-7 text-cyan-400" />}
+              {currentStep === 5 && <Map className="w-7 h-7 text-cyan-400" />}
+              {currentStep === 6 && <PenLine className="w-7 h-7 text-cyan-400" />}
             </div>
             <div>
               <div className="flex items-center gap-2">

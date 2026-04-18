@@ -30,6 +30,7 @@ import {
   Bot,
   Send,
   Minimize2,
+  Atom,
 } from "lucide-react";
 import { type WorkflowStep, type ProjectItem } from "@/lib/data";
 import { projectAPI } from "@/lib/manuscript-api";
@@ -201,9 +202,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 h-12 border-b border-slate-700/30 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-300/30 flex items-center justify-center shrink-0">
-              <img src={BRAND_FAVICON_URL} alt="Research Workspace logo" className="w-4 h-4" />
-            </div>
+            <Atom className="w-5 h-5 text-cyan-400 shrink-0" />
             <span className="font-semibold text-sm text-slate-200 truncate">
               {t("app.title")}
             </span>
@@ -482,9 +481,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="flex-1 flex items-center justify-center min-w-0">
             {sidebarCollapsed && (
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-cyan-500/20 border border-cyan-300/30 flex items-center justify-center">
-                  <img src={BRAND_FAVICON_URL} alt="Research Workspace logo" className="w-4 h-4" />
-                </div>
+                <Atom className="w-5 h-5 text-cyan-400" />
                 <span className="text-sm font-semibold text-slate-200 hidden sm:inline">
                   {t("app.title")}
                 </span>
