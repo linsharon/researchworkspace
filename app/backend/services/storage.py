@@ -6,11 +6,8 @@ from io import BytesIO
 from typing import Literal, Optional, Union
 from urllib.parse import urljoin
 
-import boto3
 import httpx
 import mimetypes
-from botocore.client import Config
-from botocore.exceptions import ClientError
 from core.config import settings
 from schemas.storage import (
     BucketInfo,
@@ -29,6 +26,19 @@ from schemas.storage import (
 )
 
 logger = logging.getLogger(__name__)
+
+try:
+    import boto3
+    from botocore.client import Config
+    from botocore.exceptions import ClientError as BotocoreClientError
+except ModuleNotFoundError:
+    boto3 = None
+    Config = None
+
+    class BotocoreClientError(Exception):
+        """Fallback placeholder when botocore is unavailable."""
+
+        pass
 
 
 class StorageService:
@@ -56,6 +66,10 @@ class StorageService:
                 "Content-Type": "application/json",
             }
         else:
+            if boto3 is None or Config is None:
+                raise ValueError(
+                    "boto3/botocore is required for minio/s3 storage providers but is not installed"
+                )
             s3_config = Config(signature_version="s3v4", s3={"addressing_style": "path"})
             # Internal client for bucket/object operations in container network.
             self.s3_client = boto3.client(
@@ -349,7 +363,7 @@ class StorageService:
         try:
             self.s3_client.head_object(Bucket=bucket_name, Key=object_key)
             return True
-        except ClientError:
+        except BotocoreClientError:
             return False
         except Exception:
             return False
