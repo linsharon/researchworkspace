@@ -44,15 +44,6 @@ import {
   Clock,
   Download,
   Eye,
-  ExternalLink,
-  FileText,
-  FolderUp,
-  Hash,
-  Lightbulb,
-  List,
-  Network,
-  PenTool,
-  Plus,
   Save,
   Search,
   Sparkles,
@@ -2511,6 +2502,24 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                         />
                       </div>
                     </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-slate-500">Associated Purpose Card</label>
+                    <Select
+                      value={srPurposeCardId || PURPOSE_CARD_NONE}
+                      onValueChange={(value) => setSrPurposeCardId(value === PURPOSE_CARD_NONE ? "" : value)}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Select a purpose card..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={PURPOSE_CARD_NONE}>Select...</SelectItem>
+                        {purposeCards.map((card) => (
+                          <SelectItem key={card.id} value={card.id}>{card.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="flex flex-wrap gap-2 pt-1">
