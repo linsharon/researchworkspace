@@ -97,7 +97,7 @@ export default function DraftStudio() {
                       "p-3 rounded-lg border transition-all cursor-pointer group",
                       isInserted
                         ? "border-emerald-200 bg-emerald-50/50"
-                        : "border-slate-700/50 bg-[#0d1b30] hover:border-violet-700 hover:shadow-sm"
+                        : "border-slate-700/50 bg-[#0d1b30] hover:border-cyan-600 hover:shadow-sm"
                     )}
                   >
                     <div className="flex items-start gap-2">
@@ -118,7 +118,7 @@ export default function DraftStudio() {
                             "text-xs font-medium line-clamp-2",
                             isInserted
                               ? "text-emerald-700"
-                              : "text-slate-700 group-hover:text-violet-400"
+                              : "text-slate-700 group-hover:text-cyan-300"
                           )}
                         >
                           {artifact.title}
@@ -153,7 +153,7 @@ export default function DraftStudio() {
           {/* Editor Header */}
           <div className="flex items-center justify-between px-6 py-3 border-b border-slate-700/50">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-violet-700 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-cyan-600 flex items-center justify-center">
                 <PenTool className="w-4 h-4 text-white" />
               </div>
               <div>

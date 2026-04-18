@@ -225,7 +225,7 @@ export default function ProjectMembers() {
                         key={candidate.id}
                         type="button"
                         onClick={() => setSelectedCandidate(candidate)}
-                        className={`w-full rounded border p-2 text-left text-xs transition ${selected ? "border-violet-500 bg-violet-500/10" : "border-slate-700/50 hover:bg-slate-800/40"}`}
+                        className={`w-full rounded border p-2 text-left text-xs transition ${selected ? "border-cyan-400 bg-cyan-400/10" : "border-slate-700/50 hover:bg-slate-800/40"}`}
                       >
                         <div className="text-slate-100">{candidate.email}</div>
                         <div className="text-slate-400">{candidate.name || candidate.id}</div>

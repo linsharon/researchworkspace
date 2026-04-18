@@ -249,7 +249,7 @@ export default function PaperWorkspace() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             {paper.is_entry_paper && (
-              <Badge className="text-xs bg-violet-700 text-white">
+              <Badge className="text-xs bg-cyan-600 text-white">
                 Entry Paper
               </Badge>
             )}
@@ -287,7 +287,7 @@ export default function PaperWorkspace() {
             </Button>
             <Button
               size="sm"
-              className="text-xs bg-violet-700 hover:bg-violet-800 text-white"
+              className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
               onClick={() => {
                 setShowNewLitNote(true);
                 setShowNewPermNote(false);
@@ -450,7 +450,7 @@ export default function PaperWorkspace() {
                 <div className="flex gap-1.5">
                   <Button
                     size="sm"
-                    className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
+                    className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
                     onClick={handleAddAnnotation}
                   >
                     <Plus className="w-3 h-3 mr-1" />
@@ -567,7 +567,7 @@ export default function PaperWorkspace() {
               </CardTitle>
               <Button
                 size="sm"
-                className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
+                className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
                 onClick={() => {
                   setShowNewLitNote(true);
                   setShowNewPermNote(false);
@@ -602,7 +602,7 @@ export default function PaperWorkspace() {
                 <div className="flex gap-1.5">
                   <Button
                     size="sm"
-                    className="text-xs bg-violet-700 hover:bg-violet-800 text-white"
+                    className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
                     onClick={handleAddLitNote}
                   >
                     <Save className="w-3 h-3 mr-1" />

@@ -322,7 +322,7 @@ export default function PaperReadPage() {
       {showChat && (
         <div className="fixed bottom-20 right-5 z-50 w-[380px] max-h-[520px] bg-[#0d1b30] rounded-2xl shadow-2xl border border-slate-700/50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
           {/* Chat Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-violet-700 text-white shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 bg-cyan-600 text-white shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full bg-[#0d1b30]/20 flex items-center justify-center">
                 <Bot className="w-4 h-4" />
@@ -352,7 +352,7 @@ export default function PaperReadPage() {
                     className={cn(
                       "max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed",
                       msg.role === "user"
-                        ? "bg-violet-700 text-white rounded-br-md"
+                        ? "bg-cyan-600 text-white rounded-br-md"
                         : "bg-slate-800 text-slate-700 rounded-bl-md"
                     )}
                   >
@@ -379,7 +379,7 @@ export default function PaperReadPage() {
                 disabled={!chatInput.trim()}
                 className={cn(
                   "w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all",
-                  chatInput.trim() ? "bg-violet-700 text-white hover:bg-violet-800" : "bg-slate-800 text-slate-300 cursor-not-allowed"
+                  chatInput.trim() ? "bg-cyan-600 text-white hover:bg-cyan-700" : "bg-slate-800 text-slate-300 cursor-not-allowed"
                 )}
               >
                 <Send className="w-4 h-4" />
@@ -394,7 +394,7 @@ export default function PaperReadPage() {
         onClick={() => setShowChat(!showChat)}
         className={cn(
           "fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200",
-          showChat ? "bg-slate-600 hover:bg-slate-700" : "bg-violet-700 hover:bg-violet-800 hover:scale-105"
+          showChat ? "bg-slate-600 hover:bg-slate-700" : "bg-cyan-600 hover:bg-cyan-700 hover:scale-105"
         )}
         title="AI Assistant"
       >

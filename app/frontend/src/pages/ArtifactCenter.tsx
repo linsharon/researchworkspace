@@ -450,7 +450,7 @@ export default function ArtifactCenter() {
                 className={cn(
                   "text-xs",
                   filter === opt.value &&
-                    "bg-violet-700 hover:bg-violet-800 text-white"
+                    "bg-cyan-600 hover:bg-cyan-700 text-white"
                 )}
                 onClick={() => setFilter(opt.value)}
               >
@@ -546,7 +546,7 @@ export default function ArtifactCenter() {
                         {stepMeta.icon} Step {artifact.sourceStep}
                       </span>
                     </div>
-                    <h4 className="text-sm font-medium text-slate-200 mb-1 group-hover:text-violet-400 transition-colors line-clamp-2">
+                    <h4 className="text-sm font-medium text-slate-200 mb-1 group-hover:text-cyan-300 transition-colors line-clamp-2">
                       {artifact.title}
                     </h4>
                     <p className="text-xs text-slate-500 line-clamp-2 mb-3">
@@ -557,7 +557,7 @@ export default function ArtifactCenter() {
                       artifact.type === "permanent-note") && (
                       <button
                         type="button"
-                        className="mb-3 text-xs text-violet-400 hover:underline"
+                        className="mb-3 text-xs text-cyan-300 hover:underline"
                         onClick={(e) => {
                           e.stopPropagation();
                           void handleOpenArtifactSource(artifact);
@@ -761,7 +761,7 @@ export default function ArtifactCenter() {
                 <div className="flex gap-2 pt-1">
                   {conceptDialogMode === "edit" ? (
                     <Button
-                      className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
+                      className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
                       onClick={handleSaveConcept}
                     >
                       Save

@@ -34,6 +34,8 @@ import {
 import { type WorkflowStep, type ProjectItem } from "@/lib/data";
 import { projectAPI } from "@/lib/manuscript-api";
 
+const BRAND_FAVICON_URL = "https://public-frontend-cos.metadl.com/mgx/img/favicon_atoms.ico";
+
 interface AppLayoutProps {
   children: ReactNode;
 }
@@ -188,19 +190,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
   ];
 
   return (
-    <div className="flex h-screen bg-[#070f1e] overflow-hidden">
+    <div className="flex h-screen bg-[#061423] overflow-hidden">
       {/* Left Sidebar */}
       <aside
         className={cn(
-          "flex flex-col border-r border-slate-700/30 bg-[#050b18] transition-all duration-300 shrink-0",
+          "flex flex-col border-r border-slate-700/30 bg-[#061423] transition-all duration-300 shrink-0",
           sidebarCollapsed ? "w-0 overflow-hidden border-r-0" : "w-60"
         )}
       >
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 h-12 border-b border-slate-700/30 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-violet-600 flex items-center justify-center shrink-0 glow-sm">
-              <BookOpen className="w-4 h-4 text-white" />
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-300/30 flex items-center justify-center shrink-0">
+              <img src={BRAND_FAVICON_URL} alt="Research Workspace logo" className="w-4 h-4" />
             </div>
             <span className="font-semibold text-sm text-slate-200 truncate">
               {t("app.title")}
@@ -217,7 +219,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             onClick={() => setShowProjectSwitcher(!showProjectSwitcher)}
             className="w-full text-left flex items-center justify-between gap-1 group"
           >
-            <p className="text-sm font-medium text-slate-200 truncate group-hover:text-violet-400 transition-colors">
+            <p className="text-sm font-medium text-slate-200 truncate group-hover:text-cyan-300 transition-colors">
               {activeProject.title}
             </p>
             <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform", showProjectSwitcher && "rotate-180")} />
@@ -227,7 +229,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               className={cn(
                 "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border",
                 location.pathname === "/"
-                  ? "bg-violet-600/20 text-violet-300 border-violet-600/40"
+                  ? "bg-cyan-500/20 text-cyan-200 border-cyan-500/40"
                   : "text-slate-400 border-slate-700/40 hover:bg-slate-800/60 hover:text-slate-200"
               )}
             >
@@ -241,7 +243,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               className={cn(
                 "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border",
                 location.pathname === "/projects/members"
-                  ? "bg-violet-600/20 text-violet-300 border-violet-600/40"
+                  ? "bg-cyan-500/20 text-cyan-200 border-cyan-500/40"
                   : "text-slate-400 border-slate-700/40 hover:bg-slate-800/60 hover:text-slate-200"
               )}
             >
@@ -251,13 +253,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </Link>
 
           {showProjectSwitcher && (
-            <div className="mt-2 bg-[#0a1528] rounded-lg shadow-xl border border-slate-700/50 overflow-hidden">
+            <div className="mt-2 bg-[#0a1a2b] rounded-lg shadow-xl border border-slate-700/50 overflow-hidden">
               <div className="p-2 border-b border-slate-700/40">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                     {t("app.switchProject")}
                   </p>
-                  <Badge className="text-[8px] bg-amber-100 text-amber-700 border-amber-200">
+                  <Badge className="text-[8px] bg-cyan-100 text-cyan-700 border-cyan-200">
                     <Crown className="w-2 h-2 mr-0.5" />
                     {t("app.premium")}
                   </Badge>
@@ -287,7 +289,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       className={cn(
                         "w-full text-left p-2 rounded-md transition-all border record-item",
                         proj.id === activeProjectId
-                          ? "border-violet-600/40"
+                          ? "border-cyan-500/40"
                           : "border-slate-700/40"
                       )}
                     >
@@ -296,7 +298,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                           {proj.title}
                         </span>
                         {proj.id === activeProjectId && (
-                          <CheckCircle2 className="w-3 h-3 text-violet-400 shrink-0" />
+                          <CheckCircle2 className="w-3 h-3 text-cyan-300 shrink-0" />
                         )}
                       </div>
                       <p className="text-[9px] text-slate-400 truncate">{proj.goal}</p>
@@ -329,7 +331,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     <div className="flex gap-1">
                       <Button
                         size="sm"
-                        className="text-[10px] h-6 bg-violet-600 hover:bg-violet-700 text-white flex-1"
+                        className="text-[10px] h-6 bg-cyan-500 hover:bg-cyan-600 text-white flex-1"
                         onClick={handleCreateProject}
                       >
                         {t("app.create")}
@@ -386,7 +388,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     className={cn(
                       "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                       isActive
-                        ? "text-violet-300 border-violet-600/30"
+                        ? "text-cyan-200 border-cyan-500/30"
                         : "text-slate-400 border-slate-700/40"
                     )}
                   >
@@ -421,7 +423,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     className={cn(
                       "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                       isActive
-                        ? "text-violet-300 border-violet-600/30"
+                        ? "text-cyan-200 border-cyan-500/30"
                         : "text-slate-400 border-slate-700/40"
                     )}
                   >
@@ -441,7 +443,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 className={cn(
                   "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                   location.pathname === "/pdf-manager"
-                    ? "text-violet-300 border-violet-600/30"
+                    ? "text-cyan-200 border-cyan-500/30"
                     : "text-slate-400 border-slate-700/40"
                 )}
               >
@@ -456,14 +458,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top Bar */}
-        <header className="h-12 border-b border-slate-700/30 bg-[#050b18] flex items-center px-2 shrink-0">
+        <header className="h-12 border-b border-slate-700/30 bg-[#061423] flex items-center px-2 shrink-0">
           {/* Left toggle button */}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className={cn(
               "flex items-center gap-1.5 h-9 px-3 rounded-lg border transition-all text-xs font-medium",
               sidebarCollapsed
-                ? "border-violet-600/40 bg-violet-600/10 text-violet-400 hover:bg-violet-600/20"
+                ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20"
                 : "border-slate-700/50 bg-slate-800/40 text-slate-400 hover:bg-slate-800/70"
             )}
             title={sidebarCollapsed ? t("app.expandSidebar") : t("app.collapseSidebar")}
@@ -480,8 +482,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="flex-1 flex items-center justify-center min-w-0">
             {sidebarCollapsed && (
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-violet-600 flex items-center justify-center">
-                  <BookOpen className="w-3.5 h-3.5 text-white" />
+                <div className="w-6 h-6 rounded-md bg-cyan-500/20 border border-cyan-300/30 flex items-center justify-center">
+                  <img src={BRAND_FAVICON_URL} alt="Research Workspace logo" className="w-4 h-4" />
                 </div>
                 <span className="text-sm font-semibold text-slate-200 hidden sm:inline">
                   {t("app.title")}
@@ -500,7 +502,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   </Button>
                 </Link>
                 <Link to="/auth/login">
-                  <Button size="sm" className="h-8 text-xs bg-violet-600 hover:bg-violet-700">
+                  <Button size="sm" className="h-8 text-xs bg-cyan-500 hover:bg-cyan-600">
                     {lang === "zh" ? "登录" : "Login"}
                   </Button>
                 </Link>
@@ -550,7 +552,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         className={cn(
                           "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between border record-item",
                           lang === "en"
-                            ? "border-violet-600/30 font-medium"
+                            ? "border-cyan-500/30 font-medium"
                             : "border-slate-700/40"
                         )}
                       >
@@ -558,7 +560,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                           <span className="text-base">🇺🇸</span>
                           <span className="text-slate-300 record-item-title">English</span>
                         </span>
-                        {lang === "en" && <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />}
+                        {lang === "en" && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-300" />}
                       </button>
                       <button
                         onClick={() => { setLang("zh"); setShowLangSwitcher(false); }}
@@ -566,7 +568,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         className={cn(
                           "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between border record-item",
                           lang === "zh"
-                            ? "border-violet-600/30 font-medium"
+                            ? "border-cyan-500/30 font-medium"
                             : "border-slate-700/40"
                         )}
                       >
@@ -574,7 +576,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                           <span className="text-base">🇨🇳</span>
                           <span className="text-slate-300 record-item-title">中文</span>
                         </span>
-                        {lang === "zh" && <CheckCircle2 className="w-3.5 h-3.5 text-violet-400" />}
+                        {lang === "zh" && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-300" />}
                       </button>
                     </div>
                   </div>
@@ -587,7 +589,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Page Content */}
         <main className="flex-1 overflow-auto">{children}</main>
 
-        <footer className="h-10 border-t border-slate-700/30 bg-[#050b18] px-4 flex items-center justify-center">
+        <footer className="h-10 border-t border-slate-700/30 bg-[#061423] px-4 flex items-center justify-center">
           <p className="text-[11px] text-slate-400">
             {lang === "zh" ? "版权所有" : "Copyright"} © {new Date().getFullYear()} ·
             <a
@@ -616,7 +618,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {showChat && (
         <div className="fixed bottom-20 right-5 z-50 w-[380px] max-h-[520px] bg-[#0a1528] rounded-2xl shadow-2xl border border-slate-700/50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
           {/* Chat Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-violet-700 text-white shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 bg-cyan-500 text-white shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
                 <Bot className="w-4 h-4" />
@@ -653,7 +655,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     className={cn(
                       "max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed",
                       msg.role === "user"
-                        ? "bg-violet-600 text-white rounded-br-md"
+                        ? "bg-cyan-500 text-white rounded-br-md"
                         : "bg-slate-800 text-slate-200 rounded-bl-md"
                     )}
                   >
@@ -666,13 +668,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </ScrollArea>
 
           {/* Chat Input */}
-          <div className="p-3 border-t border-slate-700/40 shrink-0 bg-[#0a1528]">
+          <div className="p-3 border-t border-slate-700/40 shrink-0 bg-[#0a1a2b]">
             <div className="flex items-center gap-2">
               <Input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder={lang === "zh" ? "输入你的问题..." : "Type your question..."}
-                className="text-sm h-9 rounded-full px-4 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 focus-visible:ring-violet-500"
+                className="text-sm h-9 rounded-full px-4 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 focus-visible:ring-cyan-400"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -686,7 +688,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 className={cn(
                   "w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all",
                   chatInput.trim()
-                    ? "bg-violet-600 text-white hover:bg-violet-700"
+                    ? "bg-cyan-500 text-white hover:bg-cyan-600"
                     : "bg-slate-800 text-slate-600 cursor-not-allowed"
                 )}
               >
@@ -701,10 +703,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <button
         onClick={() => setShowChat(!showChat)}
         className={cn(
-          "fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 group glow-violet",
+          "fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 group glow-cyan",
           showChat
             ? "bg-slate-700 hover:bg-slate-600 rotate-0"
-            : "bg-violet-600 hover:bg-violet-500 hover:scale-105"
+            : "bg-cyan-500 hover:bg-cyan-600 hover:scale-105"
         )}
         title={lang === "zh" ? "AI 助手" : "AI Assistant"}
       >
@@ -714,7 +716,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <>
             <Bot className="w-6 h-6 text-white" />
             {/* Pulse indicator */}
-            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-[#070f1e]" />
+            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-[#061423]" />
           </>
         )}
       </button>

@@ -58,7 +58,7 @@ export default function FloatingAnnotationMenu({
       </Button>
 
       <Button className="h-8 gap-1.5 px-2 text-xs text-white hover:bg-slate-800" onClick={onExplain} size="sm" type="button" variant="ghost">
-        <Bot className="h-3.5 w-3.5 text-violet-300" />
+        <Bot className="h-3.5 w-3.5 text-cyan-200" />
         Explain
       </Button>
 

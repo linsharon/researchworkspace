@@ -199,7 +199,7 @@ export default function PdfViewer() {
               </Button>
             </Link>
             <div className="flex items-center gap-1">
-              <Badge className="text-[10px] bg-violet-700 text-white">
+              <Badge className="text-[10px] bg-cyan-600 text-white">
                 PDF
               </Badge>
               <span className="text-xs text-slate-600 font-medium truncate max-w-[300px]">
@@ -270,7 +270,7 @@ export default function PdfViewer() {
                   className={cn(
                     "flex-1 px-3 py-2.5 text-xs font-medium transition-colors",
                     sidebarTab === "highlights"
-                      ? "text-violet-400 border-b-2 border-violet-700 bg-blue-50/30"
+                      ? "text-cyan-300 border-b-2 border-cyan-600 bg-blue-50/30"
                       : "text-slate-500 hover:text-slate-700"
                   )}
                 >
@@ -282,7 +282,7 @@ export default function PdfViewer() {
                   className={cn(
                     "flex-1 px-3 py-2.5 text-xs font-medium transition-colors",
                     sidebarTab === "lit-note"
-                      ? "text-violet-400 border-b-2 border-violet-700 bg-blue-50/30"
+                      ? "text-cyan-300 border-b-2 border-cyan-600 bg-blue-50/30"
                       : "text-slate-500 hover:text-slate-700"
                   )}
                 >
@@ -311,7 +311,7 @@ export default function PdfViewer() {
                       <div className="flex gap-1.5">
                         <Button
                           size="sm"
-                          className="text-xs h-7 flex-1 bg-violet-700 hover:bg-violet-800 text-white"
+                          className="text-xs h-7 flex-1 bg-cyan-600 hover:bg-cyan-700 text-white"
                           onClick={() => setShowNewHighlight(true)}
                         >
                           <Plus className="w-3 h-3 mr-1" />
@@ -362,7 +362,7 @@ export default function PdfViewer() {
                           <div className="flex gap-1.5">
                             <Button
                               size="sm"
-                              className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
+                              className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
                               onClick={handleAddHighlight}
                             >
                               Save
@@ -482,7 +482,7 @@ export default function PdfViewer() {
                       <div className="flex gap-1.5">
                         <Button
                           size="sm"
-                          className="text-xs bg-violet-700 hover:bg-violet-800 text-white"
+                          className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
                           onClick={() => setLitNoteSaved(true)}
                         >
                           <Save className="w-3 h-3 mr-1" />

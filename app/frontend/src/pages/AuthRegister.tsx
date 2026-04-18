@@ -85,7 +85,7 @@ export default function AuthRegister() {
 
           <p className="text-xs text-slate-400 mt-4">
             已有账号？
-            <Link to="/auth/login" className="text-violet-400 hover:text-violet-300 ml-1">
+            <Link to="/auth/login" className="text-cyan-300 hover:text-cyan-200 ml-1">
               去登录
             </Link>
           </p>

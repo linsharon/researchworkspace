@@ -320,19 +320,19 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
               <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
                 <TabsTrigger
                   value="all"
-                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
                   All ({papers.length})
                 </TabsTrigger>
                 <TabsTrigger
                   value="entry"
-                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
                   Entry ({papers.filter((p) => p.is_entry_paper).length})
                 </TabsTrigger>
                 <TabsTrigger
                   value="expanded"
-                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
                   Expanded ({papers.filter((p) => p.is_expanded_paper).length})
                 </TabsTrigger>
@@ -490,7 +490,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                           })()}
                         </div>
                         {paper.is_entry_paper && (
-                          <span className="inline-flex h-6 items-center rounded-full border border-violet-500/70 px-2 text-[11px] font-medium text-violet-300 pointer-events-none">
+                          <span className="inline-flex h-6 items-center rounded-full border border-cyan-400/70 px-2 text-[11px] font-medium text-cyan-200 pointer-events-none">
                             entry
                           </span>
                         )}
@@ -557,7 +557,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                   {paper.discovery_note && (
                     <button
                       type="button"
-                      className="block w-full rounded bg-slate-800/40 p-3 text-left text-sm italic text-slate-400 hover:bg-violet-600/10 hover:text-violet-300 transition-colors"
+                      className="block w-full rounded bg-slate-800/40 p-3 text-left text-sm italic text-slate-400 hover:bg-violet-600/10 hover:text-cyan-200 transition-colors"
                       onClick={(e) => handleNoteClick(e, paper)}
                     >
                       Note: {paper.discovery_note}

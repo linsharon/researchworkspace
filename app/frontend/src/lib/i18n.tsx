@@ -7,7 +7,7 @@ type TranslationDict = Record<string, string>;
 
 const en: TranslationDict = {
   // App
-  "app.title": "Academic Workspace",
+  "app.title": "Research Workspace",
   "app.currentProject": "Current Project",
   "app.switchProject": "Switch Project",
   "app.premium": "Premium",
@@ -629,7 +629,7 @@ const en: TranslationDict = {
 
 const zh: TranslationDict = {
   // App
-  "app.title": "学术工作空间",
+  "app.title": "研究工作空间",
   "app.currentProject": "当前项目",
   "app.switchProject": "切换项目",
   "app.premium": "高级版",

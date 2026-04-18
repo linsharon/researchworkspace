@@ -29,7 +29,7 @@ export default function VisualizationBoard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-cyan-600 flex items-center justify-center">
               <Map className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -71,7 +71,7 @@ export default function VisualizationBoard() {
               className={cn(
                 "text-xs",
                 activeView === view.id &&
-                  "bg-violet-700 hover:bg-violet-800 text-white"
+                  "bg-cyan-600 hover:bg-cyan-700 text-white"
               )}
               onClick={() => setActiveView(view.id)}
             >

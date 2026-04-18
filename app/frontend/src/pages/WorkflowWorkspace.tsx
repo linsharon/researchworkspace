@@ -264,7 +264,7 @@ export default function WorkflowWorkspace() {
         {/* Step Header */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-violet-700 flex items-center justify-center text-xl">
+            <div className="w-10 h-10 rounded-xl bg-cyan-600 flex items-center justify-center text-xl">
               {stepMeta.icon}
             </div>
             <div>
@@ -315,7 +315,7 @@ export default function WorkflowWorkspace() {
             ) : null}
             {nextStep ? (
               <Link to={`/workflow/${projectId}/${nextStep}`}>
-                <Button className="bg-violet-700 hover:bg-violet-800 text-white">
+                <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
                   {`Go to Step ${nextStep}`}
                   <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
@@ -442,7 +442,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
                     className={cn(
                       "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all text-sm",
                       selected.includes(option)
-                        ? "border-violet-700 bg-blue-50/50"
+                        ? "border-cyan-600 bg-blue-50/50"
                         : "border-slate-700/50 hover:border-slate-300"
                     )}
                   >
@@ -482,7 +482,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
                 <Button
                   size="sm"
                   onClick={handleAddCustomPurpose}
-                  className="bg-violet-700 hover:bg-violet-800 text-white shrink-0"
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white shrink-0"
                 >
                   <Plus className="w-4 h-4 mr-1" />
                   Add Purpose
@@ -537,7 +537,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
         <Button
           onClick={handleGeneratePurposeCard}
           disabled={!selected.length && !notes.trim()}
-          className="bg-violet-700 hover:bg-violet-800 text-white disabled:opacity-50"
+          className="bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50"
         >
           <Sparkles className="w-4 h-4 mr-2" />
           Generate Purpose Card
@@ -645,7 +645,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
   const CONCEPT_COLORS = [
     { value: "#6366f1", label: "Indigo" },
-    { value: "#8b5cf6", label: "Violet" },
+    { value: "#8b5cf6", label: "Cyan" },
     { value: "#ec4899", label: "Pink" },
     { value: "#f97316", label: "Orange" },
     { value: "#10b981", label: "Emerald" },
@@ -2101,19 +2101,19 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
             <TabsTrigger
               value="keywords"
-              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
             >
               Keywords
             </TabsTrigger>
             <TabsTrigger
               value="search"
-              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
             >
               Search Log
             </TabsTrigger>
             <TabsTrigger
               value="candidates"
-              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
             >
               Candidate Papers
             </TabsTrigger>
@@ -2161,7 +2161,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   <DropdownMenuTrigger asChild>
                     <Button
                       size="sm"
-                      className="bg-violet-700 hover:bg-violet-800 text-white shrink-0"
+                      className="bg-cyan-600 hover:bg-cyan-700 text-white shrink-0"
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Add
@@ -2196,7 +2196,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     <DropdownMenuItem
                       onClick={() => handleOpenAddConceptDialog(newKeyword)}
                     >
-                      <Lightbulb className="w-3.5 h-3.5 mr-2 text-violet-500" />
+                      <Lightbulb className="w-3.5 h-3.5 mr-2 text-cyan-400" />
                       Add as Concept
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -2278,7 +2278,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           className={cn(
                             "text-[10px] cursor-pointer transition-all",
                             srKeywords.includes(kw.term)
-                              ? "bg-violet-700 text-white"
+                              ? "bg-cyan-600 text-white"
                               : "hover:bg-slate-800"
                           )}
                           onClick={() => {
@@ -2332,7 +2332,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           variant={srConnector === connector ? "default" : "outline"}
                           className={cn(
                             "h-7 text-[11px]",
-                            srConnector === connector ? "bg-violet-700 hover:bg-violet-800 text-white" : ""
+                            srConnector === connector ? "bg-cyan-600 hover:bg-cyan-700 text-white" : ""
                           )}
                           onClick={() => setSrConnector(connector)}
                         >
@@ -2422,7 +2422,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   <div className="flex flex-wrap gap-2 pt-1">
                     <Button
                       size="sm"
-                      className="h-8 text-xs bg-violet-700 hover:bg-violet-800 text-white"
+                      className="h-8 text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
                       onClick={handleAddSearchRecord}
                     >
                       <Save className="w-3 h-3 mr-1" />
@@ -2459,7 +2459,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                       className={cn(
                         "p-3 bg-slate-800/40 rounded-lg border border-slate-700/50",
                         highlightedSearchQuery && record.query === highlightedSearchQuery
-                          ? "border-violet-700 bg-blue-50/40 shadow-sm"
+                          ? "border-cyan-600 bg-blue-50/40 shadow-sm"
                           : ""
                       )}
                     >
@@ -2688,7 +2688,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     className={cn(
                       "p-4 rounded-lg border transition-all",
                       entryPapers.includes(paper.id)
-                        ? "border-violet-700 bg-blue-50/30"
+                        ? "border-cyan-600 bg-blue-50/30"
                         : selectedPaperIds.includes(paper.id)
                           ? "border-emerald-400 bg-emerald-50/20"
                           : "border-slate-700/50 hover:border-slate-300"
@@ -2706,7 +2706,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             {entryPapers.includes(paper.id) && (
-                              <Badge className="text-[10px] bg-violet-700 text-white">
+                              <Badge className="text-[10px] bg-cyan-600 text-white">
                                 Entry Paper
                               </Badge>
                             )}
@@ -2827,7 +2827,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                             "text-xs h-7",
                             entryPapers.includes(paper.id)
                               ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                              : "bg-violet-700 hover:bg-violet-800 text-white"
+                              : "bg-cyan-600 hover:bg-cyan-700 text-white"
                           )}
                           onClick={() => handleToggleEntryPaper(paper.id)}
                           disabled={entryPapers.includes(paper.id)}
@@ -2952,7 +2952,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           <div className="flex gap-2 pt-1">
             <Button
-              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
+              className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
               onClick={() => void handleAddConcept()}
               disabled={!conceptName.trim()}
             >
@@ -3027,7 +3027,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   className={cn(
                     "text-[10px] cursor-pointer transition-all",
                     srKeywords.includes(kw.term)
-                      ? "bg-violet-700 text-white"
+                      ? "bg-cyan-600 text-white"
                       : "hover:bg-slate-800"
                   )}
                   onClick={() => {
@@ -3099,7 +3099,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   className={cn(
                     "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
                     srDatabase === db
-                      ? "border-violet-700 bg-blue-50/50"
+                      ? "border-cyan-600 bg-blue-50/50"
                       : "border-slate-700/50 hover:border-slate-300"
                   )}
                 >
@@ -3164,7 +3164,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           <div className="flex gap-2 pt-2">
             <Button
-              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
+              className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
               onClick={handleAddSearchRecord}
             >
               <Save className="w-3 h-3 mr-1" />
@@ -3199,7 +3199,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   className={cn(
                     "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
                     srDatabase === db
-                      ? "border-violet-700 bg-blue-50/50"
+                      ? "border-cyan-600 bg-blue-50/50"
                       : "border-slate-700/50 hover:border-slate-300"
                   )}
                 >
@@ -3257,7 +3257,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           <div className="flex gap-2 pt-2">
             <Button
-              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
+              className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
               onClick={handleSaveEditedSearchRecord}
             >
               <Save className="w-3 h-3 mr-1" />
@@ -3337,7 +3337,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               variant={candidateRefreshMode === "select" ? "default" : "outline"}
               className={cn(
                 "h-8 text-xs",
-                candidateRefreshMode === "select" ? "bg-violet-700 hover:bg-violet-800 text-white" : ""
+                candidateRefreshMode === "select" ? "bg-cyan-600 hover:bg-cyan-700 text-white" : ""
               )}
               onClick={() => setCandidateRefreshMode("select")}
             >
@@ -3348,7 +3348,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               variant={candidateRefreshMode === "random" ? "default" : "outline"}
               className={cn(
                 "h-8 text-xs",
-                candidateRefreshMode === "random" ? "bg-violet-700 hover:bg-violet-800 text-white" : ""
+                candidateRefreshMode === "random" ? "bg-cyan-600 hover:bg-cyan-700 text-white" : ""
               )}
               onClick={() => setCandidateRefreshMode("random")}
             >
@@ -3385,7 +3385,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             </Button>
             <Button
               size="sm"
-              className="h-8 text-xs bg-violet-700 hover:bg-violet-800 text-white"
+              className="h-8 text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
               onClick={() => void handleCandidateRefreshPull()}
               disabled={Boolean(pullingSearchRecordId)}
             >
@@ -3467,7 +3467,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             </div>
             <div className="flex gap-2 pt-1">
               <Button
-                className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
+                className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
                 onClick={() => void handleSaveConceptDetails()}
               >
                 Save
@@ -3512,7 +3512,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               />
               <Button
                 size="sm"
-                className="h-8 text-xs bg-violet-700 hover:bg-violet-800 text-white shrink-0"
+                className="h-8 text-xs bg-cyan-600 hover:bg-cyan-700 text-white shrink-0"
                 onClick={() => void handleFetchByDoiUrl()}
                 disabled={doiFetching || !newPaperDoiUrl.trim()}
               >
@@ -3643,7 +3643,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           </div>
           <div className="flex gap-2 pt-2">
             <Button
-              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
+              className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
               onClick={handleAddCandidatePaper}
             >
               <Plus className="w-3 h-3 mr-1" />
@@ -3702,7 +3702,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           <div className="flex gap-2 pt-2">
             <Button
-              className="bg-violet-700 hover:bg-violet-800 text-white text-xs"
+              className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
               onClick={() => void handleAddMultipleCandidatePapers()}
               disabled={bulkImporting || !bulkDoiInput.trim()}
             >
@@ -4028,7 +4028,7 @@ function ReadWorkspace() {
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <Badge className="text-[10px] bg-violet-700 text-white mb-2">
+              <Badge className="text-[10px] bg-cyan-600 text-white mb-2">
                 Entry Paper
               </Badge>
               <h3 className="text-base font-semibold text-slate-200 mb-1">
@@ -4116,7 +4116,7 @@ function ReadWorkspace() {
                 <div className="flex gap-1.5">
                   <Button
                     size="sm"
-                    className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
+                    className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
                     onClick={handleAddAnnotation}
                   >
                     <Plus className="w-3 h-3 mr-1" />
@@ -4221,7 +4221,7 @@ function ReadWorkspace() {
                   className={cn(
                     "px-3 py-1 rounded-md text-xs font-medium transition-all",
                     noteTab === "literature"
-                      ? "bg-violet-700 text-white"
+                      ? "bg-cyan-600 text-white"
                       : "text-slate-500 hover:bg-slate-800"
                   )}
                 >
@@ -4242,7 +4242,7 @@ function ReadWorkspace() {
               {noteTab === "literature" ? (
                 <Button
                   size="sm"
-                  className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
+                  className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
                   onClick={() => {
                     setShowNewNote(true);
                     setShowNewPermNote(false);
@@ -4280,7 +4280,7 @@ function ReadWorkspace() {
                       className={cn(
                         "px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-all border",
                         activeNoteId === note.id && !showNewNote
-                          ? "bg-violet-700 text-white border-violet-700"
+                          ? "bg-cyan-600 text-white border-cyan-600"
                           : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-slate-300"
                       )}
                     >
@@ -4320,7 +4320,7 @@ function ReadWorkspace() {
                     <div className="flex gap-1.5">
                       <Button
                         size="sm"
-                        className="text-xs bg-violet-700 hover:bg-violet-800 text-white"
+                        className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
                         onClick={handleAddNote}
                       >
                         <Save className="w-3 h-3 mr-1" />
@@ -5114,7 +5114,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
           />
         </div>
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => addManualRecord(direction)} className="bg-violet-700 hover:bg-violet-800 text-white">
+          <Button size="sm" onClick={() => addManualRecord(direction)} className="bg-cyan-600 hover:bg-cyan-700 text-white">
             <Plus className="w-3 h-3 mr-1" />
             Add record
           </Button>
@@ -5182,7 +5182,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                   "h-5 px-2 text-[10px]",
                   isExpanded
                     ? "border-rose-300 text-rose-700"
-                    : "bg-violet-700 hover:bg-violet-800 text-white"
+                    : "bg-cyan-600 hover:bg-cyan-700 text-white"
                 )}
                 onClick={() => void toggleExpandedPaper(record)}
               >
@@ -5219,19 +5219,19 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
               <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
                 <TabsTrigger
                   value="entry-paper"
-                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
                   Expand by Entry Paper
                 </TabsTrigger>
                 <TabsTrigger
                   value="doi-url"
-                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
                   Expand by DOI/URL
                 </TabsTrigger>
                 <TabsTrigger
                   value="manual"
-                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
                   Expand Manually
                 </TabsTrigger>
@@ -5266,7 +5266,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                         className={cn(
                           "w-full text-left rounded-lg border p-3 transition-all",
                           selectedPaperId === paper.id
-                            ? "border-violet-700 bg-blue-50/60"
+                            ? "border-cyan-600 bg-blue-50/60"
                             : "border-slate-700/50 hover:border-slate-300"
                         )}
                       >
@@ -5299,7 +5299,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                             </p>
                           </div>
                           {selectedPaperId === paper.id ? (
-                            <Badge variant="outline" className="text-[10px] border-violet-700 text-violet-400">
+                            <Badge variant="outline" className="text-[10px] border-cyan-600 text-cyan-300">
                               Selected
                             </Badge>
                           ) : null}
@@ -5321,13 +5321,13 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                   <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
                     <TabsTrigger
                       value="references"
-                      className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                      className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                     >
                       References
                     </TabsTrigger>
                     <TabsTrigger
                       value="citations"
-                      className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                      className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                     >
                       Citations
                     </TabsTrigger>
@@ -5377,13 +5377,13 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                 <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
                   <TabsTrigger
                     value="references"
-                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                   >
                     References
                   </TabsTrigger>
                   <TabsTrigger
                     value="citations"
-                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                   >
                     Citations
                   </TabsTrigger>
@@ -5458,13 +5458,13 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                 <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
                   <TabsTrigger
                     value="references"
-                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                   >
                     References
                   </TabsTrigger>
                   <TabsTrigger
                     value="citations"
-                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-violet-700 data-[state=active]:text-white"
+                    className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                   >
                     Citations
                   </TabsTrigger>
@@ -5741,7 +5741,7 @@ function VisualizeWorkspace() {
             <Button
               size="sm"
               variant={vizSection === "research" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "research" && "bg-violet-700 hover:bg-violet-800 text-white")}
+              className={cn("text-xs", vizSection === "research" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
               onClick={() => setVizSection("research")}
             >
               <BookOpen className="w-3 h-3 mr-1" />
@@ -5750,7 +5750,7 @@ function VisualizeWorkspace() {
             <Button
               size="sm"
               variant={vizSection === "viztools" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "viztools" && "bg-violet-700 hover:bg-violet-800 text-white")}
+              className={cn("text-xs", vizSection === "viztools" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
               onClick={() => setVizSection("viztools")}
             >
               <Zap className="w-3 h-3 mr-1" />
@@ -5800,7 +5800,7 @@ function VisualizeWorkspace() {
                 className={cn(
                   "px-3 py-1.5 rounded-md text-xs font-medium transition-all border whitespace-nowrap",
                   researchSubTab === tab.key
-                    ? "bg-violet-700 text-white border-violet-700"
+                    ? "bg-cyan-600 text-white border-cyan-600"
                     : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-slate-300"
                 )}
               >
@@ -5819,7 +5819,7 @@ function VisualizeWorkspace() {
                     <Button
                       size="sm"
                       variant={paperSort === "year" ? "default" : "outline"}
-                      className={cn("text-[10px] h-6", paperSort === "year" && "bg-violet-700 text-white")}
+                      className={cn("text-[10px] h-6", paperSort === "year" && "bg-cyan-600 text-white")}
                       onClick={() => setPaperSort("year")}
                     >
                       <Clock className="w-2.5 h-2.5 mr-0.5" />
@@ -5828,7 +5828,7 @@ function VisualizeWorkspace() {
                     <Button
                       size="sm"
                       variant={paperSort === "access" ? "default" : "outline"}
-                      className={cn("text-[10px] h-6", paperSort === "access" && "bg-violet-700 text-white")}
+                      className={cn("text-[10px] h-6", paperSort === "access" && "bg-cyan-600 text-white")}
                       onClick={() => setPaperSort("access")}
                     >
                       <Eye className="w-2.5 h-2.5 mr-0.5" />
@@ -5890,7 +5890,7 @@ function VisualizeWorkspace() {
                   <div className="p-4 mb-3 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/30 text-center">
                     <Upload className="w-8 h-8 text-blue-300 mx-auto mb-2" />
                     <p className="text-xs text-slate-500 mb-2">Drag & drop files here, or click to browse</p>
-                    <Button size="sm" className="text-xs bg-violet-700 hover:bg-violet-800 text-white" onClick={handleUploadFile}>
+                    <Button size="sm" className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white" onClick={handleUploadFile}>
                       <Plus className="w-3 h-3 mr-1" />
                       Simulate Upload
                     </Button>
@@ -6074,7 +6074,7 @@ function VisualizeWorkspace() {
                           className={cn(
                             "px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition-all border",
                             activeSynthTableId === table.id
-                              ? "bg-violet-700 text-white border-violet-700"
+                              ? "bg-cyan-600 text-white border-cyan-600"
                               : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-slate-300"
                           )}
                         >
@@ -6232,7 +6232,7 @@ function VisualizeWorkspace() {
                 </div>
                 <Button
                   size="sm"
-                  className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
+                  className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
                   onClick={() => setShowAddVizTool(!showAddVizTool)}
                 >
                   <Plus className="w-3 h-3 mr-1" />
@@ -6859,7 +6859,7 @@ function DraftWorkspaceInline() {
                   variant={selectedStyle === style.id ? "default" : "outline"}
                   className={cn(
                     "text-xs",
-                    selectedStyle === style.id && "bg-violet-700 hover:bg-violet-800 text-white"
+                    selectedStyle === style.id && "bg-cyan-600 hover:bg-cyan-700 text-white"
                   )}
                   onClick={() => {
                     setSelectedStyle(style.id);
@@ -6922,7 +6922,7 @@ function DraftWorkspaceInline() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-[10px] h-6 px-2 border-violet-700/30 text-violet-400"
+                        className="text-[10px] h-6 px-2 border-cyan-600/30 text-cyan-300"
                         onClick={() => {
                           setInsertTarget(activeComponentId);
                           handleInsertArtifact(artifact.id);
@@ -7047,7 +7047,7 @@ function DraftWorkspaceInline() {
                     className={cn(
                       "px-2.5 py-1 rounded-md text-[11px] whitespace-nowrap transition-all border shrink-0",
                       activeComponentId === comp.id
-                        ? "bg-violet-700 text-white border-violet-700"
+                        ? "bg-cyan-600 text-white border-cyan-600"
                         : componentContents[getContentKey(comp.id)]
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : "bg-[#0d1b30] text-slate-500 border-slate-700/50 hover:border-slate-300"
@@ -7067,7 +7067,7 @@ function DraftWorkspaceInline() {
                 .map((comp) => (
                   <div key={comp.id} className="space-y-2">
                     <div className="p-2.5 bg-blue-50/50 border border-blue-100 rounded-lg">
-                      <p className="text-xs font-medium text-violet-400 mb-0.5">{comp.label}</p>
+                      <p className="text-xs font-medium text-cyan-300 mb-0.5">{comp.label}</p>
                       <p className="text-[10px] text-slate-500">{comp.description}</p>
                     </div>
                     <Textarea
@@ -7103,7 +7103,7 @@ function DraftWorkspaceInline() {
                 className={cn(
                   "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all capitalize",
                   checkTab === tab
-                    ? "bg-violet-700 text-white"
+                    ? "bg-cyan-600 text-white"
                     : "text-slate-500 hover:bg-slate-800"
                 )}
               >
@@ -7372,7 +7372,7 @@ function DraftWorkspaceInline() {
               <div className="flex gap-1.5 mt-3">
                 <Button
                   size="sm"
-                  className="text-xs h-7 bg-violet-700 hover:bg-violet-800 text-white"
+                  className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
                   onClick={() => {
                     handleInsertArtifact(previewArtifact.id);
                     setPreviewArtifactId(null);
