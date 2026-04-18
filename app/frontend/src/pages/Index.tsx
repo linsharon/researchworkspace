@@ -245,18 +245,6 @@ function AuthenticatedLanding() {
   return (
     <AppLayout>
       <div className="p-6 max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-cyan-500/20 border border-cyan-300/30 flex items-center justify-center">
-            <img src={BRAND_FAVICON_URL} alt="Research Workspace logo" className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-slate-100">Research Workspace</p>
-            <p className="text-[11px] text-slate-400">
-              {isZh ? "项目驱动的研究工作流" : "Project-driven Research Workflow"}
-            </p>
-          </div>
-        </div>
-
         <div className="rounded-2xl border border-slate-700/50 bg-gradient-to-r from-[#10243a] via-[#102b3f] to-[#172b34] p-6">
           <p className="text-xs text-cyan-300 tracking-wider uppercase">Project Management</p>
           <h1 className="text-3xl font-bold text-slate-100 mt-2">
