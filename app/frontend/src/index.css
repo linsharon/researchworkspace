@@ -95,7 +95,7 @@
   background: hsl(219 38% 22%);
   border-radius: 99px;
 }
-::-webkit-scrollbar-thumb:hover { background: hsl(249 84% 60%); }
+::-webkit-scrollbar-thumb:hover { background: hsl(188 100% 45%); }
 
 /* ─── Gradient text util ────────────────────────────────── */
 .gradient-text {
