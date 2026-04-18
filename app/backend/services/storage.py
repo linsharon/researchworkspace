@@ -2,6 +2,7 @@ import logging
 import os
 import json
 from datetime import datetime, timedelta, timezone
+from io import BytesIO
 from typing import Literal, Optional, Union
 from urllib.parse import urljoin
 
@@ -284,6 +285,57 @@ class StorageService:
         except Exception as e:
             logger.error(f"Failed to create MinIO/S3 download URL: {e}")
             raise
+
+    async def upload_bytes(
+        self,
+        bucket_name: str,
+        object_key: str,
+        content: bytes,
+        content_type: str = "application/octet-stream",
+    ) -> None:
+        """Upload object bytes through the backend to avoid browser-side storage coupling."""
+        if self.storage_provider == "oss":
+            upload_data = await self.create_upload_url(
+                FileUpDownRequest(bucket_name=bucket_name, object_key=object_key)
+            )
+            if not upload_data.upload_url:
+                raise ValueError("Storage upload URL is missing")
+
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.put(
+                    upload_data.upload_url,
+                    content=content,
+                    headers={"Content-Type": content_type},
+                )
+                response.raise_for_status()
+            return
+
+        await self.create_bucket(BucketRequest(bucket_name=bucket_name, visibility="private"))
+        self.s3_client.put_object(
+            Bucket=bucket_name,
+            Key=object_key,
+            Body=BytesIO(content),
+            ContentType=content_type,
+        )
+
+    async def download_bytes(self, bucket_name: str, object_key: str) -> tuple[bytes, str]:
+        """Download object bytes through the backend for authenticated PDF delivery."""
+        if self.storage_provider == "oss":
+            download_data = await self.create_download_url(
+                FileUpDownRequest(bucket_name=bucket_name, object_key=object_key)
+            )
+            if not download_data.download_url:
+                raise ValueError("Storage download URL is missing")
+
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.get(download_data.download_url)
+                response.raise_for_status()
+                return response.content, response.headers.get("content-type", "application/octet-stream")
+
+        result = self.s3_client.get_object(Bucket=bucket_name, Key=object_key)
+        body = result["Body"].read()
+        content_type = result.get("ContentType") or "application/octet-stream"
+        return body, content_type
 
     async def object_exists(self, bucket_name: str, object_key: str) -> bool:
         """Check whether an object exists in configured storage backend."""

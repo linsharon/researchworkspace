@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import type { Paper, Highlight } from "@/lib/manuscript-api";
 import { paperAPI } from "@/lib/manuscript-api";
-import { pdfAPI } from "@/lib/pdf-api";
 import PdfViewer from "@/components/pdf/PdfViewer";
 
 interface PaperReadingAreaProps {
@@ -50,6 +49,7 @@ export default function PaperReadingArea({
 
   useEffect(() => {
     let cancelled = false;
+    let nextObjectUrl: string | null = null;
 
     const resolveUrl = async () => {
       if (!paper.pdf_path) {
@@ -57,14 +57,10 @@ export default function PaperReadingArea({
         return;
       }
 
-      if (!pdfAPI.isStorageRef(paper.pdf_path)) {
-        setResolvedPdfUrl(pdfAPI.viewUrl(paper.pdf_path));
-        return;
-      }
-
       try {
         setResolvingPdfUrl(true);
-        const url = await pdfAPI.getStorageDownloadUrl(paper.pdf_path);
+        const url = await paperAPI.getPdfBlobUrl(paper.id);
+        nextObjectUrl = url;
         if (!cancelled) {
           setResolvedPdfUrl(url);
         }
@@ -84,8 +80,11 @@ export default function PaperReadingArea({
 
     return () => {
       cancelled = true;
+      if (nextObjectUrl) {
+        paperAPI.revokePdfObjectUrl(nextObjectUrl);
+      }
     };
-  }, [paper.pdf_path]);
+  }, [paper.id, paper.pdf_path]);
 
   const handleUploadPDF = async () => {
     const input = document.createElement("input");
@@ -96,10 +95,7 @@ export default function PaperReadingArea({
       if (!file) return;
 
       try {
-        const uploadRes = await pdfAPI.upload(file);
-        await paperAPI.update(paper.id, {
-          pdf_path: uploadRes.filename,
-        });
+        await paperAPI.uploadPdf(paper.id, file);
         onChanged();
       } catch (error) {
         console.error("PDF upload failed:", error);
@@ -122,10 +118,7 @@ export default function PaperReadingArea({
     if (!confirmed) return;
 
     try {
-      await pdfAPI.delete(paper.pdf_path);
-      await paperAPI.update(paper.id, {
-        pdf_path: undefined,
-      });
+      await paperAPI.deletePdf(paper.id);
       onChanged();
     } catch (error) {
       console.error("Failed to delete PDF:", error);

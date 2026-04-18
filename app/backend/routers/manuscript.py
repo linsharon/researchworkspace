@@ -1,21 +1,28 @@
 """Manuscript API router - papers, notes, highlights, concepts management."""
 
+import logging
+import re
+from pathlib import Path
 from typing import List, Literal, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi.responses import Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from core.config import settings
 from core.database import db_manager
 from dependencies.auth import get_current_user
 from dependencies.database import get_db
 from models.auth import User
 from models.manuscript import Concept, Highlight, Note, Paper, Project, ProjectMember, SearchRecord
 from schemas.auth import UserResponse
+from schemas.storage import ObjectRequest
 from services.activity import log_activity_event
+from services.storage import StorageService
 
 # ============================================================
 # Pydantic Schemas
@@ -275,6 +282,163 @@ class SearchRecordResponse(BaseModel):
 # ============================================================
 
 router = APIRouter(prefix="/api/v1/manuscripts", tags=["manuscripts"])
+logger = logging.getLogger(__name__)
+
+MANUSCRIPT_PDF_BUCKET = "documents"
+STORAGE_REF_PREFIX = "storage://"
+LOCAL_REF_PREFIX = "local://"
+LOCAL_PDF_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "uploads" / "paper-pdfs"
+LEGACY_PDF_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "uploads"
+LOCAL_PDF_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _sanitize_pdf_filename(filename: str) -> str:
+    base = filename.strip().split("/")[-1].split("\\")[-1]
+    if not base:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    safe = re.sub(r"[^A-Za-z0-9._-]", "-", base)
+    if not safe.lower().endswith(".pdf"):
+        safe = f"{safe}.pdf"
+    return safe[:255]
+
+
+def _validate_pdf_bytes(filename: str, content_type: Optional[str], content: bytes) -> str:
+    if not filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+
+    max_bytes = settings.max_upload_size_mb * 1024 * 1024
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Maximum allowed size is {settings.max_upload_size_mb} MB",
+        )
+
+    header_window = content[:1024]
+    if header_window.find(b"%PDF") == -1:
+        raise HTTPException(status_code=400, detail="File does not appear to be a valid PDF")
+
+    normalized_type = (content_type or "application/pdf").lower().strip()
+    if normalized_type not in {"application/pdf", "application/octet-stream"}:
+        logger.info("Accepting PDF upload with non-standard content type: %s", normalized_type)
+
+    return _sanitize_pdf_filename(filename)
+
+
+def _make_storage_ref(bucket_name: str, object_key: str) -> str:
+    return f"{STORAGE_REF_PREFIX}{bucket_name}/{object_key}"
+
+
+def _parse_storage_ref(value: str) -> Optional[tuple[str, str]]:
+    if not value or not value.startswith(STORAGE_REF_PREFIX):
+        return None
+    rest = value[len(STORAGE_REF_PREFIX):]
+    if "/" not in rest:
+        return None
+    bucket_name, object_key = rest.split("/", 1)
+    if not bucket_name or not object_key:
+        return None
+    return bucket_name, object_key
+
+
+def _make_local_ref(filename: str) -> str:
+    return f"{LOCAL_REF_PREFIX}{filename}"
+
+
+def _resolve_local_pdf_path(value: str) -> Optional[Path]:
+    if not value:
+        return None
+
+    relative_name = value[len(LOCAL_REF_PREFIX):] if value.startswith(LOCAL_REF_PREFIX) else Path(value).name
+    safe_name = Path(relative_name).name
+    if not safe_name:
+        return None
+
+    candidates = [LOCAL_PDF_UPLOADS_DIR / safe_name, LEGACY_PDF_UPLOADS_DIR / safe_name]
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        parent_resolved = candidate.parent.resolve()
+        if str(resolved).startswith(str(parent_resolved)) and resolved.exists():
+            return resolved
+    return None
+
+
+async def _delete_pdf_asset_if_needed(pdf_path: Optional[str], storage_service: Optional[StorageService]) -> None:
+    if not pdf_path:
+        return
+
+    storage_ref = _parse_storage_ref(pdf_path)
+    if storage_ref:
+        if storage_service is None:
+            logger.warning("Skipping storage PDF cleanup because storage service is unavailable")
+            return
+        bucket_name, object_key = storage_ref
+        try:
+            await storage_service.delete_object(
+                ObjectRequest(bucket_name=bucket_name, object_key=object_key)
+            )
+        except Exception as exc:
+            logger.warning("Failed to delete storage PDF asset %s/%s: %s", bucket_name, object_key, exc)
+        return
+
+    local_path = _resolve_local_pdf_path(pdf_path)
+    if local_path and local_path.exists():
+        try:
+            local_path.unlink()
+        except Exception as exc:
+            logger.warning("Failed to delete local PDF asset %s: %s", local_path, exc)
+
+
+async def _store_paper_pdf(
+    paper: Paper,
+    filename: str,
+    content: bytes,
+    storage_service: Optional[StorageService],
+) -> str:
+    safe_name = _sanitize_pdf_filename(filename)
+    object_key = f"paper-pdfs/{paper.project_id}/{paper.id}/{uuid4().hex}-{safe_name}"
+
+    if storage_service is not None:
+        try:
+            await storage_service.upload_bytes(
+                MANUSCRIPT_PDF_BUCKET,
+                object_key,
+                content,
+                content_type="application/pdf",
+            )
+            return _make_storage_ref(MANUSCRIPT_PDF_BUCKET, object_key)
+        except Exception as exc:
+            logger.warning("Storage upload failed for paper %s, falling back to local disk: %s", paper.id, exc)
+
+    local_name = f"{paper.id}-{uuid4().hex[:12]}-{safe_name}"
+    local_path = (LOCAL_PDF_UPLOADS_DIR / local_name).resolve()
+    if not str(local_path).startswith(str(LOCAL_PDF_UPLOADS_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid PDF path")
+    local_path.write_bytes(content)
+    return _make_local_ref(local_name)
+
+
+def _create_storage_service() -> Optional[StorageService]:
+    try:
+        return StorageService()
+    except Exception as exc:
+        logger.warning("Storage service unavailable for manuscript PDF flow: %s", exc)
+        return None
+
+
+async def _load_paper_pdf_content(pdf_path: str, storage_service: Optional[StorageService]) -> tuple[bytes, str, str]:
+    storage_ref = _parse_storage_ref(pdf_path)
+    if storage_ref:
+        if storage_service is None:
+            raise HTTPException(status_code=503, detail="Storage-backed PDF is temporarily unavailable")
+        bucket_name, object_key = storage_ref
+        content, content_type = await storage_service.download_bytes(bucket_name, object_key)
+        filename = Path(object_key).name or "paper.pdf"
+        return content, content_type or "application/pdf", filename
+
+    local_path = _resolve_local_pdf_path(pdf_path)
+    if not local_path:
+        raise HTTPException(status_code=404, detail="PDF file not found")
+    return local_path.read_bytes(), "application/pdf", local_path.name
 
 
 async def get_owned_project_or_404(session: AsyncSession, project_id: str, user_id: str) -> Project:
@@ -583,6 +747,123 @@ async def update_paper(
         before=before,
         after=serialize_paper_for_audit(db_paper),
         changed_fields=sorted(update_data.keys()),
+    )
+    return db_paper
+
+
+@router.post("/papers/{paper_id}/pdf", response_model=PaperResponse, status_code=status.HTTP_201_CREATED)
+async def upload_paper_pdf(
+    paper_id: str,
+    request: Request,
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """Upload or replace the PDF attached to a paper through the backend."""
+    result = await session.execute(
+        select(Paper)
+        .join(Project, Paper.project_id == Project.id)
+        .where(Paper.id == paper_id, project_write_condition(current_user.id))
+    )
+    db_paper = result.scalar_one_or_none()
+    if not db_paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+
+    content = await file.read()
+    safe_name = _validate_pdf_bytes(file.filename, file.content_type, content)
+    storage_service = _create_storage_service()
+
+    before = serialize_paper_for_audit(db_paper)
+    previous_pdf_path = db_paper.pdf_path
+    db_paper.pdf_path = await _store_paper_pdf(
+        db_paper,
+        safe_name,
+        content,
+        storage_service,
+    )
+
+    await session.commit()
+    await session.refresh(db_paper)
+    await _delete_pdf_asset_if_needed(previous_pdf_path, storage_service)
+    await record_manuscript_write_activity(
+        request=request,
+        current_user=current_user,
+        action="paper_pdf_upload",
+        resource_type="paper",
+        resource_id=db_paper.id,
+        project_id=db_paper.project_id,
+        before=before,
+        after=serialize_paper_for_audit(db_paper),
+        changed_fields=["pdf_path"],
+    )
+    return db_paper
+
+
+@router.get("/papers/{paper_id}/pdf")
+async def get_paper_pdf(
+    paper_id: str,
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """Return the attached paper PDF bytes for authenticated clients."""
+    result = await session.execute(
+        select(Paper)
+        .join(Project, Paper.project_id == Project.id)
+        .where(Paper.id == paper_id, project_read_condition(current_user.id))
+    )
+    db_paper = result.scalar_one_or_none()
+    if not db_paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+    if not db_paper.pdf_path:
+        raise HTTPException(status_code=404, detail="Paper PDF not found")
+
+    content, content_type, filename = await _load_paper_pdf_content(db_paper.pdf_path, _create_storage_service())
+    return Response(
+        content=content,
+        media_type=content_type or "application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
+
+
+@router.delete("/papers/{paper_id}/pdf", response_model=PaperResponse)
+async def delete_paper_pdf(
+    paper_id: str,
+    request: Request,
+    session: AsyncSession = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    """Delete the currently attached paper PDF and clear the paper reference."""
+    result = await session.execute(
+        select(Paper)
+        .join(Project, Paper.project_id == Project.id)
+        .where(Paper.id == paper_id, project_write_condition(current_user.id))
+    )
+    db_paper = result.scalar_one_or_none()
+    if not db_paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+    if not db_paper.pdf_path:
+        raise HTTPException(status_code=404, detail="Paper PDF not found")
+
+    before = serialize_paper_for_audit(db_paper)
+    pdf_path = db_paper.pdf_path
+    storage_service = _create_storage_service()
+    db_paper.pdf_path = None
+    await session.commit()
+    await session.refresh(db_paper)
+    await _delete_pdf_asset_if_needed(pdf_path, storage_service)
+    await record_manuscript_write_activity(
+        request=request,
+        current_user=current_user,
+        action="paper_pdf_delete",
+        resource_type="paper",
+        resource_id=db_paper.id,
+        project_id=db_paper.project_id,
+        before=before,
+        after=serialize_paper_for_audit(db_paper),
+        changed_fields=["pdf_path"],
     )
     return db_paper
 

@@ -157,6 +157,31 @@ interface StoredConcept extends Concept {
   project_id: string;
 }
 
+const PAPER_PDF_OBJECT_URLS = new Set<string>();
+
+const getFileNameFromContentDisposition = (header?: string): string | undefined => {
+  if (!header) return undefined;
+
+  const utf8Match = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+
+  const quotedMatch = header.match(/filename="([^"]+)"/i);
+  if (quotedMatch?.[1]) {
+    return quotedMatch[1];
+  }
+
+  const plainMatch = header.match(/filename=([^;]+)/i);
+  return plainMatch?.[1]?.trim();
+};
+
+const createObjectUrl = (blob: Blob): string => {
+  const objectUrl = URL.createObjectURL(blob);
+  PAPER_PDF_OBJECT_URLS.add(objectUrl);
+  return objectUrl;
+};
+
 const canUseStorage = () => typeof window !== "undefined" && !!window.localStorage;
 
 const loadCollection = <T>(key: string): T[] => {
@@ -332,6 +357,46 @@ export const paperAPI = {
         );
       }
     );
+  },
+
+  uploadPdf: async (paperId: string, file: File): Promise<Paper> => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await axios.post(`${API_BASE_URL}/papers/${paperId}/pdf`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
+
+  getPdfBlobUrl: async (paperId: string): Promise<string> => {
+    const response = await axios.get(`${API_BASE_URL}/papers/${paperId}/pdf`, {
+      responseType: "blob",
+    });
+    return createObjectUrl(response.data);
+  },
+
+  downloadPdf: async (paperId: string): Promise<{ url: string; filename?: string }> => {
+    const response = await axios.get(`${API_BASE_URL}/papers/${paperId}/pdf`, {
+      responseType: "blob",
+    });
+    return {
+      url: createObjectUrl(response.data),
+      filename: getFileNameFromContentDisposition(response.headers["content-disposition"]),
+    };
+  },
+
+  revokePdfObjectUrl: (objectUrl: string) => {
+    if (!PAPER_PDF_OBJECT_URLS.has(objectUrl)) {
+      return;
+    }
+    URL.revokeObjectURL(objectUrl);
+    PAPER_PDF_OBJECT_URLS.delete(objectUrl);
+  },
+
+  deletePdf: async (paperId: string): Promise<Paper> => {
+    const response = await axios.delete(`${API_BASE_URL}/papers/${paperId}/pdf`);
+    return response.data;
   },
 };
 
