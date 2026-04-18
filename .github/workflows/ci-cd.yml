@@ -82,6 +82,11 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.10.0
       
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -89,9 +94,6 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
           cache-dependency-path: app/frontend/pnpm-lock.yaml
-      
-      - name: Install pnpm
-        run: npm install -g pnpm
       
       - name: Install dependencies
         working-directory: app/frontend
