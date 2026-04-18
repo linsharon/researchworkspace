@@ -143,6 +143,21 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 9000:9000
+        volumes:
+          - /tmp/minio-data:/data
+        command: server /data --console-address ":9001"
 
     steps:
       - uses: actions/checkout@v4
@@ -158,6 +173,19 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt httpx
+
+      - name: Wait for MinIO
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:9000/minio/health/live >/dev/null; then
+              echo "MinIO is ready"
+              exit 0
+            fi
+            echo "Waiting for MinIO... ($i/30)"
+            sleep 2
+          done
+          echo "MinIO did not become ready in time"
+          exit 1
       
       - name: Start backend
         working-directory: app/backend
@@ -166,6 +194,11 @@ jobs:
           ENVIRONMENT: test
           DEBUG: 'false'
           ENABLE_DEV_AUTH_FALLBACK: 'true'
+          STORAGE_PROVIDER: minio
+          MINIO_ENDPOINT: http://localhost:9000
+          MINIO_PUBLIC_ENDPOINT: http://localhost:9000
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
         run: |
           alembic upgrade head
           nohup uvicorn main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
