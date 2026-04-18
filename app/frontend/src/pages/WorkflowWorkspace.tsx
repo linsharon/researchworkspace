@@ -581,7 +581,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     color: string;
   };
 
-  const defaultConceptColor = "#6366f1";
+  const defaultConceptColor = "#22d3ee";
   const defaultConceptCategory = "Construct";
 
   const parseConceptDefinition = (definition?: string): { category: string; color: string } => {
@@ -653,8 +653,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const [keywordsHydrated, setKeywordsHydrated] = useState(false);
 
   const CONCEPT_COLORS = [
+    { value: "#22d3ee", label: "Cyan" },
     { value: "#6366f1", label: "Indigo" },
-    { value: "#8b5cf6", label: "Cyan" },
+    { value: "#8b5cf6", label: "Violet" },
     { value: "#ec4899", label: "Pink" },
     { value: "#f97316", label: "Orange" },
     { value: "#10b981", label: "Emerald" },
@@ -713,8 +714,8 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     setShowConceptDialog(false);
     setConceptName("");
     setConceptDescription("");
-    setConceptCategory("Construct");
-    setConceptColor("#6366f1");
+    setConceptCategory("Keyword");
+    setConceptColor("#22d3ee");
   };
 
   // Candidate papers state
@@ -723,6 +724,24 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const [selectedPaperIds, setSelectedPaperIds] = useState<string[]>([]); 
   const [candidateSortKey, setCandidateSortKey] = useState<"title" | "year" | "type" | "relevance">("relevance");
   const [candidateSortOrder, setCandidateSortOrder] = useState<"asc" | "desc">("desc");
+
+  // Search Record - purpose card association
+  const [srPurposeCardId, setSrPurposeCardId] = useState("");
+  const [purposeCards, setPurposeCards] = useState<Artifact[]>([]);
+
+  // Load purpose cards from localStorage
+  useEffect(() => {
+    const load = () => {
+      try {
+        const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+        const all: Artifact[] = saved ? JSON.parse(saved) : [];
+        setPurposeCards(all.filter((a) => a.type === "purpose" && (!a.projectId || a.projectId === projectId)));
+      } catch { /* ignore */ }
+    };
+    load();
+    window.addEventListener("artifacts-updated", load);
+    return () => window.removeEventListener("artifacts-updated", load);
+  }, [projectId]);
 
   // Add Search Record Dialog
   const [showSearchDialog, setShowSearchDialog] = useState(false);
@@ -1022,8 +1041,8 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const handleOpenAddConceptDialog = (prefill?: string) => {
     setConceptName(prefill?.trim() || "");
     setConceptDescription("");
-    setConceptCategory("Construct");
-    setConceptColor("#6366f1");
+    setConceptCategory("Keyword");
+    setConceptColor("#22d3ee");
     setShowConceptDialog(true);
   };
 
@@ -1138,6 +1157,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     setSrConnector("AND");
     setSrTotalResults("");
     setSrRelevantResults("");
+    setSrPurposeCardId("");
   };
 
   const openAddSearchRecordDialog = () => {
@@ -1434,6 +1454,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       results: parseInt(srTotalResults) || 0,
       relevant: parseInt(srRelevantResults) || 0,
       date: new Date().toISOString().split("T")[0],
+      purposeCardId: srPurposeCardId || undefined,
     };
 
     return nextRecord;
@@ -2171,44 +2192,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     <Button
                       size="sm"
                       className="bg-cyan-600 hover:bg-cyan-700 text-white shrink-0"
+                      onClick={() => handleOpenAddConceptDialog(newKeyword)}
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Add
-                      <ChevronDown className="w-3 h-3 ml-1" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-44">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        if (newKeyword.trim()) {
-                          setKeywords((prev) => {
-                            const term = newKeyword.trim();
-                            if (!term) return prev;
-                            const exists = prev.some((item) => normalizeKeywordTerm(item.term) === normalizeKeywordTerm(term));
-                            if (exists) return prev;
-                            return [
-                              ...prev,
-                              {
-                                id: `kw-${Date.now()}`,
-                                term,
-                                category: "Custom",
-                              },
-                            ];
-                          });
-                          setNewKeyword("");
-                        }
-                      }}
-                    >
-                      <Hash className="w-3.5 h-3.5 mr-2 text-slate-500" />
-                      Add as Keyword
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleOpenAddConceptDialog(newKeyword)}
-                    >
-                      <Lightbulb className="w-3.5 h-3.5 mr-2 text-cyan-400" />
-                      Add as Concept
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
                 </DropdownMenu>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -2278,7 +2267,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 <div className="rounded-lg border border-slate-700/50 p-3 bg-slate-800/40/70 space-y-3">
                   <p className="text-xs font-semibold text-slate-700">Build Boolean Search String</p>
                   <div className="space-y-2">
-                    <p className="text-[11px] text-slate-500">Select existing keywords / concepts:</p>
+                    <p className="text-[11px] text-slate-500">Select existing keywords:</p>
                     <div className="flex flex-wrap gap-1.5">
                       {keywords.map((kw) => (
                         <Badge
@@ -2874,7 +2863,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setConceptCategory("Construct");
           setConceptColor("#6366f1");
         }}
-        title="Add as Concept"
+        title="Add a new keyword"
       >
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -2914,6 +2903,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Keyword">Keyword</SelectItem>
                   <SelectItem value="Construct">Construct</SelectItem>
                   <SelectItem value="Theory">Theory</SelectItem>
                   <SelectItem value="Framework">Framework</SelectItem>
@@ -3099,6 +3089,24 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             )}
           </div>
 
+          {/* Purpose Card Association */}
+          {purposeCards.length > 0 && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-600">Associated Purpose Card (optional)</label>
+              <Select value={srPurposeCardId} onValueChange={setSrPurposeCardId}>
+                <SelectTrigger className="text-xs h-8">
+                  <SelectValue placeholder="Select a purpose card..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {purposeCards.map((card) => (
+                    <SelectItem key={card.id} value={card.id}>{card.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Database selection */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-slate-600">Academic Database</label>
@@ -3264,6 +3272,23 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               />
             </div>
           </div>
+
+          {purposeCards.length > 0 && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-600">Associated Purpose Card (optional)</label>
+              <Select value={srPurposeCardId} onValueChange={setSrPurposeCardId}>
+                <SelectTrigger className="text-xs h-8">
+                  <SelectValue placeholder="Select a purpose card..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  {purposeCards.map((card) => (
+                    <SelectItem key={card.id} value={card.id}>{card.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="flex gap-2 pt-2">
             <Button

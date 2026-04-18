@@ -226,7 +226,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <p className="text-sm font-medium text-slate-200 truncate group-hover:text-cyan-300 transition-colors">
               {activeProject.title}
             </p>
-            <ChevronDown className={cn("w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform", showProjectSwitcher && "rotate-180")} />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
           </button>
           <Link to="/" className="mt-3 block">
             <div
@@ -257,114 +257,123 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </Link>
 
           {showProjectSwitcher && (
-            <div className="mt-2 bg-[#0a1a2b] rounded-lg shadow-xl border border-slate-700/50 overflow-hidden">
-              <div className="p-2 border-b border-slate-700/40">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
-                    {t("app.switchProject")}
-                  </p>
-                  <Badge className="text-[8px] bg-cyan-100 text-cyan-700 border-cyan-200">
-                    <Crown className="w-2 h-2 mr-0.5" />
-                    {t("app.premium")}
-                  </Badge>
-                </div>
-              </div>
-              <ScrollArea className="max-h-[200px]">
-                <div className="p-1.5 space-y-0.5">
-                  {projects.map((proj) => (
-                    <button
-                      key={proj.id}
-                      onClick={() => {
-                        setActiveProjectId(proj.id);
-                        setShowProjectSwitcher(false);
-                        if (location.pathname.startsWith("/workflow/")) {
-                          const stepMatch = location.pathname.match(/^\/workflow\/[^/]+\/(\d+)/);
-                          const step = stepMatch?.[1] || "1";
-                          navigate(`/workflow/${proj.id}/${step}`);
-                          return;
-                        }
-
-                        if (location.pathname === "/artifacts") {
-                          const tab = searchParams.get("tab") || "all";
-                          navigate(`/artifacts?tab=${tab}&projectId=${proj.id}`);
-                        }
-                      }}
-                      data-selected={proj.id === activeProjectId}
-                      className={cn(
-                        "w-full text-left p-2 rounded-md transition-all border record-item",
-                        proj.id === activeProjectId
-                          ? "border-cyan-500/40"
-                          : "border-slate-700/40"
-                      )}
-                    >
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-xs font-medium text-slate-200 truncate record-item-title">
-                          {proj.title}
-                        </span>
-                        {proj.id === activeProjectId && (
-                          <CheckCircle2 className="w-3 h-3 text-cyan-300 shrink-0" />
-                        )}
-                      </div>
-                      <p className="text-[9px] text-slate-400 truncate">{proj.goal}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <Badge variant="outline" className="text-[8px] px-1 py-0">
-                          {t("app.step")} {proj.currentStep}/6
-                        </Badge>
-                        <span className="text-[8px] text-slate-300">{proj.updatedAt}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </ScrollArea>
-              <div className="p-1.5 border-t border-slate-700/40">
-                {showNewProject ? (
-                  <div className="p-1.5 space-y-1.5">
-                    <Input
-                      value={newProjectTitle}
-                      onChange={(e) => setNewProjectTitle(e.target.value)}
-                      placeholder={t("app.projectTitle")}
-                      className="text-xs h-7 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
-                      autoFocus
-                    />
-                    <Input
-                      value={newProjectGoal}
-                      onChange={(e) => setNewProjectGoal(e.target.value)}
-                      placeholder={t("app.researchGoal")}
-                      className="text-xs h-7 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
-                    />
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        className="text-[10px] h-6 bg-cyan-500 hover:bg-cyan-600 text-white flex-1"
-                        onClick={handleCreateProject}
-                      >
-                        {t("app.create")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-[10px] h-6"
-                        onClick={() => {
-                          setShowNewProject(false);
-                          setNewProjectTitle("");
-                          setNewProjectGoal("");
-                        }}
-                      >
-                        {t("app.cancel")}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-[10px] h-7"
-                    onClick={() => setShowNewProject(true)}
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+              onClick={() => setShowProjectSwitcher(false)}
+            >
+              <div
+                className="w-full max-w-sm mx-4 bg-[#0a1a2b] rounded-xl shadow-2xl border border-slate-700/60 overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/40">
+                  <p className="text-sm font-semibold text-slate-200">{t("app.switchProject")}</p>
+                  <button
+                    onClick={() => setShowProjectSwitcher(false)}
+                    className="text-slate-400 hover:text-slate-200 transition-colors"
                   >
-                    <Plus className="w-2.5 h-2.5 mr-1" />
-                    {t("app.newProject")}
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="p-4 space-y-4">
+                  {/* Project dropdown */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-400">Select project</label>
+                    <select
+                      value={activeProjectId}
+                      onChange={(e) => setActiveProjectId(e.target.value)}
+                      className="w-full text-sm bg-slate-800 border border-slate-700/60 text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500"
+                    >
+                      {projects.map((proj) => (
+                        <option key={proj.id} value={proj.id}>{proj.title}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Switch button */}
+                  <Button
+                    size="sm"
+                    className="w-full bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+                    onClick={() => {
+                      setShowProjectSwitcher(false);
+                      if (location.pathname.startsWith("/workflow/")) {
+                        const stepMatch = location.pathname.match(/^\/workflow\/[^/]+\/(\d+)/);
+                        const step = stepMatch?.[1] || "1";
+                        navigate(`/workflow/${activeProjectId}/${step}`);
+                        return;
+                      }
+                      if (location.pathname === "/artifacts") {
+                        const tab = searchParams.get("tab") || "all";
+                        navigate(`/artifacts?tab=${tab}&projectId=${activeProjectId}`);
+                      }
+                    }}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                    Switch to this project
                   </Button>
-                )}
+
+                  {/* New project — premium only if already has a project */}
+                  <div className="border-t border-slate-700/40 pt-3">
+                    {projects.length >= 1 && (
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Badge className="text-[9px] bg-cyan-900/60 text-cyan-300 border border-cyan-700/40">
+                          <Crown className="w-2.5 h-2.5 mr-0.5" />
+                          Premium
+                        </Badge>
+                        <span className="text-[10px] text-slate-400">Creating multiple projects requires a premium account</span>
+                      </div>
+                    )}
+                    {showNewProject ? (
+                      <div className="space-y-2">
+                        <Input
+                          value={newProjectTitle}
+                          onChange={(e) => setNewProjectTitle(e.target.value)}
+                          placeholder={t("app.projectTitle")}
+                          className="text-xs h-8 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
+                          autoFocus
+                        />
+                        <Input
+                          value={newProjectGoal}
+                          onChange={(e) => setNewProjectGoal(e.target.value)}
+                          placeholder={t("app.researchGoal")}
+                          className="text-xs h-8 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="text-xs h-7 bg-cyan-500 hover:bg-cyan-600 text-white flex-1"
+                            onClick={handleCreateProject}
+                          >
+                            {t("app.create")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs h-7"
+                            onClick={() => {
+                              setShowNewProject(false);
+                              setNewProjectTitle("");
+                              setNewProjectGoal("");
+                            }}
+                          >
+                            {t("app.cancel")}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full text-xs h-8 border-dashed"
+                        onClick={() => setShowNewProject(true)}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        {t("app.newProject")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}

@@ -74,6 +74,7 @@ export interface SearchRecord {
   results: number;
   relevant: number;
   date: string;
+  purposeCardId?: string;
 }
 
 // --- Step Metadata ---
