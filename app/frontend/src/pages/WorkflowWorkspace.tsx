@@ -439,11 +439,12 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
                 {allPurposes.map((option) => (
                   <label
                     key={option}
+                    data-selected={selected.includes(option) ? "true" : undefined}
                     className={cn(
-                      "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all text-sm",
+                      "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-all text-sm record-item",
                       selected.includes(option)
-                        ? "border-cyan-600 bg-blue-50/50"
-                        : "border-slate-700/50 hover:border-slate-300"
+                        ? "border-cyan-600 bg-cyan-950/30"
+                        : "border-slate-700/50"
                     )}
                   >
                     <Checkbox
@@ -453,7 +454,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
                         else setSelected(selected.filter((s) => s !== option));
                       }}
                     />
-                    <span>{option}</span>
+                    <span className="record-item-title">{option}</span>
                     {customPurposes.includes(option) && (
                       <Badge variant="outline" className="text-[9px] ml-auto text-blue-500 border-blue-300">
                         Custom
