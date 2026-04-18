@@ -105,6 +105,67 @@ const formatUploadErrorLog = (error: unknown, paper: Paper, file: File): string 
   return lines.join("\n");
 };
 
+const formatPreviewErrorLog = (error: unknown, paper: Paper): string => {
+  const lines = [
+    "[Paper PDF Preview Resolve Error]",
+    `timestamp: ${new Date().toISOString()}`,
+    `paperId: ${paper.id}`,
+    `projectId: ${paper.project_id}`,
+    `paperTitle: ${paper.title}`,
+    `pdfPath: ${paper.pdf_path || "(empty)"}`,
+    `pageUrl: ${typeof window !== "undefined" ? window.location.href : "unknown"}`,
+  ];
+
+  if (axios.isAxiosError(error)) {
+    lines.push(`errorType: AxiosError`);
+    lines.push(`message: ${error.message}`);
+    lines.push(`code: ${error.code || "unknown"}`);
+
+    if (error.config?.method) {
+      lines.push(`requestMethod: ${error.config.method.toUpperCase()}`);
+    }
+    if (error.config?.baseURL || error.config?.url) {
+      lines.push(`requestUrl: ${(error.config.baseURL || "") + (error.config.url || "")}`);
+    }
+    if (error.response) {
+      lines.push(`status: ${error.response.status}`);
+      lines.push(`statusText: ${error.response.statusText || "unknown"}`);
+      const requestId = error.response.headers?.["x-request-id"] || error.response.headers?.["X-Request-ID"];
+      if (requestId) {
+        lines.push(`requestId: ${requestId}`);
+      }
+      const detail =
+        typeof error.response.data === "object" && error.response.data !== null && "detail" in error.response.data
+          ? String((error.response.data as { detail?: unknown }).detail)
+          : undefined;
+      if (detail) {
+        lines.push(`detail: ${detail}`);
+      }
+      lines.push("responseData:");
+      lines.push(stringifyErrorData(error.response.data));
+    } else if (error.request) {
+      lines.push("status: no-response");
+      lines.push("detail: Request was sent but no response was received.");
+    }
+  } else if (error instanceof Error) {
+    lines.push(`errorType: ${error.name}`);
+    lines.push(`message: ${error.message}`);
+    if (error.stack) {
+      lines.push("stack:");
+      lines.push(error.stack);
+    }
+  } else {
+    lines.push(`errorType: ${typeof error}`);
+    lines.push(`message: ${stringifyErrorData(error)}`);
+  }
+
+  if (paper.pdf_path?.startsWith("local://")) {
+    lines.push("hint: pdfPath uses local:// fallback storage. Files may be lost after backend redeploy/restart.");
+  }
+
+  return lines.join("\n");
+};
+
 export default function PaperReadingArea({
   paper,
   projectId = "proj-1",
@@ -120,6 +181,8 @@ export default function PaperReadingArea({
   const [resolvingPdfUrl, setResolvingPdfUrl] = useState(false);
   const [uploadErrorLog, setUploadErrorLog] = useState<string | null>(null);
   const [copiedUploadLog, setCopiedUploadLog] = useState(false);
+  const [previewErrorLog, setPreviewErrorLog] = useState<string | null>(null);
+  const [copiedPreviewLog, setCopiedPreviewLog] = useState(false);
 
   useEffect(() => {
     setTitleExpanded(false);
@@ -137,6 +200,8 @@ export default function PaperReadingArea({
 
       try {
         setResolvingPdfUrl(true);
+        setPreviewErrorLog(null);
+        setCopiedPreviewLog(false);
         const url = await paperAPI.getPdfBlobUrl(paper.id);
         nextObjectUrl = url;
         if (!cancelled) {
@@ -146,6 +211,7 @@ export default function PaperReadingArea({
         console.error("Failed to resolve storage PDF URL:", error);
         if (!cancelled) {
           setResolvedPdfUrl(null);
+          setPreviewErrorLog(formatPreviewErrorLog(error, paper));
         }
       } finally {
         if (!cancelled) {
@@ -195,6 +261,19 @@ export default function PaperReadingArea({
     } catch (error) {
       console.error("Failed to copy upload error log:", error);
       alert("Failed to copy the upload error log. You can still select and copy it manually.");
+    }
+  };
+
+  const handleCopyPreviewLog = async () => {
+    if (!previewErrorLog) return;
+
+    try {
+      await navigator.clipboard.writeText(previewErrorLog);
+      setCopiedPreviewLog(true);
+      window.setTimeout(() => setCopiedPreviewLog(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy preview error log:", error);
+      alert("Failed to copy the preview error log. You can still select and copy it manually.");
     }
   };
 
@@ -302,6 +381,29 @@ export default function PaperReadingArea({
                 </div>
                 <pre className="max-h-56 overflow-auto rounded-md border border-rose-400/30 bg-slate-950/80 p-3 text-xs leading-5 text-rose-100 whitespace-pre-wrap break-words">
                   {uploadErrorLog}
+                </pre>
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : null}
+
+        {previewErrorLog ? (
+          <div className="px-4 pt-4">
+            <Alert className="border-amber-500/40 bg-amber-950/30 text-amber-100">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>PDF preview resolve failed</AlertTitle>
+              <AlertDescription>
+                <p className="mb-3 text-sm text-amber-100/90">
+                  Detailed preview error log is shown below. Copy it and paste it into codespace for debugging.
+                </p>
+                <div className="mb-3 flex flex-wrap gap-2">
+                  <Button className="h-8" onClick={handleCopyPreviewLog} size="sm" variant="outline">
+                    {copiedPreviewLog ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedPreviewLog ? "Copied" : "Copy Preview Error Log"}
+                  </Button>
+                </div>
+                <pre className="max-h-56 overflow-auto rounded-md border border-amber-400/30 bg-slate-950/80 p-3 text-xs leading-5 text-amber-100 whitespace-pre-wrap break-words">
+                  {previewErrorLog}
                 </pre>
               </AlertDescription>
             </Alert>

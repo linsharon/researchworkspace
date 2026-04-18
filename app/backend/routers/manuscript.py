@@ -459,6 +459,11 @@ async def _load_paper_pdf_content(pdf_path: str, storage_service: Optional[Stora
 
     local_path = _resolve_local_pdf_path(pdf_path)
     if not local_path:
+        if pdf_path.startswith(LOCAL_REF_PREFIX):
+            raise HTTPException(
+                status_code=404,
+                detail="PDF file not found in local fallback storage (possibly removed after redeploy). Please re-upload the PDF.",
+            )
         raise HTTPException(status_code=404, detail="PDF file not found")
     return local_path.read_bytes(), "application/pdf", local_path.name
 
@@ -842,12 +847,23 @@ async def get_paper_pdf(
     if not db_paper.pdf_path:
         raise HTTPException(status_code=404, detail="Paper PDF not found")
 
-    content, content_type, filename = await _load_paper_pdf_content(db_paper.pdf_path, _create_storage_service())
-    return Response(
-        content=content,
-        media_type=content_type or "application/pdf",
-        headers={"Content-Disposition": f'inline; filename="{filename}"'},
-    )
+    try:
+        content, content_type, filename = await _load_paper_pdf_content(db_paper.pdf_path, _create_storage_service())
+        return Response(
+            content=content,
+            media_type=content_type or "application/pdf",
+            headers={"Content-Disposition": f'inline; filename="{filename}"'},
+        )
+    except HTTPException:
+        # Re-raise HTTPException as-is (already has proper status/detail)
+        raise
+    except Exception as e:
+        # Capture unexpected errors with context
+        logger.error(f"Failed to load paper PDF for {paper_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load PDF: {str(e)}"
+        )
 
 
 @router.delete("/papers/{paper_id}/pdf", response_model=PaperResponse)
