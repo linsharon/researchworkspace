@@ -30,10 +30,11 @@ def main():
         print("ERROR: could not determine alembic current version", file=sys.stderr)
         sys.exit(1)
 
-    # If no version is recorded, the DB was created via create_all without
-    # running migrations. Stamp to align before upgrading.
-    if "(head)" not in output and output.strip() == "":
-        print(f"No alembic version found. Stamping to {LAST_PRE_EXISTING_REVISION}...")
+    # If not already at head, the DB was likely created via create_all without
+    # running migrations (alembic_version table may be missing or stale).
+    # Stamp to align before upgrading.
+    if "(head)" not in output:
+        print(f"Not at head. Stamping to {LAST_PRE_EXISTING_REVISION}...")
         code, _ = run([sys.executable, "-m", "alembic", "stamp", LAST_PRE_EXISTING_REVISION])
         if code != 0:
             print("ERROR: alembic stamp failed", file=sys.stderr)
