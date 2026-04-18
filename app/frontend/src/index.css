@@ -14,7 +14,7 @@
     --popover: 219 50% 9%;
     --popover-foreground: 215 55% 91%;
 
-    --primary: 249 84% 68%;
+    --primary: 188 100% 50%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 219 40% 16%;
@@ -23,7 +23,7 @@
     --muted: 219 40% 13%;
     --muted-foreground: 215 22% 52%;
 
-    --accent: 249 84% 68%;
+    --accent: 188 100% 50%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
@@ -31,18 +31,18 @@
 
     --border: 219 38% 17%;
     --input: 219 40% 13%;
-    --ring: 249 84% 68%;
+    --ring: 188 100% 50%;
 
     --radius: 0.6rem;
 
     --sidebar-background: 220 56% 6%;
     --sidebar-foreground: 215 25% 68%;
-    --sidebar-primary: 249 84% 68%;
+    --sidebar-primary: 188 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 219 44% 14%;
     --sidebar-accent-foreground: 215 55% 88%;
     --sidebar-border: 219 38% 15%;
-    --sidebar-ring: 249 84% 68%;
+    --sidebar-ring: 188 100% 50%;
   }
 
   /* Keep .dark identical to root (app is permanently dark-themed) */
@@ -53,27 +53,27 @@
     --card-foreground: 215 55% 91%;
     --popover: 219 50% 9%;
     --popover-foreground: 215 55% 91%;
-    --primary: 249 84% 68%;
+    --primary: 188 100% 50%;
     --primary-foreground: 0 0% 100%;
     --secondary: 219 40% 16%;
     --secondary-foreground: 215 40% 80%;
     --muted: 219 40% 13%;
     --muted-foreground: 215 22% 52%;
-    --accent: 249 84% 68%;
+    --accent: 188 100% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --border: 219 38% 17%;
     --input: 219 40% 13%;
-    --ring: 249 84% 68%;
+    --ring: 188 100% 50%;
     --sidebar-background: 220 56% 6%;
     --sidebar-foreground: 215 25% 68%;
-    --sidebar-primary: 249 84% 68%;
+    --sidebar-primary: 188 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 219 44% 14%;
     --sidebar-accent-foreground: 215 55% 88%;
     --sidebar-border: 219 38% 15%;
-    --sidebar-ring: 249 84% 68%;
+    --sidebar-ring: 188 100% 50%;
   }
 }
 
