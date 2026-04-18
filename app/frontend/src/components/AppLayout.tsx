@@ -202,7 +202,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 h-12 border-b border-slate-700/30 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <Atom className="w-5 h-5 text-cyan-400 shrink-0" />
+            <img
+              src={BRAND_FAVICON_URL}
+              alt="Research Workspace logo"
+              className="w-5 h-5 shrink-0"
+              style={{ filter: 'brightness(0) saturate(100%) invert(72%) sepia(98%) saturate(400%) hue-rotate(152deg) brightness(103%)' }}
+            />
             <span className="font-semibold text-sm text-slate-200 truncate">
               {t("app.title")}
             </span>
@@ -481,7 +486,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="flex-1 flex items-center justify-center min-w-0">
             {sidebarCollapsed && (
               <div className="flex items-center gap-2">
-                <Atom className="w-5 h-5 text-cyan-400" />
+                <img
+                  src={BRAND_FAVICON_URL}
+                  alt="Research Workspace logo"
+                  className="w-5 h-5"
+                  style={{ filter: 'brightness(0) saturate(100%) invert(72%) sepia(98%) saturate(400%) hue-rotate(152deg) brightness(103%)' }}
+                />
                 <span className="text-sm font-semibold text-slate-200 hidden sm:inline">
                   {t("app.title")}
                 </span>

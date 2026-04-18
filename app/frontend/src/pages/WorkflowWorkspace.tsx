@@ -67,7 +67,7 @@ import {
   Upload,
   X,
   Zap,
-  Map,
+  Map as MapIcon,
   PenLine,
   Atom,
 } from "lucide-react";
@@ -272,7 +272,7 @@ export default function WorkflowWorkspace() {
               {currentStep === 2 && <Search className="w-7 h-7 text-cyan-400" />}
               {currentStep === 3 && <BookOpen className="w-7 h-7 text-cyan-400" />}
               {currentStep === 4 && <Network className="w-7 h-7 text-cyan-400" />}
-              {currentStep === 5 && <Map className="w-7 h-7 text-cyan-400" />}
+              {currentStep === 5 && <MapIcon className="w-7 h-7 text-cyan-400" />}
               {currentStep === 6 && <PenLine className="w-7 h-7 text-cyan-400" />}
             </div>
             <div>
