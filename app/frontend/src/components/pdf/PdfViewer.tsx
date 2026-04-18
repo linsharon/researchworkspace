@@ -469,7 +469,7 @@ export default function PdfViewer({
 
       <div className="relative flex-1 bg-[#0d1b30]">
         {pdfUrl ? (
-          <div className="pdf-scroll-host h-full min-h-0 overflow-hidden bg-[#0d1b30] p-2">
+          <div className="pdf-scroll-host h-full min-h-0 overflow-auto bg-[#0d1b30] p-2">
             <Worker workerUrl={PDF_WORKER_URL}>
               <Viewer
                 fileUrl={viewerUrl}
