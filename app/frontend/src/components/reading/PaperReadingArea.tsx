@@ -31,7 +31,7 @@ import PdfViewer from "@/components/pdf/PdfViewer";
 interface PaperReadingAreaProps {
   paper: Paper;
   projectId?: string;
-  onChanged: () => void | Promise<void>;
+  onChanged: (reason?: "pdf-file-updated") => void | Promise<void>;
   onTextSelected?: (text: string) => void;
   onHighlightCreated?: (highlight: Highlight) => void;
   onNoteCreated?: () => void;
@@ -267,7 +267,7 @@ export default function PaperReadingArea({
         });
         setUploadProgress(100);
         setUploadState("refreshing");
-        await Promise.resolve(onChanged());
+        await Promise.resolve(onChanged("pdf-file-updated"));
         setUploadState("success");
         window.setTimeout(() => {
           setUploadState("idle");
@@ -320,7 +320,7 @@ export default function PaperReadingArea({
 
     try {
       await paperAPI.deletePdf(paper.id);
-      onChanged();
+      onChanged("pdf-file-updated");
     } catch (error) {
       console.error("Failed to delete PDF:", error);
       alert("Failed to delete PDF. Please try again.");
@@ -580,16 +580,13 @@ export default function PaperReadingArea({
                   onAskAI?.(text);
                 }}
                 onConceptCreated={() => {
-                  onChanged();
                   onConceptCreated?.();
                 }}
                 onHighlightCreated={highlight => {
-                  onChanged();
                   onTextSelected?.(highlight.text);
                   onHighlightCreated?.(highlight);
                 }}
                 onNoteCreated={() => {
-                  onChanged();
                   onNoteCreated?.();
                 }}
                 onSelectionChange={text => onTextSelected?.(text)}

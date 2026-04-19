@@ -309,13 +309,15 @@ export default function PaperReadPage() {
           <PaperReadingArea
             paper={paper}
             projectId={projectId}
-            onChanged={async () => {
+            onChanged={async (reason) => {
               setHasChanged(true);
-              await loadPaper();
+              if (reason === "pdf-file-updated") {
+                await loadPaper();
+              }
             }}
             onHighlightCreated={() => setHighlightPulse((prev) => prev + 1)}
-            onNoteCreated={() => loadPaper()}
-            onConceptCreated={() => loadPaper()}
+            onNoteCreated={() => setHasChanged(true)}
+            onConceptCreated={() => setHasChanged(true)}
             onAskAI={text => {
               setShowChat(true);
               sendToAI(`Please explain the following selected text from this paper:\n\n"${text}"`);

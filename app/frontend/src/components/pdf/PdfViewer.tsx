@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import FloatingAnnotationMenu from "@/components/pdf/FloatingAnnotationMenu";
 import { LiteratureNoteForm, type LiteratureNote } from "@/components/reading/LiteratureNoteForm";
-import { conceptAPI, highlightAPI, noteAPI, type Highlight, type Paper } from "@/lib/manuscript-api";
+import { conceptAPI, highlightAPI, noteAPI, type Concept, type Highlight, type Note, type Paper } from "@/lib/manuscript-api";
 
 export interface PdfViewerProps {
   pdfUrl?: string;
@@ -87,6 +87,48 @@ const PDF_WORKER_URL = "/pdf.worker.min.js";
 const CONCEPTS_STORAGE_KEY = "rw-concepts";
 const CONCEPTS_UPDATED_EVENT = "concepts-updated";
 const HIGHLIGHTS_UPDATED_EVENT = "highlights-updated";
+const NOTES_UPDATED_EVENT = "notes-updated";
+
+type AnnotationBandType = "highlight" | "note" | "concept";
+
+interface AnnotationBandMarker {
+  id: string;
+  type: AnnotationBandType;
+  page: number;
+  label: string;
+  color: string;
+  text?: string;
+  highlight?: Highlight;
+  note?: Note;
+  concept?: Concept;
+}
+
+interface ConceptDefinitionMeta {
+  category?: string;
+  color?: string;
+  selectedText?: string;
+  sourcePaper?: {
+    id?: string;
+  };
+  sourcePaperId?: string;
+  page?: number;
+}
+
+const normalizeText = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
+
+const hexToRgba = (hexColor: string, alpha: number) => {
+  const cleaned = hexColor.replace("#", "");
+  const expanded = cleaned.length === 3
+    ? cleaned.split("").map((char) => `${char}${char}`).join("")
+    : cleaned;
+  const red = Number.parseInt(expanded.slice(0, 2), 16);
+  const green = Number.parseInt(expanded.slice(2, 4), 16);
+  const blue = Number.parseInt(expanded.slice(4, 6), 16);
+  if ([red, green, blue].some((n) => Number.isNaN(n))) {
+    return hexColor;
+  }
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+};
 
 export default function PdfViewer({
   pdfUrl,
@@ -154,6 +196,10 @@ export default function PdfViewer({
   const [documentPageCount, setDocumentPageCount] = useState<number>(totalPages ?? 0);
   const [pageThumbnails, setPageThumbnails] = useState<Array<string | null>>([]);
   const [thumbnailsLoading, setThumbnailsLoading] = useState(false);
+  const [highlightsForBands, setHighlightsForBands] = useState<Highlight[]>([]);
+  const [notesForBands, setNotesForBands] = useState<Note[]>([]);
+  const [conceptsForBands, setConceptsForBands] = useState<Concept[]>([]);
+  const [selectedBand, setSelectedBand] = useState<AnnotationBandMarker | null>(null);
 
   const pageLayout = useMemo(
     () => ({
@@ -168,6 +214,81 @@ export default function PdfViewer({
   const resolvedPage = currentPage ?? viewerState.currentPage;
   const resolvedZoom = zoom ?? viewerState.zoomLevel;
   const resolvedTotalPages = totalPages ?? documentPageCount;
+  const annotationMapRef = useRef(new Map<string, AnnotationBandMarker>());
+
+  const conceptBands = useMemo<AnnotationBandMarker[]>(() => {
+    return conceptsForBands
+      .map((concept) => {
+        let parsed: ConceptDefinitionMeta | null = null;
+        try {
+          parsed = concept.definition ? (JSON.parse(concept.definition) as ConceptDefinitionMeta) : null;
+        } catch {
+          parsed = null;
+        }
+
+        const sourcePaperId = parsed?.sourcePaper?.id || parsed?.sourcePaperId;
+        if (paperId && sourcePaperId && sourcePaperId !== paperId) {
+          return null;
+        }
+
+        const page = typeof parsed?.page === "number" && parsed.page > 0 ? parsed.page : resolvedPage;
+
+        return {
+          id: `concept-${concept.id}`,
+          type: "concept" as const,
+          page,
+          label: concept.title,
+          color: parsed?.color || "#a78bfa",
+          text: parsed?.selectedText || concept.description || "",
+          concept,
+        };
+      })
+      .filter((item): item is AnnotationBandMarker => Boolean(item));
+  }, [conceptsForBands, paperId, resolvedPage]);
+
+  const noteBands = useMemo<AnnotationBandMarker[]>(() => {
+    return notesForBands
+      .map((note) => ({
+        id: `note-${note.id}`,
+        type: "note" as const,
+        page: typeof note.page === "number" && note.page > 0 ? note.page : resolvedPage,
+        label: note.title,
+        color: "#38bdf8",
+        text: note.description || note.content || "",
+        note,
+      }));
+  }, [notesForBands, resolvedPage]);
+
+  const highlightBands = useMemo<AnnotationBandMarker[]>(() => {
+    return highlightsForBands
+      .map((item) => ({
+        id: `highlight-${item.id}`,
+        type: "highlight" as const,
+        page: typeof item.page === "number" && item.page > 0 ? item.page : resolvedPage,
+        label: item.text.slice(0, 42),
+        color: "#facc15",
+        text: item.text,
+        highlight: item,
+      }));
+  }, [highlightsForBands, resolvedPage]);
+
+  const annotationBands = useMemo(() => {
+    return [...highlightBands, ...noteBands, ...conceptBands].sort((left, right) => {
+      if (left.page !== right.page) {
+        return left.page - right.page;
+      }
+      const typeOrder: Record<AnnotationBandType, number> = {
+        highlight: 0,
+        note: 1,
+        concept: 2,
+      };
+      return typeOrder[left.type] - typeOrder[right.type];
+    });
+  }, [conceptBands, highlightBands, noteBands]);
+
+  useEffect(() => {
+    annotationMapRef.current = new Map(annotationBands.map((item) => [item.id, item]));
+  }, [annotationBands]);
 
   const handlePageChange = (nextPage: number) => {
     const bounded =
@@ -307,6 +428,7 @@ export default function PdfViewer({
           page: selectionState.page,
           color: "yellow",
         });
+        setHighlightsForBands((prev) => [...prev, savedHighlight]);
         onHighlightCreated?.(savedHighlight);
         window.dispatchEvent(new CustomEvent(HIGHLIGHTS_UPDATED_EVENT));
         toast.success("Highlight saved", {
@@ -341,7 +463,7 @@ export default function PdfViewer({
 
     const parsedPage = Number.parseInt(note.pageNumber, 10);
 
-    await noteAPI.create({
+    const savedNote = await noteAPI.create({
       paper_id: paperId,
       project_id: projectId,
       title: note.title.trim() || `Literature Note ${Date.now()}`,
@@ -360,6 +482,7 @@ export default function PdfViewer({
       ),
     });
 
+    setNotesForBands((prev) => [...prev, savedNote]);
     window.dispatchEvent(new CustomEvent("notes-updated"));
     onNoteCreated?.();
     setShowNoteEditor(false);
@@ -457,6 +580,7 @@ export default function PdfViewer({
       category: conceptCategory,
       color: conceptColor,
       selectedText: sourceText,
+      page: selectionState.page,
       note: trimmedDescription || undefined,
       sourcePaper: paper
         ? {
@@ -470,8 +594,10 @@ export default function PdfViewer({
         : undefined,
     };
 
+    let savedConcept: Concept | null = null;
+
     try {
-      await conceptAPI.create({
+      savedConcept = await conceptAPI.create({
         title: conceptTitle.trim(),
         description: trimmedDescription || sourceText,
         definition: JSON.stringify(keywordMeta),
@@ -488,13 +614,15 @@ export default function PdfViewer({
       const projectConcepts = savedProject ? JSON.parse(savedProject) : [];
 
       const conceptItem = {
-        id: `concept-${Date.now()}`,
+        id: savedConcept?.id || `concept-${Date.now()}`,
         name: conceptTitle.trim(),
         description: trimmedDescription || sourceText,
         category: conceptCategory,
         color: conceptColor,
         sourcePaperId: paper?.id,
         sourcePaperTitle: paper?.title,
+        page: selectionState.page,
+        selectedText: sourceText,
       };
 
       window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify([...globalConcepts, conceptItem]));
@@ -503,6 +631,10 @@ export default function PdfViewer({
       toast.success("Keyword saved", {
         description: "Added to Artifact Center keywords.",
       });
+    }
+
+    if (savedConcept) {
+      setConceptsForBands((prev) => [...prev, savedConcept as Concept]);
     }
 
     onConceptCreated?.();
@@ -583,6 +715,107 @@ export default function PdfViewer({
   }, [viewerUrl]);
 
   useEffect(() => {
+    if (!paperId) {
+      setHighlightsForBands([]);
+      setNotesForBands([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadAnnotationData = async () => {
+      try {
+        const [highlights, notes] = await Promise.all([
+          highlightAPI.list(paperId),
+          noteAPI.list(paperId),
+        ]);
+        if (!cancelled) {
+          setHighlightsForBands(highlights);
+          setNotesForBands(notes);
+        }
+      } catch (error) {
+        console.error("Failed to load annotation bands:", error);
+      }
+    };
+
+    void loadAnnotationData();
+    return () => {
+      cancelled = true;
+    };
+  }, [paperId]);
+
+  useEffect(() => {
+    if (!projectId) {
+      setConceptsForBands([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadConceptData = async () => {
+      try {
+        const concepts = await conceptAPI.list(projectId);
+        if (!cancelled) {
+          setConceptsForBands(concepts);
+        }
+      } catch (error) {
+        console.error("Failed to load concept bands:", error);
+      }
+    };
+
+    void loadConceptData();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!paperId) {
+      return;
+    }
+
+    const refreshHighlightsAndNotes = async () => {
+      try {
+        const [highlights, notes] = await Promise.all([
+          highlightAPI.list(paperId),
+          noteAPI.list(paperId),
+        ]);
+        setHighlightsForBands(highlights);
+        setNotesForBands(notes);
+      } catch (error) {
+        console.error("Failed to refresh note/highlight overlays:", error);
+      }
+    };
+
+    window.addEventListener(HIGHLIGHTS_UPDATED_EVENT, refreshHighlightsAndNotes);
+    window.addEventListener(NOTES_UPDATED_EVENT, refreshHighlightsAndNotes);
+    return () => {
+      window.removeEventListener(HIGHLIGHTS_UPDATED_EVENT, refreshHighlightsAndNotes);
+      window.removeEventListener(NOTES_UPDATED_EVENT, refreshHighlightsAndNotes);
+    };
+  }, [paperId]);
+
+  useEffect(() => {
+    if (!projectId) {
+      return;
+    }
+
+    const refreshConcepts = async () => {
+      try {
+        const concepts = await conceptAPI.list(projectId);
+        setConceptsForBands(concepts);
+      } catch (error) {
+        console.error("Failed to refresh concept overlays:", error);
+      }
+    };
+
+    window.addEventListener(CONCEPTS_UPDATED_EVENT, refreshConcepts);
+    return () => {
+      window.removeEventListener(CONCEPTS_UPDATED_EVENT, refreshConcepts);
+    };
+  }, [projectId]);
+
+  useEffect(() => {
     if (!pdfUrl || isDocumentLoaded || loadError) {
       return;
     }
@@ -593,6 +826,124 @@ export default function PdfViewer({
 
     return () => window.clearTimeout(timer);
   }, [pdfUrl, isDocumentLoaded, loadError]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const markedNodes = Array.from(container.querySelectorAll("span[data-rw-annotation-mark='1']"));
+    markedNodes.forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      const originalBackground = node.dataset.rwAnnotationOriginalBackground;
+      const originalRadius = node.dataset.rwAnnotationOriginalRadius;
+      const originalShadow = node.dataset.rwAnnotationOriginalShadow;
+      const originalCursor = node.dataset.rwAnnotationOriginalCursor;
+
+      if (originalBackground !== undefined) node.style.backgroundColor = originalBackground;
+      if (originalRadius !== undefined) node.style.borderRadius = originalRadius;
+      if (originalShadow !== undefined) node.style.boxShadow = originalShadow;
+      if (originalCursor !== undefined) node.style.cursor = originalCursor;
+
+      delete node.dataset.rwAnnotationMark;
+      delete node.dataset.rwAnnotationId;
+      delete node.dataset.rwAnnotationOriginalBackground;
+      delete node.dataset.rwAnnotationOriginalRadius;
+      delete node.dataset.rwAnnotationOriginalShadow;
+      delete node.dataset.rwAnnotationOriginalCursor;
+    });
+
+    if (!isDocumentLoaded || annotationBands.length === 0) {
+      return;
+    }
+
+    const pageGroups = new Map<number, AnnotationBandMarker[]>();
+    for (const marker of annotationBands) {
+      const existing = pageGroups.get(marker.page) || [];
+      existing.push(marker);
+      pageGroups.set(marker.page, existing);
+    }
+
+    const findPageLayer = (page: number): HTMLElement | null => {
+      const byTestId = container.querySelector(`[data-testid='core__page-layer-${page - 1}']`);
+      if (byTestId instanceof HTMLElement) return byTestId;
+      const fallbackLayers = Array.from(container.querySelectorAll("[data-testid^='core__page-layer-']"));
+      const fallback = fallbackLayers[page - 1];
+      return fallback instanceof HTMLElement ? fallback : null;
+    };
+
+    pageGroups.forEach((markers, page) => {
+      const pageLayer = findPageLayer(page);
+      if (!pageLayer) return;
+
+      const textLayer = pageLayer.querySelector(".rpv-core__text-layer");
+      if (!(textLayer instanceof HTMLElement)) return;
+
+      const spans = Array.from(textLayer.querySelectorAll("span")).filter(
+        (span) => span instanceof HTMLElement && normalizeText(span.textContent || "").length > 0
+      ) as HTMLElement[];
+      if (spans.length === 0) return;
+
+      markers.forEach((marker) => {
+        const source = normalizeText(marker.text || marker.label);
+        if (!source) return;
+
+        const prefix = source.slice(0, Math.min(26, source.length));
+        const tokens = source.split(" ").filter((token) => token.length >= 4);
+        const strongToken = tokens[0] || prefix;
+
+        let startIndex = spans.findIndex((span) => normalizeText(span.textContent || "").includes(prefix));
+        if (startIndex < 0 && strongToken) {
+          startIndex = spans.findIndex((span) => normalizeText(span.textContent || "").includes(strongToken));
+        }
+        if (startIndex < 0) return;
+
+        const markCount = Math.min(4, Math.max(1, Math.ceil(source.length / 40)));
+        const alpha = marker.type === "highlight" ? 0.45 : marker.type === "note" ? 0.34 : 0.30;
+        const fillColor = hexToRgba(marker.color, alpha);
+
+        for (let offset = 0; offset < markCount; offset += 1) {
+          const span = spans[startIndex + offset];
+          if (!span) break;
+          if (span.dataset.rwAnnotationMark === "1") continue;
+
+          span.dataset.rwAnnotationMark = "1";
+          span.dataset.rwAnnotationId = marker.id;
+          span.dataset.rwAnnotationOriginalBackground = span.style.backgroundColor || "";
+          span.dataset.rwAnnotationOriginalRadius = span.style.borderRadius || "";
+          span.dataset.rwAnnotationOriginalShadow = span.style.boxShadow || "";
+          span.dataset.rwAnnotationOriginalCursor = span.style.cursor || "";
+
+          span.style.backgroundColor = fillColor;
+          span.style.borderRadius = "3px";
+          span.style.boxShadow = `inset 0 -0.9em 0 ${fillColor}`;
+          span.style.cursor = "pointer";
+        }
+      });
+    });
+  }, [annotationBands, isDocumentLoaded, resolvedPage, resolvedZoom, viewerUrl]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const onClick = (event: Event) => {
+      const target = event.target as HTMLElement | null;
+      const hit = target?.closest("span[data-rw-annotation-id]") as HTMLElement | null;
+      const annotationId = hit?.dataset.rwAnnotationId;
+      if (!annotationId) return;
+      const marker = annotationMapRef.current.get(annotationId);
+      if (marker) {
+        setSelectedBand(marker);
+      }
+    };
+
+    container.addEventListener("click", onClick, true);
+    return () => {
+      container.removeEventListener("click", onClick, true);
+    };
+  }, []);
 
   return (
     <section
@@ -758,6 +1109,7 @@ export default function PdfViewer({
             </div>
           </div>
         ) : null}
+
         </div>
 
       </div>
@@ -899,6 +1251,32 @@ export default function PdfViewer({
               Save Keyword
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedBand} onOpenChange={(open) => !open && setSelectedBand(null)}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedBand?.type === "highlight" && "Highlight Preview"}
+              {selectedBand?.type === "note" && "Note Preview"}
+              {selectedBand?.type === "concept" && "Keyword Preview"}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedBand ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <Badge variant="outline">p.{selectedBand.page}</Badge>
+                <Badge style={{ backgroundColor: `${selectedBand.color}22`, color: selectedBand.color }} variant="outline">
+                  {selectedBand.type}
+                </Badge>
+              </div>
+              <h4 className="text-sm font-semibold text-slate-900">{selectedBand.label}</h4>
+              <div className="rounded-lg border bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap break-words">
+                {selectedBand.text || selectedBand.note?.content || selectedBand.concept?.description || "No preview text available."}
+              </div>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
     </section>
