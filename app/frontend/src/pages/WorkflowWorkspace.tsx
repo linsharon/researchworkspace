@@ -76,6 +76,7 @@ import {
   Map as MapIcon,
   PenLine,
   Atom,
+  Box,
 } from "lucide-react";
 import {
   STEP_META,
