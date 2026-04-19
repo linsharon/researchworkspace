@@ -360,6 +360,21 @@ export default function PdfViewer({
     setViewerState(prev => ({ ...prev, annotationMode: "translate" }));
     setTranslatedText("正在翻译为中文...");
 
+    const textToTranslate = selectionState.text;
+
+    /** Fallback: use Google Translate unofficial API (no key required) */
+    const translateWithGoogle = async (text: string): Promise<string> => {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Google Translate HTTP ${res.status}`);
+      const data = await res.json();
+      // Response shape: [ [ ["translated", "original", ...], ... ], ... ]
+      const segments: string[] = (data[0] as [string, string, unknown, unknown][])
+        .map(seg => seg[0])
+        .filter(Boolean);
+      return segments.join("");
+    };
+
     try {
       const models = ["gpt-5-chat", "gemini-2.5-pro", "deepseek-v3.2"];
       let translated = "";
@@ -379,7 +394,7 @@ export default function PdfViewer({
               },
               {
                 role: "user",
-                content: selectionState.text,
+                content: textToTranslate,
               },
             ],
           });
@@ -396,19 +411,33 @@ export default function PdfViewer({
       if (translated) {
         setTranslatedText(translated);
       } else {
-        const detail =
-          axios.isAxiosError(lastError)
-            ? (lastError.response?.data as { detail?: string } | undefined)?.detail
-            : undefined;
-        setTranslatedText(detail ? `翻译失败：${detail}` : "翻译失败：未返回有效内容。");
+        // All AI models failed — fall back to Google Translate
+        console.warn("AI translation failed, falling back to Google Translate:", lastError);
+        try {
+          const fallback = await translateWithGoogle(textToTranslate);
+          setTranslatedText(fallback || "翻译失败：未返回有效内容。");
+        } catch (fallbackError) {
+          console.error("Google Translate fallback also failed:", fallbackError);
+          const detail =
+            axios.isAxiosError(lastError)
+              ? (lastError.response?.data as { detail?: string } | undefined)?.detail
+              : undefined;
+          setTranslatedText(detail ? `翻译失败：${detail}` : "翻译失败：未返回有效内容。");
+        }
       }
     } catch (error) {
       console.error("Failed to translate text:", error);
-      const detail =
-        axios.isAxiosError(error)
-          ? (error.response?.data as { detail?: string } | undefined)?.detail
-          : undefined;
-      setTranslatedText(detail ? `翻译失败：${detail}` : "翻译失败，请稍后重试。");
+      // Try Google Translate as last resort
+      try {
+        const fallback = await translateWithGoogle(textToTranslate);
+        setTranslatedText(fallback || "翻译失败，请稍后重试。");
+      } catch {
+        const detail =
+          axios.isAxiosError(error)
+            ? (error.response?.data as { detail?: string } | undefined)?.detail
+            : undefined;
+        setTranslatedText(detail ? `翻译失败：${detail}` : "翻译失败，请稍后重试。");
+      }
     }
 
     clearSelectionState();
