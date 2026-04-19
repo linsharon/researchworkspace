@@ -2345,6 +2345,23 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   <p className="text-xs font-semibold text-slate-700">Build Boolean Search String</p>
                   <div className="space-y-2">
                     <p className="text-[11px] text-slate-500">Select existing keywords:</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <button
+                        type="button"
+                        className="text-[10px] text-cyan-600 hover:text-cyan-500 underline"
+                        onClick={() => setSrKeywords([...keywords.map((k) => k.term), ...concepts.map((c) => c.name)])}
+                      >
+                        Select All
+                      </button>
+                      <span className="text-[10px] text-slate-400">·</span>
+                      <button
+                        type="button"
+                        className="text-[10px] text-slate-500 hover:text-slate-400 underline"
+                        onClick={() => setSrKeywords([])}
+                      >
+                        Unselect All
+                      </button>
+                    </div>
                     <div className="flex flex-wrap gap-1.5">
                       {keywords.map((kw) => (
                         <Badge
@@ -3148,6 +3165,23 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           {/* Keywords & Concepts selection */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-slate-600">Keywords / Concepts</label>
+            <div className="flex items-center gap-2 mb-1">
+              <button
+                type="button"
+                className="text-[10px] text-cyan-600 hover:text-cyan-500 underline"
+                onClick={() => setSrKeywords([...keywords.map((k) => k.term), ...concepts.map((c) => c.name)])}
+              >
+                Select All
+              </button>
+              <span className="text-[10px] text-slate-400">·</span>
+              <button
+                type="button"
+                className="text-[10px] text-slate-500 hover:text-slate-400 underline"
+                onClick={() => setSrKeywords([])}
+              >
+                Unselect All
+              </button>
+            </div>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {keywords.map((kw) => (
                 <Badge
