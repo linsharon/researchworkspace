@@ -148,7 +148,7 @@ export default function PdfViewer({
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [conceptTitle, setConceptTitle] = useState("");
   const [conceptDescription, setConceptDescription] = useState("");
-  const [conceptCategory, setConceptCategory] = useState("Keyword");
+  const [conceptCategory, setConceptCategory] = useState("Concept");
   const [conceptColor, setConceptColor] = useState("#22d3ee");
 
   const pageLayout = useMemo(
@@ -406,7 +406,7 @@ export default function PdfViewer({
     setViewerState(prev => ({ ...prev, annotationMode: "concept" }));
     setConceptTitle(selectionState.text.slice(0, 60));
     setConceptDescription(selectionState.text);
-    setConceptCategory("Keyword");
+    setConceptCategory("Concept");
     setConceptColor("#22d3ee");
     setShowConceptDialog(true);
   };
@@ -416,26 +416,31 @@ export default function PdfViewer({
       return;
     }
 
-    // Build paper metadata string to include in description
-    const paperMeta = paper
-      ? [
-          paper.title ? `Source: ${paper.title}` : "",
-          paper.authors?.length ? `Authors: ${paper.authors.join(", ")}` : "",
-          paper.year ? `Year: ${paper.year}` : "",
-          paper.journal ? `Journal: ${paper.journal}` : "",
-          paper.url ? `URL: ${paper.url}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n")
-      : "";
+    const trimmedDescription = conceptDescription.trim();
+    const sourceText = selectionState.text.trim();
 
-    const fullDescription = [conceptDescription.trim(), paperMeta].filter(Boolean).join("\n\n");
+    const keywordMeta = {
+      category: conceptCategory,
+      color: conceptColor,
+      selectedText: sourceText,
+      note: trimmedDescription || undefined,
+      sourcePaper: paper
+        ? {
+            id: paper.id,
+            title: paper.title,
+            authors: paper.authors,
+            year: paper.year,
+            journal: paper.journal,
+            url: paper.url,
+          }
+        : undefined,
+    };
 
     try {
       await conceptAPI.create({
         title: conceptTitle.trim(),
-        description: selectionState.text,
-        definition: fullDescription || undefined,
+        description: trimmedDescription || sourceText,
+        definition: JSON.stringify(keywordMeta),
         project_id: projectId,
       });
     } catch (error) {
@@ -451,7 +456,7 @@ export default function PdfViewer({
       const conceptItem = {
         id: `concept-${Date.now()}`,
         name: conceptTitle.trim(),
-        description: fullDescription || selectionState.text,
+        description: trimmedDescription || sourceText,
         category: conceptCategory,
         color: conceptColor,
         sourcePaperId: paper?.id,
@@ -671,12 +676,11 @@ export default function PdfViewer({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Keyword">Keyword</SelectItem>
+                    <SelectItem value="Concept">Concept</SelectItem>
                     <SelectItem value="Construct">Construct</SelectItem>
                     <SelectItem value="Theory">Theory</SelectItem>
                     <SelectItem value="Framework">Framework</SelectItem>
                     <SelectItem value="Method">Method</SelectItem>
-                    <SelectItem value="Finding">Finding</SelectItem>
                     <SelectItem value="Variable">Variable</SelectItem>
                     <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>

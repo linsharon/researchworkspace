@@ -130,8 +130,12 @@ export default function PDFHighlightReader({
     try {
       const concept = await conceptAPI.create({
         title: conceptTitle,
-        description: selectedText,
-        definition: conceptDescription || undefined,
+        description: conceptDescription.trim() || selectedText,
+        definition: JSON.stringify({
+          category: conceptCategory,
+          selectedText,
+          note: conceptDescription.trim() || undefined,
+        }),
         project_id: projectId,
       });
       onConceptCreated?.(concept);
@@ -228,7 +232,7 @@ export default function PDFHighlightReader({
                   </button>
                   <DialogContent className="max-w-lg">
                     <DialogHeader>
-                      <DialogTitle>Add Concept</DialogTitle>
+                      <DialogTitle>Add New Keyword</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3">
                       <div className="p-3 bg-cyan-50 border border-cyan-200 rounded text-sm italic text-cyan-900">"{selectedText}"</div>
@@ -237,11 +241,12 @@ export default function PDFHighlightReader({
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Concept">Concept</SelectItem>
+                          <SelectItem value="Construct">Construct</SelectItem>
                           <SelectItem value="Theory">Theory</SelectItem>
                           <SelectItem value="Framework">Framework</SelectItem>
                           <SelectItem value="Method">Method</SelectItem>
-                          <SelectItem value="Finding">Finding</SelectItem>
                           <SelectItem value="Variable">Variable</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
                         </SelectContent>
                       </Select>
                       <Textarea
@@ -252,7 +257,7 @@ export default function PDFHighlightReader({
                       />
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" onClick={() => setShowConceptDialog(false)}>Cancel</Button>
-                        <Button onClick={handleSaveConcept}>Save Concept</Button>
+                        <Button onClick={handleSaveConcept}>Save Keyword</Button>
                       </div>
                     </div>
                   </DialogContent>

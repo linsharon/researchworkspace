@@ -645,7 +645,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const [showConceptDialog, setShowConceptDialog] = useState(false);
   const [conceptName, setConceptName] = useState("");
   const [conceptDescription, setConceptDescription] = useState("");
-  const [conceptCategory, setConceptCategory] = useState("Keyword");
+  const [conceptCategory, setConceptCategory] = useState("Concept");
   const [conceptColor, setConceptColor] = useState("#22d3ee");
   const [conceptPurposeCardId, setConceptPurposeCardId] = useState("");
   const [editingConceptId, setEditingConceptId] = useState<string | null>(null);
@@ -722,7 +722,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     setShowConceptDialog(false);
     setConceptName("");
     setConceptDescription("");
-    setConceptCategory("Keyword");
+    setConceptCategory("Concept");
     setConceptColor("#22d3ee");
     setConceptPurposeCardId("");
   };
@@ -1075,7 +1075,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     }
     setConceptName(prefill?.trim() || "");
     setConceptDescription("");
-    setConceptCategory("Keyword");
+    setConceptCategory("Concept");
     setConceptColor("#22d3ee");
     setConceptPurposeCardId(purposeCards[0]?.id || "");
     setShowConceptDialog(true);
@@ -2986,7 +2986,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setShowConceptDialog(false);
           setConceptName("");
           setConceptDescription("");
-          setConceptCategory("Keyword");
+          setConceptCategory("Concept");
           setConceptColor("#22d3ee");
           setConceptPurposeCardId("");
         }}
@@ -2995,12 +2995,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         <div className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-slate-700">
-              Keyword Name <span className="text-red-500">*</span>
+              Concept Name <span className="text-red-500">*</span>
             </label>
             <Input
               value={conceptName}
               onChange={(e) => setConceptName(e.target.value)}
-              placeholder="Enter keyword name..."
+              placeholder="Enter concept name..."
               className="text-sm"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -3016,7 +3016,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             <Textarea
               value={conceptDescription}
               onChange={(e) => setConceptDescription(e.target.value)}
-              placeholder="What does this keyword mean in your research context? Add details, definitions, or notes..."
+              placeholder="What does this concept mean in your research context? Add details, definitions, or notes..."
               rows={4}
               className="text-sm resize-none"
             />
@@ -3030,12 +3030,11 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Keyword">Keyword</SelectItem>
+                  <SelectItem value="Concept">Concept</SelectItem>
                   <SelectItem value="Construct">Construct</SelectItem>
                   <SelectItem value="Theory">Theory</SelectItem>
                   <SelectItem value="Framework">Framework</SelectItem>
                   <SelectItem value="Method">Method</SelectItem>
-                  <SelectItem value="Finding">Finding</SelectItem>
                   <SelectItem value="Variable">Variable</SelectItem>
                   <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
@@ -3111,7 +3110,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 setShowConceptDialog(false);
                 setConceptName("");
                 setConceptDescription("");
-                setConceptCategory("Keyword");
+                setConceptCategory("Concept");
                 setConceptColor("#22d3ee");
                 setConceptPurposeCardId("");
               }}
@@ -3640,11 +3639,11 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="Concept">Concept</SelectItem>
                     <SelectItem value="Construct">Construct</SelectItem>
                     <SelectItem value="Theory">Theory</SelectItem>
                     <SelectItem value="Framework">Framework</SelectItem>
                     <SelectItem value="Method">Method</SelectItem>
-                    <SelectItem value="Finding">Finding</SelectItem>
                     <SelectItem value="Variable">Variable</SelectItem>
                     <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
