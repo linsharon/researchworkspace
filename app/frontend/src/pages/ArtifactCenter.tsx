@@ -129,7 +129,7 @@ function localConceptToApiPayload(concept: { name: string; description: string; 
 const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
   { value: "purpose", label: "Purposes" },
-  { value: "concepts", label: "Concepts" },
+  { value: "concepts", label: "Keywords" },
   { value: "literature", label: "Literature" },
   { value: "search", label: "Searches" },
   { value: "notes", label: "Notes" },
@@ -465,63 +465,83 @@ export default function ArtifactCenter() {
 
         {/* Artifact/Concept Grid */}
         {filter === "concepts" ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredConcepts.map((concept) => (
-              <Card key={concept.id} className="border-slate-700/50 hover:shadow-md transition-all group">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Badge
-                      variant="secondary"
-                      className="text-[10px] border"
-                      style={{
-                        color: concept.color,
-                        backgroundColor: `${concept.color}12`,
-                        borderColor: `${concept.color}66`,
-                      }}
-                    >
-                      <Lightbulb className="w-3 h-3 mr-1" />
-                      {concept.category}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-sm mt-2">{concept.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-xs text-slate-600 whitespace-pre-wrap line-clamp-4">
-                    {concept.description || "No description yet."}
-                  </p>
-                  <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 w-7 p-0"
-                      title="Browse"
-                      onClick={() => openConceptDialog(concept.id, "view")}
-                    >
-                      <Eye className="w-3 h-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 w-7 p-0"
-                      title="Edit"
-                      onClick={() => openConceptDialog(concept.id, "edit")}
-                    >
-                      <Edit className="w-3 h-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
-                      title="Delete"
-                      onClick={() => handleDeleteConcept(concept.id)}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          (() => {
+            const categories = Array.from(new Set(filteredConcepts.map((c) => c.category))).sort();
+            if (filteredConcepts.length === 0) return null;
+            return (
+              <div className="space-y-6">
+                {categories.map((cat) => {
+                  const items = filteredConcepts.filter((c) => c.category === cat);
+                  return (
+                    <div key={cat}>
+                      <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                        <Lightbulb className="w-3.5 h-3.5" />
+                        {cat}
+                        <span className="text-slate-600 font-normal normal-case tracking-normal">· {items.length}</span>
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {items.map((concept) => (
+                          <Card key={concept.id} className="border-slate-700/50 hover:shadow-md transition-all group">
+                            <CardHeader className="pb-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] border"
+                                  style={{
+                                    color: concept.color,
+                                    backgroundColor: `${concept.color}12`,
+                                    borderColor: `${concept.color}66`,
+                                  }}
+                                >
+                                  <Lightbulb className="w-3 h-3 mr-1" />
+                                  {concept.category}
+                                </Badge>
+                              </div>
+                              <CardTitle className="text-sm mt-2">{concept.name}</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                              <p className="text-xs text-slate-600 whitespace-pre-wrap line-clamp-4">
+                                {concept.description || "No description yet."}
+                              </p>
+                              <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 w-7 p-0"
+                                  title="Browse"
+                                  onClick={() => openConceptDialog(concept.id, "view")}
+                                >
+                                  <Eye className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 w-7 p-0"
+                                  title="Edit"
+                                  onClick={() => openConceptDialog(concept.id, "edit")}
+                                >
+                                  <Edit className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                                  title="Delete"
+                                  onClick={() => handleDeleteConcept(concept.id)}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredArtifacts.map((artifact) => {
@@ -713,7 +733,7 @@ export default function ArtifactCenter() {
             <Archive className="w-12 h-12 text-slate-200 mx-auto mb-3" />
             <p className="text-sm text-slate-400">
               {filter === "concepts"
-                ? "No concepts found matching your criteria"
+                ? "No keywords found matching your criteria"
                 : "No artifacts found matching your criteria"}
             </p>
           </div>
@@ -723,13 +743,13 @@ export default function ArtifactCenter() {
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle className="text-base">
-                {conceptDialogMode === "edit" ? "Edit Concept" : "Concept Details"}
+                {conceptDialogMode === "edit" ? "Edit Keyword" : "Keyword Details"}
               </DialogTitle>
             </DialogHeader>
             {selectedConcept ? (
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-700">Concept Name</label>
+                  <label className="text-xs font-medium text-slate-700">Keyword Name</label>
                   <Input
                     value={conceptForm.name}
                     onChange={(e) => setConceptForm((prev) => ({ ...prev, name: e.target.value }))}
