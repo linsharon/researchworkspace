@@ -8,6 +8,7 @@ from core.auth import create_access_token
 from core.config import settings
 from core.database import db_manager
 from models.auth import OIDCState, User
+from services.user import UserService
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,10 +37,16 @@ class AuthService:
         user = result.scalar_one_or_none()
         logger.debug(f"[DB_OP] User lookup completed in {time.time() - start_time:.4f}s - found: {user is not None}")
 
+        if not user and email:
+            user = await UserService.get_user_by_email(self.db, email)
+            if user:
+                logger.info("Reusing existing user id %s for email %s", user.id, email)
+
         if user:
             # Update user info if needed
             user.email = email
-            user.name = name
+            if name is not None:
+                user.name = name
             user.last_login = datetime.now(timezone.utc)
         else:
             # Create new user

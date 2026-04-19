@@ -9,12 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Globe, Package, Search, User2, ArrowRight } from "lucide-react";
-import { ARTIFACT_TYPE_META, type Artifact, type ArtifactPackage, type UserProfile } from "@/lib/data";
+import { ARTIFACT_TYPE_META, type Artifact, type ArtifactPackage } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
+import { type UserProfileSummary, userProfileApi } from "@/lib/user-profile-api";
 import { toast } from "sonner";
 
 const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
-const USER_PROFILES_KEY = "rw-user-profiles";
 const MY_DOWNLOADED_PACKAGES_KEY = "rw-my-downloaded-packages";
 
 export default function CommunityArtifacts() {
@@ -22,27 +22,27 @@ export default function CommunityArtifacts() {
   const [packages, setPackages] = useState<ArtifactPackage[]>([]);
   const [query, setQuery] = useState("");
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
-  const [userProfiles, setUserProfiles] = useState<Record<string, UserProfile>>({});
+  const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileSummary>>({});
 
-  const loadPackages = () => {
+  const loadPackages = async () => {
     if (typeof window === "undefined") return;
     try {
       const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
       const parsed = saved ? JSON.parse(saved) : [];
       const list = Array.isArray(parsed) ? (parsed as ArtifactPackage[]) : [];
-      setPackages(list.filter((pkg) => pkg.shared && (pkg.type === "created" || !pkg.type)));
+      const filteredPackages = list.filter((pkg) => pkg.shared && (pkg.type === "created" || !pkg.type));
+      setPackages(filteredPackages);
 
-      // Load user profiles
-      const profilesStr = window.localStorage.getItem(USER_PROFILES_KEY);
-      const profiles: Record<string, UserProfile> = profilesStr ? JSON.parse(profilesStr) : {};
+      const profiles = await userProfileApi.getPublicProfiles(filteredPackages.map((pkg) => pkg.ownerId));
       setUserProfiles(profiles);
     } catch {
       setPackages([]);
+      setUserProfiles({});
     }
   };
 
   useEffect(() => {
-    loadPackages();
+    void loadPackages();
   }, []);
 
   const filteredPackages = useMemo(() => {

@@ -83,13 +83,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       setHeaderDisplayName("");
       return;
     }
-    try {
-      const raw = window.localStorage.getItem("rw-user-profiles");
-      const map = raw ? (JSON.parse(raw) as Record<string, { username?: string }>) : {};
-      setHeaderDisplayName(map[user.id]?.username || user.name || user.email);
-    } catch {
-      setHeaderDisplayName(user.name || user.email);
-    }
+    setHeaderDisplayName(user.name || user.email);
   }, [user?.id, user?.name, user?.email]);
 
   const reloadProjects = async () => {

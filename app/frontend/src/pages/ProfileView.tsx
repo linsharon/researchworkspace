@@ -6,8 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { User2, ArrowLeft } from "lucide-react";
 import { type UserProfile } from "@/lib/data";
-
-const USER_PROFILES_KEY = "rw-user-profiles";
+import { userProfileApi } from "@/lib/user-profile-api";
 
 export default function ProfileView() {
   const { userId } = useParams<{ userId: string }>();
@@ -17,28 +16,24 @@ export default function ProfileView() {
   const [isPrivate, setIsPrivate] = useState(false);
 
   useEffect(() => {
-    if (!userId) return;
-    if (typeof window === "undefined") {
+    if (!userId) {
       setLoading(false);
       return;
     }
 
-    try {
-      const saved = window.localStorage.getItem(USER_PROFILES_KEY);
-      const profiles: Record<string, UserProfile> = saved ? JSON.parse(saved) : {};
-      const found = profiles[userId];
-
-      if (found) {
-        if (!found.isPublic) {
-          setIsPrivate(true);
-        } else {
-          setProfile(found);
-        }
+    const loadProfile = async () => {
+      try {
+        const found = await userProfileApi.getPublicProfile(userId);
+        setIsPrivate(false);
+        setProfile(found);
+      } catch {
+        setProfile(null);
+        setIsPrivate(true);
       }
-    } catch {
-      // ignore
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    void loadProfile();
   }, [userId]);
 
   if (loading) {

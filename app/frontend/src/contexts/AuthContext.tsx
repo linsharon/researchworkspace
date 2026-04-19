@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { authApi } from '../lib/auth';
 import { clearAuthSession, setAuthSession } from '../lib/session';
+import { userProfileApi } from '../lib/user-profile-api';
 
 interface User {
   id: string;
@@ -26,6 +27,7 @@ interface AuthContextType {
   registerWithPassword: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
   refetch: () => Promise<void>;
+  updateUser: (patch: Partial<User>) => void;
   isAdmin: boolean;
 }
 
@@ -62,6 +64,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const syncProfileIntoUser = async (userData: User | null) => {
+    if (!userData || isCodespacesPreviewHost()) {
+      return userData;
+    }
+
+    try {
+      const profile = await userProfileApi.migrateLegacyProfile({
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+      });
+      return {
+        ...userData,
+        name: profile.username,
+      };
+    } catch {
+      return userData;
+    }
+  };
+
   const checkAuthStatus = async () => {
     if (isCodespacesPreviewHost()) {
       setError(null);
@@ -75,7 +97,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
       const userData = await authApi.getCurrentUser();
-      setUser(userData);
+      const nextUser = await syncProfileIntoUser(userData);
+      setUser(nextUser);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       setUser(null);
@@ -107,7 +130,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       const data = await authApi.loginWithPassword(email, password);
       setAuthSession(data.token, data.expires_at);
-      setUser(data.user);
+      const nextUser = await syncProfileIntoUser(data.user);
+      setUser(nextUser);
     } catch (err) {
       clearAuthSession();
       setError(err instanceof Error ? err.message : 'Password login failed');
@@ -120,7 +144,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
       const data = await authApi.registerWithPassword(email, password, name);
       setAuthSession(data.token, data.expires_at);
-      setUser(data.user);
+      const nextUser = await syncProfileIntoUser(data.user);
+      setUser(nextUser);
     } catch (err) {
       clearAuthSession();
       setError(err instanceof Error ? err.message : 'Register failed');
@@ -141,6 +166,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     registerWithPassword,
     logout,
     refetch: checkAuthStatus,
+    updateUser: (patch) => setUser((prev) => (prev ? { ...prev, ...patch } : prev)),
     isAdmin: user?.role === 'admin',
   };
 

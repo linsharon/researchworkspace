@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import AppLayout from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,29 +9,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Lock, Globe, Upload, User, Trash2 } from "lucide-react";
 import { type UserProfile } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
+import { userProfileApi } from "@/lib/user-profile-api";
 import { toast } from "sonner";
 
-const USER_PROFILES_KEY = "rw-user-profiles";
 const PASSWORD_OVERRIDES_KEY = "rw-user-password-overrides";
 const MY_DOWNLOADED_PACKAGES_KEY = "rw-my-downloaded-packages";
 const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
 
-const emptyProfile = (userId: string, email: string, name?: string): UserProfile => ({
-  userId,
-  email,
-  username: name || email.split("@")[0] || "User",
-  bio: "",
-  avatarUrl: "",
-  isPublic: true,
-  updatedAt: new Date().toISOString(),
-});
-
 export default function UserProfilePage() {
-  const { userId: userIdParam } = useParams<{ userId: string }>();
-  const { user, logout } = useAuth();
-
-  const effectiveUserId = userIdParam || user?.id || "";
-  const isOwnProfile = !!user && effectiveUserId === user.id;
+  const { user, logout, updateUser } = useAuth();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,39 +30,29 @@ export default function UserProfilePage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   useEffect(() => {
-    if (!effectiveUserId) {
+    if (!user) {
       setLoading(false);
       return;
     }
 
-    try {
-      const saved = window.localStorage.getItem(USER_PROFILES_KEY);
-      const map: Record<string, UserProfile> = saved ? JSON.parse(saved) : {};
-      let next = map[effectiveUserId] || null;
-
-      if (!next && isOwnProfile && user) {
-        next = emptyProfile(user.id, user.email, user.name);
-        map[user.id] = next;
-        window.localStorage.setItem(USER_PROFILES_KEY, JSON.stringify(map));
+    const loadProfile = async () => {
+      setLoading(true);
+      try {
+        const next = await userProfileApi.getCurrentProfile();
+        setProfile(next);
+        setUsername(next.username || "");
+        setBio(next.bio || "");
+        setIsPublic(next.isPublic ?? true);
+        setAvatarUrl(next.avatarUrl || "");
+      } catch {
+        setProfile(null);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      setProfile(next);
-      setUsername(next?.username || "");
-      setBio(next?.bio || "");
-      setIsPublic(next?.isPublic ?? true);
-      setAvatarUrl(next?.avatarUrl || "");
-    } catch {
-      setProfile(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [effectiveUserId, isOwnProfile, user]);
-
-  const canView = useMemo(() => {
-    if (!profile) return false;
-    if (isOwnProfile) return true;
-    return profile.isPublic;
-  }, [profile, isOwnProfile]);
+    void loadProfile();
+  }, [user?.id]);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,29 +65,26 @@ export default function UserProfilePage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSaveProfile = () => {
-    if (!user || !isOwnProfile) return;
+  const handleSaveProfile = async () => {
+    if (!user) return;
     if (!username.trim()) {
       toast.error("Display name is required");
       return;
     }
 
-    const nextProfile: UserProfile = {
-      userId: user.id,
-      email: user.email,
-      username: username.trim(),
-      bio: bio.trim(),
-      avatarUrl,
-      isPublic,
-      updatedAt: new Date().toISOString(),
-    };
-
     try {
-      const saved = window.localStorage.getItem(USER_PROFILES_KEY);
-      const map: Record<string, UserProfile> = saved ? JSON.parse(saved) : {};
-      map[user.id] = nextProfile;
-      window.localStorage.setItem(USER_PROFILES_KEY, JSON.stringify(map));
+      const nextProfile = await userProfileApi.updateCurrentProfile({
+        username: username.trim(),
+        bio: bio.trim(),
+        avatarUrl,
+        isPublic,
+      });
       setProfile(nextProfile);
+      setUsername(nextProfile.username);
+      setBio(nextProfile.bio);
+      setIsPublic(nextProfile.isPublic);
+      setAvatarUrl(nextProfile.avatarUrl);
+      updateUser({ name: nextProfile.username });
       toast.success("Profile updated");
     } catch {
       toast.error("Failed to save profile");
@@ -150,11 +122,6 @@ export default function UserProfilePage() {
     }
 
     try {
-      const profileRaw = window.localStorage.getItem(USER_PROFILES_KEY);
-      const profiles: Record<string, UserProfile> = profileRaw ? JSON.parse(profileRaw) : {};
-      delete profiles[user.id];
-      window.localStorage.setItem(USER_PROFILES_KEY, JSON.stringify(profiles));
-
       const downloadsRaw = window.localStorage.getItem(MY_DOWNLOADED_PACKAGES_KEY);
       const downloadsMap: Record<string, unknown[]> = downloadsRaw ? JSON.parse(downloadsRaw) : {};
       delete downloadsMap[user.id];
@@ -182,7 +149,7 @@ export default function UserProfilePage() {
     );
   }
 
-  if (!profile || !canView) {
+  if (!profile) {
     return (
       <AppLayout>
         <div className="p-6 text-slate-400">Profile not available.</div>
@@ -209,7 +176,7 @@ export default function UserProfilePage() {
                     {(username || profile.email || "U").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                {isOwnProfile && (
+                {user && (
                   <label className="inline-flex">
                     <Button size="sm" variant="outline" className="text-xs" asChild>
                       <span>
@@ -227,7 +194,6 @@ export default function UserProfilePage() {
                   <Input
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    disabled={!isOwnProfile}
                     className="mt-1 text-sm"
                   />
                 </div>
@@ -240,7 +206,6 @@ export default function UserProfilePage() {
                   <Textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
-                    disabled={!isOwnProfile}
                     className="mt-1 text-sm"
                   />
                 </div>
@@ -249,14 +214,14 @@ export default function UserProfilePage() {
                     {isPublic ? <Globe className="w-3 h-3 mr-1" /> : <Lock className="w-3 h-3 mr-1" />}
                     {isPublic ? "Public" : "Private"}
                   </Badge>
-                  {isOwnProfile && (
+                  {user && (
                     <Button size="sm" variant="outline" className="text-xs" onClick={() => setIsPublic((v) => !v)}>
                       Toggle Visibility
                     </Button>
                   )}
                 </div>
-                {isOwnProfile && (
-                  <Button size="sm" className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white" onClick={handleSaveProfile}>
+                {user && (
+                  <Button size="sm" className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white" onClick={() => void handleSaveProfile()}>
                     Save Profile
                   </Button>
                 )}
@@ -265,7 +230,7 @@ export default function UserProfilePage() {
           </CardContent>
         </Card>
 
-        {isOwnProfile && (
+        {user && (
           <Card className="border-slate-700/50 bg-[#0d1b30]">
             <CardHeader>
               <CardTitle className="text-sm text-slate-100">Change Password</CardTitle>
@@ -292,7 +257,7 @@ export default function UserProfilePage() {
           </Card>
         )}
 
-        {isOwnProfile && (
+        {user && (
           <Card className="border-red-500/30 bg-red-950/10">
             <CardHeader>
               <CardTitle className="text-sm text-red-300">Delete Account</CardTitle>

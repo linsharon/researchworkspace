@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, Edit2, Trash2, Search, Sparkles, Download as DownloadIcon, ArrowRight, Box } from "lucide-react";
 import { type Artifact, type ArtifactPackage, ARTIFACT_TYPE_META } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
+import { type UserProfileSummary, userProfileApi } from "@/lib/user-profile-api";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,9 +19,8 @@ const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
 const MY_DOWNLOADED_PACKAGES_KEY = "rw-my-downloaded-packages";
 const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
 const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
-const USER_PROFILES_KEY = "rw-user-profiles";
 
-type UserProfileMap = Record<string, { avatarUrl: string; username: string; isPublic: boolean }>;
+type UserProfileMap = Record<string, UserProfileSummary>;
 
 type EditFormState = {
   name: string;
@@ -51,7 +51,7 @@ export default function MyPackages() {
   const [unpackConflict, setUnpackConflict] = useState<UnpackConflictState | null>(null);
   const [showUnpackConflictDialog, setShowUnpackConflictDialog] = useState(false);
 
-  const loadPackages = () => {
+  const loadPackages = async () => {
     if (typeof window === "undefined" || !user) return;
     try {
       const communityStr = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
@@ -63,10 +63,11 @@ export default function MyPackages() {
 
       const downloadedStr = window.localStorage.getItem(MY_DOWNLOADED_PACKAGES_KEY);
       const downloadedMap: Record<string, ArtifactPackage[]> = downloadedStr ? JSON.parse(downloadedStr) : {};
-      setDownloadedPackages(downloadedMap[user.id] || []);
+      const myDownloaded = downloadedMap[user.id] || [];
+      setDownloadedPackages(myDownloaded);
 
-      const profilesStr = window.localStorage.getItem(USER_PROFILES_KEY);
-      const profileMap: UserProfileMap = profilesStr ? JSON.parse(profilesStr) : {};
+      const ownerIds = [...mine, ...myDownloaded].map((pkg) => pkg.ownerId);
+      const profileMap = await userProfileApi.getPublicProfiles(ownerIds);
       setProfiles(profileMap);
     } catch {
       setCreatedPackages([]);
@@ -76,7 +77,7 @@ export default function MyPackages() {
   };
 
   useEffect(() => {
-    loadPackages();
+    void loadPackages();
   }, [user?.id]);
 
   const filteredCreatedPackages = useMemo(() => {

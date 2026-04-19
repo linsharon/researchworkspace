@@ -31,6 +31,7 @@ from schemas.auth import (
 )
 from services.auth import AuthService, apply_system_user_flags
 from services.password_auth import hash_password, verify_password
+from services.user import UserService
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -391,9 +392,15 @@ async def exchange_platform_token(payload: PlatformTokenExchangeRequest, db: Asy
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_info(current_user: UserResponse = Depends(get_current_user)):
+async def get_current_user_info(
+    current_user: UserResponse = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Get current user info."""
-    return current_user
+    profile = await UserService.get_user_profile(db, current_user.id)
+    if not profile:
+        return current_user
+    return UserResponse.model_validate(profile)
 
 
 @router.get("/logout")
