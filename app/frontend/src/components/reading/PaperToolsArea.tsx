@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, Search } from "lucide-react";
 import { highlightAPI, noteAPI } from "@/lib/manuscript-api";
 import type { Highlight, Paper, Note } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
@@ -64,6 +64,22 @@ function parseFormType(content?: string): string | null {
   }
 }
 
+function tryParseJson(content?: string): Record<string, unknown> | null {
+  if (!content) return null;
+  try {
+    const parsed = JSON.parse(content);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getHighlightTitle(item: Highlight) {
+  const pageText = item.page ? `p.${item.page}` : "p.-";
+  const snippet = item.text.trim().replace(/\s+/g, " ").slice(0, 56);
+  return `${pageText} ${snippet}${item.text.trim().length > 56 ? "..." : ""}`;
+}
+
 export default function PaperToolsArea({
   paper,
   projectId = "proj-1",
@@ -81,6 +97,10 @@ export default function PaperToolsArea({
   const [showAddLiteratureDialog, setShowAddLiteratureDialog] = useState(false);
   const [showAddPermanentDialog, setShowAddPermanentDialog] = useState(false);
   const [projectNotes, setProjectNotes] = useState<Note[]>([]);
+  const [noteSearch, setNoteSearch] = useState("");
+  const [highlightSearch, setHighlightSearch] = useState("");
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [selectedHighlight, setSelectedHighlight] = useState<Highlight | null>(null);
 
   // For editing existing notes
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -438,6 +458,23 @@ export default function PaperToolsArea({
       label: `${note.id} - ${note.title}`,
     }));
 
+  const filteredNotes = notes.filter((note) => {
+    const query = noteSearch.trim().toLowerCase();
+    if (!query) return true;
+    const haystack = [note.title, note.description || "", note.content || "", ...(note.keywords || [])]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(query);
+  });
+
+  const filteredHighlights = highlights.filter((item) => {
+    const query = highlightSearch.trim().toLowerCase();
+    if (!query) return true;
+    return `${getHighlightTitle(item)} ${item.text}`.toLowerCase().includes(query);
+  });
+
+  const selectedNoteContent = tryParseJson(selectedNote?.content);
+
   return (
     <div className="h-full bg-gray-50 flex flex-col">
       {/* Tabs */}
@@ -491,6 +528,18 @@ export default function PaperToolsArea({
               </DropdownMenu>
             </div>
 
+            <div className="p-3 border-b flex-shrink-0">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  className="pl-9 text-sm"
+                  onChange={(e) => setNoteSearch(e.target.value)}
+                  placeholder="Search notes for this paper"
+                  value={noteSearch}
+                />
+              </div>
+            </div>
+
             {/* Notes List */}
             <div className="flex-1 overflow-auto p-3 space-y-2">
               {noteError && (
@@ -508,7 +557,12 @@ export default function PaperToolsArea({
                   No saved notes for this paper yet.
                 </div>
               )}
-              {notes.map((note) => (
+              {!notesLoading && notes.length > 0 && filteredNotes.length === 0 && !noteError && (
+                <div className="rounded-md bg-slate-800 border border-slate-700/50 p-2 text-xs text-white">
+                  No matching notes.
+                </div>
+              )}
+              {filteredNotes.map((note) => (
                 <Card
                   key={note.id}
                   id={`paper-note-${note.id}`}
@@ -517,55 +571,17 @@ export default function PaperToolsArea({
                     focusNoteId === note.id && "border-blue-300 bg-blue-50/50"
                   )}
                 >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="text-xs">{note.title}</CardTitle>
-                        <div className="flex gap-1 mt-1 flex-wrap">
-                          <Badge variant="secondary" className="text-xs">
-                            {note.note_type === "literature-note" ? "Lit" : "Perm"}
-                          </Badge>
-                          {note.page && (
-                            <Badge variant="outline" className="text-xs">
-                              p.{note.page}
-                            </Badge>
-                          )}
-                          {(note.keywords || [])
-                            .filter((keyword) => keyword.toLowerCase() === "highlights")
-                            .map((keyword) => (
-                              <Badge
-                                key={`${note.id}-${keyword}`}
-                                variant="default"
-                                className="text-xs bg-amber-500 hover:bg-amber-500"
-                              >
-                                {keyword}
-                              </Badge>
-                            ))}
-                        </div>
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        <button
-                          onClick={() => openEditNote(note)}
-                          className="text-gray-400 hover:text-blue-500 transition-colors"
-                          title="Edit note"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteNote(note.id)}
-                          className="text-gray-400 hover:text-red-500 transition-colors"
-                          title="Delete note"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  {note.description && (
-                    <CardContent className="pb-2">
-                      <p className="text-xs text-gray-700 line-clamp-2">{note.description}</p>
-                    </CardContent>
-                  )}
+                  <button
+                    className="block w-full text-left"
+                    onClick={() => setSelectedNote(note)}
+                    type="button"
+                  >
+                    <CardHeader className="py-3">
+                      <CardTitle className="text-sm text-slate-800 hover:text-cyan-700 transition-colors underline-offset-2 hover:underline">
+                        {note.title}
+                      </CardTitle>
+                    </CardHeader>
+                  </button>
                 </Card>
               ))}
             </div>
@@ -574,7 +590,17 @@ export default function PaperToolsArea({
 
         {/* Highlights Tab */}
         {activeTab === "highlights" && (
-          <div className="p-3 space-y-2">
+          <div className="p-3 space-y-2 h-full flex flex-col">
+            <div className="relative flex-shrink-0">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                className="pl-9 text-sm"
+                onChange={(e) => setHighlightSearch(e.target.value)}
+                placeholder="Search highlights for this paper"
+                value={highlightSearch}
+              />
+            </div>
+            <div className="space-y-2 overflow-auto">
             {highlightError && (
               <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">
                 {highlightError}
@@ -590,35 +616,165 @@ export default function PaperToolsArea({
                 No highlights yet. Select text in PDF and click Highlight.
               </div>
             )}
-            {highlights.map((item) => (
+            {!highlightsLoading && highlights.length > 0 && filteredHighlights.length === 0 && !highlightError && (
+              <div className="rounded-md bg-slate-800 border border-slate-700/50 p-2 text-xs text-white">
+                No matching highlights.
+              </div>
+            )}
+            {filteredHighlights.map((item) => (
               <Card key={item.id} className="hover:shadow-sm transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap gap-1 mb-1">
-                        <Badge variant="outline" className="text-[10px]">
-                          {item.page ? `p.${item.page}` : "p.-"}
-                        </Badge>
-                        <Badge variant="secondary" className="text-[10px]">
-                          {formatHighlightDate(item.created_at)}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-slate-700 line-clamp-5">{item.text}</p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteHighlight(item.id)}
-                      className="text-gray-400 hover:text-red-500 transition-colors"
-                      title="Delete highlight"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                </CardHeader>
+                <button
+                  className="block w-full text-left"
+                  onClick={() => setSelectedHighlight(item)}
+                  type="button"
+                >
+                  <CardHeader className="py-3">
+                    <CardTitle className="text-sm text-slate-800 hover:text-cyan-700 transition-colors underline-offset-2 hover:underline">
+                      {getHighlightTitle(item)}
+                    </CardTitle>
+                  </CardHeader>
+                </button>
               </Card>
             ))}
+            </div>
           </div>
         )}
       </div>
+
+      <Dialog open={!!selectedNote} onOpenChange={(open) => !open && setSelectedNote(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Read Note</DialogTitle>
+          </DialogHeader>
+          {selectedNote ? (
+            <div className="space-y-4 max-h-[70vh] overflow-auto pr-1">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">{selectedNote.title}</h3>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge variant="secondary">{selectedNote.note_type === "literature-note" ? "Literature Note" : "Permanent Note"}</Badge>
+                  {selectedNote.page ? <Badge variant="outline">p.{selectedNote.page}</Badge> : null}
+                  <Badge variant="outline">Created {formatHighlightDate(selectedNote.created_at)}</Badge>
+                  <Badge variant="outline">Updated {formatHighlightDate(selectedNote.updated_at)}</Badge>
+                </div>
+              </div>
+
+              {selectedNote.description ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Description</p>
+                  <p className="whitespace-pre-wrap text-sm text-slate-700">{selectedNote.description}</p>
+                </div>
+              ) : null}
+
+              {selectedNote.keywords?.length ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Keywords</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedNote.keywords.map((keyword) => (
+                      <Badge key={keyword} variant="outline">{keyword}</Badge>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {selectedNoteContent ? (
+                <div className="space-y-3 rounded-lg border bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Structured Content</p>
+                  {Object.entries(selectedNoteContent).map(([key, value]) => (
+                    <div key={key} className="space-y-1">
+                      <p className="text-xs font-medium text-slate-500">{key}</p>
+                      <div className="whitespace-pre-wrap break-words text-sm text-slate-800">
+                        {Array.isArray(value) ? value.join(", ") : typeof value === "object" && value !== null ? JSON.stringify(value, null, 2) : String(value)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : selectedNote.content ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Content</p>
+                  <div className="rounded-lg border bg-slate-50 p-4 whitespace-pre-wrap break-words text-sm text-slate-800">
+                    {selectedNote.content}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  onClick={() => {
+                    setSelectedNote(null);
+                    openEditNote(selectedNote);
+                  }}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Pencil className="mr-1 h-4 w-4" />
+                  Edit
+                </Button>
+                <Button
+                  onClick={async () => {
+                    await handleDeleteNote(selectedNote.id);
+                    setSelectedNote(null);
+                  }}
+                  size="sm"
+                  variant="destructive"
+                >
+                  <Trash2 className="mr-1 h-4 w-4" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedHighlight} onOpenChange={(open) => !open && setSelectedHighlight(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Read Highlight</DialogTitle>
+          </DialogHeader>
+          {selectedHighlight ? (
+            <div className="space-y-4 max-h-[70vh] overflow-auto pr-1">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">{getHighlightTitle(selectedHighlight)}</h3>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge variant="outline">{selectedHighlight.page ? `p.${selectedHighlight.page}` : "p.-"}</Badge>
+                  <Badge variant="secondary">{formatHighlightDate(selectedHighlight.created_at)}</Badge>
+                  <Badge variant="outline">{selectedHighlight.color}</Badge>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Highlighted Text</p>
+                <div className="rounded-lg border bg-amber-50 p-4 whitespace-pre-wrap break-words text-sm text-slate-800">
+                  {selectedHighlight.text}
+                </div>
+              </div>
+
+              {selectedHighlight.note ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Attached Note</p>
+                  <div className="rounded-lg border bg-slate-50 p-4 whitespace-pre-wrap break-words text-sm text-slate-800">
+                    {selectedHighlight.note}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  onClick={async () => {
+                    await handleDeleteHighlight(selectedHighlight.id);
+                    setSelectedHighlight(null);
+                  }}
+                  size="sm"
+                  variant="destructive"
+                >
+                  <Trash2 className="mr-1 h-4 w-4" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       {/* Add Literature Note Dialog */}
       <Dialog open={showAddLiteratureDialog} onOpenChange={setShowAddLiteratureDialog}>
