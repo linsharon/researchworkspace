@@ -516,6 +516,7 @@ export default function ArtifactCenter() {
       shared: true,
       ownerId: user.id,
       ownerName: user.name || user.email?.split("@")[0] || "User",
+      type: "created",
     };
     savePackages([...myPackages, pkg]);
     setPackSaved(true);

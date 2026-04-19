@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Globe, Package, Search, User2, ArrowRight } from "lucide-react";
+import { Globe, Package, Search, User2, ArrowRight } from "lucide-react";
 import { ARTIFACT_TYPE_META, type Artifact, type ArtifactPackage, type UserProfile } from "@/lib/data";
 
 const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
@@ -79,19 +79,22 @@ export default function CommunityArtifacts() {
     return counts;
   };
 
-  const handleUnpackToMyArtifacts = (pkg: ArtifactPackage) => {
+  const handleAddToMyPackages = (pkg: ArtifactPackage) => {
     if (typeof window === "undefined") return;
     try {
-      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-      const current = saved ? (JSON.parse(saved) as Artifact[]) : [];
-      const unpacked = pkg.artifacts.map((artifact) => ({
-        ...artifact,
-        id: `${artifact.id}-community-${Date.now()}`,
-        title: `${artifact.title} (from ${pkg.ownerName})`,
-      }));
-      window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify([...current, ...unpacked]));
+      const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
+      const allPackages: ArtifactPackage[] = saved ? JSON.parse(saved) : [];
+      
+      // Create a downloaded copy of the package
+      const downloadedPkg: ArtifactPackage = {
+        ...pkg,
+        id: `pkg-downloaded-${Date.now()}`,
+        type: "downloaded",
+      };
+      
+      window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify([...allPackages, downloadedPkg]));
       window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
-      // Close dialog after unpacking
+      // Close dialog after adding
       setSelectedPackageId(null);
     } catch {
       // ignore
@@ -169,26 +172,14 @@ export default function CommunityArtifacts() {
                   <div className="flex gap-1.5 pt-1">
                     <Button
                       size="sm"
-                      variant="outline"
-                      className="text-xs h-7 flex-1"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownloadPackage(pkg);
-                      }}
-                    >
-                      <Download className="w-3.5 h-3.5 mr-1.5" />
-                      Download
-                    </Button>
-                    <Button
-                      size="sm"
                       className="text-xs h-7 flex-1 bg-cyan-600 hover:bg-cyan-700 text-white"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleUnpackToMyArtifacts(pkg);
+                        handleAddToMyPackages(pkg);
                       }}
                     >
                       <Package className="w-3.5 h-3.5 mr-1.5" />
-                      Unpack
+                      Add to My Packages
                     </Button>
                   </div>
                 </CardContent>
@@ -268,20 +259,11 @@ export default function CommunityArtifacts() {
                 <div className="flex gap-2 pt-2 border-t border-slate-700/30">
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="text-xs flex-1"
-                    onClick={() => handleDownloadPackage(selectedPackage)}
-                  >
-                    <Download className="w-3.5 h-3.5 mr-1.5" />
-                    Download Package
-                  </Button>
-                  <Button
-                    size="sm"
                     className="text-xs flex-1 bg-cyan-600 hover:bg-cyan-700 text-white"
-                    onClick={() => handleUnpackToMyArtifacts(selectedPackage)}
+                    onClick={() => handleAddToMyPackages(selectedPackage)}
                   >
                     <Package className="w-3.5 h-3.5 mr-1.5" />
-                    Unpack to My Artifacts
+                    Add to My Packages
                   </Button>
                 </div>
               </div>

@@ -4,15 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Package, Edit2, Trash2, Search, Download, MessageCircle, X, Check } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { Package, Edit2, Trash2, Search, Sparkles, Download as DownloadIcon } from "lucide-react";
 import { type ArtifactPackage, ARTIFACT_TYPE_META } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
-const USER_PROFILES_KEY = "rw-user-profiles";
-const CURRENT_USER_KEY = "rw-current-user";
 
 export default function MyPackages() {
   const { user } = useAuth();
@@ -21,6 +25,7 @@ export default function MyPackages() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: "", description: "" });
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState("created");
 
   const loadPackages = () => {
     if (typeof window === "undefined" || !user) return;
@@ -28,7 +33,14 @@ export default function MyPackages() {
       const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
       const allPackages: ArtifactPackage[] = saved ? JSON.parse(saved) : [];
       
-      const userPackages = allPackages.filter((pkg) => pkg.ownerId === user.id);
+      // Load all packages for this user (both created and downloaded)
+      const userPackages = allPackages.filter((pkg) => {
+        // Created packages belong to current user
+        if (pkg.type === "created" && pkg.ownerId === user.id) return true;
+        // Downloaded packages might have been added by current user (we track by presence in user's list)
+        // For downloaded, we include all with type "downloaded" that are in the global storage
+        return pkg.type === "downloaded";
+      });
 
       setPackages(userPackages);
     } catch {
@@ -40,24 +52,23 @@ export default function MyPackages() {
     loadPackages();
   }, [user?.id]);
 
-  const userPackages = useMemo(() => {
-    if (!user) return [];
-    return packages.filter((pkg) => pkg.authorId === user.id || pkg.source === "created");
-  }, [packages, user]);
+  const createdPackages = useMemo(() => {
+    return packages.filter((pkg) => pkg.type === "created" && pkg.ownerId === user?.id);
+  }, [packages, user?.id]);
 
   const downloadedPackages = useMemo(() => {
-    return packages.filter((pkg) => pkg.source === "downloaded");
+    return packages.filter((pkg) => pkg.type === "downloaded");
   }, [packages]);
 
-  const filteredUserPackages = useMemo(() => {
-    if (!query.trim()) return userPackages;
+  const filteredCreatedPackages = useMemo(() => {
+    if (!query.trim()) return createdPackages;
     const q = query.trim().toLowerCase();
-    return userPackages.filter(
+    return createdPackages.filter(
       (pkg) =>
         pkg.name.toLowerCase().includes(q) ||
         pkg.description.toLowerCase().includes(q)
     );
-  }, [userPackages, query]);
+  }, [createdPackages, query]);
 
   const filteredDownloadedPackages = useMemo(() => {
     if (!query.trim()) return downloadedPackages;
@@ -66,11 +77,11 @@ export default function MyPackages() {
       (pkg) =>
         pkg.name.toLowerCase().includes(q) ||
         pkg.description.toLowerCase().includes(q) ||
-        pkg.authorUsername.toLowerCase().includes(q)
+        pkg.ownerName.toLowerCase().includes(q)
     );
   }, [downloadedPackages, query]);
 
-  const handleStartEdit = (pkg: LocalPackageData) => {
+  const handleStartEdit = (pkg: ArtifactPackage) => {
     setEditingId(pkg.id);
     setEditForm({ name: pkg.name, description: pkg.description });
     setShowEditDialog(true);
@@ -93,7 +104,7 @@ export default function MyPackages() {
 
     try {
       const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
-      const allPackages: LocalPackageData[] = saved ? JSON.parse(saved) : [];
+      const allPackages: ArtifactPackage[] = saved ? JSON.parse(saved) : [];
       const updated = allPackages.map((pkg) =>
         pkg.id === editingId
           ? {
@@ -104,8 +115,9 @@ export default function MyPackages() {
           : pkg
       );
       window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(updated));
+      toast.success("Package updated successfully");
     } catch {
-      // ignore
+      toast.error("Failed to save package");
     }
 
     setShowEditDialog(false);
@@ -116,15 +128,26 @@ export default function MyPackages() {
     setPackages((prev) => prev.filter((pkg) => pkg.id !== id));
     try {
       const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
-      const allPackages: LocalPackageData[] = saved ? JSON.parse(saved) : [];
+      const allPackages: ArtifactPackage[] = saved ? JSON.parse(saved) : [];
       const filtered = allPackages.filter((pkg) => pkg.id !== id);
       window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(filtered));
+      toast.success("Package deleted successfully");
     } catch {
-      // ignore
+      toast.error("Failed to delete package");
     }
   };
 
-  const renderPackageCard = (pkg: LocalPackageData, isOwner: boolean) => {
+  const handleDownloadPackage = (pkg: ArtifactPackage) => {
+    const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${pkg.name.replace(/\s+/g, "-").toLowerCase()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const renderPackageCard = (pkg: ArtifactPackage, isOwner: boolean) => {
     const typeCount = pkg.artifacts.reduce<Record<string, number>>((acc, artifact) => {
       const label = ARTIFACT_TYPE_META[artifact.type].label;
       acc[label] = (acc[label] || 0) + 1;
@@ -173,9 +196,20 @@ export default function MyPackages() {
           {!isOwner && (
             <div className="p-2 rounded bg-slate-900/40 border border-slate-700/50 text-xs text-slate-300">
               <p className="font-medium mb-1">Shared by</p>
-              <p>{pkg.authorUsername}</p>
+              <p>{pkg.ownerName}</p>
             </div>
           )}
+          <div className="flex gap-1.5">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs flex-1"
+              onClick={() => handleDownloadPackage(pkg)}
+            >
+              <DownloadIcon className="w-3.5 h-3.5 mr-1" />
+              Download
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -193,7 +227,7 @@ export default function MyPackages() {
             </div>
           </div>
           <Badge variant="outline" className="text-xs">
-            {filteredUserPackages.length + filteredDownloadedPackages.length} packages
+            {packages.length} packages
           </Badge>
         </div>
 
@@ -207,40 +241,51 @@ export default function MyPackages() {
           />
         </div>
 
-        {/* User's Created Packages */}
-        {filteredUserPackages.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-cyan-300" />
-              My Created Packages ({filteredUserPackages.length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredUserPackages.map((pkg) => renderPackageCard(pkg, true))}
-            </div>
-          </div>
-        )}
-
-        {/* Downloaded Packages */}
-        {filteredDownloadedPackages.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-              <Download className="w-4 h-4 text-emerald-300" />
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="created" className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              Created Packages ({filteredCreatedPackages.length})
+            </TabsTrigger>
+            <TabsTrigger value="downloaded" className="flex items-center gap-2">
+              <DownloadIcon className="w-4 h-4" />
               Downloaded Packages ({filteredDownloadedPackages.length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredDownloadedPackages.map((pkg) => renderPackageCard(pkg, false))}
-            </div>
-          </div>
-        )}
+            </TabsTrigger>
+          </TabsList>
 
-        {filteredUserPackages.length === 0 && filteredDownloadedPackages.length === 0 && (
-          <div className="text-center py-16 border border-slate-700/50 rounded-lg bg-slate-800/30">
-            <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm text-slate-400">
-              {query.trim() ? "No packages match your search" : "You have no packages yet"}
-            </p>
-          </div>
-        )}
+          {/* Created Packages Tab */}
+          <TabsContent value="created" className="space-y-4">
+            {filteredCreatedPackages.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredCreatedPackages.map((pkg) => renderPackageCard(pkg, true))}
+              </div>
+            ) : (
+              <div className="text-center py-16 border border-slate-700/50 rounded-lg bg-slate-800/30">
+                <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-sm text-slate-400">
+                  {query.trim() ? "No created packages match your search" : "You haven't created any packages yet"}
+                </p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Downloaded Packages Tab */}
+          <TabsContent value="downloaded" className="space-y-4">
+            {filteredDownloadedPackages.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredDownloadedPackages.map((pkg) => renderPackageCard(pkg, false))}
+              </div>
+            ) : (
+              <div className="text-center py-16 border border-slate-700/50 rounded-lg bg-slate-800/30">
+                <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-sm text-slate-400">
+                  {query.trim() ? "No downloaded packages match your search" : "You haven't downloaded any packages yet"}
+                </p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
 
         {/* Edit Package Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
@@ -248,40 +293,39 @@ export default function MyPackages() {
             <DialogHeader>
               <DialogTitle>Edit Package</DialogTitle>
             </DialogHeader>
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">Package Name</label>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-200">Package Name</label>
                 <Input
                   value={editForm.name}
-                  onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  placeholder="Package name"
                   className="text-sm"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">Description</label>
-                <Textarea
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-200">Description</label>
+                <textarea
                   value={editForm.description}
-                  onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
-                  className="text-sm min-h-[80px]"
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  placeholder="Package description"
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-md border border-slate-700/50 bg-slate-900/50 text-slate-100 text-sm resize-none"
                 />
               </div>
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2">
                 <Button
-                  size="sm"
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
-                  onClick={handleSaveEdit}
+                  variant="outline"
+                  onClick={() => setShowEditDialog(false)}
+                  className="text-xs"
                 >
-                  <Check className="w-3 h-3 mr-1" />
-                  Save Changes
+                  Cancel
                 </Button>
                 <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-xs"
-                  onClick={() => setShowEditDialog(false)}
+                  onClick={handleSaveEdit}
+                  className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white flex-1"
                 >
-                  <X className="w-3 h-3 mr-1" />
-                  Cancel
+                  Save
                 </Button>
               </div>
             </div>

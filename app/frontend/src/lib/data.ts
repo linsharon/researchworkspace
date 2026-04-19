@@ -58,6 +58,7 @@ export interface ArtifactPackage {
   shared: boolean;
   ownerId: string;
   ownerName: string;
+  type: "created" | "downloaded";
 }
 
 export interface Paper {
