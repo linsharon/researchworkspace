@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Package, Edit2, Trash2, Search, Sparkles, Download as DownloadIcon, ArrowRight, Box } from "lucide-react";
 import { type Artifact, type ArtifactPackage, ARTIFACT_TYPE_META } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,6 +43,9 @@ export default function MyPackages() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingPackage, setEditingPackage] = useState<ArtifactPackage | null>(null);
   const [activeTab, setActiveTab] = useState("created");
+  const [cardPageSize, setCardPageSize] = useState<30 | 60 | "all">(30);
+  const [createdPage, setCreatedPage] = useState(1);
+  const [downloadedPage, setDownloadedPage] = useState(1);
   const [profiles, setProfiles] = useState<UserProfileMap>({});
   const [editForm, setEditForm] = useState<EditFormState>({
     name: "",
@@ -100,6 +104,39 @@ export default function MyPackages() {
         pkg.ownerName.toLowerCase().includes(q)
     );
   }, [downloadedPackages, query]);
+
+  const activePackages = activeTab === "created" ? filteredCreatedPackages : filteredDownloadedPackages;
+  const activePage = activeTab === "created" ? createdPage : downloadedPage;
+  const totalCardPages = cardPageSize === "all" ? 1 : Math.max(1, Math.ceil(activePackages.length / cardPageSize));
+  const currentCardPage = Math.min(activePage, totalCardPages);
+
+  const pagedCreatedPackages = useMemo(() => {
+    if (cardPageSize === "all") return filteredCreatedPackages;
+    const start = (createdPage - 1) * cardPageSize;
+    return filteredCreatedPackages.slice(start, start + cardPageSize);
+  }, [filteredCreatedPackages, cardPageSize, createdPage]);
+
+  const pagedDownloadedPackages = useMemo(() => {
+    if (cardPageSize === "all") return filteredDownloadedPackages;
+    const start = (downloadedPage - 1) * cardPageSize;
+    return filteredDownloadedPackages.slice(start, start + cardPageSize);
+  }, [filteredDownloadedPackages, cardPageSize, downloadedPage]);
+
+  useEffect(() => {
+    setCreatedPage(1);
+    setDownloadedPage(1);
+  }, [query, cardPageSize]);
+
+  useEffect(() => {
+    const createdTotalPages = cardPageSize === "all" ? 1 : Math.max(1, Math.ceil(filteredCreatedPackages.length / cardPageSize));
+    if (createdPage > createdTotalPages) {
+      setCreatedPage(createdTotalPages);
+    }
+    const downloadedTotalPages = cardPageSize === "all" ? 1 : Math.max(1, Math.ceil(filteredDownloadedPackages.length / cardPageSize));
+    if (downloadedPage > downloadedTotalPages) {
+      setDownloadedPage(downloadedTotalPages);
+    }
+  }, [cardPageSize, createdPage, downloadedPage, filteredCreatedPackages.length, filteredDownloadedPackages.length]);
 
   const saveCreatedPackages = (next: ArtifactPackage[]) => {
     if (typeof window === "undefined" || !user) return;
@@ -383,10 +420,55 @@ export default function MyPackages() {
             </TabsTrigger>
           </TabsList>
 
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-700/50 bg-slate-800/20 px-3 py-2">
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span>Cards per page</span>
+              <Select value={String(cardPageSize)} onValueChange={(value) => setCardPageSize(value === "all" ? "all" : (Number(value) as 30 | 60))}>
+                <SelectTrigger className="h-7 w-[90px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30">30</SelectItem>
+                  <SelectItem value="60">60</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span>
+                {cardPageSize === "all"
+                  ? `Showing all ${activePackages.length} packages`
+                  : `Page ${currentCardPage}/${totalCardPages} · ${activePackages.length} packages`}
+              </span>
+              {cardPageSize !== "all" && totalCardPages > 1 ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    disabled={currentCardPage <= 1}
+                    onClick={() => activeTab === "created" ? setCreatedPage((prev) => Math.max(1, prev - 1)) : setDownloadedPage((prev) => Math.max(1, prev - 1))}
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    disabled={currentCardPage >= totalCardPages}
+                    onClick={() => activeTab === "created" ? setCreatedPage((prev) => Math.min(totalCardPages, prev + 1)) : setDownloadedPage((prev) => Math.min(totalCardPages, prev + 1))}
+                  >
+                    Next
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          </div>
+
           <TabsContent value="created" className="space-y-4">
             {filteredCreatedPackages.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredCreatedPackages.map((pkg) => renderPackageCard(pkg, "created"))}
+                {pagedCreatedPackages.map((pkg) => renderPackageCard(pkg, "created"))}
               </div>
             ) : (
               <div className="text-center py-16 border border-slate-700/50 rounded-lg bg-slate-800/30">
@@ -401,7 +483,7 @@ export default function MyPackages() {
           <TabsContent value="downloaded" className="space-y-4">
             {filteredDownloadedPackages.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredDownloadedPackages.map((pkg) => renderPackageCard(pkg, "downloaded"))}
+                {pagedDownloadedPackages.map((pkg) => renderPackageCard(pkg, "downloaded"))}
               </div>
             ) : (
               <div className="text-center py-16 border border-slate-700/50 rounded-lg bg-slate-800/30">

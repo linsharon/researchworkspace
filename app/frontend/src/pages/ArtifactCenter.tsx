@@ -256,6 +256,8 @@ export default function ArtifactCenter() {
   const [packName, setPackName] = useState("");
   const [packDescription, setPackDescription] = useState("");
   const [packSaved, setPackSaved] = useState(false);
+  const [cardPageSize, setCardPageSize] = useState<30 | 60 | "all">(30);
+  const [cardPage, setCardPage] = useState(1);
   const [myPackages, setMyPackages] = useState<ArtifactPackage[]>([]);
   const [paperTitleMap, setPaperTitleMap] = useState<Record<string, string>>({});
   const [visualThumbUrls, setVisualThumbUrls] = useState<Record<string, string>>({});
@@ -442,14 +444,14 @@ export default function ArtifactCenter() {
 
   const artifactPackGroups = useMemo(() => {
     const groups = new Map<ArtifactType, Artifact[]>();
-    for (const artifact of filteredArtifacts) {
+    for (const artifact of pagedFilteredArtifacts) {
       if (!groups.has(artifact.type)) {
         groups.set(artifact.type, []);
       }
       groups.get(artifact.type)?.push(artifact);
     }
     return Array.from(groups.entries());
-  }, [filteredArtifacts]);
+  }, [pagedFilteredArtifacts]);
 
   const artifactPackToken = (id: string) => `artifact:${id}`;
   const conceptPackToken = (id: string) => `concept:${id}`;
@@ -649,16 +651,16 @@ export default function ArtifactCenter() {
 
   const selectAllVisibleForPack = () => {
     if (filter === "concepts") {
-      setSelectedForPack(new Set(visibleConcepts.map((concept) => conceptPackToken(concept.id))));
+      setSelectedForPack(new Set(pagedVisibleConcepts.map((concept) => conceptPackToken(concept.id))));
       return;
     }
-    setSelectedForPack(new Set(filteredArtifacts.map((artifact) => artifactPackToken(artifact.id))));
+    setSelectedForPack(new Set(pagedFilteredArtifacts.map((artifact) => artifactPackToken(artifact.id))));
   };
 
   const toggleSelectTypeForPack = (type: ArtifactType) => {
     setSelectedForPack((prev) => {
       const next = new Set(prev);
-      const ids = filteredArtifacts
+      const ids = pagedFilteredArtifacts
         .filter((artifact) => artifact.type === type)
         .map((artifact) => artifactPackToken(artifact.id));
       const allSelected = ids.every((id) => next.has(id));
@@ -674,7 +676,7 @@ export default function ArtifactCenter() {
   const toggleSelectKeywordCategoryForPack = (category: string) => {
     setSelectedForPack((prev) => {
       const next = new Set(prev);
-      const ids = visibleConcepts
+      const ids = pagedVisibleConcepts
         .filter((concept) => normalizeCategory(concept.category) === category)
         .map((concept) => conceptPackToken(concept.id));
       const allSelected = ids.every((id) => next.has(id));
@@ -788,14 +790,40 @@ export default function ArtifactCenter() {
     );
   }, [filteredConcepts, selectedKeywordCategory]);
 
+  const totalCardItems = filter === "concepts" ? visibleConcepts.length : filteredArtifacts.length;
+  const totalCardPages = cardPageSize === "all" ? 1 : Math.max(1, Math.ceil(totalCardItems / cardPageSize));
+  const currentCardPage = Math.min(cardPage, totalCardPages);
+
+  const pagedVisibleConcepts = useMemo(() => {
+    if (cardPageSize === "all") return visibleConcepts;
+    const start = (currentCardPage - 1) * cardPageSize;
+    return visibleConcepts.slice(start, start + cardPageSize);
+  }, [visibleConcepts, cardPageSize, currentCardPage]);
+
+  const pagedFilteredArtifacts = useMemo(() => {
+    if (cardPageSize === "all") return filteredArtifacts;
+    const start = (currentCardPage - 1) * cardPageSize;
+    return filteredArtifacts.slice(start, start + cardPageSize);
+  }, [filteredArtifacts, cardPageSize, currentCardPage]);
+
+  useEffect(() => {
+    setCardPage(1);
+  }, [filter, searchQuery, selectedKeywordCategory, cardPageSize]);
+
+  useEffect(() => {
+    if (cardPage > totalCardPages) {
+      setCardPage(totalCardPages);
+    }
+  }, [cardPage, totalCardPages]);
+
   const groupedVisibleConcepts = useMemo(() => {
     return keywordCategories
       .map((category) => ({
         category,
-        items: visibleConcepts.filter((concept) => normalizeCategory(concept.category) === category),
+        items: pagedVisibleConcepts.filter((concept) => normalizeCategory(concept.category) === category),
       }))
       .filter((group) => group.items.length > 0);
-  }, [keywordCategories, visibleConcepts]);
+  }, [keywordCategories, pagedVisibleConcepts]);
 
   const keywordPackGroups = useMemo(
     () =>
@@ -941,6 +969,42 @@ export default function ArtifactCenter() {
                 {opt.label} ({getFilterCount(opt.value)})
               </Button>
             ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-700/50 bg-slate-800/20 px-3 py-2">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span>Cards per page</span>
+            <Select
+              value={String(cardPageSize)}
+              onValueChange={(value) => setCardPageSize(value === "all" ? "all" : (Number(value) as 30 | 60))}
+            >
+              <SelectTrigger className="h-7 w-[90px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="30">30</SelectItem>
+                <SelectItem value="60">60</SelectItem>
+                <SelectItem value="all">All</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span>
+              {cardPageSize === "all"
+                ? `Showing all ${totalCardItems} items`
+                : `Page ${currentCardPage}/${totalCardPages} · ${totalCardItems} items`}
+            </span>
+            {cardPageSize !== "all" && totalCardPages > 1 ? (
+              <>
+                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentCardPage <= 1} onClick={() => setCardPage((prev) => Math.max(1, prev - 1))}>
+                  Prev
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentCardPage >= totalCardPages} onClick={() => setCardPage((prev) => Math.min(totalCardPages, prev + 1))}>
+                  Next
+                </Button>
+              </>
+            ) : null}
           </div>
         </div>
 
@@ -1136,7 +1200,7 @@ export default function ArtifactCenter() {
           })()
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredArtifacts.map((artifact) => {
+            {pagedFilteredArtifacts.map((artifact) => {
             const typeMeta = ARTIFACT_TYPE_META[artifact.type];
             const stepMeta = STEP_META[artifact.sourceStep];
             const displayTitle = resolveDraftDisplayTitle(artifact);

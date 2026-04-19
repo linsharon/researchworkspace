@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Globe, Package, Search, User2, ArrowRight, Crown } from "lucide-react";
 import { ARTIFACT_TYPE_META, type Artifact, type ArtifactPackage } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
@@ -36,6 +37,8 @@ export default function CommunityArtifacts() {
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileSummary>>({});
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [cardPageSize, setCardPageSize] = useState<30 | 60 | "all">(30);
+  const [cardPage, setCardPage] = useState(1);
 
   const loadPackages = async () => {
     if (typeof window === "undefined") return;
@@ -71,6 +74,24 @@ export default function CommunityArtifacts() {
       );
     });
   }, [packages, query]);
+
+  const totalCardPages = cardPageSize === "all" ? 1 : Math.max(1, Math.ceil(filteredPackages.length / cardPageSize));
+  const currentCardPage = Math.min(cardPage, totalCardPages);
+  const pagedPackages = useMemo(() => {
+    if (cardPageSize === "all") return filteredPackages;
+    const start = (currentCardPage - 1) * cardPageSize;
+    return filteredPackages.slice(start, start + cardPageSize);
+  }, [filteredPackages, cardPageSize, currentCardPage]);
+
+  useEffect(() => {
+    setCardPage(1);
+  }, [query, cardPageSize]);
+
+  useEffect(() => {
+    if (cardPage > totalCardPages) {
+      setCardPage(totalCardPages);
+    }
+  }, [cardPage, totalCardPages]);
 
   const selectedPackage = selectedPackageId ? packages.find((p) => p.id === selectedPackageId) : null;
   const selectedOwnerProfile = selectedPackage ? userProfiles[selectedPackage.ownerId] : null;
@@ -179,8 +200,41 @@ export default function CommunityArtifacts() {
           />
         </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-700/50 bg-slate-800/20 px-3 py-2">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span>Cards per page</span>
+            <Select value={String(cardPageSize)} onValueChange={(value) => setCardPageSize(value === "all" ? "all" : (Number(value) as 30 | 60))}>
+              <SelectTrigger className="h-7 w-[90px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="30">30</SelectItem>
+                <SelectItem value="60">60</SelectItem>
+                <SelectItem value="all">All</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span>
+              {cardPageSize === "all"
+                ? `Showing all ${filteredPackages.length} packages`
+                : `Page ${currentCardPage}/${totalCardPages} · ${filteredPackages.length} packages`}
+            </span>
+            {cardPageSize !== "all" && totalCardPages > 1 ? (
+              <>
+                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentCardPage <= 1} onClick={() => setCardPage((prev) => Math.max(1, prev - 1))}>
+                  Prev
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentCardPage >= totalCardPages} onClick={() => setCardPage((prev) => Math.min(totalCardPages, prev + 1))}>
+                  Next
+                </Button>
+              </>
+            ) : null}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredPackages.map((pkg) => {
+          {pagedPackages.map((pkg) => {
             const typeCount = typeCountForPackage(pkg);
             const ownerProfile = userProfiles[pkg.ownerId];
 

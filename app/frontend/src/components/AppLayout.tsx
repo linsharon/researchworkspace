@@ -527,7 +527,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
               const Icon = item.icon;
               const stepNum = idx;
               const isCompleted = stepNum > 0 && stepNum < activeProject.currentStep;
-              const isCurrent = stepNum === activeProject.currentStep;
 
               return (
                 <Link
@@ -552,11 +551,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   >
                     {isCompleted && !isActive ? (
                       <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                    ) : isCurrent && !isActive ? (
-                      <div className="relative shrink-0">
-                        <Icon className="w-4 h-4" />
-                        <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 rounded-full" />
-                      </div>
                     ) : (
                       <Icon className="w-4 h-4 shrink-0" />
                     )}

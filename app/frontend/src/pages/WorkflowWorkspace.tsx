@@ -5975,8 +5975,6 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
   const [paperOverviewPageSize, setPaperOverviewPageSize] = useState<10 | 20 | 50 | "all">(10);
   const [paperOverviewPage, setPaperOverviewPage] = useState(1);
   const tableScrollRef = useRef<HTMLDivElement | null>(null);
-  const tableBottomScrollbarRef = useRef<HTMLDivElement | null>(null);
-  const tableBottomScrollbarInnerRef = useRef<HTMLDivElement | null>(null);
 
   const normalizeConceptCategory = (raw?: string) => {
     const value = (raw || "").trim().toLowerCase();
@@ -6180,24 +6178,6 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
       setPaperOverviewPage(totalPaperOverviewPages);
     }
   }, [paperOverviewPage, totalPaperOverviewPages]);
-
-  useEffect(() => {
-    const tableEl = tableScrollRef.current;
-    const bottomEl = tableBottomScrollbarRef.current;
-    const innerEl = tableBottomScrollbarInnerRef.current;
-    if (!tableEl || !bottomEl || !innerEl) return;
-
-    const syncBottomWidth = () => {
-      innerEl.style.width = `${tableEl.scrollWidth}px`;
-      bottomEl.scrollLeft = tableEl.scrollLeft;
-    };
-
-    syncBottomWidth();
-    window.addEventListener("resize", syncBottomWidth);
-    return () => {
-      window.removeEventListener("resize", syncBottomWidth);
-    };
-  }, [pagedPaperOverviewRows, paperOverviewPageSize]);
 
   const papers = useMemo(
     () =>
@@ -6716,11 +6696,6 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
               <div
                 className="max-h-[500px] overflow-auto rounded border border-slate-700/50"
                 ref={tableScrollRef}
-                onScroll={(e) => {
-                  if (tableBottomScrollbarRef.current) {
-                    tableBottomScrollbarRef.current.scrollLeft = e.currentTarget.scrollLeft;
-                  }
-                }}
               >
                   <table className="w-max min-w-[1680px] text-xs border-collapse">
                     <thead>
@@ -6770,21 +6745,6 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                       ))}
                     </tbody>
                   </table>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500">
-                <span>Horizontal Scroll</span>
-                <span>Drag bar to view all columns</span>
-              </div>
-              <div
-                className="mt-1 h-4 overflow-x-scroll rounded border border-slate-700/50 bg-slate-900/30"
-                ref={tableBottomScrollbarRef}
-                onScroll={(e) => {
-                  if (tableScrollRef.current) {
-                    tableScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
-                  }
-                }}
-              >
-                <div ref={tableBottomScrollbarInnerRef} className="h-1" />
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-xs text-slate-400">
