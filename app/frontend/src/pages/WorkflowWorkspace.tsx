@@ -115,7 +115,9 @@ const SEARCH_RECORD_PURPOSE_LINKS_KEY_PREFIX = "rw-search-record-purpose-links";
 const DRAFT_COMPONENTS_STORAGE_KEY = "rw-draft-components";
 const DRAFT_STRUCTURE_STORAGE_KEY = "rw-draft-structure-check";
 const DRAFT_INSERTED_SEGMENTS_STORAGE_KEY = "rw-draft-inserted-segments";
-const WORKFLOW_AUX_CACHE_KEYS = [PAPER_DECISIONS_KEY, ARTIFACTS_STORAGE_KEY] as const;
+// Never include rw-artifacts in versioned aux-cache invalidation.
+// Otherwise user-created artifacts (e.g. Purpose Cards) are lost on cache version bumps.
+const WORKFLOW_AUX_CACHE_KEYS = [PAPER_DECISIONS_KEY] as const;
 
 type WorkflowCacheMeta = {
   marker: "workflow-aux-cache";
