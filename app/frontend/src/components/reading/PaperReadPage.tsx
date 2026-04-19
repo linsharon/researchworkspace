@@ -10,7 +10,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ChevronRight, ChevronLeft, Bot, X, Minimize2, Send, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { paperAPI } from "@/lib/manuscript-api";
 import type { Paper } from "@/lib/manuscript-api";
@@ -407,7 +406,7 @@ export default function PaperReadPage() {
           </div>
 
           {/* Chat Messages */}
-          <ScrollArea className="flex-1 min-h-0 w-full border-b border-slate-700/50">
+          <div className="flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden border-b border-slate-700/50 pr-1 [scrollbar-color:#06b6d4_#0f172a] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-900/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-500/70">
             <div className="p-4 space-y-3 w-full">
               {chatMessages.map((msg) => (
                 <div
@@ -418,7 +417,7 @@ export default function PaperReadPage() {
                     className={cn(
                       "max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
                       msg.role === "user"
-                        ? "bg-cyan-600 text-white rounded-br-md font-medium"
+                        ? "border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 rounded-br-md font-medium"
                         : "bg-slate-800 text-white rounded-bl-md"
                     )}
                   >
@@ -428,7 +427,7 @@ export default function PaperReadPage() {
               ))}
               <div ref={chatEndRef} />
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Chat Input */}
           <div className="p-3 border-t border-slate-700/50 shrink-0 bg-[#0d1b30]">

@@ -1,4 +1,5 @@
-import { ReactNode, useState, useRef, useEffect } from "react";
+import axios from "axios";
+import { ReactNode, useState, useRef, useEffect, useCallback } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -201,29 +202,71 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   };
 
+  const sendToAI = useCallback(async (userContent: string) => {
+    const userMsg = {
+      id: `msg-${Date.now()}`,
+      role: "user" as const,
+      content: userContent,
+    };
+    setChatMessages((prev) => [...prev, userMsg]);
+
+    const thinkingId = `msg-${Date.now()}-thinking`;
+    setChatMessages((prev) => [...prev, { id: thinkingId, role: "assistant" as const, content: "…" }]);
+
+    const models = ["deepseek-chat", "deepseek-reasoner"];
+    let reply = "";
+    let lastError: string | null = null;
+
+    for (const model of models) {
+      try {
+        const res = await axios.post("/api/v1/aihub/gentxt", {
+          model,
+          stream: false,
+          temperature: 0.5,
+          max_tokens: 1200,
+          messages: [
+            {
+              role: "system",
+              content:
+                lang === "zh"
+                  ? `你是 LitFlow 的文献综述助手。请结合当前项目上下文，提供准确、简洁、可执行的建议。当前项目标题：${activeProject.title}。当前项目目标：${activeProject.goal}。`
+                  : `You are LitFlow's literature review assistant. Provide accurate, concise, actionable guidance grounded in the current project context. Current project title: ${activeProject.title}. Current project goal: ${activeProject.goal}.`,
+            },
+            { role: "user", content: userContent },
+          ],
+        });
+
+        reply = res?.data?.content?.trim() || "";
+        if (reply) {
+          break;
+        }
+      } catch (error) {
+        if (!lastError) {
+          if (axios.isAxiosError(error)) {
+            const detail = (error.response?.data as { detail?: string } | undefined)?.detail;
+            lastError = `API Error [${error.response?.status ?? "unknown"}]: ${detail || error.message}`;
+          } else {
+            lastError = error instanceof Error ? error.message : String(error);
+          }
+        }
+      }
+    }
+
+    if (!reply) {
+      reply = lastError
+        ? (lang === "zh" ? `AI 服务错误：${lastError}` : `AI service error: ${lastError}`)
+        : (lang === "zh" ? "AI 服务暂时不可用，请稍后重试。" : "Sorry, the AI service is temporarily unavailable. Please try again later.");
+    }
+
+    setChatMessages((prev) => prev.map((message) => (message.id === thinkingId ? { ...message, content: reply } : message)));
+  }, [activeProject.goal, activeProject.title, lang]);
+
   const handleSendMessage = () => {
     const trimmed = chatInput.trim();
     if (!trimmed) return;
 
-    const userMsg = {
-      id: `msg-${Date.now()}`,
-      role: "user" as const,
-      content: trimmed,
-    };
-    setChatMessages((prev) => [...prev, userMsg]);
     setChatInput("");
-
-    // Simulate AI response
-    setTimeout(() => {
-      const aiResponse = {
-        id: `msg-${Date.now()}-ai`,
-        role: "assistant" as const,
-        content: lang === "zh"
-          ? "感谢你的提问！这是一个很好的研究方向。基于你当前的工作流进度，我建议你可以先完善关键词定义，然后在多个学术数据库中进行系统检索。如果你需要更具体的建议，请告诉我你的研究主题和当前遇到的困难。"
-          : "Thank you for your question! That's a great research direction. Based on your current workflow progress, I suggest refining your keyword definitions first, then conducting systematic searches across multiple academic databases. If you need more specific advice, please share your research topic and current challenges.",
-      };
-      setChatMessages((prev) => [...prev, aiResponse]);
-    }, 1200);
+    void sendToAI(trimmed);
   };
 
   const NAV_ITEMS = [
@@ -801,22 +844,22 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
 
           {/* Chat Messages */}
-          <ScrollArea className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden border-b border-slate-700/40 pr-1 [scrollbar-color:#06b6d4_#0f172a] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-900/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-500/70">
             <div className="p-4 space-y-3">
               {chatMessages.map((msg) => (
                 <div
                   key={msg.id}
                   className={cn(
-                    "flex",
+                    "flex w-full",
                     msg.role === "user" ? "justify-end" : "justify-start"
                   )}
                 >
                   <div
                     className={cn(
-                      "max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed",
+                      "max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
                       msg.role === "user"
-                        ? "bg-cyan-500 text-white rounded-br-md"
-                        : "bg-slate-800 text-slate-200 rounded-bl-md"
+                        ? "border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 rounded-br-md"
+                        : "bg-slate-800 text-white rounded-bl-md"
                     )}
                   >
                     {msg.content}
@@ -825,7 +868,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               ))}
               <div ref={chatEndRef} />
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Chat Input */}
           <div className="p-3 border-t border-slate-700/40 shrink-0 bg-[#0a1a2b]">
