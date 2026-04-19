@@ -110,6 +110,7 @@ const DISCOVER_KEYWORDS_STORAGE_KEY_PREFIX = "rw-discover-keywords";
 const SEARCH_RECORD_PURPOSE_LINKS_KEY_PREFIX = "rw-search-record-purpose-links";
 const DRAFT_COMPONENTS_STORAGE_KEY = "rw-draft-components";
 const DRAFT_STRUCTURE_STORAGE_KEY = "rw-draft-structure-check";
+const DRAFT_INSERTED_SEGMENTS_STORAGE_KEY = "rw-draft-inserted-segments";
 const WORKFLOW_AUX_CACHE_KEYS = [PAPER_DECISIONS_KEY, ARTIFACTS_STORAGE_KEY] as const;
 
 type WorkflowCacheMeta = {
@@ -133,6 +134,8 @@ type SlashInsertItem = {
   referenceText: string;
   updatedAt?: string;
 };
+
+type InsertedSegmentMap = Record<string, string[]>;
 
 const writeWorkflowCacheMeta = (partial: Partial<WorkflowCacheMeta>) => {
   if (typeof window === "undefined") return;
@@ -6820,6 +6823,14 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     );
   }, [macroChecked, mesoChecked, microBasicChecked, microReadChecked, microCredChecked]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      `${DRAFT_INSERTED_SEGMENTS_STORAGE_KEY}:${projectId}`,
+      JSON.stringify(insertedSegments)
+    );
+  }, [insertedSegments, projectId]);
+
   const handleManualSave = () => {
     setLastSaved(new Date().toLocaleTimeString());
   };
@@ -6874,6 +6885,67 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
       })
       .filter(Boolean)
       .join("\n\n---\n\n");
+  };
+
+  const renderCitations = (text: string, baseClassName: string, keyPrefix: string) => {
+    return text.split(/(\[\d+\])/g).map((part, index) => {
+      if (!part) return null;
+      if (/^\[\d+\]$/.test(part)) {
+        return (
+          <span key={`${keyPrefix}-citation-${index}`} className="text-yellow-300">
+            {part}
+          </span>
+        );
+      }
+      return (
+        <span key={`${keyPrefix}-text-${index}`} className={baseClassName}>
+          {part}
+        </span>
+      );
+    });
+  };
+
+  const renderPreviewContent = (compId: string, content: string) => {
+    const key = getContentKey(compId);
+    const matchedSegments = [...new Set((insertedSegments[key] || []).filter(Boolean))].sort(
+      (left, right) => right.length - left.length
+    );
+
+    if (matchedSegments.length === 0) {
+      return <div className="whitespace-pre-wrap leading-relaxed">{renderCitations(content, "text-white", `${key}-plain`)}</div>;
+    }
+
+    const chunks: React.ReactNode[] = [];
+    let cursor = 0;
+
+    while (cursor < content.length) {
+      let nextMatchText = "";
+      let nextMatchIndex = -1;
+
+      for (const segment of matchedSegments) {
+        const idx = content.indexOf(segment, cursor);
+        if (idx !== -1 && (nextMatchIndex === -1 || idx < nextMatchIndex)) {
+          nextMatchIndex = idx;
+          nextMatchText = segment;
+        }
+      }
+
+      if (nextMatchIndex === -1) {
+        const tail = content.slice(cursor);
+        chunks.push(...renderCitations(tail, "text-white", `${key}-tail-${cursor}`));
+        break;
+      }
+
+      if (nextMatchIndex > cursor) {
+        const plain = content.slice(cursor, nextMatchIndex);
+        chunks.push(...renderCitations(plain, "text-white", `${key}-plain-${cursor}`));
+      }
+
+      chunks.push(...renderCitations(nextMatchText, "text-cyan-300", `${key}-inserted-${nextMatchIndex}`));
+      cursor = nextMatchIndex + nextMatchText.length;
+    }
+
+    return <div className="whitespace-pre-wrap leading-relaxed">{chunks}</div>;
   };
 
   // Pre-writing state
@@ -6990,6 +7062,16 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [draftSaveMsg, setDraftSaveMsg] = useState<string | null>(null);
+  const [insertedSegments, setInsertedSegments] = useState<InsertedSegmentMap>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = window.localStorage.getItem(`${DRAFT_INSERTED_SEGMENTS_STORAGE_KEY}:${projectId}`);
+      const parsed = saved ? (JSON.parse(saved) as InsertedSegmentMap) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
 
   const handleSaveAsWritingDraft = () => {
     const now = new Date();
@@ -7237,6 +7319,10 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
       ...prev,
       [targetKey]: nextTargetVal,
       ...(referenceKey ? { [referenceKey]: nextReferences } : {}),
+    }));
+    setInsertedSegments((prev) => ({
+      ...prev,
+      [targetKey]: Array.from(new Set([...(prev[targetKey] || []), gistWithCitation])),
     }));
 
     if (autoSaveTimer) clearTimeout(autoSaveTimer);
@@ -7954,7 +8040,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-[#0d1b30] rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-[#0d1b30] z-10">
-              <h3 className="text-sm font-semibold text-slate-200">
+              <h3 className="text-sm font-semibold text-cyan-300">
                 Full Preview — {activeStyle.name}
               </h3>
               <button onClick={() => setShowPreview(false)} className="p-1 hover:bg-slate-800 rounded">
@@ -7962,17 +8048,17 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
               </button>
             </div>
             <div className="p-6">
-              <div className="prose prose-sm max-w-none">
+              <div className="max-w-none space-y-6">
                 {activeStyle.components.map((comp) => {
                   const content = componentContents[getContentKey(comp.id)];
                   if (!content) return null;
                   return (
                     <div key={comp.id} className="mb-6">
-                      <h2 className="text-base font-bold text-slate-200 mb-2 border-b pb-1">
+                      <h2 className="text-base font-bold text-cyan-300 mb-2 border-b border-slate-700 pb-1">
                         {comp.label}
                       </h2>
-                      <div className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                        {content}
+                      <div className="text-sm">
+                        {renderPreviewContent(comp.id, content)}
                       </div>
                     </div>
                   );
