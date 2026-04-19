@@ -6853,6 +6853,16 @@ function DraftWorkspaceInline() {
 
   const previewArtifact = allArtifacts.find((a) => a.id === previewArtifactId);
 
+  // Slash command artifact picker
+  const [slashMenuOpen, setSlashMenuOpen] = useState(false);
+  const [slashQuery, setSlashQuery] = useState("");
+  const [slashStart, setSlashStart] = useState(-1);
+  const [slashCompId, setSlashCompId] = useState("");
+
+  const slashFilteredArtifacts = allArtifacts.filter((a) =>
+    !slashQuery || a.title.toLowerCase().includes(slashQuery.toLowerCase())
+  );
+
   return (
     <div className="space-y-5">
       {/* Pre-Writing Block */}
@@ -6886,19 +6896,19 @@ function DraftWorkspaceInline() {
                     className={cn(
                       "px-3 py-1.5 rounded-md text-xs font-medium transition-all border",
                       preWriteTab === key
-                        ? "bg-amber-500 text-white border-amber-500"
-                        : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-amber-300"
+                        ? "text-cyan-400 border-cyan-400 bg-cyan-400/10"
+                        : "bg-[#0d1b30] text-white border-white/30 hover:border-cyan-400 hover:text-cyan-400"
                     )}
                   >
-                    {strategy.icon} {strategy.label}
+                    {strategy.label}
                   </button>
                 );
               })}
             </div>
 
             {/* Strategy Description & Tips */}
-            <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-lg">
-              <p className="text-xs text-slate-700 mb-2">{preWriteStrategies[preWriteTab].description}</p>
+            <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
+              <p className="text-xs text-white mb-2">{preWriteStrategies[preWriteTab].description}</p>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {preWriteStrategies[preWriteTab].tips.map((tip, i) => (
                   <Badge key={i} variant="outline" className="text-[9px] border-amber-200 text-amber-700">
@@ -6908,8 +6918,8 @@ function DraftWorkspaceInline() {
               </div>
               {preWriteStrategies[preWriteTab].tools.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-amber-100">
-                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                    🛠️ Recommended Tools
+                  <p className="text-[10px] font-semibold text-white uppercase tracking-wider mb-1.5">
+                    Recommended Tools
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {preWriteStrategies[preWriteTab].tools.map((tool) => (
@@ -6918,10 +6928,10 @@ function DraftWorkspaceInline() {
                         href={tool.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-slate-700/50 bg-[#0d1b30] hover:border-amber-300 hover:bg-amber-50 transition-all text-[10px] text-slate-600 hover:text-amber-700"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-white/20 bg-[#0d1b30] hover:border-cyan-400 hover:bg-cyan-400/10 transition-all text-[10px] text-white hover:text-cyan-400"
                         title={tool.desc}
                       >
-                        🔗 {tool.name}
+                        {tool.name}
                       </a>
                     ))}
                   </div>
@@ -6931,7 +6941,7 @@ function DraftWorkspaceInline() {
 
             {/* Notes for this strategy */}
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-500">
+              <span className="text-xs font-medium text-white">
                 Notes ({(preWriteNotes[preWriteTab] || []).length})
               </span>
               <Button
@@ -7083,69 +7093,8 @@ function DraftWorkspaceInline() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-3 gap-5">
-        {/* Left Column: Available Artifacts */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              Artifacts
-            </h3>
-            <Link to="/artifacts?tab=all">
-              <Button size="sm" variant="outline" className="text-[10px] h-6 px-2">
-                <Eye className="w-2.5 h-2.5 mr-0.5" />
-                Browse All
-              </Button>
-            </Link>
-          </div>
-          <ScrollArea className="max-h-[600px]">
-            <div className="space-y-2 pr-1">
-              {allArtifacts.map((artifact) => {
-                const typeMeta = ARTIFACT_TYPE_META[artifact.type];
-                return (
-                  <div
-                    key={artifact.id}
-                    className="p-3 bg-[#0d1b30] border border-slate-700/50 rounded-lg hover:shadow-sm transition-all group record-item"
-                  >
-                    <Badge
-                      variant="secondary"
-                      className={cn("text-[10px] mb-1", typeMeta.bgColor, typeMeta.color)}
-                    >
-                      {typeMeta.label}
-                    </Badge>
-                    <p className="text-xs font-medium text-slate-700 line-clamp-2 record-item-title">
-                      {artifact.title}
-                    </p>
-                    <div className="flex gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-[10px] h-6 px-2"
-                        onClick={() => setPreviewArtifactId(artifact.id)}
-                      >
-                        <Eye className="w-2.5 h-2.5 mr-0.5" />
-                        Preview
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-[10px] h-6 px-2 border-cyan-600/30 text-cyan-300"
-                        onClick={() => {
-                          setInsertTarget(activeComponentId);
-                          handleInsertArtifact(artifact.id);
-                        }}
-                      >
-                        <Plus className="w-2.5 h-2.5 mr-0.5" />
-                        Insert
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        </div>
-
-        {/* Middle Column: Writing Block */}
+      <div className="grid grid-cols-[2fr_1fr] gap-5">
+        {/* Left+Middle Column: Writing Block */}
         <div className="space-y-3">
           <Card className="border-slate-700/50">
             <CardHeader className="pb-2">
@@ -7272,20 +7221,86 @@ function DraftWorkspaceInline() {
                 .filter((c) => c.id === activeComponentId)
                 .map((comp) => (
                   <div key={comp.id} className="space-y-2">
-                    <div className="p-2.5 bg-blue-50/50 border border-blue-100 rounded-lg">
+                    <div className="p-2.5 bg-white/5 border border-white/10 rounded-lg">
                       <p className="text-xs font-medium text-cyan-300 mb-0.5">{comp.label}</p>
-                      <p className="text-[10px] text-slate-500">{comp.description}</p>
+                      <p className="text-[10px] text-white">{comp.description}</p>
                     </div>
-                    <Textarea
-                      value={componentContents[getContentKey(comp.id)] || ""}
-                      onChange={(e) => handleContentChange(comp.id, e.target.value)}
-                      rows={14}
-                      placeholder={comp.placeholder}
-                      className="text-sm font-mono leading-relaxed"
-                    />
+                    <div className="relative">
+                      <Textarea
+                        value={componentContents[getContentKey(comp.id)] || ""}
+                        onChange={(e) => {
+                          handleContentChange(comp.id, e.target.value);
+                          const val = e.target.value;
+                          const pos = e.target.selectionStart || 0;
+                          const textBefore = val.slice(0, pos);
+                          const slashIdx = textBefore.lastIndexOf("/");
+                          if (slashIdx !== -1) {
+                            const between = textBefore.slice(slashIdx + 1);
+                            if (!between.includes(" ") && !between.includes("\n")) {
+                              setSlashMenuOpen(true);
+                              setSlashQuery(between);
+                              setSlashStart(slashIdx);
+                              setSlashCompId(comp.id);
+                              return;
+                            }
+                          }
+                          setSlashMenuOpen(false);
+                          setSlashQuery("");
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") { setSlashMenuOpen(false); setSlashQuery(""); }
+                        }}
+                        rows={18}
+                        placeholder={comp.placeholder + "\n\nTip: type / to search and insert artifacts"}
+                        className="text-sm font-mono leading-relaxed"
+                      />
+                      {slashMenuOpen && slashCompId === comp.id && (
+                        <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-[#0d1b30] border border-slate-600 rounded-lg shadow-2xl max-h-64 overflow-y-auto">
+                          <div className="p-2 border-b border-slate-700 flex items-center gap-2 sticky top-0 bg-[#0d1b30]">
+                            <Search className="w-3 h-3 text-slate-400" />
+                            <span className="text-xs text-slate-300">
+                              Insert artifact{slashQuery ? ` — "${slashQuery}"` : " — type to search"}
+                            </span>
+                            <button className="ml-auto" onClick={() => { setSlashMenuOpen(false); setSlashQuery(""); }}>
+                              <X className="w-3 h-3 text-slate-500 hover:text-white" />
+                            </button>
+                          </div>
+                          {slashFilteredArtifacts.length === 0 ? (
+                            <p className="text-xs text-slate-400 text-center py-4">No artifacts found</p>
+                          ) : (
+                            slashFilteredArtifacts.map((a) => {
+                              const meta = ARTIFACT_TYPE_META[a.type];
+                              return (
+                                <button
+                                  key={a.id}
+                                  className="w-full text-left px-3 py-2 hover:bg-cyan-500/10 transition-colors flex items-center gap-2 border-b border-slate-800/50 last:border-0"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    const currentVal = componentContents[getContentKey(comp.id)] || "";
+                                    const before = currentVal.slice(0, slashStart);
+                                    const after = currentVal.slice(slashStart + 1 + slashQuery.length);
+                                    const insertText = a.content
+                                      ? `\n\n---\n*[${a.title}]*\n\n${a.content}\n\n---\n`
+                                      : `[${a.title}]`;
+                                    handleContentChange(comp.id, before + insertText + after);
+                                    setSlashMenuOpen(false);
+                                    setSlashQuery("");
+                                  }}
+                                >
+                                  <Badge variant="secondary" className={cn("text-[9px] px-1 py-0 shrink-0", meta.bgColor, meta.color)}>
+                                    {meta.label}
+                                  </Badge>
+                                  <span className="text-xs text-slate-200 truncate">{a.title}</span>
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
                     {insertTarget === comp.id && (
-                      <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-700">
-                        Select an artifact from the left panel to insert here.
+                      <div className="p-2 bg-cyan-500/10 border border-cyan-400/20 rounded text-[10px] text-cyan-300">
+                        Type <kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">/</kbd> in the editor to search and insert an artifact.
                       </div>
                     )}
                   </div>
