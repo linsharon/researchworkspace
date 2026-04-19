@@ -5,60 +5,71 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import { Package, Edit2, Trash2, Search, Sparkles, Download as DownloadIcon } from "lucide-react";
-import { type ArtifactPackage, ARTIFACT_TYPE_META } from "@/lib/data";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Package, Edit2, Trash2, Search, Sparkles, Download as DownloadIcon, ArrowRight, Box } from "lucide-react";
+import { type Artifact, type ArtifactPackage, ARTIFACT_TYPE_META } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
+const MY_DOWNLOADED_PACKAGES_KEY = "rw-my-downloaded-packages";
+const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
+const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
+const USER_PROFILES_KEY = "rw-user-profiles";
+
+type UserProfileMap = Record<string, { avatarUrl: string; username: string; isPublic: boolean }>;
+
+type EditFormState = {
+  name: string;
+  description: string;
+  selectedArtifactIds: string[];
+};
 
 export default function MyPackages() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
-  const [packages, setPackages] = useState<ArtifactPackage[]>([]);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", description: "" });
+  const [createdPackages, setCreatedPackages] = useState<ArtifactPackage[]>([]);
+  const [downloadedPackages, setDownloadedPackages] = useState<ArtifactPackage[]>([]);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<ArtifactPackage | null>(null);
   const [activeTab, setActiveTab] = useState("created");
+  const [profiles, setProfiles] = useState<UserProfileMap>({});
+  const [editForm, setEditForm] = useState<EditFormState>({
+    name: "",
+    description: "",
+    selectedArtifactIds: [],
+  });
 
   const loadPackages = () => {
     if (typeof window === "undefined" || !user) return;
     try {
-      const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
-      const allPackages: ArtifactPackage[] = saved ? JSON.parse(saved) : [];
-      
-      // Load all packages for this user (both created and downloaded)
-      const userPackages = allPackages.filter((pkg) => {
-        // Created packages belong to current user
-        if (pkg.type === "created" && pkg.ownerId === user.id) return true;
-        // Downloaded packages might have been added by current user (we track by presence in user's list)
-        // For downloaded, we include all with type "downloaded" that are in the global storage
-        return pkg.type === "downloaded";
-      });
+      const communityStr = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
+      const allCommunity: ArtifactPackage[] = communityStr ? JSON.parse(communityStr) : [];
+      const mine = allCommunity.filter(
+        (pkg) => pkg.ownerId === user.id && (pkg.type === "created" || !pkg.type)
+      );
+      setCreatedPackages(mine);
 
-      setPackages(userPackages);
+      const downloadedStr = window.localStorage.getItem(MY_DOWNLOADED_PACKAGES_KEY);
+      const downloadedMap: Record<string, ArtifactPackage[]> = downloadedStr ? JSON.parse(downloadedStr) : {};
+      setDownloadedPackages(downloadedMap[user.id] || []);
+
+      const profilesStr = window.localStorage.getItem(USER_PROFILES_KEY);
+      const profileMap: UserProfileMap = profilesStr ? JSON.parse(profilesStr) : {};
+      setProfiles(profileMap);
     } catch {
-      setPackages([]);
+      setCreatedPackages([]);
+      setDownloadedPackages([]);
+      setProfiles({});
     }
   };
 
   useEffect(() => {
     loadPackages();
   }, [user?.id]);
-
-  const createdPackages = useMemo(() => {
-    return packages.filter((pkg) => pkg.type === "created" && pkg.ownerId === user?.id);
-  }, [packages, user?.id]);
-
-  const downloadedPackages = useMemo(() => {
-    return packages.filter((pkg) => pkg.type === "downloaded");
-  }, [packages]);
 
   const filteredCreatedPackages = useMemo(() => {
     if (!query.trim()) return createdPackages;
@@ -81,108 +92,125 @@ export default function MyPackages() {
     );
   }, [downloadedPackages, query]);
 
+  const saveCreatedPackages = (next: ArtifactPackage[]) => {
+    if (typeof window === "undefined" || !user) return;
+    const communityStr = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
+    const allCommunity: ArtifactPackage[] = communityStr ? JSON.parse(communityStr) : [];
+
+    const mineIds = new Set(createdPackages.map((pkg) => pkg.id));
+    const untouched = allCommunity.filter((pkg) => !mineIds.has(pkg.id));
+    const merged = [...untouched, ...next];
+
+    window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(merged));
+    setCreatedPackages(next);
+  };
+
+  const saveDownloadedPackages = (next: ArtifactPackage[]) => {
+    if (typeof window === "undefined" || !user) return;
+    const downloadedStr = window.localStorage.getItem(MY_DOWNLOADED_PACKAGES_KEY);
+    const downloadedMap: Record<string, ArtifactPackage[]> = downloadedStr ? JSON.parse(downloadedStr) : {};
+    downloadedMap[user.id] = next;
+    window.localStorage.setItem(MY_DOWNLOADED_PACKAGES_KEY, JSON.stringify(downloadedMap));
+    setDownloadedPackages(next);
+  };
+
   const handleStartEdit = (pkg: ArtifactPackage) => {
-    setEditingId(pkg.id);
-    setEditForm({ name: pkg.name, description: pkg.description });
+    setEditingPackage(pkg);
+    setEditForm({
+      name: pkg.name,
+      description: pkg.description,
+      selectedArtifactIds: pkg.artifacts.map((artifact) => artifact.id),
+    });
     setShowEditDialog(true);
   };
 
+  const toggleArtifactSelection = (artifactId: string) => {
+    setEditForm((prev) => {
+      const selected = prev.selectedArtifactIds.includes(artifactId)
+        ? prev.selectedArtifactIds.filter((id) => id !== artifactId)
+        : [...prev.selectedArtifactIds, artifactId];
+      return { ...prev, selectedArtifactIds: selected };
+    });
+  };
+
   const handleSaveEdit = () => {
-    if (!editingId || !editForm.name.trim()) return;
-    
-    setPackages((prev) =>
-      prev.map((pkg) =>
-        pkg.id === editingId
-          ? {
-              ...pkg,
-              name: editForm.name.trim(),
-              description: editForm.description.trim(),
-            }
-          : pkg
-      )
+    if (!editingPackage || !editForm.name.trim()) return;
+
+    const selectedSet = new Set(editForm.selectedArtifactIds);
+    const nextArtifacts = editingPackage.artifacts.filter((artifact) => selectedSet.has(artifact.id));
+
+    const next = createdPackages.map((pkg) =>
+      pkg.id === editingPackage.id
+        ? {
+            ...pkg,
+            name: editForm.name.trim(),
+            description: editForm.description.trim(),
+            artifacts: nextArtifacts,
+          }
+        : pkg
     );
 
-    try {
-      const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
-      const allPackages: ArtifactPackage[] = saved ? JSON.parse(saved) : [];
-      const updated = allPackages.map((pkg) =>
-        pkg.id === editingId
-          ? {
-              ...pkg,
-              name: editForm.name.trim(),
-              description: editForm.description.trim(),
-            }
-          : pkg
-      );
-      window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(updated));
-      toast.success("Package updated successfully");
-    } catch {
-      toast.error("Failed to save package");
-    }
-
+    saveCreatedPackages(next);
+    toast.success("Created package updated");
     setShowEditDialog(false);
-    setEditingId(null);
+    setEditingPackage(null);
   };
 
-  const handleDelete = (id: string) => {
-    setPackages((prev) => prev.filter((pkg) => pkg.id !== id));
+  const handleDeleteCreated = (id: string) => {
+    const next = createdPackages.filter((pkg) => pkg.id !== id);
+    saveCreatedPackages(next);
+    toast.success("Created package deleted");
+  };
+
+  const handleUnshareCreated = (id: string) => {
+    const next = createdPackages.map((pkg) =>
+      pkg.id === id ? { ...pkg, shared: false } : pkg
+    );
+    saveCreatedPackages(next);
+    toast.success("Package is now unshared");
+  };
+
+  const handleRemoveDownloaded = (id: string) => {
+    const next = downloadedPackages.filter((pkg) => pkg.id !== id);
+    saveDownloadedPackages(next);
+    toast.success("Removed from downloaded packages");
+  };
+
+  const handleUnpackToArtifactCenter = (pkg: ArtifactPackage) => {
+    if (typeof window === "undefined") return;
     try {
-      const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
-      const allPackages: ArtifactPackage[] = saved ? JSON.parse(saved) : [];
-      const filtered = allPackages.filter((pkg) => pkg.id !== id);
-      window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(filtered));
-      toast.success("Package deleted successfully");
+      const savedArtifacts = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+      const currentArtifacts: Artifact[] = savedArtifacts ? JSON.parse(savedArtifacts) : [];
+
+      const unpacked = pkg.artifacts.map((artifact) => ({
+        ...artifact,
+        id: `${artifact.id}-unpack-${Date.now()}`,
+        title: `${artifact.title} (from ${pkg.ownerName})`,
+      }));
+
+      window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify([...currentArtifacts, ...unpacked]));
+      window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+      toast.success("Unpacked to Artifact Center");
     } catch {
-      toast.error("Failed to delete package");
+      toast.error("Failed to unpack package");
     }
   };
 
-  const handleDownloadPackage = (pkg: ArtifactPackage) => {
-    const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${pkg.name.replace(/\s+/g, "-").toLowerCase()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const renderPackageCard = (pkg: ArtifactPackage, isOwner: boolean) => {
+  const renderPackageCard = (pkg: ArtifactPackage, variant: "created" | "downloaded") => {
     const typeCount = pkg.artifacts.reduce<Record<string, number>>((acc, artifact) => {
       const label = ARTIFACT_TYPE_META[artifact.type].label;
       acc[label] = (acc[label] || 0) + 1;
       return acc;
     }, {});
+    const profile = profiles[pkg.ownerId];
 
     return (
-      <Card key={pkg.id} className="border-slate-700/50 bg-[#0d1b30]">
+      <Card key={pkg.id} className="border-slate-700/50 bg-[#0d1b30] hover:border-slate-300 transition-all">
         <CardHeader className="pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-base text-slate-100">{pkg.name}</CardTitle>
-            {isOwner && (
-              <div className="flex gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 w-6 p-0"
-                  onClick={() => handleStartEdit(pkg)}
-                >
-                  <Edit2 className="w-3 h-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-6 w-6 p-0 text-red-500 hover:text-red-400"
-                  onClick={() => handleDelete(pkg.id)}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-slate-400">{pkg.description || "No description"}</p>
-          <p className="text-[11px] text-slate-500 mt-1">
-            {pkg.artifacts.length} artifacts · {pkg.createdAt}
+          <CardTitle className="text-base text-slate-100">{pkg.name}</CardTitle>
+          <p className="text-xs text-slate-400 mt-1">{pkg.description || "No description"}</p>
+          <p className="text-[11px] text-slate-500">
+            {pkg.artifacts.length} artifacts · {pkg.createdAt} · {pkg.downloadCount || 0} downloads
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -193,23 +221,49 @@ export default function MyPackages() {
               </Badge>
             ))}
           </div>
-          {!isOwner && (
-            <div className="p-2 rounded bg-slate-900/40 border border-slate-700/50 text-xs text-slate-300">
-              <p className="font-medium mb-1">Shared by</p>
-              <p>{pkg.ownerName}</p>
+
+          <div className="p-2 rounded border border-slate-700/50 bg-slate-800/30">
+            <Link to={`/profile/${pkg.ownerId}`} className="flex items-center gap-2 hover:bg-slate-700/40 p-1.5 rounded transition-colors">
+              <Avatar className="w-8 h-8 shrink-0">
+                <AvatarImage src={profile?.avatarUrl} alt={pkg.ownerName} />
+                <AvatarFallback className="bg-cyan-500/20 text-cyan-200 text-sm font-semibold">
+                  {pkg.ownerName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-slate-200 truncate">{pkg.ownerName}</p>
+                <p className="text-[10px] text-slate-400 truncate">{pkg.ownerId}</p>
+              </div>
+              <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            </Link>
+          </div>
+
+          {variant === "created" ? (
+            <div className="flex gap-1.5 pt-1">
+              <Button size="sm" variant="outline" className="text-xs h-7 flex-1" onClick={() => handleStartEdit(pkg)}>
+                <Edit2 className="w-3.5 h-3.5 mr-1" />
+                Edit
+              </Button>
+              <Button size="sm" variant="outline" className="text-xs h-7 flex-1" onClick={() => handleUnshareCreated(pkg.id)}>
+                Unshare
+              </Button>
+              <Button size="sm" variant="outline" className="text-xs h-7 flex-1 text-red-500 hover:text-red-400" onClick={() => handleDeleteCreated(pkg.id)}>
+                <Trash2 className="w-3.5 h-3.5 mr-1" />
+                Delete
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-1.5 pt-1">
+              <Button size="sm" variant="outline" className="text-xs h-7 flex-1" onClick={() => handleUnpackToArtifactCenter(pkg)}>
+                <Box className="w-3.5 h-3.5 mr-1" />
+                Unpack to Artifact Center
+              </Button>
+              <Button size="sm" variant="outline" className="text-xs h-7 flex-1 text-red-500 hover:text-red-400" onClick={() => handleRemoveDownloaded(pkg.id)}>
+                <Trash2 className="w-3.5 h-3.5 mr-1" />
+                Remove
+              </Button>
             </div>
           )}
-          <div className="flex gap-1.5">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs flex-1"
-              onClick={() => handleDownloadPackage(pkg)}
-            >
-              <DownloadIcon className="w-3.5 h-3.5 mr-1" />
-              Download
-            </Button>
-          </div>
         </CardContent>
       </Card>
     );
@@ -223,11 +277,11 @@ export default function MyPackages() {
             <Package className="w-7 h-7 text-cyan-400" />
             <div>
               <h1 className="text-xl font-bold text-slate-100">My Packages</h1>
-              <p className="text-sm text-slate-500">Manage your artifact packages</p>
+              <p className="text-sm text-slate-500">Manage your created and downloaded packages</p>
             </div>
           </div>
           <Badge variant="outline" className="text-xs">
-            {packages.length} packages
+            {filteredCreatedPackages.length + filteredDownloadedPackages.length} packages
           </Badge>
         </div>
 
@@ -241,7 +295,6 @@ export default function MyPackages() {
           />
         </div>
 
-        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="created" className="flex items-center gap-2">
@@ -254,78 +307,98 @@ export default function MyPackages() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Created Packages Tab */}
           <TabsContent value="created" className="space-y-4">
             {filteredCreatedPackages.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredCreatedPackages.map((pkg) => renderPackageCard(pkg, true))}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredCreatedPackages.map((pkg) => renderPackageCard(pkg, "created"))}
               </div>
             ) : (
               <div className="text-center py-16 border border-slate-700/50 rounded-lg bg-slate-800/30">
                 <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                 <p className="text-sm text-slate-400">
-                  {query.trim() ? "No created packages match your search" : "You haven't created any packages yet"}
+                  {query.trim() ? "No created packages match your search" : "No created packages yet"}
                 </p>
               </div>
             )}
           </TabsContent>
 
-          {/* Downloaded Packages Tab */}
           <TabsContent value="downloaded" className="space-y-4">
             {filteredDownloadedPackages.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredDownloadedPackages.map((pkg) => renderPackageCard(pkg, false))}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredDownloadedPackages.map((pkg) => renderPackageCard(pkg, "downloaded"))}
               </div>
             ) : (
               <div className="text-center py-16 border border-slate-700/50 rounded-lg bg-slate-800/30">
                 <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                 <p className="text-sm text-slate-400">
-                  {query.trim() ? "No downloaded packages match your search" : "You haven't downloaded any packages yet"}
+                  {query.trim() ? "No downloaded packages match your search" : "No downloaded packages yet"}
                 </p>
               </div>
             )}
           </TabsContent>
         </Tabs>
 
-        {/* Edit Package Dialog */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Edit Package</DialogTitle>
+              <DialogTitle>Edit Created Package</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-200">Package Name</label>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-300">Package Name</label>
                 <Input
                   value={editForm.name}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
                   placeholder="Package name"
                   className="text-sm"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-200">Description</label>
-                <textarea
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-300">Description</label>
+                <Input
                   value={editForm.description}
-                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="Package description"
-                  rows={3}
-                  className="w-full px-3 py-2 rounded-md border border-slate-700/50 bg-slate-900/50 text-slate-100 text-sm resize-none"
+                  className="text-sm"
                 />
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowEditDialog(false)}
-                  className="text-xs"
-                >
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-slate-300">Included Artifacts</label>
+                <ScrollArea className="h-52 rounded border border-slate-700/50 bg-slate-900/30 p-2">
+                  <div className="space-y-1.5">
+                    {(editingPackage?.artifacts || []).map((artifact) => {
+                      const selected = editForm.selectedArtifactIds.includes(artifact.id);
+                      return (
+                        <button
+                          key={artifact.id}
+                          type="button"
+                          onClick={() => toggleArtifactSelection(artifact.id)}
+                          className={`w-full text-left px-2 py-1.5 rounded border text-xs transition-colors ${
+                            selected
+                              ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-100"
+                              : "border-slate-700/40 bg-slate-800/30 text-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate">{artifact.title}</span>
+                            <Badge variant="secondary" className="text-[9px]">
+                              {ARTIFACT_TYPE_META[artifact.type].label}
+                            </Badge>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" className="text-xs" onClick={() => setShowEditDialog(false)}>
                   Cancel
                 </Button>
-                <Button
-                  onClick={handleSaveEdit}
-                  className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white flex-1"
-                >
-                  Save
+                <Button className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white flex-1" onClick={handleSaveEdit}>
+                  Save Changes
                 </Button>
               </div>
             </div>

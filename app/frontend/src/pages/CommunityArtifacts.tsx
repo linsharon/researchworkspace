@@ -10,13 +10,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Globe, Package, Search, User2, ArrowRight } from "lucide-react";
 import { ARTIFACT_TYPE_META, type Artifact, type ArtifactPackage, type UserProfile } from "@/lib/data";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
-const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
-const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
 const USER_PROFILES_KEY = "rw-user-profiles";
+const MY_DOWNLOADED_PACKAGES_KEY = "rw-my-downloaded-packages";
 
 export default function CommunityArtifacts() {
+  const { user } = useAuth();
   const [packages, setPackages] = useState<ArtifactPackage[]>([]);
   const [query, setQuery] = useState("");
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export default function CommunityArtifacts() {
       const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
       const parsed = saved ? JSON.parse(saved) : [];
       const list = Array.isArray(parsed) ? (parsed as ArtifactPackage[]) : [];
-      setPackages(list.filter((pkg) => pkg.shared));
+      setPackages(list.filter((pkg) => pkg.shared && (pkg.type === "created" || !pkg.type)));
 
       // Load user profiles
       const profilesStr = window.localStorage.getItem(USER_PROFILES_KEY);
@@ -57,16 +59,6 @@ export default function CommunityArtifacts() {
     });
   }, [packages, query]);
 
-  const handleDownloadPackage = (pkg: ArtifactPackage) => {
-    const blob = new Blob([JSON.stringify(pkg, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${pkg.name.replace(/\s+/g, "-").toLowerCase()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const selectedPackage = selectedPackageId ? packages.find((p) => p.id === selectedPackageId) : null;
   const selectedOwnerProfile = selectedPackage ? userProfiles[selectedPackage.ownerId] : null;
 
@@ -80,24 +72,47 @@ export default function CommunityArtifacts() {
   };
 
   const handleAddToMyPackages = (pkg: ArtifactPackage) => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !user) return;
     try {
-      const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
-      const allPackages: ArtifactPackage[] = saved ? JSON.parse(saved) : [];
-      
-      // Create a downloaded copy of the package
+      const downloadedStr = window.localStorage.getItem(MY_DOWNLOADED_PACKAGES_KEY);
+      const downloadedMap: Record<string, ArtifactPackage[]> = downloadedStr ? JSON.parse(downloadedStr) : {};
+      const myDownloaded = downloadedMap[user.id] || [];
+
+      const alreadyDownloaded = myDownloaded.some(
+        (item) =>
+          item.sourcePackageId === pkg.id ||
+          item.id === pkg.id ||
+          (item.ownerId === pkg.ownerId && item.name === pkg.name && item.createdAt === pkg.createdAt)
+      );
+      if (alreadyDownloaded) {
+        toast.info("Already in your downloaded packages");
+        return;
+      }
+
       const downloadedPkg: ArtifactPackage = {
         ...pkg,
         id: `pkg-downloaded-${Date.now()}`,
         type: "downloaded",
+        sourcePackageId: pkg.id,
+        downloadedBy: user.id,
+        shared: false,
       };
-      
-      window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify([...allPackages, downloadedPkg]));
-      window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
-      // Close dialog after adding
+
+      downloadedMap[user.id] = [...myDownloaded, downloadedPkg];
+      window.localStorage.setItem(MY_DOWNLOADED_PACKAGES_KEY, JSON.stringify(downloadedMap));
+
+      // Only increment download count in community packages; no other changes.
+      const communityStr = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
+      const communityPackages: ArtifactPackage[] = communityStr ? JSON.parse(communityStr) : [];
+      const updatedCommunity = communityPackages.map((item) =>
+        item.id === pkg.id ? { ...item, downloadCount: (item.downloadCount || 0) + 1 } : item
+      );
+      window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(updatedCommunity));
+
+      toast.success("Added to My Packages");
       setSelectedPackageId(null);
     } catch {
-      // ignore
+      toast.error("Failed to add package");
     }
   };
 
@@ -141,7 +156,9 @@ export default function CommunityArtifacts() {
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base text-slate-100">{pkg.name}</CardTitle>
                   <p className="text-xs text-slate-400 mt-1">{pkg.description || "No description"}</p>
-                  <p className="text-[11px] text-slate-500">{pkg.artifacts.length} artifacts · {pkg.createdAt}</p>
+                  <p className="text-[11px] text-slate-500">
+                    {pkg.artifacts.length} artifacts · {pkg.createdAt} · {pkg.downloadCount || 0} downloads
+                  </p>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex flex-wrap gap-1.5">
