@@ -92,6 +92,8 @@ export default function PaperReadPage() {
             { role: "system", content: "You are a helpful literature review assistant. Answer concisely and accurately." },
             { role: "user", content: userContent },
           ],
+        }, {
+          timeout: 120000,
         });
         reply = res?.data?.content?.trim() || "";
         if (reply) break;

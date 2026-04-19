@@ -234,6 +234,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
             },
             { role: "user", content: userContent },
           ],
+        }, {
+          timeout: 120000,
         });
 
         reply = res?.data?.content?.trim() || "";
