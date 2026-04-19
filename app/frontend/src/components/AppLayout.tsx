@@ -342,20 +342,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </div>
           </Link>
 
-          <Link to="/projects/members" className="mt-2 block">
-            <div
-              className={cn(
-                "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border",
-                location.pathname === "/projects/members"
-                  ? "bg-cyan-500/20 text-cyan-200 border-cyan-500/40"
-                  : "text-slate-400 border-slate-700/40 hover:bg-slate-800/60 hover:text-slate-200"
-              )}
-            >
-              <Users className="w-4 h-4 shrink-0" />
-              <span className="truncate">Project Members</span>
-            </div>
-          </Link>
-
           {showProjectSwitcher && (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
@@ -418,12 +404,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     {projects.length >= 1 && (
                       <div className="flex items-center gap-1.5 mb-2">
                         <Badge
+                          role="button"
+                          tabIndex={0}
                           className={cn(
-                            "text-[9px] border",
+                            "text-[9px] border cursor-pointer",
                             isPremiumUser
                               ? "bg-emerald-900/50 text-emerald-300 border-emerald-700/40"
                               : "bg-cyan-900/60 text-cyan-300 border-cyan-700/40"
                           )}
+                          onClick={() => {
+                            setShowProjectSwitcher(false);
+                            navigate("/premium");
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              setShowProjectSwitcher(false);
+                              navigate("/premium");
+                            }
+                          }}
                         >
                           <Crown className="w-2.5 h-2.5 mr-0.5" />
                           {isPremiumUser ? (lang === "zh" ? "Premium 已开通" : "Premium Active") : "Premium"}
@@ -617,22 +616,40 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </Link>
 
             <p className="text-[10px] uppercase tracking-wider text-slate-500 px-2 pt-4 pb-1">
-              {lang === "zh" ? "文件管理" : "Files"}
+              {lang === "zh" ? "团队" : "Team"}
             </p>
-            <Link to="/pdf-manager">
+            <button
+              type="button"
+              onClick={() => {
+                if (!isPremiumUser) {
+                  navigate("/premium");
+                  return;
+                }
+                navigate("/projects/members");
+              }}
+              className="w-full"
+            >
               <div
-                data-selected={location.pathname === "/pdf-manager"}
+                data-selected={location.pathname === "/projects/members"}
                 className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
-                  location.pathname === "/pdf-manager"
+                  "flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
+                  location.pathname === "/projects/members"
                     ? "text-cyan-200 border-cyan-500/30"
                     : "text-slate-400 border-slate-700/40"
                 )}
               >
-                <FileText className="w-4 h-4 shrink-0" />
-                <span className="truncate record-item-title">{lang === "zh" ? "PDF 管理" : "PDF Manager"}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Users className="w-4 h-4 shrink-0" />
+                  <span className="truncate record-item-title">{lang === "zh" ? "项目成员" : "Project Members"}</span>
+                </div>
+                {!isPremiumUser && (
+                  <Badge className="text-[9px] bg-cyan-900/60 text-cyan-300 border-cyan-700/40">
+                    <Crown className="w-2.5 h-2.5 mr-0.5" />
+                    Premium
+                  </Badge>
+                )}
               </div>
-            </Link>
+            </button>
           </nav>
         </ScrollArea>
       </aside>

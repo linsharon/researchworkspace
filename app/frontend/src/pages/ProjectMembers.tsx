@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   projectAPI,
   type Project,
@@ -15,6 +17,8 @@ import {
 } from "@/lib/manuscript-api";
 
 export default function ProjectMembers() {
+  const { user } = useAuth();
+  const isPremiumUser = Boolean(user?.is_premium) || user?.role === "admin";
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [members, setMembers] = useState<ProjectMember[]>([]);
@@ -162,6 +166,26 @@ export default function ProjectMembers() {
 
   return (
     <AppLayout>
+      {!isPremiumUser ? (
+        <div className="p-6 max-w-4xl mx-auto space-y-4">
+          <Card className="border-cyan-500/30 bg-cyan-500/10">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-cyan-900/60 text-cyan-300 border-cyan-700/40">Premium Only</Badge>
+                <CardTitle className="text-slate-100">Team is available for Premium users only</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-slate-300">
+                Upgrade to Premium to manage project members, assign viewer or editor roles, and collaborate on manuscript and team-scoped documents.
+              </p>
+              <Link to="/premium">
+                <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">View Premium details</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
       <div className="p-6 max-w-6xl mx-auto space-y-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div>
@@ -291,6 +315,7 @@ export default function ProjectMembers() {
           </Card>
         </div>
       </div>
+      )}
     </AppLayout>
   );
 }

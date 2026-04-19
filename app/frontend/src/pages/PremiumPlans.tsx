@@ -99,12 +99,12 @@ export default function PremiumPlans() {
             {isZh ? "订阅方案" : "Subscription Plans"}
           </Badge>
           <h1 className="text-3xl font-bold text-slate-100 mt-3">
-            {isZh ? "升级 Premium，解锁多项目与删除权限" : "Upgrade to Premium for Multi-project and Delete Access"}
+            {isZh ? "升级 Premium，解锁 Team 协作、多项目与更高资源额度" : "Upgrade to Premium for Team Access, Multi-project Work, and Higher Limits"}
           </h1>
           <p className="text-sm text-slate-300 mt-2 max-w-3xl">
             {isZh
-              ? "Free 用户最多创建 1 个项目，且不能删除项目。Premium 用户可创建多个项目并删除现有项目。"
-              : "Free users can create up to 1 project and cannot delete projects. Premium users can create multiple projects and delete existing projects."}
+              ? "Free 用户最多创建 1 个项目，不能删除项目，不能使用 Team，并且从 Community Artifacts 最多只能添加 2 个 packages 到 My Packages。Premium 用户可使用 Team、创建多个项目、删除项目，并拥有更高的协作与资源额度。"
+              : "Free users can create up to 1 project, cannot delete projects, cannot use Team, and can add at most 2 packages from Community Artifacts into My Packages. Premium users get Team access, multi-project creation, project deletion, and higher collaboration limits."}
           </p>
         </div>
 
@@ -132,6 +132,16 @@ export default function PremiumPlans() {
                     <td className="px-3 py-2 text-slate-300">{isZh ? "删除项目" : "Delete project"}</td>
                     <td className="px-3 py-2 text-rose-300">{isZh ? "不支持" : "Not available"}</td>
                     <td className="px-3 py-2 text-emerald-300">{isZh ? "支持（需二次确认）" : "Available with confirmation"}</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/80">
+                    <td className="px-3 py-2 text-slate-300">{isZh ? "Team / 项目成员管理" : "Team / Project member management"}</td>
+                    <td className="px-3 py-2 text-rose-300">{isZh ? "不支持" : "Not available"}</td>
+                    <td className="px-3 py-2 text-emerald-300">{isZh ? "支持" : "Available"}</td>
+                  </tr>
+                  <tr className="border-b border-slate-800/80">
+                    <td className="px-3 py-2 text-slate-300">{isZh ? "Community Packages 添加到 My Packages" : "Community Packages added to My Packages"}</td>
+                    <td className="px-3 py-2 text-slate-400">{isZh ? "最多 2 个" : "Up to 2 packages"}</td>
+                    <td className="px-3 py-2 text-slate-100">{isZh ? "更多额度" : "Higher limit"}</td>
                   </tr>
                   <tr>
                     <td className="px-3 py-2 text-slate-300">{isZh ? "优先支持" : "Priority support"}</td>

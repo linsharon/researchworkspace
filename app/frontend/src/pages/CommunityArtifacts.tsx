@@ -1,14 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Globe, Package, Search, User2, ArrowRight } from "lucide-react";
+import { Globe, Package, Search, User2, ArrowRight, Crown } from "lucide-react";
 import { ARTIFACT_TYPE_META, type Artifact, type ArtifactPackage } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
 import { type UserProfileSummary, userProfileApi } from "@/lib/user-profile-api";
@@ -19,10 +29,13 @@ const MY_DOWNLOADED_PACKAGES_KEY = "rw-my-downloaded-packages";
 
 export default function CommunityArtifacts() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const isPremiumUser = Boolean(user?.is_premium) || user?.role === "admin";
   const [packages, setPackages] = useState<ArtifactPackage[]>([]);
   const [query, setQuery] = useState("");
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileSummary>>({});
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   const loadPackages = async () => {
     if (typeof window === "undefined") return;
@@ -89,6 +102,11 @@ export default function CommunityArtifacts() {
         return;
       }
 
+      if (!isPremiumUser && myDownloaded.length >= 2) {
+        setShowUpgradeDialog(true);
+        return;
+      }
+
       const downloadedPkg: ArtifactPackage = {
         ...pkg,
         id: `pkg-downloaded-${Date.now()}`,
@@ -131,6 +149,25 @@ export default function CommunityArtifacts() {
             {filteredPackages.length} packages
           </Badge>
         </div>
+
+        {!isPremiumUser && user ? (
+          <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm text-cyan-100">Free accounts can add up to 2 community packages to My Packages.</p>
+              <p className="text-xs text-slate-300 mt-1">Upgrade to Premium to unlock Team access and higher package limits.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/premium")}
+              className="shrink-0"
+            >
+              <Badge className="bg-cyan-900/60 text-cyan-300 border-cyan-700/40 cursor-pointer">
+                <Crown className="w-3 h-3 mr-1" />
+                Premium
+              </Badge>
+            </button>
+          </div>
+        ) : null}
 
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -287,6 +324,34 @@ export default function CommunityArtifacts() {
             )}
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+          <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Upgrade to Premium</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-300">
+                Free accounts can add at most 2 packages from Community Artifacts to My Packages. Upgrade to Premium to add more packages and unlock Team features.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="flex justify-start">
+              <button type="button" onClick={() => navigate("/premium")}>
+                <Badge className="bg-cyan-900/60 text-cyan-300 border-cyan-700/40 cursor-pointer">
+                  <Crown className="w-3 h-3 mr-1" />
+                  Premium
+                </Badge>
+              </button>
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-slate-600 text-slate-200">Maybe later</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-cyan-500 hover:bg-cyan-400 text-slate-900"
+                onClick={() => navigate("/premium")}
+              >
+                View Premium details
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppLayout>
   );
