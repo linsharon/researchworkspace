@@ -566,21 +566,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <span className="truncate record-item-title">{lang === "zh" ? "我的 Artifacts" : "My Artifacts"}</span>
               </div>
             </Link>
-            {/* My Packages */}
-            <Link to="/my-packages">
-              <div
-                data-selected={location.pathname === "/my-packages"}
-                className={cn(
-                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
-                  location.pathname === "/my-packages"
-                    ? "text-cyan-200 border-cyan-500/30"
-                    : "text-slate-400 border-slate-700/40"
-                )}
-              >
-                <Archive className="w-4 h-4 shrink-0" />
-                <span className="truncate record-item-title">{lang === "zh" ? "我的 Packages" : "My Packages"}</span>
-              </div>
-            </Link>
             {/* Community Artifacts */}
             <Link to="/community-artifacts">
               <div
@@ -594,6 +579,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
               >
                 <Globe className="w-4 h-4 shrink-0" />
                 <span className="truncate record-item-title">{lang === "zh" ? "社区 Artifacts" : "Community Artifacts"}</span>
+              </div>
+            </Link>
+            {/* My Packages */}
+            <Link to="/my-packages">
+              <div
+                data-selected={location.pathname === "/my-packages"}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
+                  location.pathname === "/my-packages"
+                    ? "text-cyan-200 border-cyan-500/30"
+                    : "text-slate-400 border-slate-700/40"
+                )}
+              >
+                <Archive className="w-4 h-4 shrink-0" />
+                <span className="truncate record-item-title">{lang === "zh" ? "我的 Packages" : "My Packages"}</span>
               </div>
             </Link>
 

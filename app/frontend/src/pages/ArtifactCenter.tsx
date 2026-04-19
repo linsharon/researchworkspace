@@ -39,6 +39,7 @@ import {
 import { conceptAPI, noteAPI, paperAPI, projectAPI } from "@/lib/manuscript-api";
 import type { Concept as ApiConcept, Note } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const STATIC_ARTIFACTS = DUMMY_ARTIFACTS.filter(
   (artifact) =>
@@ -193,9 +194,12 @@ type ArtifactPackage = {
   artifacts: Artifact[];
   createdAt: string;
   shared: boolean;
+  ownerId: string;
+  ownerName: string;
 };
 
 export default function ArtifactCenter() {
+  const { user } = useAuth();
   const NOTES_UPDATED_EVENT = "notes-updated";
   const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
   const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
@@ -353,6 +357,8 @@ export default function ArtifactCenter() {
     return matchesFilter && matchesSearch;
   });
 
+  const user = useContext?.()("AuthContext") as any;
+  
   const packTypeGroups = useMemo(() => {
     const groups = new Map<ArtifactType, Artifact[]>();
     for (const artifact of filteredArtifacts) {
@@ -511,7 +517,7 @@ export default function ArtifactCenter() {
   };
 
   const handleCreatePackage = () => {
-    if (!packName.trim() || selectedForPack.size === 0) return;
+    if (!packName.trim() || selectedForPack.size === 0 || !user) return;
     const selectedArtifacts = artifacts.filter((a) => selectedForPack.has(a.id));
     const pkg: ArtifactPackage = {
       id: `pkg-${Date.now()}`,
@@ -520,6 +526,8 @@ export default function ArtifactCenter() {
       artifacts: selectedArtifacts,
       createdAt: new Date().toISOString().split("T")[0],
       shared: true,
+      ownerId: user.id,
+      ownerName: user.name || user.email?.split("@")[0] || "User",
     };
     savePackages([...myPackages, pkg]);
     setPackSaved(true);
@@ -549,7 +557,7 @@ export default function ArtifactCenter() {
     const unpacked = pkg.artifacts.map((artifact) => ({
       ...artifact,
       id: `${artifact.id}-unpack-${Date.now()}`,
-      title: `${artifact.title} (Unpacked)`
+      title: `${artifact.title} (from ${pkg.ownerName})`
     }));
     saveLocalArtifacts([...localArtifacts, ...unpacked]);
     setArtifacts((prev) => {
