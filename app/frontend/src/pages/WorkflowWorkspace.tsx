@@ -4,9 +4,10 @@ import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { paperAPI, conceptAPI, projectAPI, searchRecordAPI } from "@/lib/manuscript-api";
+import { paperAPI, conceptAPI, projectAPI, searchRecordAPI, noteAPI } from "@/lib/manuscript-api";
 import type {
   Concept as ApiConcept,
+  Note as ApiNote,
   Paper as ApiPaper,
   SearchRecord as ApiSearchRecord,
 } from "@/lib/manuscript-api";
@@ -303,7 +304,7 @@ export default function WorkflowWorkspace() {
         {currentStep === 3 && <Step3ReadFoundPapers projectId={projectId} />}
         {currentStep === 4 && <ExpandWorkspace projectId={projectId} />}
         {currentStep === 5 && <VisualizeWorkspace />}
-        {currentStep === 6 && <DraftWorkspaceInline />}
+        {currentStep === 6 && <DraftWorkspaceInline projectId={projectId} />}
 
         <div className="border border-slate-700/50 rounded-xl bg-[#0d1b30] p-4 flex items-center justify-between gap-3">
           <div>
@@ -6595,7 +6596,7 @@ function VisualizeWorkspace() {
 // ============================================================
 // Step 6: Draft Workspace (Inline version)
 // ============================================================
-function DraftWorkspaceInline() {
+function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   // Reporting style
   const [selectedStyle, setSelectedStyle] = useState("apa");
   const activeStyle = REPORTING_STYLES.find((s) => s.id === selectedStyle) || REPORTING_STYLES[0];
@@ -6683,33 +6684,91 @@ function DraftWorkspaceInline() {
   const [aiCheckResult, setAiCheckResult] = useState<string | null>(null);
   const [aiChecking, setAiChecking] = useState(false);
 
-  const [storedArtifacts, setStoredArtifacts] = useState<Artifact[]>(() => {
-    try {
-      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-      const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
+  const [allArtifacts, setAllArtifacts] = useState<Artifact[]>([]);
 
   useEffect(() => {
-    const onUpdate = () => {
-      try {
-        const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-        const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
-        setStoredArtifacts(Array.isArray(parsed) ? parsed : []);
-      } catch { /* ignore */ }
-    };
-    window.addEventListener(ARTIFACTS_UPDATED_EVENT, onUpdate);
-    window.addEventListener("storage", onUpdate);
-    return () => {
-      window.removeEventListener(ARTIFACTS_UPDATED_EVENT, onUpdate);
-      window.removeEventListener("storage", onUpdate);
-    };
-  }, []);
+    if (!projectId) return;
 
-  const allArtifacts = storedArtifacts.length > 0 ? storedArtifacts : DUMMY_ARTIFACTS;
+    const loadCurrentProjectArtifacts = async () => {
+      const loadLocalArtifacts = (): Artifact[] => {
+        if (typeof window === "undefined") return [];
+        try {
+          const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+          const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
+          return Array.isArray(parsed)
+            ? parsed.filter((artifact) => !artifact.projectId || artifact.projectId === projectId)
+            : [];
+        } catch {
+          return [];
+        }
+      };
+
+      try {
+        const [papers, notes] = await Promise.all([
+          paperAPI.list(projectId),
+          noteAPI.listByProject(projectId),
+        ]);
+
+        const paperArtifacts: Artifact[] = papers
+          .filter((paper) => paper.is_entry_paper || paper.is_expanded_paper)
+          .map((paper) => ({
+            id: `entry-paper-${paper.id}`,
+            title: paper.title,
+            type: "entry-paper",
+            projectId: paper.project_id,
+            sourceStep: 3,
+            description:
+              paper.discovery_note ||
+              [
+                paper.is_entry_paper ? "Entry Paper" : null,
+                paper.is_expanded_paper ? "Expanded Paper" : null,
+                paper.journal,
+                paper.year ? String(paper.year) : null,
+              ]
+                .filter(Boolean)
+                .join(" · "),
+            updatedAt: new Date().toISOString().split("T")[0],
+            content: paper.abstract || "",
+          }));
+
+        const noteArtifacts: Artifact[] = (notes as ApiNote[]).map((note) => ({
+          id: note.id,
+          title: note.title,
+          type: note.note_type,
+          projectId: note.project_id,
+          sourceStep: 3,
+          description: note.description || note.content || "Saved note",
+          updatedAt: (note.updated_at || "").includes("T")
+            ? note.updated_at.split("T")[0]
+            : note.updated_at || new Date().toISOString().split("T")[0],
+          content: note.content || note.description || "",
+        }));
+
+        const merged = [...loadLocalArtifacts(), ...paperArtifacts, ...noteArtifacts];
+        const deduped = Array.from(new Map(merged.map((artifact) => [artifact.id, artifact])).values());
+        setAllArtifacts(deduped);
+      } catch {
+        const fallback = loadLocalArtifacts();
+        setAllArtifacts(fallback);
+      }
+    };
+
+    void loadCurrentProjectArtifacts();
+
+    const onArtifactsUpdated = () => {
+      void loadCurrentProjectArtifacts();
+    };
+
+    window.addEventListener(ARTIFACTS_UPDATED_EVENT, onArtifactsUpdated);
+    window.addEventListener("notes-updated", onArtifactsUpdated);
+    window.addEventListener("storage", onArtifactsUpdated);
+
+    return () => {
+      window.removeEventListener(ARTIFACTS_UPDATED_EVENT, onArtifactsUpdated);
+      window.removeEventListener("notes-updated", onArtifactsUpdated);
+      window.removeEventListener("storage", onArtifactsUpdated);
+    };
+  }, [projectId]);
 
   const getContentKey = (compId: string) => `${selectedStyle}-${compId}`;
 
@@ -6971,9 +7030,13 @@ function DraftWorkspaceInline() {
   const [slashCompId, setSlashCompId] = useState("");
   const slashInputRef = React.useRef<HTMLInputElement>(null);
 
-  const slashFilteredArtifacts = allArtifacts.filter((a) =>
-    !slashQuery || a.title.toLowerCase().includes(slashQuery.toLowerCase())
-  );
+  const slashFilteredArtifacts = allArtifacts.filter((a) => {
+    if (!slashQuery) return true;
+    const q = slashQuery.toLowerCase();
+    return [a.title, a.description, a.content, a.type]
+      .filter(Boolean)
+      .some((field) => String(field).toLowerCase().includes(q));
+  });
 
   const openSlashMenu = (compId: string, slashIdx: number, queryAfterSlash: string) => {
     setSlashMenuOpen(true);
@@ -7792,7 +7855,11 @@ function DraftWorkspaceInline() {
             </div>
             {/* Results list */}
             <div className="overflow-y-auto flex-1">
-              {slashFilteredArtifacts.length === 0 ? (
+              {allArtifacts.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-10">
+                  当前项目还没有任何 Artifacts。请先在 Artifact Center 或前面步骤创建后再插入。
+                </p>
+              ) : slashFilteredArtifacts.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-10">No matching artifacts found</p>
               ) : (
                 slashFilteredArtifacts.map((a) => {
