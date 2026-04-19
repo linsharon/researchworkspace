@@ -64,4 +64,17 @@
 
 .pdf-scroll-host .rpv-core__inner-pages::-webkit-scrollbar-thumb:hover {
 	background: rgba(34, 211, 238, 0.95);
+	box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.16);
+}
+
+.pdf-scroll-host:hover .rpv-core__inner-pages::-webkit-scrollbar {
+	width: 14px;
+}
+
+.pdf-scroll-host:hover .rpv-core__inner-pages::-webkit-scrollbar-track {
+	background: rgba(8, 15, 28, 0.98);
+}
+
+.pdf-scroll-host:hover .rpv-core__inner-pages {
+	scrollbar-color: rgba(34, 211, 238, 0.95) rgba(8, 15, 28, 0.98);
 }

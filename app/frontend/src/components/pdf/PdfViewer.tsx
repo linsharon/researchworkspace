@@ -150,6 +150,7 @@ export default function PdfViewer({
   const [conceptDescription, setConceptDescription] = useState("");
   const [conceptCategory, setConceptCategory] = useState("Concept");
   const [conceptColor, setConceptColor] = useState("#22d3ee");
+  const [documentPageCount, setDocumentPageCount] = useState<number>(totalPages ?? 0);
 
   const pageLayout = useMemo(
     () => ({
@@ -163,11 +164,12 @@ export default function PdfViewer({
 
   const resolvedPage = currentPage ?? viewerState.currentPage;
   const resolvedZoom = zoom ?? viewerState.zoomLevel;
+  const resolvedTotalPages = totalPages ?? documentPageCount;
 
   const handlePageChange = (nextPage: number) => {
     const bounded =
-      typeof totalPages === "number"
-        ? Math.min(Math.max(nextPage, 1), totalPages)
+      typeof resolvedTotalPages === "number" && resolvedTotalPages > 0
+        ? Math.min(Math.max(nextPage, 1), resolvedTotalPages)
         : Math.max(nextPage, 1);
     if (typeof onPageChangeProp === "function") {
       onPageChangeProp(bounded);
@@ -175,6 +177,15 @@ export default function PdfViewer({
     }
     setViewerState(prev => ({ ...prev, currentPage: bounded }));
   };
+
+  const jumpToPage = useCallback((page: number) => {
+    const boundedPage = Math.max(1, Math.min(page, resolvedTotalPages || page));
+    const target = containerRef.current?.querySelector(`[data-testid="core__page-layer-${boundedPage - 1}"]`);
+    if (target instanceof HTMLElement) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    handlePageChange(boundedPage);
+  }, [resolvedTotalPages]);
 
   const applyZoom = (nextZoom: number) => {
     const bounded = Math.min(Math.max(nextZoom, 30), 300);
@@ -362,7 +373,7 @@ export default function PdfViewer({
 
     const textToTranslate = selectionState.text;
 
-    /** Fallback: use Google Translate unofficial API (no key required) */
+    // Primary translator: Google Translate public endpoint (no API key required).
     const translateWithGoogle = async (text: string): Promise<string> => {
       const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q=${encodeURIComponent(text)}`;
       const res = await fetch(url);
@@ -375,69 +386,34 @@ export default function PdfViewer({
       return segments.join("");
     };
 
-    try {
-      const models = ["gpt-5-chat", "gemini-2.5-pro", "deepseek-v3.2"];
-      let translated = "";
-      let lastError: unknown = null;
+    // Fallback translator: MyMemory public translation API (no API key required).
+    const translateWithMyMemory = async (text: string): Promise<string> => {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=auto|zh-CN`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`MyMemory HTTP ${res.status}`);
 
-      for (const model of models) {
-        try {
-          const response = await axios.post("/api/v1/aihub/gentxt", {
-            model,
-            stream: false,
-            temperature: 0.2,
-            max_tokens: 1200,
-            messages: [
-              {
-                role: "system",
-                content: "You are a translation assistant. Translate the user's English text to natural simplified Chinese only.",
-              },
-              {
-                role: "user",
-                content: textToTranslate,
-              },
-            ],
-          });
-
-          translated = response?.data?.content?.trim() || "";
-          if (translated) {
-            break;
-          }
-        } catch (error) {
-          lastError = error;
-        }
+      const data = (await res.json()) as {
+        responseData?: { translatedText?: string };
+      };
+      const translated = data.responseData?.translatedText?.trim() || "";
+      if (!translated) {
+        throw new Error("MyMemory returned empty translation");
       }
+      return translated;
+    };
 
-      if (translated) {
-        setTranslatedText(translated);
-      } else {
-        // All AI models failed — fall back to Google Translate
-        console.warn("AI translation failed, falling back to Google Translate:", lastError);
-        try {
-          const fallback = await translateWithGoogle(textToTranslate);
-          setTranslatedText(fallback || "翻译失败：未返回有效内容。");
-        } catch (fallbackError) {
-          console.error("Google Translate fallback also failed:", fallbackError);
-          const detail =
-            axios.isAxiosError(lastError)
-              ? (lastError.response?.data as { detail?: string } | undefined)?.detail
-              : undefined;
-          setTranslatedText(detail ? `翻译失败：${detail}` : "翻译失败：未返回有效内容。");
-        }
+    try {
+      try {
+        const translated = await translateWithGoogle(textToTranslate);
+        setTranslatedText(translated || "翻译失败：未返回有效内容。");
+      } catch (googleError) {
+        console.warn("Google Translate unavailable, falling back to MyMemory:", googleError);
+        const fallback = await translateWithMyMemory(textToTranslate);
+        setTranslatedText(fallback || "翻译失败：未返回有效内容。");
       }
     } catch (error) {
-      console.error("Failed to translate text:", error);
-      // Try Google Translate as last resort
-      try {
-        const fallback = await translateWithGoogle(textToTranslate);
-        setTranslatedText(fallback || "翻译失败，请稍后重试。");
-      } catch {
-        const detail =
-          axios.isAxiosError(error)
-            ? (error.response?.data as { detail?: string } | undefined)?.detail
-            : undefined;
-        setTranslatedText(detail ? `翻译失败：${detail}` : "翻译失败，请稍后重试。");
-      }
+      console.error("Failed to translate text with public translators:", error);
+      setTranslatedText("翻译失败：当前公共翻译服务不可用，请稍后重试。");
     }
 
     clearSelectionState();
@@ -566,13 +542,14 @@ export default function PdfViewer({
 
       {showToolbar ? (
         <div className="border-b border-slate-700/50 bg-slate-800/40 px-3 py-2 text-xs text-slate-600">
-          Page {resolvedPage} / {typeof totalPages === "number" ? totalPages : "--"} · Zoom {resolvedZoom}% · {citationsText} · {referencesText}
+          Page {resolvedPage} / {resolvedTotalPages || "--"} · Zoom {resolvedZoom}% · {citationsText} · {referencesText}
         </div>
       ) : null}
 
-      <div className="relative flex-1 min-h-0 bg-[#0d1b30]">
+      <div className="relative flex flex-1 min-h-0 bg-[#0d1b30]">
+        <div className="relative flex-1 min-h-0">
         {pdfUrl ? (
-          <div className="pdf-scroll-host h-full min-h-0 overflow-auto bg-[#0d1b30] p-2">
+          <div className="pdf-scroll-host h-full min-h-0 overflow-hidden bg-[#0d1b30] p-2">
             <Worker workerUrl={PDF_WORKER_URL}>
               <Viewer
                 key={resolvedZoom}
@@ -581,9 +558,10 @@ export default function PdfViewer({
                 pageLayout={pageLayout}
                 plugins={[selectionPlugin]}
                 scrollMode={ScrollMode.Vertical}
-                onDocumentLoad={() => {
+                onDocumentLoad={(event: any) => {
                   setIsDocumentLoaded(true);
                   setLoadError(null);
+                  setDocumentPageCount(event?.doc?.numPages ?? totalPages ?? 0);
                 }}
                 onPageChange={(event: any) => handlePageChange((event?.currentPage ?? 0) + 1)}
                 onZoom={(event: any) => {
@@ -667,6 +645,43 @@ export default function PdfViewer({
               </Button>
             </div>
           </div>
+        ) : null}
+        </div>
+
+        {resolvedTotalPages > 0 ? (
+          <aside className="hidden w-24 shrink-0 border-l border-slate-700/50 bg-[#09111f] xl:flex xl:flex-col">
+            <div className="border-b border-slate-700/50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Pages
+            </div>
+            <div className="flex-1 overflow-y-auto px-2 py-3 [scrollbar-color:#06b6d4_#0f172a] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-900/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-500/70">
+              <div className="space-y-2">
+                {Array.from({ length: resolvedTotalPages }, (_, index) => {
+                  const pageNumber = index + 1;
+                  const isActive = pageNumber === resolvedPage;
+                  return (
+                    <button
+                      key={pageNumber}
+                      className={cn(
+                        "group block w-full rounded-lg border px-2 py-2 text-left transition-all",
+                        isActive
+                          ? "border-cyan-400 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(34,211,238,0.2)]"
+                          : "border-slate-700/70 bg-[#0d1b30] hover:border-cyan-400/80 hover:bg-slate-900"
+                      )}
+                      onClick={() => jumpToPage(pageNumber)}
+                      type="button"
+                    >
+                      <div className="mb-2 flex h-16 items-center justify-center rounded-md border border-slate-700/60 bg-slate-950/70 text-[11px] font-semibold text-slate-300 group-hover:border-cyan-400/60 group-hover:text-cyan-300">
+                        Page {pageNumber}
+                      </div>
+                      <div className={cn("text-center text-xs font-medium", isActive ? "text-cyan-400" : "text-white group-hover:text-cyan-300")}>
+                        {pageNumber}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </aside>
         ) : null}
       </div>
 
