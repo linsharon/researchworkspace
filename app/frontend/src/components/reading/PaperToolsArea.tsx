@@ -567,8 +567,8 @@ export default function PaperToolsArea({
                   key={note.id}
                   id={`paper-note-${note.id}`}
                   className={cn(
-                    "hover:shadow-sm transition-shadow",
-                    focusNoteId === note.id && "border-blue-300 bg-blue-50/50"
+                    "border-slate-700/60 bg-[#0d1b30] text-white transition-all duration-200 hover:border-cyan-400/80 hover:shadow-sm",
+                    (focusNoteId === note.id || selectedNote?.id === note.id) && "border-cyan-400 shadow-[0_0_0_1px_rgba(34,211,238,0.25)]"
                   )}
                 >
                   <button
@@ -577,7 +577,12 @@ export default function PaperToolsArea({
                     type="button"
                   >
                     <CardHeader className="py-3">
-                      <CardTitle className="text-sm text-slate-800 hover:text-cyan-700 transition-colors underline-offset-2 hover:underline">
+                      <CardTitle
+                        className={cn(
+                          "text-sm text-white transition-colors underline-offset-2",
+                          (focusNoteId === note.id || selectedNote?.id === note.id) ? "text-cyan-400 underline" : "hover:text-cyan-400 hover:underline"
+                        )}
+                      >
                         {note.title}
                       </CardTitle>
                     </CardHeader>
@@ -622,14 +627,25 @@ export default function PaperToolsArea({
               </div>
             )}
             {filteredHighlights.map((item) => (
-              <Card key={item.id} className="hover:shadow-sm transition-shadow">
+              <Card
+                key={item.id}
+                className={cn(
+                  "border-slate-700/60 bg-[#0d1b30] text-white transition-all duration-200 hover:border-cyan-400/80 hover:shadow-sm",
+                  selectedHighlight?.id === item.id && "border-cyan-400 shadow-[0_0_0_1px_rgba(34,211,238,0.25)]"
+                )}
+              >
                 <button
                   className="block w-full text-left"
                   onClick={() => setSelectedHighlight(item)}
                   type="button"
                 >
                   <CardHeader className="py-3">
-                    <CardTitle className="text-sm text-slate-800 hover:text-cyan-700 transition-colors underline-offset-2 hover:underline">
+                    <CardTitle
+                      className={cn(
+                        "text-sm text-white transition-colors underline-offset-2",
+                        selectedHighlight?.id === item.id ? "text-cyan-400 underline" : "hover:text-cyan-400 hover:underline"
+                      )}
+                    >
                       {getHighlightTitle(item)}
                     </CardTitle>
                   </CardHeader>
