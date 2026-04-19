@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
@@ -6691,6 +6691,37 @@ function VisualizeWorkspace() {
 function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const { user } = useAuth();
   const isPremiumUser = Boolean(user?.is_premium) || user?.role === "admin";
+  const draftStorageUserScope = user?.id || user?.email?.trim().toLowerCase() || "anonymous";
+  const draftComponentsStorageKey = `${DRAFT_COMPONENTS_STORAGE_KEY}:${draftStorageUserScope}:${projectId}`;
+  const draftStructureStorageKey = `${DRAFT_STRUCTURE_STORAGE_KEY}:${draftStorageUserScope}:${projectId}`;
+  const draftInsertedSegmentsStorageKey = `${DRAFT_INSERTED_SEGMENTS_STORAGE_KEY}:${draftStorageUserScope}:${projectId}`;
+
+  const parseInsertedSegmentMap = (saved: string | null): InsertedSegmentMap => {
+    try {
+      const parsed = saved ? (JSON.parse(saved) as InsertedSegmentMap | Record<string, string[]>) : {};
+      if (!parsed || typeof parsed !== "object") return {};
+
+      const migrated: InsertedSegmentMap = {};
+      Object.entries(parsed).forEach(([key, value]) => {
+        if (!Array.isArray(value)) return;
+        if (value.length > 0 && typeof value[0] === "string") {
+          migrated[key] = (value as string[]).map((text) => ({
+            text,
+            sourceId: "",
+            kind: "note",
+            subtype: "literature-note",
+            paperId: "",
+            citationNumber: Number.parseInt((text.match(/\[(\d+)\]$/)?.[1] || "0"), 10) || 0,
+          }));
+        } else {
+          migrated[key] = value as InsertedSegment[];
+        }
+      });
+      return migrated;
+    } catch {
+      return {};
+    }
+  };
 
   // Reporting style
   const [selectedStyle, setSelectedStyle] = useState("apa");
@@ -6700,7 +6731,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [componentContents, setComponentContents] = useState<Record<string, string>>(() => {
     if (typeof window === "undefined") return {};
     try {
-      const saved = window.localStorage.getItem(DRAFT_COMPONENTS_STORAGE_KEY);
+      const saved = window.localStorage.getItem(draftComponentsStorageKey);
       const parsed = saved ? (JSON.parse(saved) as Record<string, string>) : {};
       return parsed && typeof parsed === "object" ? parsed : {};
     } catch {
@@ -6729,7 +6760,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [macroChecked, setMacroChecked] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try {
-      const saved = window.localStorage.getItem(DRAFT_STRUCTURE_STORAGE_KEY);
+      const saved = window.localStorage.getItem(draftStructureStorageKey);
       const parsed = saved ? (JSON.parse(saved) as { macroChecked?: Record<string, boolean> }) : {};
       return parsed.macroChecked && typeof parsed.macroChecked === "object" ? parsed.macroChecked : {};
     } catch {
@@ -6739,7 +6770,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [mesoChecked, setMesoChecked] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try {
-      const saved = window.localStorage.getItem(DRAFT_STRUCTURE_STORAGE_KEY);
+      const saved = window.localStorage.getItem(draftStructureStorageKey);
       const parsed = saved ? (JSON.parse(saved) as { mesoChecked?: Record<string, boolean> }) : {};
       return parsed.mesoChecked && typeof parsed.mesoChecked === "object" ? parsed.mesoChecked : {};
     } catch {
@@ -6749,7 +6780,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [microBasicChecked, setMicroBasicChecked] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try {
-      const saved = window.localStorage.getItem(DRAFT_STRUCTURE_STORAGE_KEY);
+      const saved = window.localStorage.getItem(draftStructureStorageKey);
       const parsed = saved ? (JSON.parse(saved) as { microBasicChecked?: Record<string, boolean> }) : {};
       return parsed.microBasicChecked && typeof parsed.microBasicChecked === "object" ? parsed.microBasicChecked : {};
     } catch {
@@ -6759,7 +6790,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [microReadChecked, setMicroReadChecked] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try {
-      const saved = window.localStorage.getItem(DRAFT_STRUCTURE_STORAGE_KEY);
+      const saved = window.localStorage.getItem(draftStructureStorageKey);
       const parsed = saved ? (JSON.parse(saved) as { microReadChecked?: Record<string, boolean> }) : {};
       return parsed.microReadChecked && typeof parsed.microReadChecked === "object" ? parsed.microReadChecked : {};
     } catch {
@@ -6769,7 +6800,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [microCredChecked, setMicroCredChecked] = useState<Record<string, boolean>>(() => {
     if (typeof window === "undefined") return {};
     try {
-      const saved = window.localStorage.getItem(DRAFT_STRUCTURE_STORAGE_KEY);
+      const saved = window.localStorage.getItem(draftStructureStorageKey);
       const parsed = saved ? (JSON.parse(saved) as { microCredChecked?: Record<string, boolean> }) : {};
       return parsed.microCredChecked && typeof parsed.microCredChecked === "object" ? parsed.microCredChecked : {};
     } catch {
@@ -6780,31 +6811,8 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [aiChecking, setAiChecking] = useState(false);
   const [insertedSegments, setInsertedSegments] = useState<InsertedSegmentMap>(() => {
     if (typeof window === "undefined") return {};
-    try {
-      const saved = window.localStorage.getItem(`${DRAFT_INSERTED_SEGMENTS_STORAGE_KEY}:${projectId}`);
-      const parsed = saved ? (JSON.parse(saved) as InsertedSegmentMap | Record<string, string[]>) : {};
-      if (!parsed || typeof parsed !== "object") return {};
-
-      const migrated: InsertedSegmentMap = {};
-      Object.entries(parsed).forEach(([key, value]) => {
-        if (!Array.isArray(value)) return;
-        if (value.length > 0 && typeof value[0] === "string") {
-          migrated[key] = (value as string[]).map((text) => ({
-            text,
-            sourceId: "",
-            kind: "note",
-            subtype: "literature-note",
-            paperId: "",
-            citationNumber: Number.parseInt((text.match(/\[(\d+)\]$/)?.[1] || "0"), 10) || 0,
-          }));
-        } else {
-          migrated[key] = value as InsertedSegment[];
-        }
-      });
-      return migrated;
-    } catch {
-      return {};
-    }
+    const saved = window.localStorage.getItem(draftInsertedSegmentsStorageKey);
+    return parseInsertedSegmentMap(saved);
   });
 
   const [allArtifacts, setAllArtifacts] = useState<Artifact[]>([]);
@@ -6908,13 +6916,13 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(DRAFT_COMPONENTS_STORAGE_KEY, JSON.stringify(componentContents));
-  }, [componentContents]);
+    window.localStorage.setItem(draftComponentsStorageKey, JSON.stringify(componentContents));
+  }, [componentContents, draftComponentsStorageKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(
-      DRAFT_STRUCTURE_STORAGE_KEY,
+      draftStructureStorageKey,
       JSON.stringify({
         macroChecked,
         mesoChecked,
@@ -6923,15 +6931,50 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
         microCredChecked,
       })
     );
-  }, [macroChecked, mesoChecked, microBasicChecked, microReadChecked, microCredChecked]);
+  }, [macroChecked, mesoChecked, microBasicChecked, microReadChecked, microCredChecked, draftStructureStorageKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      `${DRAFT_INSERTED_SEGMENTS_STORAGE_KEY}:${projectId}`,
-      JSON.stringify(insertedSegments)
-    );
-  }, [insertedSegments, projectId]);
+    window.localStorage.setItem(draftInsertedSegmentsStorageKey, JSON.stringify(insertedSegments));
+  }, [insertedSegments, draftInsertedSegmentsStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const saved = window.localStorage.getItem(draftComponentsStorageKey);
+      const parsed = saved ? (JSON.parse(saved) as Record<string, string>) : {};
+      setComponentContents(parsed && typeof parsed === "object" ? parsed : {});
+    } catch {
+      setComponentContents({});
+    }
+
+    try {
+      const saved = window.localStorage.getItem(draftStructureStorageKey);
+      const parsed = saved
+        ? (JSON.parse(saved) as {
+            macroChecked?: Record<string, boolean>;
+            mesoChecked?: Record<string, boolean>;
+            microBasicChecked?: Record<string, boolean>;
+            microReadChecked?: Record<string, boolean>;
+            microCredChecked?: Record<string, boolean>;
+          })
+        : {};
+      setMacroChecked(parsed.macroChecked && typeof parsed.macroChecked === "object" ? parsed.macroChecked : {});
+      setMesoChecked(parsed.mesoChecked && typeof parsed.mesoChecked === "object" ? parsed.mesoChecked : {});
+      setMicroBasicChecked(parsed.microBasicChecked && typeof parsed.microBasicChecked === "object" ? parsed.microBasicChecked : {});
+      setMicroReadChecked(parsed.microReadChecked && typeof parsed.microReadChecked === "object" ? parsed.microReadChecked : {});
+      setMicroCredChecked(parsed.microCredChecked && typeof parsed.microCredChecked === "object" ? parsed.microCredChecked : {});
+    } catch {
+      setMacroChecked({});
+      setMesoChecked({});
+      setMicroBasicChecked({});
+      setMicroReadChecked({});
+      setMicroCredChecked({});
+    }
+
+    setInsertedSegments(parseInsertedSegmentMap(window.localStorage.getItem(draftInsertedSegmentsStorageKey)));
+  }, [draftComponentsStorageKey, draftStructureStorageKey, draftInsertedSegmentsStorageKey]);
 
   const handleManualSave = () => {
     setLastSaved(new Date().toLocaleTimeString());
@@ -7172,10 +7215,11 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   };
 
   const handleEditorInput = (compId: string, editorEl: HTMLDivElement) => {
+    const pos = getEditorCaretOffset(editorEl);
     const value = editorEl.innerText.replace(/\u00a0/g, " ");
+    pendingCaretRef.current = { compId, offset: pos };
     handleContentChange(compId, value);
 
-    const pos = getEditorCaretOffset(editorEl);
     const textBefore = value.slice(0, pos);
     const slashIdx = textBefore.lastIndexOf("/");
     if (slashIdx !== -1) {
@@ -7187,6 +7231,25 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     }
     if (slashMenuOpen && slashCompId === compId) closeSlashMenu();
   };
+
+  useLayoutEffect(() => {
+    const pending = pendingCaretRef.current;
+    if (!pending) return;
+
+    const editorEl = editorRefs.current[pending.compId];
+    if (!editorEl) {
+      pendingCaretRef.current = null;
+      return;
+    }
+
+    if (document.activeElement !== editorEl) {
+      pendingCaretRef.current = null;
+      return;
+    }
+
+    setEditorCaretOffset(editorEl, pending.offset);
+    pendingCaretRef.current = null;
+  }, [componentContents]);
 
   const handleEditorClick = (compId: string, event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
@@ -7537,6 +7600,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [slashOnlyCurrentProject, setSlashOnlyCurrentProject] = useState(false);
   const slashInputRef = React.useRef<HTMLInputElement>(null);
   const editorRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
+  const pendingCaretRef = React.useRef<{ compId: string; offset: number } | null>(null);
 
   const buildReferenceText = (paper?: ApiPaper) => {
     if (!paper) return "Unknown source";
