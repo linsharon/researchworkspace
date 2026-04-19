@@ -59,12 +59,15 @@ export default function PaperReadPage() {
     const thinkingId = `msg-${Date.now()}-thinking`;
     setChatMessages((prev) => [...prev, { id: thinkingId, role: "assistant" as const, content: "…" }]);
 
-    // Try both legacy model names and common provider names for broad compatibility
+    // Try model names in order of likelihood
     const models = [
+      // DeepSeek official API models (primary)
+      "deepseek-chat",
       // OpenRouter style names
       "openai/gpt-4-turbo",
       "google/gemini-2.0-flash",
       "anthropic/claude-3.5-sonnet",
+      "deepseek-ai/deepseek-v3",
       // SiliconFlow style names  
       "Qwen/Qwen-Max",
       "deepseek-ai/deepseek-v3",

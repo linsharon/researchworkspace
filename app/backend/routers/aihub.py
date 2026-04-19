@@ -111,6 +111,7 @@ async def generate_text(
     - stream=true: return an SSE streaming response
 
     Available models (depends on your AI provider's API):
+    - DeepSeek (https://api.deepseek.com): deepseek-chat
     - OpenRouter: openai/gpt-4-turbo, google/gemini-2.0-flash, anthropic/claude-3.5-sonnet, deepseek-ai/deepseek-v3
     - SiliconFlow: Qwen/Qwen-Max, deepseek-ai/deepseek-v3
     - OpenAI direct: gpt-4o, gpt-4-turbo
