@@ -137,6 +137,64 @@ type SlashInsertItem = {
 
 type InsertedSegmentMap = Record<string, string[]>;
 
+type DraftErrorBoundaryState = {
+  hasError: boolean;
+  message: string;
+  stack: string;
+};
+
+class DraftErrorBoundary extends React.Component<React.PropsWithChildren, DraftErrorBoundaryState> {
+  constructor(props: React.PropsWithChildren) {
+    super(props);
+    this.state = {
+      hasError: false,
+      message: "",
+      stack: "",
+    };
+  }
+
+  static getDerivedStateFromError(error: Error): DraftErrorBoundaryState {
+    return {
+      hasError: true,
+      message: error?.message || "Unknown Draft page error",
+      stack: error?.stack || "",
+    };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("Draft page render error:", error, info);
+    this.setState((prev) => ({
+      ...prev,
+      stack: [error?.stack || "", info.componentStack || ""].filter(Boolean).join("\n\n"),
+    }));
+  }
+
+  render() {
+    if (!this.state.hasError) {
+      return this.props.children;
+    }
+
+    return (
+      <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-5 space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold text-rose-300">Draft 页面加载失败</h2>
+          <p className="text-xs text-rose-100/90 mt-1">
+            请把下面的错误信息和日志直接复制给我，我可以继续定位。
+          </p>
+        </div>
+        <div className="rounded-lg border border-rose-400/20 bg-black/20 p-3">
+          <p className="text-xs font-semibold text-rose-200 mb-1">Error Message</p>
+          <pre className="text-xs whitespace-pre-wrap text-white">{this.state.message}</pre>
+        </div>
+        <div className="rounded-lg border border-rose-400/20 bg-black/20 p-3">
+          <p className="text-xs font-semibold text-rose-200 mb-1">Log / Stack</p>
+          <pre className="text-xs whitespace-pre-wrap text-white max-h-72 overflow-auto">{this.state.stack || "No stack available"}</pre>
+        </div>
+      </div>
+    );
+  }
+}
+
 const writeWorkflowCacheMeta = (partial: Partial<WorkflowCacheMeta>) => {
   if (typeof window === "undefined") return;
   let previous: WorkflowCacheMeta | null = null;
@@ -322,7 +380,11 @@ export default function WorkflowWorkspace() {
         {currentStep === 3 && <Step3ReadFoundPapers projectId={projectId} />}
         {currentStep === 4 && <ExpandWorkspace projectId={projectId} />}
         {currentStep === 5 && <VisualizeWorkspace />}
-        {currentStep === 6 && <DraftWorkspaceInline projectId={projectId} />}
+        {currentStep === 6 && (
+          <DraftErrorBoundary>
+            <DraftWorkspaceInline projectId={projectId} />
+          </DraftErrorBoundary>
+        )}
 
         <div className="border border-slate-700/50 rounded-xl bg-[#0d1b30] p-4 flex items-center justify-between gap-3">
           <div>
@@ -6704,6 +6766,16 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   });
   const [aiCheckResult, setAiCheckResult] = useState<string | null>(null);
   const [aiChecking, setAiChecking] = useState(false);
+  const [insertedSegments, setInsertedSegments] = useState<InsertedSegmentMap>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = window.localStorage.getItem(`${DRAFT_INSERTED_SEGMENTS_STORAGE_KEY}:${projectId}`);
+      const parsed = saved ? (JSON.parse(saved) as InsertedSegmentMap) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
 
   const [allArtifacts, setAllArtifacts] = useState<Artifact[]>([]);
 
@@ -6876,17 +6948,6 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
       setAiChecking(false);
     }, 300);
   };
-
-  const [insertedSegments, setInsertedSegments] = useState<InsertedSegmentMap>(() => {
-    if (typeof window === "undefined") return {};
-    try {
-      const saved = window.localStorage.getItem(`${DRAFT_INSERTED_SEGMENTS_STORAGE_KEY}:${projectId}`);
-      const parsed = saved ? (JSON.parse(saved) as InsertedSegmentMap) : {};
-      return parsed && typeof parsed === "object" ? parsed : {};
-    } catch {
-      return {};
-    }
-  });
 
   const getFullText = () => {
     return activeStyle.components
