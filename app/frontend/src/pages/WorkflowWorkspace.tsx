@@ -128,24 +128,48 @@ type WorkflowCacheMeta = {
 
 type SlashInsertItem = {
   id: string;
-  kind: "note" | "highlight";
-  subtype: "literature-note" | "permanent-note" | "highlight";
+  kind: "purpose" | "keyword" | "note" | "visual";
+  subtype:
+    | "purpose"
+    | "keyword-concept"
+    | "keyword-construct"
+    | "keyword-theory"
+    | "keyword-framework"
+    | "keyword-method"
+    | "keyword-variable"
+    | "keyword-other"
+    | "literature-note"
+    | "permanent-note"
+    | "pre-writing-note"
+    | "visualization";
   projectId: string;
-  paperId: string;
-  paperTitle: string;
+  paperId?: string;
+  paperTitle?: string;
   title: string;
   gist: string;
-  referenceText: string;
+  referenceText?: string;
   updatedAt?: string;
 };
 
 type InsertedSegment = {
   text: string;
   sourceId: string;
-  kind: "note" | "highlight";
-  subtype: "literature-note" | "permanent-note" | "highlight";
+  kind: "purpose" | "keyword" | "note" | "visual";
+  subtype:
+    | "purpose"
+    | "keyword-concept"
+    | "keyword-construct"
+    | "keyword-theory"
+    | "keyword-framework"
+    | "keyword-method"
+    | "keyword-variable"
+    | "keyword-other"
+    | "literature-note"
+    | "permanent-note"
+    | "pre-writing-note"
+    | "visualization";
   paperId: string;
-  citationNumber: number;
+  citationNumber?: number;
 };
 
 type InsertedSegmentMap = Record<string, InsertedSegment[]>;
@@ -6162,8 +6186,17 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
     const bottomEl = tableBottomScrollbarRef.current;
     const innerEl = tableBottomScrollbarInnerRef.current;
     if (!tableEl || !bottomEl || !innerEl) return;
-    innerEl.style.width = `${tableEl.scrollWidth}px`;
-    bottomEl.scrollLeft = tableEl.scrollLeft;
+
+    const syncBottomWidth = () => {
+      innerEl.style.width = `${tableEl.scrollWidth}px`;
+      bottomEl.scrollLeft = tableEl.scrollLeft;
+    };
+
+    syncBottomWidth();
+    window.addEventListener("resize", syncBottomWidth);
+    return () => {
+      window.removeEventListener("resize", syncBottomWidth);
+    };
   }, [pagedPaperOverviewRows, paperOverviewPageSize]);
 
   const papers = useMemo(
@@ -6680,44 +6713,43 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
             </CardHeader>
             <CardContent>
               {paperAnalyticsLoading ? <p className="text-xs text-slate-400 mb-3">Loading paper metrics...</p> : null}
-              <ScrollArea className="max-h-[500px]">
-                <div
-                  className="overflow-x-auto"
-                  ref={tableScrollRef}
-                  onScroll={(e) => {
-                    if (tableBottomScrollbarRef.current) {
-                      tableBottomScrollbarRef.current.scrollLeft = e.currentTarget.scrollLeft;
-                    }
-                  }}
-                >
-                  <table className="w-full text-xs border-collapse min-w-[1380px]">
+              <div
+                className="max-h-[500px] overflow-auto rounded border border-slate-700/50"
+                ref={tableScrollRef}
+                onScroll={(e) => {
+                  if (tableBottomScrollbarRef.current) {
+                    tableBottomScrollbarRef.current.scrollLeft = e.currentTarget.scrollLeft;
+                  }
+                }}
+              >
+                  <table className="w-max min-w-[1680px] text-xs border-collapse">
                     <thead>
                       <tr>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 text-left">
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 text-left min-w-[320px]">
                           <button type="button" className="w-full text-left" onClick={() => togglePaperOverviewSort("title")}>Title{paperOverviewSortLabel("title")}</button>
                         </th>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 text-left">
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 text-left min-w-[130px]">
                           <button type="button" className="w-full text-left" onClick={() => togglePaperOverviewSort("category")}>Category{paperOverviewSortLabel("category")}</button>
                         </th>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 text-left">
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 text-left min-w-[140px]">
                           <button type="button" className="w-full text-left" onClick={() => togglePaperOverviewSort("processingTime")}>Processing Time{paperOverviewSortLabel("processingTime")}</button>
                         </th>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("highlights")}>Highlights{paperOverviewSortLabel("highlights")}</button></th>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("literatureNotes")}>Lit Notes{paperOverviewSortLabel("literatureNotes")}</button></th>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("permanentNotes")}>Perm Notes{paperOverviewSortLabel("permanentNotes")}</button></th>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("concept")}>Concept{paperOverviewSortLabel("concept")}</button></th>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("theory")}>Theory{paperOverviewSortLabel("theory")}</button></th>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("construct")}>Construct{paperOverviewSortLabel("construct")}</button></th>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("variable")}>Variable{paperOverviewSortLabel("variable")}</button></th>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("framework")}>Framework{paperOverviewSortLabel("framework")}</button></th>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("method")}>Method{paperOverviewSortLabel("method")}</button></th>
-                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("other")}>Other{paperOverviewSortLabel("other")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 min-w-[110px]"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("highlights")}>Highlights{paperOverviewSortLabel("highlights")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 min-w-[110px]"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("literatureNotes")}>Lit Notes{paperOverviewSortLabel("literatureNotes")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 min-w-[120px]"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("permanentNotes")}>Perm Notes{paperOverviewSortLabel("permanentNotes")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 min-w-[100px]"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("concept")}>Concept{paperOverviewSortLabel("concept")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 min-w-[100px]"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("theory")}>Theory{paperOverviewSortLabel("theory")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 min-w-[110px]"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("construct")}>Construct{paperOverviewSortLabel("construct")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 min-w-[100px]"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("variable")}>Variable{paperOverviewSortLabel("variable")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 min-w-[110px]"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("framework")}>Framework{paperOverviewSortLabel("framework")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 min-w-[100px]"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("method")}>Method{paperOverviewSortLabel("method")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 min-w-[90px]"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("other")}>Other{paperOverviewSortLabel("other")}</button></th>
                       </tr>
                     </thead>
                     <tbody>
                       {pagedPaperOverviewRows.map((row) => (
                         <tr key={row.paper.id} className="hover:bg-slate-800/20">
-                          <td className="p-2 border border-slate-700/50 text-left min-w-[280px]">
+                          <td className="p-2 border border-slate-700/50 text-left min-w-[320px]">
                             <Link to={`/paper-read/${projectId}/${row.paper.id}`} className="text-cyan-300 hover:underline">
                               {row.paper.title}
                             </Link>
@@ -6738,8 +6770,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                       ))}
                     </tbody>
                   </table>
-                </div>
-              </ScrollArea>
+              </div>
               <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500">
                 <span>Horizontal Scroll</span>
                 <span>Drag bar to view all columns</span>
@@ -7282,7 +7313,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
             kind: "note",
             subtype: "literature-note",
             paperId: "",
-            citationNumber: Number.parseInt((text.match(/\[(\d+)\]$/)?.[1] || "0"), 10) || 0,
+            citationNumber: Number.parseInt((text.match(/\[(\d+)\]$/)?.[1] || "0"), 10) || undefined,
           }));
         } else {
           migrated[key] = value as InsertedSegment[];
@@ -8273,7 +8304,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [slashStart, setSlashStart] = useState(-1);
   const [slashCompId, setSlashCompId] = useState("");
   const [slashItems, setSlashItems] = useState<SlashInsertItem[]>([]);
-  const [slashTypeFilter, setSlashTypeFilter] = useState<"all" | "notes" | "highlights">("all");
+  const [slashTypeFilter, setSlashTypeFilter] = useState<"all" | "purposes" | "keywords" | "notes" | "visuals">("all");
   const [slashOnlyCurrentProject, setSlashOnlyCurrentProject] = useState(false);
   const slashInputRef = React.useRef<HTMLInputElement>(null);
   const editorRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
@@ -8300,6 +8331,25 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     return note.description?.trim() || note.content?.trim() || note.title;
   };
 
+  const resolveKeywordCategory = (raw?: string): "concept" | "construct" | "theory" | "framework" | "method" | "variable" | "other" => {
+    const value = (raw || "").trim().toLowerCase();
+    if (["concept", "construct", "theory", "framework", "method", "variable", "other"].includes(value)) {
+      return value as "concept" | "construct" | "theory" | "framework" | "method" | "variable" | "other";
+    }
+    if (value === "keyword") return "concept";
+    return "other";
+  };
+
+  const getKeywordCategoryFromConcept = (concept: ApiConcept) => {
+    try {
+      const parsed = concept.definition ? (JSON.parse(concept.definition) as Record<string, unknown>) : null;
+      const fromField = typeof parsed?.category === "string" ? parsed.category : "";
+      return resolveKeywordCategory(fromField);
+    } catch {
+      return "other";
+    }
+  };
+
   useEffect(() => {
     if (!projectId) return;
 
@@ -8316,13 +8366,81 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
       const uniqueProjectIds = Array.from(new Set(projectIds.filter(Boolean)));
       const collected: SlashInsertItem[] = [];
 
+      const loadLocalArtifacts = (): Artifact[] => {
+        if (typeof window === "undefined") return [];
+        try {
+          const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+          const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      };
+      const localArtifacts = loadLocalArtifacts();
+
       for (const pid of uniqueProjectIds) {
-        const papers = await paperAPI.list(pid).catch(() => []);
-        const notes = await noteAPI.listByProject(pid).catch(() => []);
+        const [papers, notes, concepts] = await Promise.all([
+          paperAPI.list(pid).catch(() => []),
+          noteAPI.listByProject(pid).catch(() => []),
+          conceptAPI.list(pid).catch(() => []),
+        ]);
         const paperMap = new Map(papers.map((paper) => [paper.id, paper]));
+        const localProjectArtifacts = localArtifacts.filter((artifact) => !artifact.projectId || artifact.projectId === pid);
+
+        localProjectArtifacts
+          .filter((artifact) => artifact.type === "purpose")
+          .forEach((artifact) => {
+            const gist = (artifact.content || artifact.description || artifact.title || "").trim();
+            if (!gist) return;
+            collected.push({
+              id: `purpose-${artifact.id}`,
+              kind: "purpose",
+              subtype: "purpose",
+              projectId: artifact.projectId || pid,
+              title: artifact.title,
+              gist,
+              updatedAt: artifact.updatedAt,
+            });
+          });
+
+        localProjectArtifacts
+          .filter((artifact) => artifact.type === "visualization")
+          .forEach((artifact) => {
+            const gist = (artifact.description || artifact.title || "").trim();
+            if (!gist) return;
+            collected.push({
+              id: `visual-${artifact.id}`,
+              kind: "visual",
+              subtype: "visualization",
+              projectId: artifact.projectId || pid,
+              title: artifact.title,
+              gist,
+              updatedAt: artifact.updatedAt,
+            });
+          });
+
+        concepts.forEach((concept) => {
+          const category = getKeywordCategoryFromConcept(concept);
+          const gist = (concept.description || concept.title || "").trim();
+          if (!gist) return;
+          collected.push({
+            id: `keyword-${concept.id}`,
+            kind: "keyword",
+            subtype: `keyword-${category}`,
+            projectId: concept.project_id,
+            title: concept.title,
+            gist,
+            updatedAt: concept.created_at,
+          });
+        });
 
         notes
-          .filter((note) => note.note_type === "literature-note" || note.note_type === "permanent-note")
+          .filter(
+            (note) =>
+              note.note_type === "literature-note" ||
+              note.note_type === "permanent-note" ||
+              note.note_type === "pre-writing-note"
+          )
           .forEach((note) => {
             const paper = paperMap.get(note.paper_id);
             const gist = parseNoteGist(note);
@@ -8340,31 +8458,6 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
               updatedAt: note.updated_at,
             });
           });
-
-        const highlightGroups = await Promise.all(
-          papers.map((paper) =>
-            highlightAPI.list(paper.id).then((highlights) => ({ paper, highlights })).catch(() => ({ paper, highlights: [] as ApiHighlight[] }))
-          )
-        );
-
-        highlightGroups.forEach(({ paper, highlights }) => {
-          highlights.forEach((highlight) => {
-            const gist = (highlight.note || highlight.text || "").trim();
-            if (!gist) return;
-            collected.push({
-              id: `highlight-${highlight.id}`,
-              kind: "highlight",
-              subtype: "highlight",
-              projectId: paper.project_id,
-              paperId: paper.id,
-              paperTitle: paper.title,
-              title: `p.${highlight.page || "-"} ${paper.title}`,
-              gist,
-              referenceText: buildReferenceText(paper),
-              updatedAt: highlight.created_at,
-            });
-          });
-        });
       }
 
       const deduped = Array.from(new Map(collected.map((item) => [item.id, item])).values()).sort((a, b) =>
@@ -8395,8 +8488,10 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   );
 
   const slashFilteredArtifacts = slashScopedItems.filter((a) => {
+    if (slashTypeFilter === "purposes" && a.kind !== "purpose") return false;
+    if (slashTypeFilter === "keywords" && a.kind !== "keyword") return false;
     if (slashTypeFilter === "notes" && a.kind !== "note") return false;
-    if (slashTypeFilter === "highlights" && a.kind !== "highlight") return false;
+    if (slashTypeFilter === "visuals" && a.kind !== "visual") return false;
     if (!slashQuery) return true;
     const q = slashQuery.toLowerCase();
     return [a.title, a.gist, a.paperTitle, a.referenceText, a.subtype, a.projectId]
@@ -8430,32 +8525,47 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     const before = currentTargetVal.slice(0, slashStart);
     const after = currentTargetVal.slice(slashStart + 1 + slashQuery.length);
 
-    const referenceComponentId = activeStyle.components.find((comp) => comp.id.includes("reference"))?.id;
+    const isCitableNote =
+      a.kind === "note" &&
+      !!a.paperTitle &&
+      !!a.referenceText &&
+      (a.subtype === "literature-note" || a.subtype === "permanent-note" || a.subtype === "pre-writing-note");
+
+    const referenceComponentId = isCitableNote
+      ? activeStyle.components.find((comp) => comp.id.includes("reference"))?.id
+      : undefined;
     const referenceKey = referenceComponentId ? getContentKey(referenceComponentId) : null;
     const currentReferences = referenceKey ? componentContents[referenceKey] || "" : "";
     const referenceLines = currentReferences.split("\n").map((line) => line.trim()).filter(Boolean);
 
     let citationNumber: number | null = null;
-    const existingLine = referenceLines.find((line) => line.toLowerCase().includes(a.paperTitle.toLowerCase()));
-    if (existingLine) {
-      const match = existingLine.match(/^\[(\d+)\]/);
-      if (match) citationNumber = Number.parseInt(match[1], 10);
+    if (isCitableNote && a.paperTitle) {
+      const existingLine = referenceLines.find((line) => line.toLowerCase().includes(a.paperTitle!.toLowerCase()));
+      if (existingLine) {
+        const match = existingLine.match(/^\[(\d+)\]/);
+        if (match) citationNumber = Number.parseInt(match[1], 10);
+      }
+
+      if (!citationNumber) {
+        const existingNumbers = referenceLines
+          .map((line) => line.match(/^\[(\d+)\]/))
+          .filter(Boolean)
+          .map((match) => Number.parseInt((match as RegExpMatchArray)[1], 10));
+        citationNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+      }
     }
 
-    if (!citationNumber) {
-      const existingNumbers = referenceLines
-        .map((line) => line.match(/^\[(\d+)\]/))
-        .filter(Boolean)
-        .map((match) => Number.parseInt((match as RegExpMatchArray)[1], 10));
-      citationNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-    }
-
-    const gistWithCitation = `${a.gist.replace(/\s+$/, "")} [${citationNumber}]`;
+    const gistWithCitation = isCitableNote && citationNumber
+      ? `${a.gist.replace(/\s+$/, "")} [${citationNumber}]`
+      : a.gist;
     const nextTargetVal = `${before}${gistWithCitation}${after}`;
     const nextCaretOffset = before.length + gistWithCitation.length;
 
-    const shouldAppendReference = !referenceLines.some((line) => line.toLowerCase().includes(a.paperTitle.toLowerCase()));
-    const referenceEntry = `[${citationNumber}] ${a.referenceText}`;
+    const shouldAppendReference =
+      isCitableNote &&
+      !!a.paperTitle &&
+      !referenceLines.some((line) => line.toLowerCase().includes(a.paperTitle!.toLowerCase()));
+    const referenceEntry = citationNumber && a.referenceText ? `[${citationNumber}] ${a.referenceText}` : "";
     const nextReferences = referenceKey
       ? shouldAppendReference
         ? `${currentReferences}${currentReferences.trim() ? "\n" : ""}${referenceEntry}`
@@ -8476,8 +8586,8 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
           sourceId: a.id,
           kind: a.kind,
           subtype: a.subtype,
-          paperId: a.paperId,
-          citationNumber,
+          paperId: a.paperId || "",
+          citationNumber: citationNumber || undefined,
         },
       ],
     }));
@@ -9438,7 +9548,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     insertSlashArtifact(slashFilteredArtifacts[0].id);
                   }
                 }}
-                placeholder="Search notes/highlights to insert…"
+                placeholder="Search purposes, keywords, notes, visuals…"
                 className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none"
               />
               <button onClick={closeSlashMenu} className="text-slate-500 hover:text-white transition-colors">
@@ -9448,8 +9558,10 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
             <div className="px-4 py-2 border-b border-slate-700/70 flex items-center gap-2 flex-wrap">
               {([
                 { id: "all" as const, label: "All" },
+                { id: "purposes" as const, label: "Purposes" },
+                { id: "keywords" as const, label: "Keywords" },
                 { id: "notes" as const, label: "Notes" },
-                { id: "highlights" as const, label: "Highlights" },
+                { id: "visuals" as const, label: "Visuals" },
               ]).map((opt) => (
                 <button
                   key={opt.id}
@@ -9485,17 +9597,42 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
               {slashItems.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-10">
                   {isPremiumUser
-                    ? "暂无可用的 notes/highlights。请先在任一项目里创建 Literature Notes、Permanent Notes 或 Highlights。"
-                    : "当前项目暂无可用的 notes/highlights。请先创建 Literature Notes、Permanent Notes 或 Highlights。"}
+                    ? "暂无可用的 Purposes、Keywords、Notes 或 Visuals。请先在项目中创建这些 artifacts。"
+                    : "当前项目暂无可用的 Purposes、Keywords、Notes 或 Visuals。请先创建这些 artifacts。"}
                 </p>
               ) : slashScopedItems.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-10">
                   当前筛选范围无可用内容，请关闭“仅当前项目”或切换筛选条件。
                 </p>
               ) : slashFilteredArtifacts.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-10">No matching notes/highlights found</p>
+                <p className="text-sm text-slate-400 text-center py-10">No matching artifacts found</p>
               ) : (
                 slashFilteredArtifacts.map((a) => {
+                  const badgeLabel =
+                    a.subtype === "purpose"
+                      ? "Purpose"
+                      : a.subtype === "literature-note"
+                        ? "Note · Literature"
+                        : a.subtype === "permanent-note"
+                          ? "Note · Permanent"
+                          : a.subtype === "pre-writing-note"
+                            ? "Note · Pre-writing"
+                            : a.subtype === "visualization"
+                              ? "Visual"
+                              : a.subtype === "keyword-concept"
+                                ? "Keyword · Concept"
+                                : a.subtype === "keyword-construct"
+                                  ? "Keyword · Construct"
+                                  : a.subtype === "keyword-theory"
+                                    ? "Keyword · Theory"
+                                    : a.subtype === "keyword-framework"
+                                      ? "Keyword · Framework"
+                                      : a.subtype === "keyword-method"
+                                        ? "Keyword · Method"
+                                        : a.subtype === "keyword-variable"
+                                          ? "Keyword · Variable"
+                                          : "Keyword · Other";
+
                   return (
                     <button
                       key={a.id}
@@ -9506,23 +9643,25 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                         variant="secondary"
                         className={cn(
                           "text-[9px] px-1.5 py-0.5 mt-0.5 shrink-0",
-                          a.subtype === "literature-note"
-                            ? "bg-amber-50 text-amber-700"
-                            : a.subtype === "permanent-note"
-                              ? "bg-rose-50 text-rose-700"
-                              : "bg-yellow-50 text-yellow-700"
+                          a.subtype === "purpose"
+                            ? "bg-sky-50 text-sky-700"
+                            : a.subtype === "literature-note"
+                              ? "bg-amber-50 text-amber-700"
+                              : a.subtype === "permanent-note"
+                                ? "bg-rose-50 text-rose-700"
+                                : a.subtype === "pre-writing-note"
+                                  ? "bg-violet-50 text-violet-700"
+                                  : a.subtype === "visualization"
+                                    ? "bg-lime-50 text-lime-700"
+                                    : "bg-cyan-50 text-cyan-700"
                         )}
                       >
-                        {a.subtype === "literature-note"
-                          ? "Literature Note"
-                          : a.subtype === "permanent-note"
-                            ? "Permanent Note"
-                            : "Highlight"}
+                        {badgeLabel}
                       </Badge>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-slate-200 truncate">{a.title}</p>
                         <p className="text-[11px] text-slate-500 truncate">{a.gist}</p>
-                        <p className="text-[10px] text-slate-500 truncate">{a.paperTitle} · {a.projectId}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{a.paperTitle ? `${a.paperTitle} · ` : ""}{a.projectId}</p>
                       </div>
                     </button>
                   );

@@ -419,7 +419,18 @@ export default function ArtifactCenter() {
     void loadVisualThumbs();
   }, [artifacts]);
 
-  const filteredArtifacts = artifacts.filter((a) => {
+  const keywordArtifactsForAll = useMemo(() => {
+    return concepts.map((concept) => conceptToArtifact(concept, projectIdFromUrl));
+  }, [concepts, projectIdFromUrl]);
+
+  const filteredArtifacts = (filter === "all"
+    ? (() => {
+        const merged = [...artifacts, ...keywordArtifactsForAll];
+        const deduped = Array.from(new Map(merged.map((artifact) => [artifact.id, artifact])).values());
+        return deduped;
+      })()
+    : artifacts
+  ).filter((a) => {
     const matchesFilter =
       filter === "all" || FILTER_MAP[filter]?.includes(a.type);
     const matchesSearch =
@@ -557,6 +568,15 @@ export default function ArtifactCenter() {
   const handleDeleteArtifact = async (artifactId: string) => {
     const artifact = artifacts.find((item) => item.id === artifactId);
 
+    // In All tab, keyword cards are concept-backed artifacts built at runtime.
+    if (!artifact) {
+      const maybeConceptId = artifactId.startsWith("keyword-") ? artifactId.slice("keyword-".length) : "";
+      if (maybeConceptId && concepts.some((concept) => concept.id === maybeConceptId)) {
+        await handleDeleteConcept(maybeConceptId);
+      }
+      return;
+    }
+
     if (
       artifact &&
       (artifact.type === "literature-note" || artifact.type === "permanent-note")
@@ -669,7 +689,10 @@ export default function ArtifactCenter() {
 
   const handleCreatePackage = () => {
     if (!packName.trim() || selectedForPack.size === 0 || !user) return;
-    const selectedArtifacts = artifacts.filter((a) => selectedForPack.has(artifactPackToken(a.id)));
+    const combinedArtifacts = Array.from(
+      new Map([...artifacts, ...keywordArtifactsForAll].map((artifact) => [artifact.id, artifact])).values()
+    );
+    const selectedArtifacts = combinedArtifacts.filter((a) => selectedForPack.has(artifactPackToken(a.id)));
     const selectedConceptArtifacts = concepts
       .filter((concept) => selectedForPack.has(conceptPackToken(concept.id)))
       .map((concept) => conceptToArtifact(concept, projectIdFromUrl));
