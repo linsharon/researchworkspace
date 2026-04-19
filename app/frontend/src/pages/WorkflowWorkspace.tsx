@@ -6877,6 +6877,17 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     }, 300);
   };
 
+  const [insertedSegments, setInsertedSegments] = useState<InsertedSegmentMap>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = window.localStorage.getItem(`${DRAFT_INSERTED_SEGMENTS_STORAGE_KEY}:${projectId}`);
+      const parsed = saved ? (JSON.parse(saved) as InsertedSegmentMap) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
+
   const getFullText = () => {
     return activeStyle.components
       .map((comp) => {
@@ -7062,16 +7073,6 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [draftSaveMsg, setDraftSaveMsg] = useState<string | null>(null);
-  const [insertedSegments, setInsertedSegments] = useState<InsertedSegmentMap>(() => {
-    if (typeof window === "undefined") return {};
-    try {
-      const saved = window.localStorage.getItem(`${DRAFT_INSERTED_SEGMENTS_STORAGE_KEY}:${projectId}`);
-      const parsed = saved ? (JSON.parse(saved) as InsertedSegmentMap) : {};
-      return parsed && typeof parsed === "object" ? parsed : {};
-    } catch {
-      return {};
-    }
-  });
 
   const handleSaveAsWritingDraft = () => {
     const now = new Date();
