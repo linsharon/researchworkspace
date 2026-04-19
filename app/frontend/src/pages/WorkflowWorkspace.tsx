@@ -5838,8 +5838,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
 // Step 5: Visualize Workspace
 // ============================================================
 function VisualizeWorkspace({ projectId }: { projectId: string }) {
-  const [vizSection, setVizSection] = useState<"research" | "viztools">("research");
-  const [researchSubTab, setResearchSubTab] = useState<"papers" | "files" | "ai-summary" | "perm-notes" | "synthesis">("papers");
+  const [vizSection, setVizSection] = useState<"paper-overview" | "upload-visualizations" | "synthesis" | "viztools">("paper-overview");
 
   const [paperAnalyticsLoading, setPaperAnalyticsLoading] = useState(true);
   const [paperAnalyticsRows, setPaperAnalyticsRows] = useState<Array<{
@@ -5850,6 +5849,22 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
     conceptCounts: Record<string, number>;
     processingTime: string;
   }>>([]);
+  const [paperOverviewSort, setPaperOverviewSort] = useState<
+    | "title"
+    | "category"
+    | "processingTime"
+    | "highlights"
+    | "literatureNotes"
+    | "permanentNotes"
+    | "concept"
+    | "theory"
+    | "construct"
+    | "variable"
+    | "framework"
+    | "method"
+    | "other"
+  >("title");
+  const [paperOverviewSortDir, setPaperOverviewSortDir] = useState<"asc" | "desc">("asc");
 
   const normalizeConceptCategory = (raw?: string) => {
     const value = (raw || "").trim().toLowerCase();
@@ -5995,6 +6010,45 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
   const entryPaperRows = paperAnalyticsRows.filter((row) => row.paper.is_entry_paper);
   const expandedPaperRows = paperAnalyticsRows.filter((row) => row.paper.is_expanded_paper);
 
+  const parseProcessingTime = (value: string) => {
+    const [hh, mm] = value.split(":").map((part) => Number(part));
+    return (Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
+  };
+
+  const resolvePaperCategory = (row: (typeof paperAnalyticsRows)[number]) => {
+    if (row.paper.is_entry_paper && row.paper.is_expanded_paper) return "Entry + Expanded";
+    if (row.paper.is_entry_paper) return "Entry";
+    if (row.paper.is_expanded_paper) return "Expanded";
+    return "Other";
+  };
+
+  const sortedPaperOverviewRows = useMemo(() => {
+    const rows = paperAnalyticsRows.slice();
+    rows.sort((left, right) => {
+      const direction = paperOverviewSortDir === "asc" ? 1 : -1;
+      const leftCategory = resolvePaperCategory(left);
+      const rightCategory = resolvePaperCategory(right);
+
+      if (paperOverviewSort === "title") return direction * left.paper.title.localeCompare(right.paper.title);
+      if (paperOverviewSort === "category") return direction * leftCategory.localeCompare(rightCategory);
+      if (paperOverviewSort === "processingTime") {
+        return direction * (parseProcessingTime(left.processingTime) - parseProcessingTime(right.processingTime));
+      }
+      if (paperOverviewSort === "highlights") return direction * (left.highlights - right.highlights);
+      if (paperOverviewSort === "literatureNotes") return direction * (left.literatureNotes - right.literatureNotes);
+      if (paperOverviewSort === "permanentNotes") return direction * (left.permanentNotes - right.permanentNotes);
+      if (paperOverviewSort === "concept") return direction * ((left.conceptCounts.concept || 0) - (right.conceptCounts.concept || 0));
+      if (paperOverviewSort === "theory") return direction * ((left.conceptCounts.theory || 0) - (right.conceptCounts.theory || 0));
+      if (paperOverviewSort === "construct") return direction * ((left.conceptCounts.construct || 0) - (right.conceptCounts.construct || 0));
+      if (paperOverviewSort === "variable") return direction * ((left.conceptCounts.variable || 0) - (right.conceptCounts.variable || 0));
+      if (paperOverviewSort === "framework") return direction * ((left.conceptCounts.framework || 0) - (right.conceptCounts.framework || 0));
+      if (paperOverviewSort === "method") return direction * ((left.conceptCounts.method || 0) - (right.conceptCounts.method || 0));
+      if (paperOverviewSort === "other") return direction * ((left.conceptCounts.other || 0) - (right.conceptCounts.other || 0));
+      return 0;
+    });
+    return rows;
+  }, [paperAnalyticsRows, paperOverviewSort, paperOverviewSortDir]);
+
   const papers = useMemo(
     () =>
       paperAnalyticsRows.map((row) => ({
@@ -6019,16 +6073,6 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
   // Upload state
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: string; date: string; addedToVisual?: boolean }>>([]);
   const [showUploadArea, setShowUploadArea] = useState(false);
-
-  // AI summary
-  const [aiSummaryResult, setAiSummaryResult] = useState<string | null>(null);
-  const [aiSummarizing, setAiSummarizing] = useState(false);
-
-  // Add permanent note
-  const [showAddPermNote, setShowAddPermNote] = useState(false);
-  const [permNoteTitle, setPermNoteTitle] = useState("");
-  const [permNoteContent, setPermNoteContent] = useState("");
-  const [addedPermNotes, setAddedPermNotes] = useState<Array<{ id: string; title: string; content: string; date: string }>>([]);
 
   // Synthesis tables (multiple)
   interface SynthesisTable {
@@ -6101,39 +6145,48 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
     URL.revokeObjectURL(url);
   };
 
-  // Sort papers
-  const [paperSort, setPaperSort] = useState<"year" | "title" | "status" | "access">("year");
-
-  const handleAiSummarize = () => {
-    setAiSummarizing(true);
-    setTimeout(() => {
-      setAiSummaryResult(
-        "📝 AI Summary of Notes & Highlights:\n\n" +
-        "Key Themes Identified:\n" +
-        "1. AI tutoring systems improve performance metrics but their effect on self-regulated learning (SRL) remains underexplored.\n" +
-        "2. Personalization algorithms are the primary mechanism connecting AI tutoring to outcomes, but metacognitive impacts are unclear.\n" +
-        "3. A significant gap exists between performance outcomes and process outcomes in AI education research.\n\n" +
-        "Insight Note (Auto-generated):\n" +
-        "The literature converges on a critical tension: while AI tutoring systems demonstrate measurable improvements in test scores and completion rates, they may inadvertently bypass the self-regulatory processes that lead to deeper, transferable learning. Future research should investigate design features that explicitly scaffold SRL within adaptive systems."
-      );
-      setAiSummarizing(false);
-    }, 2000);
+  const togglePaperOverviewSort = (
+    key:
+      | "title"
+      | "category"
+      | "processingTime"
+      | "highlights"
+      | "literatureNotes"
+      | "permanentNotes"
+      | "concept"
+      | "theory"
+      | "construct"
+      | "variable"
+      | "framework"
+      | "method"
+      | "other"
+  ) => {
+    if (paperOverviewSort === key) {
+      setPaperOverviewSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setPaperOverviewSort(key);
+    setPaperOverviewSortDir("asc");
   };
 
-  const handleAddPermNote = () => {
-    if (!permNoteTitle.trim() || !permNoteContent.trim()) return;
-    setAddedPermNotes([
-      ...addedPermNotes,
-      {
-        id: `vpn-${Date.now()}`,
-        title: permNoteTitle.trim(),
-        content: permNoteContent.trim(),
-        date: new Date().toISOString().split("T")[0],
-      },
-    ]);
-    setPermNoteTitle("");
-    setPermNoteContent("");
-    setShowAddPermNote(false);
+  const paperOverviewSortLabel = (
+    key:
+      | "title"
+      | "category"
+      | "processingTime"
+      | "highlights"
+      | "literatureNotes"
+      | "permanentNotes"
+      | "concept"
+      | "theory"
+      | "construct"
+      | "variable"
+      | "framework"
+      | "method"
+      | "other"
+  ) => {
+    if (paperOverviewSort !== key) return "";
+    return paperOverviewSortDir === "asc" ? " ↑" : " ↓";
   };
 
   const handleUploadFile = () => {
@@ -6233,12 +6286,30 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
           <div className="flex gap-2">
             <Button
               size="sm"
-              variant={vizSection === "research" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "research" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
-              onClick={() => setVizSection("research")}
+              variant={vizSection === "paper-overview" ? "default" : "outline"}
+              className={cn("text-xs", vizSection === "paper-overview" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+              onClick={() => setVizSection("paper-overview")}
             >
               <BookOpen className="w-3 h-3 mr-1" />
-              Research Content
+              Paper Overview
+            </Button>
+            <Button
+              size="sm"
+              variant={vizSection === "upload-visualizations" ? "default" : "outline"}
+              className={cn("text-xs", vizSection === "upload-visualizations" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+              onClick={() => setVizSection("upload-visualizations")}
+            >
+              <Upload className="w-3 h-3 mr-1" />
+              Upload Visualizations
+            </Button>
+            <Button
+              size="sm"
+              variant={vizSection === "synthesis" ? "default" : "outline"}
+              className={cn("text-xs", vizSection === "synthesis" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+              onClick={() => setVizSection("synthesis")}
+            >
+              <Table2 className="w-3 h-3 mr-1" />
+              Synthesis Tables
             </Button>
             <Button
               size="sm"
@@ -6253,10 +6324,8 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
         </CardContent>
       </Card>
 
-      {/* ===== RESEARCH CONTENT with Sub-Tabs ===== */}
-      {vizSection === "research" && (
+      {vizSection === "paper-overview" && (
         <div className="space-y-5">
-          {/* Paper Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
@@ -6277,163 +6346,76 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
               </CardContent>
             </Card>
           </div>
-
           <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">Reading Paper Index</CardTitle>
+              <CardTitle className="text-sm font-semibold">Papers Overview</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300 mb-2">
-                  Entry Papers ({entryPaperRows.length})
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {entryPaperRows.map((row) => (
-                    <Link
-                      key={`entry-title-${row.paper.id}`}
-                      to={`/paper-read/${projectId}/${row.paper.id}`}
-                      className="text-xs rounded-md border border-emerald-500/40 px-2 py-1 text-emerald-200 hover:bg-emerald-500/10"
-                    >
-                      {row.paper.title}
-                    </Link>
-                  ))}
+            <CardContent>
+              {paperAnalyticsLoading ? <p className="text-xs text-slate-400 mb-3">Loading paper metrics...</p> : null}
+              <ScrollArea className="max-h-[500px]">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse min-w-[1380px]">
+                    <thead>
+                      <tr>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 text-left">
+                          <button type="button" className="w-full text-left" onClick={() => togglePaperOverviewSort("title")}>Title{paperOverviewSortLabel("title")}</button>
+                        </th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 text-left">
+                          <button type="button" className="w-full text-left" onClick={() => togglePaperOverviewSort("category")}>Category{paperOverviewSortLabel("category")}</button>
+                        </th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 text-left">
+                          <button type="button" className="w-full text-left" onClick={() => togglePaperOverviewSort("processingTime")}>Processing Time{paperOverviewSortLabel("processingTime")}</button>
+                        </th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("highlights")}>Highlights{paperOverviewSortLabel("highlights")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("literatureNotes")}>Lit Notes{paperOverviewSortLabel("literatureNotes")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("permanentNotes")}>Perm Notes{paperOverviewSortLabel("permanentNotes")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("concept")}>Concept{paperOverviewSortLabel("concept")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("theory")}>Theory{paperOverviewSortLabel("theory")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("construct")}>Construct{paperOverviewSortLabel("construct")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("variable")}>Variable{paperOverviewSortLabel("variable")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("framework")}>Framework{paperOverviewSortLabel("framework")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("method")}>Method{paperOverviewSortLabel("method")}</button></th>
+                        <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200"><button type="button" className="w-full text-center" onClick={() => togglePaperOverviewSort("other")}>Other{paperOverviewSortLabel("other")}</button></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedPaperOverviewRows.map((row) => (
+                        <tr key={row.paper.id} className="hover:bg-slate-800/20">
+                          <td className="p-2 border border-slate-700/50 text-left min-w-[280px]">
+                            <Link to={`/paper-read/${projectId}/${row.paper.id}`} className="text-cyan-300 hover:underline">
+                              {row.paper.title}
+                            </Link>
+                          </td>
+                          <td className="p-2 border border-slate-700/50 text-left">{resolvePaperCategory(row)}</td>
+                          <td className="p-2 border border-slate-700/50 text-left">{row.processingTime}</td>
+                          <td className="p-2 border border-slate-700/50 text-center">{row.highlights}</td>
+                          <td className="p-2 border border-slate-700/50 text-center">{row.literatureNotes}</td>
+                          <td className="p-2 border border-slate-700/50 text-center">{row.permanentNotes}</td>
+                          <td className="p-2 border border-slate-700/50 text-center">{row.conceptCounts.concept || 0}</td>
+                          <td className="p-2 border border-slate-700/50 text-center">{row.conceptCounts.theory || 0}</td>
+                          <td className="p-2 border border-slate-700/50 text-center">{row.conceptCounts.construct || 0}</td>
+                          <td className="p-2 border border-slate-700/50 text-center">{row.conceptCounts.variable || 0}</td>
+                          <td className="p-2 border border-slate-700/50 text-center">{row.conceptCounts.framework || 0}</td>
+                          <td className="p-2 border border-slate-700/50 text-center">{row.conceptCounts.method || 0}</td>
+                          <td className="p-2 border border-slate-700/50 text-center">{row.conceptCounts.other || 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-cyan-300 mb-2">
-                  Expanded Papers ({expandedPaperRows.length})
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {expandedPaperRows.map((row) => (
-                    <Link
-                      key={`expanded-title-${row.paper.id}`}
-                      to={`/paper-read/${projectId}/${row.paper.id}`}
-                      className="text-xs rounded-md border border-cyan-500/40 px-2 py-1 text-cyan-200 hover:bg-cyan-500/10"
-                    >
-                      {row.paper.title}
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              </ScrollArea>
             </CardContent>
           </Card>
+        </div>
+      )}
 
-          {/* Research Content Sub-Tabs */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {([
-              { key: "papers" as const, label: "Papers Overview", icon: "📄" },
-              { key: "files" as const, label: "External Files", icon: "📁" },
-              { key: "ai-summary" as const, label: "AI Summarize Notes (Premium)", icon: "✨" },
-              { key: "perm-notes" as const, label: "Permanent Notes", icon: "📝" },
-              { key: "synthesis" as const, label: "Synthesis Tables", icon: "📊" },
-            ]).map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setResearchSubTab(tab.key)}
-                className={cn(
-                  "px-3 py-1.5 rounded-md text-xs font-medium transition-all border whitespace-nowrap",
-                  researchSubTab === tab.key
-                    ? "bg-cyan-600 text-white border-cyan-600"
-                    : "bg-[#0d1b30] text-slate-600 border-slate-700/50 hover:border-slate-300"
-                )}
-              >
-                {tab.icon} {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Sub-Tab: Papers Overview */}
-          {researchSubTab === "papers" && (
-            <Card className="border-slate-700/50">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold">Papers Overview</CardTitle>
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant={paperSort === "year" ? "default" : "outline"}
-                      className={cn("text-[10px] h-6", paperSort === "year" && "bg-cyan-600 text-white")}
-                      onClick={() => setPaperSort("year")}
-                    >
-                      <Clock className="w-2.5 h-2.5 mr-0.5" />
-                      By Year
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={paperSort === "access" ? "default" : "outline"}
-                      className={cn("text-[10px] h-6", paperSort === "access" && "bg-cyan-600 text-white")}
-                      onClick={() => setPaperSort("access")}
-                    >
-                      <Eye className="w-2.5 h-2.5 mr-0.5" />
-                      By Access
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {paperAnalyticsLoading ? (
-                  <p className="text-xs text-slate-400">Loading paper metrics...</p>
-                ) : null}
-                <ScrollArea className="max-h-[400px]">
-                  <div className="space-y-2">
-                    {paperAnalyticsRows
-                      .slice()
-                      .sort((left, right) => {
-                        if (paperSort === "year") return (right.paper.year || 0) - (left.paper.year || 0);
-                        if (paperSort === "title") return left.paper.title.localeCompare(right.paper.title);
-                        if (paperSort === "status") return (left.paper.reading_status || "").localeCompare(right.paper.reading_status || "");
-                        if (paperSort === "access") return left.processingTime.localeCompare(right.processingTime);
-                        return 0;
-                      })
-                      .map((row) => (
-                        <div key={row.paper.id} className="p-3 rounded-lg border border-slate-700/50 transition-all record-item space-y-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <Link
-                                to={`/paper-read/${projectId}/${row.paper.id}`}
-                                className="text-xs font-medium text-cyan-300 hover:underline line-clamp-1 record-item-title"
-                              >
-                                {row.paper.title}
-                              </Link>
-                              <p className="text-[10px] text-slate-500">{(row.paper.authors || []).join(", ")} ({row.paper.year || "-"})</p>
-                              <div className="flex gap-1.5 mt-1">
-                                {row.paper.is_entry_paper ? <Badge variant="outline" className="text-[9px] border-emerald-500/50 text-emerald-300">Entry</Badge> : null}
-                                {row.paper.is_expanded_paper ? <Badge variant="outline" className="text-[9px] border-cyan-500/50 text-cyan-300">Expanded</Badge> : null}
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[10px] text-slate-500">Processing</p>
-                              <p className="text-xs font-semibold text-amber-300">{row.processingTime}</p>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 md:grid-cols-6 gap-2 text-center">
-                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-yellow-300">{row.highlights}</p><p className="text-[9px] text-slate-500">Highlights</p></div>
-                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-blue-300">{row.literatureNotes}</p><p className="text-[9px] text-slate-500">Lit Notes</p></div>
-                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-rose-300">{row.permanentNotes}</p><p className="text-[9px] text-slate-500">Perm Notes</p></div>
-                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.concept}</p><p className="text-[9px] text-slate-500">Concept</p></div>
-                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.theory}</p><p className="text-[9px] text-slate-500">Theory</p></div>
-                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.construct}</p><p className="text-[9px] text-slate-500">Construct</p></div>
-                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.variable}</p><p className="text-[9px] text-slate-500">Variable</p></div>
-                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.framework}</p><p className="text-[9px] text-slate-500">Framework</p></div>
-                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.method}</p><p className="text-[9px] text-slate-500">Method</p></div>
-                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.other}</p><p className="text-[9px] text-slate-500">Other</p></div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Sub-Tab: External Files */}
-          {researchSubTab === "files" && (
+      {vizSection === "upload-visualizations" && (
             <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                     <Upload className="w-4 h-4" />
-                    External Files
+                    Upload Visualizations
                   </CardTitle>
                   <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setShowUploadArea(!showUploadArea)}>
                     <FolderUp className="w-3 h-3 mr-1" />
@@ -6488,117 +6470,13 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 text-center py-3">No external files uploaded yet.</p>
+                  <p className="text-xs text-slate-400 text-center py-3">No visualization files uploaded yet.</p>
                 )}
               </CardContent>
             </Card>
-          )}
+      )}
 
-          {/* Sub-Tab: AI Summarize Notes */}
-          {researchSubTab === "ai-summary" && (
-            <Card className="border-slate-700/50">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-cyan-500" />
-                  AI Summarize Notes (Premium)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-slate-500 mb-3">
-                  Automatically summarize your literature notes, highlights, and permanent notes. Generate insight notes from patterns found across your materials.
-                </p>
-                <Button
-                  size="sm"
-                  className="w-full text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
-                  onClick={handleAiSummarize}
-                  disabled={aiSummarizing}
-                >
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  {aiSummarizing ? "Summarizing..." : "Generate AI Summary & Insights"}
-                </Button>
-                {aiSummaryResult && (
-                  <div className="mt-3 p-3 bg-cyan-50 border border-cyan-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-semibold text-cyan-700 uppercase">AI Result</span>
-                      <button onClick={() => setAiSummaryResult(null)} className="hover:bg-cyan-100 rounded p-0.5">
-                        <X className="w-3 h-3 text-cyan-400" />
-                      </button>
-                    </div>
-                    <pre className="text-[10px] text-cyan-800 whitespace-pre-wrap leading-relaxed">{aiSummaryResult}</pre>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Sub-Tab: Permanent Notes */}
-          {researchSubTab === "perm-notes" && (
-            <Card className="border-slate-700/50">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
-                    <PenTool className="w-4 h-4 text-rose-500" />
-                    Permanent Notes
-                  </CardTitle>
-                  <Button
-                    size="sm"
-                    className="text-xs h-7 bg-rose-600 hover:bg-rose-700 text-white"
-                    onClick={() => setShowAddPermNote(!showAddPermNote)}
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add Note
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {showAddPermNote && (
-                  <div className="p-3 mb-3 rounded-lg border-2 border-dashed border-rose-200 bg-rose-50/30 space-y-2">
-                    <Input
-                      value={permNoteTitle}
-                      onChange={(e) => setPermNoteTitle(e.target.value)}
-                      placeholder="Note title..."
-                      className="text-xs"
-                    />
-                    <Textarea
-                      value={permNoteContent}
-                      onChange={(e) => setPermNoteContent(e.target.value)}
-                      rows={4}
-                      placeholder="Write your permanent note — synthesize insights across sources..."
-                      className="text-xs"
-                    />
-                    <div className="flex gap-1.5">
-                      <Button size="sm" className="text-xs h-7 bg-rose-600 hover:bg-rose-700 text-white" onClick={handleAddPermNote}>
-                        <Save className="w-3 h-3 mr-1" />
-                        Save
-                      </Button>
-                      <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setShowAddPermNote(false)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                <ScrollArea className="max-h-[400px]">
-                  <div className="space-y-2">
-                    {addedPermNotes.map((note) => (
-                      <div key={note.id} className="p-2 rounded-lg border border-rose-200 bg-rose-50/20">
-                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-xs font-medium text-slate-200">{note.title}</h4>
-                          <span className="text-[9px] text-slate-400">{note.date}</span>
-                        </div>
-                        <p className="text-[10px] text-slate-600 line-clamp-2">{note.content}</p>
-                      </div>
-                    ))}
-                    {addedPermNotes.length === 0 && !showAddPermNote && (
-                      <p className="text-xs text-slate-400 text-center py-3">No permanent notes added from this page yet.</p>
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Sub-Tab: Synthesis Tables */}
-          {researchSubTab === "synthesis" && (
+      {vizSection === "synthesis" && (
             <Card className="border-slate-700/50">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -6767,8 +6645,6 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                 </CardContent>
               )}
             </Card>
-          )}
-        </div>
       )}
 
       {/* ===== VISUALIZATION TOOLS ===== */}
