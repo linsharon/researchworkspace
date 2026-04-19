@@ -593,6 +593,7 @@ export default function PaperReadingArea({
                   onNoteCreated?.();
                 }}
                 onSelectionChange={text => onTextSelected?.(text)}
+                paper={paper}
                 paperId={paper.id}
                 pdfUrl={resolvedPdfUrl}
                 projectId={projectId}

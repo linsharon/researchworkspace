@@ -9,6 +9,14 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import FloatingAnnotationMenu from "@/components/pdf/FloatingAnnotationMenu";
 import { LiteratureNoteForm, type LiteratureNote } from "@/components/reading/LiteratureNoteForm";
-import { conceptAPI, highlightAPI, noteAPI, type Highlight } from "@/lib/manuscript-api";
+import { conceptAPI, highlightAPI, noteAPI, type Highlight, type Paper } from "@/lib/manuscript-api";
 
 export interface PdfViewerProps {
   pdfUrl?: string;
@@ -46,6 +54,7 @@ export interface PdfViewerProps {
   onConceptCreated?: () => void;
   onAskAiSelection?: (text: string, page: number) => void;
   onSelectionChange?: (text: string, page: number) => void;
+  paper?: Paper;
 }
 
 export type AnnotationMode = "idle" | "highlight" | "note" | "translate" | "explain" | "concept";
@@ -103,7 +112,20 @@ export default function PdfViewer({
   onConceptCreated,
   onAskAiSelection,
   onSelectionChange,
+  paper,
 }: PdfViewerProps) {
+
+  const CONCEPT_COLORS = [
+    { value: "#22d3ee", label: "Cyan" },
+    { value: "#6366f1", label: "Indigo" },
+    { value: "#8b5cf6", label: "Violet" },
+    { value: "#ec4899", label: "Pink" },
+    { value: "#f97316", label: "Orange" },
+    { value: "#10b981", label: "Emerald" },
+    { value: "#0ea5e9", label: "Sky" },
+    { value: "#f59e0b", label: "Amber" },
+    { value: "#ef4444", label: "Red" },
+  ];
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [viewerState, setViewerState] = useState<PdfViewerState>({
     currentPage: Math.max(initialPage, 1),
@@ -126,6 +148,8 @@ export default function PdfViewer({
   const [translatedText, setTranslatedText] = useState<string | null>(null);
   const [conceptTitle, setConceptTitle] = useState("");
   const [conceptDescription, setConceptDescription] = useState("");
+  const [conceptCategory, setConceptCategory] = useState("Keyword");
+  const [conceptColor, setConceptColor] = useState("#22d3ee");
 
   const pageLayout = useMemo(
     () => ({
@@ -382,6 +406,8 @@ export default function PdfViewer({
     setViewerState(prev => ({ ...prev, annotationMode: "concept" }));
     setConceptTitle(selectionState.text.slice(0, 60));
     setConceptDescription(selectionState.text);
+    setConceptCategory("Keyword");
+    setConceptColor("#22d3ee");
     setShowConceptDialog(true);
   };
 
@@ -390,11 +416,26 @@ export default function PdfViewer({
       return;
     }
 
+    // Build paper metadata string to include in description
+    const paperMeta = paper
+      ? [
+          paper.title ? `Source: ${paper.title}` : "",
+          paper.authors?.length ? `Authors: ${paper.authors.join(", ")}` : "",
+          paper.year ? `Year: ${paper.year}` : "",
+          paper.journal ? `Journal: ${paper.journal}` : "",
+          paper.url ? `URL: ${paper.url}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : "";
+
+    const fullDescription = [conceptDescription.trim(), paperMeta].filter(Boolean).join("\n\n");
+
     try {
       await conceptAPI.create({
         title: conceptTitle.trim(),
         description: selectionState.text,
-        definition: conceptDescription.trim() || undefined,
+        definition: fullDescription || undefined,
         project_id: projectId,
       });
     } catch (error) {
@@ -410,16 +451,18 @@ export default function PdfViewer({
       const conceptItem = {
         id: `concept-${Date.now()}`,
         name: conceptTitle.trim(),
-        description: conceptDescription.trim() || selectionState.text,
-        category: "Concept",
-        color: "#f59e0b",
+        description: fullDescription || selectionState.text,
+        category: conceptCategory,
+        color: conceptColor,
+        sourcePaperId: paper?.id,
+        sourcePaperTitle: paper?.title,
       };
 
       window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify([...globalConcepts, conceptItem]));
       window.localStorage.setItem(`rw-concepts-${projectId}`, JSON.stringify([...projectConcepts, conceptItem]));
       window.dispatchEvent(new CustomEvent(CONCEPTS_UPDATED_EVENT));
-      toast.success("Concept saved", {
-        description: "Added to Artifact Center concepts.",
+      toast.success("Keyword saved", {
+        description: "Added to Artifact Center keywords.",
       });
     }
 
@@ -572,7 +615,6 @@ export default function PdfViewer({
           <LiteratureNoteForm
             initialValue={{
               title: "",
-              doiOrUrl: doi || scholarUrl || "",
               pageNumber: String(selectionState.page || resolvedPage),
               contentGist: "",
               originalQuote: selectionState.text || viewerState.selectedText,
@@ -586,38 +628,123 @@ export default function PdfViewer({
       <Dialog open={showConceptDialog} onOpenChange={setShowConceptDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Save As Concept</DialogTitle>
-            <DialogDescription>
-              Placeholder save flow: this will add the concept to Artifact Center -&gt; Concepts.
-            </DialogDescription>
+            <DialogTitle>Add New Keyword</DialogTitle>
+            <DialogDescription className="sr-only">Save highlighted text as a keyword</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            {/* Selected text preview */}
+            <div className="rounded-lg border border-amber-200/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+              <p className="text-[10px] text-amber-400/70 mb-1 font-medium uppercase tracking-wide">Selected text</p>
               {selectionState.text || viewerState.selectedText}
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Concept Title</label>
-              <Input onChange={event => setConceptTitle(event.target.value)} value={conceptTitle} />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Description</label>
-              <Textarea
-                className="min-h-[120px]"
-                onChange={event => setConceptDescription(event.target.value)}
-                value={conceptDescription}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-700">
+                Keyword Name <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={conceptTitle}
+                onChange={event => setConceptTitle(event.target.value)}
+                placeholder="Enter keyword name..."
+                className="text-sm"
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void handleSaveConcept(); } }}
               />
             </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-700">Description</label>
+              <Textarea
+                value={conceptDescription}
+                onChange={event => setConceptDescription(event.target.value)}
+                placeholder="What does this keyword mean in your research context? Add details, definitions, or notes..."
+                rows={3}
+                className="text-sm resize-none"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-700">Category</label>
+                <Select value={conceptCategory} onValueChange={setConceptCategory}>
+                  <SelectTrigger className="text-sm h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Keyword">Keyword</SelectItem>
+                    <SelectItem value="Construct">Construct</SelectItem>
+                    <SelectItem value="Theory">Theory</SelectItem>
+                    <SelectItem value="Framework">Framework</SelectItem>
+                    <SelectItem value="Method">Method</SelectItem>
+                    <SelectItem value="Finding">Finding</SelectItem>
+                    <SelectItem value="Variable">Variable</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-700">Color</label>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {CONCEPT_COLORS.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      title={c.label}
+                      onClick={() => setConceptColor(c.value)}
+                      className={cn(
+                        "w-6 h-6 rounded-full border-2 transition-all",
+                        conceptColor === c.value
+                          ? "border-slate-300 scale-110"
+                          : "border-transparent hover:border-slate-400"
+                      )}
+                      style={{ backgroundColor: c.value }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Paper metadata */}
+            {paper && (
+              <div className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-3 space-y-1">
+                <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">Source Paper</p>
+                <p className="text-xs font-medium text-slate-200 line-clamp-2">{paper.title}</p>
+                {paper.authors?.length > 0 && (
+                  <p className="text-[11px] text-slate-400">{paper.authors.join(", ")}</p>
+                )}
+                <div className="flex gap-2 text-[11px] text-slate-500">
+                  {paper.year && <span>{paper.year}</span>}
+                  {paper.journal && <span>· {paper.journal}</span>}
+                </div>
+              </div>
+            )}
+
+            {conceptTitle.trim() && (
+              <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+                <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">Preview</p>
+                <Badge
+                  className="text-xs px-3 py-1 gap-1 border"
+                  style={{ backgroundColor: `${conceptColor}18`, borderColor: `${conceptColor}55`, color: conceptColor }}
+                >
+                  <Sparkles className="w-2.5 h-2.5 mr-0.5" />
+                  {conceptTitle}
+                  <span className="ml-1 text-[10px] opacity-70">{conceptCategory}</span>
+                </Badge>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button onClick={() => setShowConceptDialog(false)} type="button" variant="outline">
               Cancel
             </Button>
-            <Button onClick={handleSaveConcept} type="button">
-              Save Concept
+            <Button
+              onClick={() => void handleSaveConcept()}
+              type="button"
+              className="bg-cyan-600 hover:bg-cyan-700 text-white"
+              disabled={!conceptTitle.trim()}
+            >
+              Save Keyword
             </Button>
           </DialogFooter>
         </DialogContent>

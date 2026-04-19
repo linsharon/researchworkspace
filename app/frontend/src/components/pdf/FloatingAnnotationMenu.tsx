@@ -64,7 +64,7 @@ export default function FloatingAnnotationMenu({
 
       <Button className="h-8 gap-1.5 px-2 text-xs text-white hover:bg-slate-800" onClick={onSaveConcept} size="sm" type="button" variant="ghost">
         <Lightbulb className="h-3.5 w-3.5 text-amber-300" />
-        Save Concept
+        Save Keyword
       </Button>
 
       <div className="mx-1 h-5 w-px bg-slate-700" />
