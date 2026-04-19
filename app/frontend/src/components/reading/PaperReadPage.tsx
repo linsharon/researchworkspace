@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ChevronRight, ChevronLeft, Bot, X, Minimize2, Send, ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import ChatMessageContent from "@/components/chat/ChatMessageContent";
 import { cn } from "@/lib/utils";
 import { paperAPI } from "@/lib/manuscript-api";
 import type { Paper } from "@/lib/manuscript-api";
@@ -423,7 +424,7 @@ export default function PaperReadPage() {
                         : "bg-slate-800 text-white rounded-bl-md"
                     )}
                   >
-                    {msg.content}
+                    <ChatMessageContent content={msg.content} role={msg.role} />
                   </div>
                 </div>
               ))}

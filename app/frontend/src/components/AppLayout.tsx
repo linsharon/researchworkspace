@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import ChatMessageContent from "@/components/chat/ChatMessageContent";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -864,7 +865,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         : "bg-slate-800 text-white rounded-bl-md"
                     )}
                   >
-                    {msg.content}
+                    <ChatMessageContent content={msg.content} role={msg.role} />
                   </div>
                 </div>
               ))}
