@@ -76,7 +76,7 @@ class AIHubService:
             )
 
         except Exception as e:
-            logger.error(f"gentxt error: {e}")
+            logger.error(f"gentxt error for model {request.model}: {type(e).__name__}: {e}")
             raise
 
     async def gentxt_stream(self, request: GenTxtRequest) -> AsyncGenerator[str, None]:
@@ -105,7 +105,7 @@ class AIHubService:
                     yield chunk.choices[0].delta.content
 
         except Exception as e:
-            logger.error(f"gentxt_stream error: {e}")
+            logger.error(f"gentxt_stream error for model {request.model}: {type(e).__name__}: {e}")
             raise
 
     @staticmethod

@@ -61,6 +61,8 @@ export default function PaperReadPage() {
 
     const models = ["gpt-5-chat", "gemini-2.5-pro", "deepseek-v3.2"];
     let reply = "";
+    let lastError: string | null = null;
+    
     for (const model of models) {
       try {
         const res = await axios.post("/api/v1/aihub/gentxt", {
@@ -75,14 +77,28 @@ export default function PaperReadPage() {
         });
         reply = res?.data?.content?.trim() || "";
         if (reply) break;
-      } catch {
+      } catch (error) {
+        // Capture the first error for logging
+        if (!lastError) {
+          if (axios.isAxiosError(error)) {
+            lastError = `API Error [${error.response?.status}]: ${error.response?.data?.detail || error.message}`;
+            console.error(`Model ${model} failed:`, lastError);
+          } else {
+            lastError = `Error: ${error instanceof Error ? error.message : String(error)}`;
+            console.error(`Model ${model} failed:`, lastError);
+          }
+        }
         // try next model
       }
     }
 
     if (!reply) {
-      // Fallback: call OpenAI-compatible endpoint failed, show error
-      reply = "Sorry, the AI service is temporarily unavailable. Please try again later.";
+      // All models failed - show actual error if available, otherwise generic message
+      if (lastError) {
+        reply = `AI service error: ${lastError}`;
+      } else {
+        reply = "Sorry, the AI service is temporarily unavailable. Please try again later.";
+      }
     }
 
     setChatMessages((prev) => prev.map((m) => m.id === thinkingId ? { ...m, content: reply } : m));
