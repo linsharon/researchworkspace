@@ -41,6 +41,8 @@ import { conceptAPI, noteAPI, paperAPI, projectAPI } from "@/lib/manuscript-api"
 import type { Concept as ApiConcept, Note } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAPIBaseURL } from "@/lib/config";
+import { getAuthToken } from "@/lib/session";
 
 const STATIC_ARTIFACTS = DUMMY_ARTIFACTS.filter(
   (artifact) =>
@@ -167,6 +169,37 @@ function localConceptToApiPayload(concept: { name: string; description: string; 
   };
 }
 
+function conceptToArtifact(concept: { id: string; name: string; description: string; category: string; color: string }, projectId: string): Artifact {
+  return {
+    id: `keyword-${concept.id}`,
+    title: concept.name,
+    type: "keyword",
+    projectId: projectId || "global",
+    sourceStep: 4,
+    description: concept.description || `Keyword in ${normalizeCategory(concept.category)}`,
+    updatedAt: new Date().toISOString().split("T")[0],
+    content: JSON.stringify({
+      category: normalizeCategory(concept.category),
+      color: concept.color,
+      conceptId: concept.id,
+    }),
+  };
+}
+
+function parseVisualizationContent(content?: string): { bucketName?: string; objectKey?: string; accessUrl?: string } | null {
+  if (!content) return null;
+  try {
+    const parsed = JSON.parse(content) as Record<string, unknown>;
+    return {
+      bucketName: typeof parsed.bucketName === "string" ? parsed.bucketName : undefined,
+      objectKey: typeof parsed.objectKey === "string" ? parsed.objectKey : undefined,
+      accessUrl: typeof parsed.accessUrl === "string" ? parsed.accessUrl : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
   { value: "purpose", label: "Purposes" },
@@ -225,6 +258,7 @@ export default function ArtifactCenter() {
   const [packSaved, setPackSaved] = useState(false);
   const [myPackages, setMyPackages] = useState<ArtifactPackage[]>([]);
   const [paperTitleMap, setPaperTitleMap] = useState<Record<string, string>>({});
+  const [visualThumbUrls, setVisualThumbUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -340,6 +374,51 @@ export default function ArtifactCenter() {
     }
   }, [projectIdFromUrl]);
 
+  useEffect(() => {
+    const baseURL = getAPIBaseURL() || "";
+    const token = getAuthToken();
+
+    const loadVisualThumbs = async () => {
+      const visualArtifacts = artifacts.filter((artifact) => artifact.type === "visualization");
+      if (visualArtifacts.length === 0) {
+        setVisualThumbUrls({});
+        return;
+      }
+
+      const entries = await Promise.all(
+        visualArtifacts.map(async (artifact) => {
+          const meta = parseVisualizationContent(artifact.content);
+          if (!meta) return [artifact.id, ""] as const;
+          if (meta.accessUrl) return [artifact.id, meta.accessUrl] as const;
+          if (!meta.bucketName || !meta.objectKey) return [artifact.id, ""] as const;
+
+          try {
+            const response = await fetch(`${baseURL}/api/v1/storage/download-url`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              },
+              body: JSON.stringify({
+                bucket_name: meta.bucketName,
+                object_key: meta.objectKey,
+              }),
+            });
+            if (!response.ok) return [artifact.id, ""] as const;
+            const result = (await response.json()) as { download_url?: string };
+            return [artifact.id, result.download_url || ""] as const;
+          } catch {
+            return [artifact.id, ""] as const;
+          }
+        })
+      );
+
+      setVisualThumbUrls(Object.fromEntries(entries));
+    };
+
+    void loadVisualThumbs();
+  }, [artifacts]);
+
   const filteredArtifacts = artifacts.filter((a) => {
     const matchesFilter =
       filter === "all" || FILTER_MAP[filter]?.includes(a.type);
@@ -350,7 +429,7 @@ export default function ArtifactCenter() {
     return matchesFilter && matchesSearch;
   });
 
-  const packTypeGroups = useMemo(() => {
+  const artifactPackGroups = useMemo(() => {
     const groups = new Map<ArtifactType, Artifact[]>();
     for (const artifact of filteredArtifacts) {
       if (!groups.has(artifact.type)) {
@@ -360,6 +439,9 @@ export default function ArtifactCenter() {
     }
     return Array.from(groups.entries());
   }, [filteredArtifacts]);
+
+  const artifactPackToken = (id: string) => `artifact:${id}`;
+  const conceptPackToken = (id: string) => `concept:${id}`;
 
   const selected = artifacts.find((a) => a.id === selectedArtifact);
   const selectedConcept = concepts.find((c) => c.id === selectedConceptId) || null;
@@ -536,23 +618,45 @@ export default function ArtifactCenter() {
     navigate(target);
   };
 
-  const togglePackSelect = (id: string) => {
+  const togglePackSelect = (token: string) => {
     setSelectedForPack((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(token)) next.delete(token);
+      else next.add(token);
       return next;
     });
   };
 
   const selectAllVisibleForPack = () => {
-    setSelectedForPack(new Set(filteredArtifacts.map((artifact) => artifact.id)));
+    if (filter === "concepts") {
+      setSelectedForPack(new Set(visibleConcepts.map((concept) => conceptPackToken(concept.id))));
+      return;
+    }
+    setSelectedForPack(new Set(filteredArtifacts.map((artifact) => artifactPackToken(artifact.id))));
   };
 
   const toggleSelectTypeForPack = (type: ArtifactType) => {
     setSelectedForPack((prev) => {
       const next = new Set(prev);
-      const ids = filteredArtifacts.filter((artifact) => artifact.type === type).map((artifact) => artifact.id);
+      const ids = filteredArtifacts
+        .filter((artifact) => artifact.type === type)
+        .map((artifact) => artifactPackToken(artifact.id));
+      const allSelected = ids.every((id) => next.has(id));
+      if (allSelected) {
+        ids.forEach((id) => next.delete(id));
+      } else {
+        ids.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectKeywordCategoryForPack = (category: string) => {
+    setSelectedForPack((prev) => {
+      const next = new Set(prev);
+      const ids = visibleConcepts
+        .filter((concept) => normalizeCategory(concept.category) === category)
+        .map((concept) => conceptPackToken(concept.id));
       const allSelected = ids.every((id) => next.has(id));
       if (allSelected) {
         ids.forEach((id) => next.delete(id));
@@ -565,12 +669,16 @@ export default function ArtifactCenter() {
 
   const handleCreatePackage = () => {
     if (!packName.trim() || selectedForPack.size === 0 || !user) return;
-    const selectedArtifacts = artifacts.filter((a) => selectedForPack.has(a.id));
+    const selectedArtifacts = artifacts.filter((a) => selectedForPack.has(artifactPackToken(a.id)));
+    const selectedConceptArtifacts = concepts
+      .filter((concept) => selectedForPack.has(conceptPackToken(concept.id)))
+      .map((concept) => conceptToArtifact(concept, projectIdFromUrl));
+    const packArtifacts = [...selectedArtifacts, ...selectedConceptArtifacts];
     const pkg: ArtifactPackage = {
       id: `pkg-${Date.now()}`,
       name: packName.trim(),
       description: packDescription.trim(),
-      artifacts: selectedArtifacts,
+      artifacts: packArtifacts,
       createdAt: new Date().toISOString().split("T")[0],
       shared: true,
       ownerId: user.id,
@@ -666,6 +774,17 @@ export default function ArtifactCenter() {
       .filter((group) => group.items.length > 0);
   }, [keywordCategories, visibleConcepts]);
 
+  const keywordPackGroups = useMemo(
+    () =>
+      groupedVisibleConcepts.map((group) => ({
+        category: group.category,
+        ids: group.items.map((concept) => concept.id),
+      })),
+    [groupedVisibleConcepts]
+  );
+
+  const totalPackSelectionCount = selectedForPack.size;
+
   return (
     <AppLayout>
       <div className="p-6 max-w-5xl mx-auto space-y-5">
@@ -713,8 +832,8 @@ export default function ArtifactCenter() {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-sm text-cyan-200">
                 <PackageCheck className="w-4 h-4" />
-                <span>{selectedForPack.size} artifact{selectedForPack.size !== 1 ? "s" : ""} selected</span>
-                {selectedForPack.size > 0 && (
+                <span>{totalPackSelectionCount} item{totalPackSelectionCount !== 1 ? "s" : ""} selected</span>
+                {totalPackSelectionCount > 0 && (
                   <button
                     className="text-xs text-cyan-400 hover:underline ml-1"
                     onClick={() => setSelectedForPack(new Set())}
@@ -729,7 +848,7 @@ export default function ArtifactCenter() {
                 </Button>
                 <Button
                   size="sm"
-                  disabled={selectedForPack.size === 0}
+                  disabled={totalPackSelectionCount === 0}
                   className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
                   onClick={() => setShowPackDialog(true)}
                 >
@@ -739,8 +858,23 @@ export default function ArtifactCenter() {
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {packTypeGroups.map(([type, items]) => {
-                const allSelected = items.every((item) => selectedForPack.has(item.id));
+              {filter === "concepts"
+                ? keywordPackGroups.map(({ category, ids }) => {
+                  const allSelected = ids.length > 0 && ids.every((id) => selectedForPack.has(conceptPackToken(id)));
+                  return (
+                    <Button
+                      key={category}
+                      size="sm"
+                      variant={allSelected ? "default" : "outline"}
+                      className={cn("text-xs h-7", allSelected && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+                      onClick={() => toggleSelectKeywordCategoryForPack(category)}
+                    >
+                      {category} ({ids.length})
+                    </Button>
+                  );
+                })
+                : artifactPackGroups.map(([type, items]) => {
+                const allSelected = items.every((item) => selectedForPack.has(artifactPackToken(item.id)));
                 return (
                   <Button
                     key={type}
@@ -872,18 +1006,32 @@ export default function ArtifactCenter() {
                           <Card key={concept.id} className="border-slate-700/50 hover:shadow-md transition-all group">
                             <CardHeader className="pb-2">
                               <div className="flex items-center justify-between gap-2">
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px] border"
-                                  style={{
-                                    color: concept.color,
-                                    backgroundColor: `${concept.color}12`,
-                                    borderColor: `${concept.color}66`,
-                                  }}
-                                >
-                                  <Lightbulb className="w-3 h-3 mr-1" />
-                                  {normalizeCategory(concept.category)}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  {packMode && (
+                                    <button
+                                      type="button"
+                                      className="text-cyan-400"
+                                      onClick={() => togglePackSelect(conceptPackToken(concept.id))}
+                                      title="Select for package"
+                                    >
+                                      {selectedForPack.has(conceptPackToken(concept.id))
+                                        ? <CheckSquare className="w-4 h-4" />
+                                        : <Square className="w-4 h-4 text-slate-500" />}
+                                    </button>
+                                  )}
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-[10px] border"
+                                    style={{
+                                      color: concept.color,
+                                      backgroundColor: `${concept.color}12`,
+                                      borderColor: `${concept.color}66`,
+                                    }}
+                                  >
+                                    <Lightbulb className="w-3 h-3 mr-1" />
+                                    {normalizeCategory(concept.category)}
+                                  </Badge>
+                                </div>
                               </div>
                               <CardTitle className="text-sm mt-2">{concept.name}</CardTitle>
                             </CardHeader>
@@ -976,10 +1124,10 @@ export default function ArtifactCenter() {
                   <div
                     className={cn(
                       "p-4 bg-[#0d1b30] border border-slate-700/50 rounded-xl hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group",
-                      packMode && selectedForPack.has(artifact.id) && "border-cyan-400/60 bg-cyan-500/10"
+                      packMode && selectedForPack.has(artifactPackToken(artifact.id)) && "border-cyan-400/60 bg-cyan-500/10"
                     )}
                     onClick={() => {
-                      if (packMode) { togglePackSelect(artifact.id); return; }
+                      if (packMode) { togglePackSelect(artifactPackToken(artifact.id)); return; }
                       setSelectedArtifact(artifact.id);
                     }}
                   >
@@ -987,7 +1135,7 @@ export default function ArtifactCenter() {
                       <div className="flex items-center gap-2">
                         {packMode && (
                           <span className="shrink-0 text-cyan-400">
-                            {selectedForPack.has(artifact.id)
+                            {selectedForPack.has(artifactPackToken(artifact.id))
                               ? <CheckSquare className="w-4 h-4" />
                               : <Square className="w-4 h-4 text-slate-500" />}
                           </span>
@@ -1016,6 +1164,16 @@ export default function ArtifactCenter() {
                     <h4 className="text-sm font-medium text-slate-200 mb-1 group-hover:text-cyan-300 transition-colors line-clamp-2">
                       {displayTitle}
                     </h4>
+                    {artifact.type === "visualization" && visualThumbUrls[artifact.id] ? (
+                      <div className="mb-3 overflow-hidden rounded-md border border-slate-700/50 bg-slate-900/40">
+                        <img
+                          src={visualThumbUrls[artifact.id]}
+                          alt={displayTitle}
+                          className="h-28 w-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : null}
                     {artifact.type === "entry-paper" && (literatureTags.isEntry || literatureTags.isExpanded) && (
                       <div className="mb-2 flex flex-wrap gap-1.5">
                         {literatureTags.isEntry ? (
@@ -1216,13 +1374,13 @@ export default function ArtifactCenter() {
                 />
               </div>
               <div className="p-2 rounded border border-slate-700/50 bg-slate-900/40 text-xs text-slate-400">
-                Selected artifacts: {selectedForPack.size}
+                Selected items: {totalPackSelectionCount}
               </div>
               <div className="flex items-center gap-2 pt-1">
                 <Button
                   size="sm"
                   className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
-                  disabled={!packName.trim() || selectedForPack.size === 0}
+                  disabled={!packName.trim() || totalPackSelectionCount === 0}
                   onClick={handleCreatePackage}
                 >
                   <Share2 className="w-3 h-3 mr-1" />

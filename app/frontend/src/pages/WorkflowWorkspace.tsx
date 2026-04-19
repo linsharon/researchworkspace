@@ -98,6 +98,8 @@ import {
   type SearchRecord,
 } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { getAPIBaseURL } from "@/lib/config";
+import { getAuthToken } from "@/lib/session";
 import Step3ReadFoundPapers from "@/components/workflow/Step3ReadFoundPapers";
 
 // Paper decision history — shared localStorage key with Step 3
@@ -831,6 +833,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   // Search Record - purpose card association
   const [srPurposeCardId, setSrPurposeCardId] = useState("");
   const [purposeCards, setPurposeCards] = useState<Artifact[]>([]);
+  const [keywordPickerQuery, setKeywordPickerQuery] = useState("");
 
   // Load purpose cards from localStorage
   useEffect(() => {
@@ -1360,6 +1363,64 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     }
     setSrBooleanString(buildBooleanStringFromSelected(srKeywords, srConnector));
   };
+
+  const addKeywordToSelection = (keyword: string) => {
+    const trimmed = keyword.trim();
+    if (!trimmed) return;
+    if (!srKeywords.includes(trimmed)) {
+      setSrKeywords((prev) => [...prev, trimmed]);
+    }
+  };
+
+  const removeKeywordFromSelection = (keyword: string) => {
+    setSrKeywords((prev) => prev.filter((item) => item !== keyword));
+  };
+
+  const allArtifactKeywords = useMemo(() => {
+    if (typeof window === "undefined") return [] as string[];
+    try {
+      const raw = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+      const parsed = raw ? (JSON.parse(raw) as Artifact[]) : [];
+      return parsed
+        .filter((artifact) => artifact.type === "keyword")
+        .map((artifact) => artifact.title)
+        .filter(Boolean);
+    } catch {
+      return [] as string[];
+    }
+  }, [projectId, activeTab, keywords, concepts]);
+
+  const discoverKeywordPool = useMemo(() => {
+    const merged = [
+      ...keywords.map((item) => item.term),
+      ...concepts.map((item) => item.name),
+      ...allArtifactKeywords,
+    ]
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    const seen = new Set<string>();
+    const deduped: string[] = [];
+    merged.forEach((value) => {
+      const key = value.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      deduped.push(value);
+    });
+
+    return deduped.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  }, [keywords, concepts, allArtifactKeywords]);
+
+  const filteredKeywordOptions = useMemo(() => {
+    const query = keywordPickerQuery.trim().toLowerCase();
+    if (!query) return discoverKeywordPool.slice(0, 20);
+    return discoverKeywordPool
+      .filter((item) => item.toLowerCase().includes(query))
+      .slice(0, 20);
+  }, [discoverKeywordPool, keywordPickerQuery]);
+
+  const limitedCustomKeywords = keywords.slice(0, 20);
+  const limitedConceptKeywords = concepts.slice(0, 20);
 
   const appendBooleanToken = (token: string) => {
     setSrBooleanString((prev) => {
@@ -2387,7 +2448,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 </DropdownMenu>
               </div>
               <div className="flex flex-wrap gap-2">
-                {keywords.map((kw) => (
+                {limitedCustomKeywords.map((kw) => (
                   <Badge
                     key={kw.id}
                     variant="secondary"
@@ -2405,7 +2466,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     </button>
                   </Badge>
                 ))}
-                {concepts.map((concept) => (
+                {limitedConceptKeywords.map((concept) => (
                   <Badge
                     key={concept.id}
                     variant="secondary"
@@ -2424,6 +2485,16 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   </Badge>
                 ))}
               </div>
+              {(keywords.length > 20 || concepts.length > 20) && (
+                <div className="mt-3 text-xs">
+                  <Link
+                    to={`/artifacts?tab=concepts&projectId=${projectId}`}
+                    className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
+                  >
+                    Read all others in My Artifacts / Keywords
+                  </Link>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -2458,12 +2529,40 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 <div className="rounded-lg border border-slate-700/50 p-3 bg-slate-800/40/70 space-y-3">
                   <p className="text-xs font-semibold text-slate-700">Build Boolean Search String</p>
                   <div className="space-y-2">
-                    <p className="text-[11px] text-slate-500">Select existing keywords:</p>
+                    <p className="text-[11px] text-slate-500">Search keywords from My Artifacts / Keywords:</p>
+                    <Input
+                      value={keywordPickerQuery}
+                      onChange={(e) => setKeywordPickerQuery(e.target.value)}
+                      placeholder="Search keywords..."
+                      className="h-8 text-xs"
+                    />
+                    <div className="flex flex-wrap gap-1.5 rounded border border-slate-700/50 p-2 min-h-[42px] bg-slate-900/30">
+                      {srKeywords.length > 0 ? (
+                        srKeywords.map((term) => (
+                          <Badge
+                            key={`selected-${term}`}
+                            variant="default"
+                            className="text-[10px] bg-cyan-600 text-white"
+                          >
+                            {term}
+                            <button
+                              type="button"
+                              className="ml-1"
+                              onClick={() => removeKeywordFromSelection(term)}
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-[10px] text-slate-500">No keyword selected yet</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mb-1">
                       <button
                         type="button"
                         className="text-[10px] text-cyan-600 hover:text-cyan-500 underline"
-                        onClick={() => setSrKeywords([...keywords.map((k) => k.term), ...concepts.map((c) => c.name)])}
+                        onClick={() => setSrKeywords(discoverKeywordPool)}
                       >
                         Select All
                       </button>
@@ -2476,56 +2575,40 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                         Unselect All
                       </button>
                     </div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] text-slate-500">Matched keywords:</span>
+                      {keywordPickerQuery.trim() && (
+                        <span className="text-[10px] text-slate-400">{filteredKeywordOptions.length} shown</span>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {keywords.map((kw) => (
+                      {filteredKeywordOptions.map((term) => (
                         <Badge
-                          key={kw.id}
-                          variant={srKeywords.includes(kw.term) ? "default" : "outline"}
+                          key={`pool-${term}`}
+                          variant={srKeywords.includes(term) ? "default" : "outline"}
                           className={cn(
                             "text-[10px] cursor-pointer transition-all",
-                            srKeywords.includes(kw.term)
+                            srKeywords.includes(term)
                               ? "bg-cyan-600 text-white"
                               : "hover:bg-slate-800"
                           )}
                           onClick={() => {
-                            if (srKeywords.includes(kw.term)) {
-                              setSrKeywords(srKeywords.filter((k) => k !== kw.term));
+                            if (srKeywords.includes(term)) {
+                              removeKeywordFromSelection(term);
                             } else {
-                              setSrKeywords([...srKeywords, kw.term]);
+                              addKeywordToSelection(term);
                             }
                           }}
                         >
-                          {kw.term}
-                        </Badge>
-                      ))}
-                      {concepts.map((concept) => (
-                        <Badge
-                          key={concept.id}
-                          variant={srKeywords.includes(concept.name) ? "default" : "outline"}
-                          className={cn(
-                            "text-[10px] cursor-pointer transition-all border",
-                            srKeywords.includes(concept.name)
-                              ? "text-white"
-                              : "hover:opacity-80"
-                          )}
-                          style={
-                            srKeywords.includes(concept.name)
-                              ? { backgroundColor: concept.color, borderColor: concept.color }
-                              : { color: concept.color, borderColor: `${concept.color}66`, backgroundColor: `${concept.color}12` }
-                          }
-                          onClick={() => {
-                            if (srKeywords.includes(concept.name)) {
-                              setSrKeywords(srKeywords.filter((k) => k !== concept.name));
-                            } else {
-                              setSrKeywords([...srKeywords, concept.name]);
-                            }
-                          }}
-                        >
-                          <Lightbulb className="w-2.5 h-2.5 mr-1" />
-                          {concept.name}
+                          {term}
                         </Badge>
                       ))}
                     </div>
+                    {keywordPickerQuery.trim() && discoverKeywordPool.length > filteredKeywordOptions.length && (
+                      <p className="text-[10px] text-slate-500">
+                        Showing first 20 matches. Refine your query for more precise keywords.
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -5865,6 +5948,11 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
     | "other"
   >("title");
   const [paperOverviewSortDir, setPaperOverviewSortDir] = useState<"asc" | "desc">("asc");
+  const [paperOverviewPageSize, setPaperOverviewPageSize] = useState<10 | 20 | 50 | "all">(10);
+  const [paperOverviewPage, setPaperOverviewPage] = useState(1);
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+  const tableBottomScrollbarRef = useRef<HTMLDivElement | null>(null);
+  const tableBottomScrollbarInnerRef = useRef<HTMLDivElement | null>(null);
 
   const normalizeConceptCategory = (raw?: string) => {
     const value = (raw || "").trim().toLowerCase();
@@ -6049,6 +6137,35 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
     return rows;
   }, [paperAnalyticsRows, paperOverviewSort, paperOverviewSortDir]);
 
+  const totalPaperOverviewRows = sortedPaperOverviewRows.length;
+  const totalPaperOverviewPages =
+    paperOverviewPageSize === "all" ? 1 : Math.max(1, Math.ceil(totalPaperOverviewRows / paperOverviewPageSize));
+  const paperOverviewCurrentPage = Math.min(paperOverviewPage, totalPaperOverviewPages);
+  const pagedPaperOverviewRows = useMemo(() => {
+    if (paperOverviewPageSize === "all") return sortedPaperOverviewRows;
+    const start = (paperOverviewCurrentPage - 1) * paperOverviewPageSize;
+    return sortedPaperOverviewRows.slice(start, start + paperOverviewPageSize);
+  }, [sortedPaperOverviewRows, paperOverviewPageSize, paperOverviewCurrentPage]);
+
+  useEffect(() => {
+    setPaperOverviewPage(1);
+  }, [paperOverviewPageSize]);
+
+  useEffect(() => {
+    if (paperOverviewPage > totalPaperOverviewPages) {
+      setPaperOverviewPage(totalPaperOverviewPages);
+    }
+  }, [paperOverviewPage, totalPaperOverviewPages]);
+
+  useEffect(() => {
+    const tableEl = tableScrollRef.current;
+    const bottomEl = tableBottomScrollbarRef.current;
+    const innerEl = tableBottomScrollbarInnerRef.current;
+    if (!tableEl || !bottomEl || !innerEl) return;
+    innerEl.style.width = `${tableEl.scrollWidth}px`;
+    bottomEl.scrollLeft = tableEl.scrollLeft;
+  }, [pagedPaperOverviewRows, paperOverviewPageSize]);
+
   const papers = useMemo(
     () =>
       paperAnalyticsRows.map((row) => ({
@@ -6071,8 +6188,26 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
   );
 
   // Upload state
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: string; date: string; addedToVisual?: boolean }>>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<
+    Array<{
+      id: string;
+      name: string;
+      size: string;
+      date: string;
+      addedToVisual?: boolean;
+      accessUrl?: string;
+      artifactId?: string;
+      bucketName?: string;
+      storageKey?: string;
+      uploading?: boolean;
+      progress?: number;
+      failed?: boolean;
+      errorMessage?: string;
+    }>
+  >([]);
   const [showUploadArea, setShowUploadArea] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const failedUploadFilesRef = useRef<Map<string, File>>(new Map());
 
   // Synthesis tables (multiple)
   interface SynthesisTable {
@@ -6189,12 +6324,205 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
     return paperOverviewSortDir === "asc" ? " ↑" : " ↓";
   };
 
-  const handleUploadFile = () => {
-    setUploadedFiles([
-      ...uploadedFiles,
-      { name: `external_data_${uploadedFiles.length + 1}.pdf`, size: "2.4 MB", date: new Date().toISOString().split("T")[0] },
-    ]);
+  const formatFileSize = (size: number) => {
+    if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    if (size >= 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${size} B`;
+  };
+
+  const persistVisualArtifact = (payload: {
+    fileName: string;
+    fileSize: number;
+    bucketName: string;
+    objectKey: string;
+    accessUrl?: string;
+  }) => {
+    if (typeof window === "undefined") return null;
+    const artifactId = `visual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const savedRaw = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+    const saved = savedRaw ? (JSON.parse(savedRaw) as Artifact[]) : [];
+    const artifact: Artifact = {
+      id: artifactId,
+      title: payload.fileName,
+      type: "visualization",
+      projectId,
+      sourceStep: 5,
+      description: `Uploaded visualization image (${formatFileSize(payload.fileSize)})`,
+      updatedAt: new Date().toISOString().split("T")[0],
+      content: JSON.stringify({
+        kind: "visualization-upload",
+        fileName: payload.fileName,
+        bucketName: payload.bucketName,
+        objectKey: payload.objectKey,
+        accessUrl: payload.accessUrl || "",
+      }),
+    };
+    const next = [...saved, artifact];
+    window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+    return artifactId;
+  };
+
+  const requestUploadUrl = async (bucketName: string, objectKey: string) => {
+    const token = getAuthToken();
+    const baseURL = getAPIBaseURL() || "";
+    const response = await fetch(`${baseURL}/api/v1/storage/upload-url`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        bucket_name: bucketName,
+        object_key: objectKey,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to request upload URL");
+    }
+    return (await response.json()) as { upload_url?: string; expires_at: string };
+  };
+
+  const uploadToPresignedUrlWithProgress = (
+    uploadUrl: string,
+    file: File,
+    onProgress: (percent: number) => void
+  ) =>
+    new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl, true);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+        onProgress(percent);
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress(100);
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(file);
+    });
+
+  const uploadVisualizationFile = async (rowId: string, file: File) => {
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, "-");
+    const objectKey = `visualizations/${projectId}/${Date.now()}-${safeName}`;
+    const bucketName = `rw-visuals-${projectId.replace(/[^a-z0-9]/gi, "-").toLowerCase()}`;
+
+    const presign = await requestUploadUrl(bucketName, objectKey);
+    if (!presign.upload_url) {
+      throw new Error("Upload URL missing from server response");
+    }
+
+    await uploadToPresignedUrlWithProgress(presign.upload_url, file, (percent) => {
+      setUploadedFiles((prev) =>
+        prev.map((item) => (item.id === rowId ? { ...item, progress: percent, uploading: percent < 100 } : item))
+      );
+    });
+
+    const artifactId = persistVisualArtifact({
+      fileName: file.name,
+      fileSize: file.size,
+      bucketName,
+      objectKey,
+    });
+
+    setUploadedFiles((prev) =>
+      prev.map((item) =>
+        item.id === rowId
+          ? {
+              ...item,
+              uploading: false,
+              progress: 100,
+              failed: false,
+              errorMessage: "",
+              addedToVisual: true,
+              artifactId: artifactId || undefined,
+              bucketName,
+              storageKey: objectKey,
+            }
+          : item
+      )
+    );
+    failedUploadFilesRef.current.delete(rowId);
+  };
+
+  const handleUploadFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = event.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const images = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
+    if (images.length === 0) {
+      toast.error("Please choose at least one image file");
+      event.target.value = "";
+      return;
+    }
+
+    for (const image of images) {
+      const rowId = `upload-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      setUploadedFiles((prev) => [
+        ...prev,
+        {
+          id: rowId,
+          name: image.name,
+          size: formatFileSize(image.size),
+          date: new Date().toISOString().split("T")[0],
+          uploading: true,
+          progress: 0,
+          failed: false,
+          addedToVisual: false,
+        },
+      ]);
+      try {
+        await uploadVisualizationFile(rowId, image);
+      } catch {
+        failedUploadFilesRef.current.set(rowId, image);
+        setUploadedFiles((prev) =>
+          prev.map((item) =>
+            item.id === rowId
+              ? { ...item, uploading: false, failed: true, errorMessage: "Upload failed. Please retry." }
+              : item
+          )
+        );
+        toast.error(`Upload failed: ${image.name}`);
+      }
+    }
+
+    toast.success(`Uploaded ${images.length} visualization image${images.length > 1 ? "s" : ""}`);
     setShowUploadArea(false);
+    event.target.value = "";
+  };
+
+  const handleRetryUpload = async (rowId: string) => {
+    const file = failedUploadFilesRef.current.get(rowId);
+    if (!file) return;
+
+    setUploadedFiles((prev) =>
+      prev.map((item) =>
+        item.id === rowId ? { ...item, uploading: true, failed: false, errorMessage: "", progress: 0 } : item
+      )
+    );
+
+    try {
+      await uploadVisualizationFile(rowId, file);
+      toast.success(`Upload succeeded: ${file.name}`);
+    } catch {
+      setUploadedFiles((prev) =>
+        prev.map((item) =>
+          item.id === rowId ? { ...item, uploading: false, failed: true, errorMessage: "Upload failed. Please retry." } : item
+        )
+      );
+      toast.error(`Retry failed: ${file.name}`);
+    }
   };
 
   const handleAddFileToVisualArtifacts = (index: number) => {
@@ -6353,7 +6681,15 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
             <CardContent>
               {paperAnalyticsLoading ? <p className="text-xs text-slate-400 mb-3">Loading paper metrics...</p> : null}
               <ScrollArea className="max-h-[500px]">
-                <div className="overflow-x-auto">
+                <div
+                  className="overflow-x-auto"
+                  ref={tableScrollRef}
+                  onScroll={(e) => {
+                    if (tableBottomScrollbarRef.current) {
+                      tableBottomScrollbarRef.current.scrollLeft = e.currentTarget.scrollLeft;
+                    }
+                  }}
+                >
                   <table className="w-full text-xs border-collapse min-w-[1380px]">
                     <thead>
                       <tr>
@@ -6379,7 +6715,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedPaperOverviewRows.map((row) => (
+                      {pagedPaperOverviewRows.map((row) => (
                         <tr key={row.paper.id} className="hover:bg-slate-800/20">
                           <td className="p-2 border border-slate-700/50 text-left min-w-[280px]">
                             <Link to={`/paper-read/${projectId}/${row.paper.id}`} className="text-cyan-300 hover:underline">
@@ -6404,6 +6740,73 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                   </table>
                 </div>
               </ScrollArea>
+              <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500">
+                <span>Horizontal Scroll</span>
+                <span>Drag bar to view all columns</span>
+              </div>
+              <div
+                className="mt-1 h-4 overflow-x-scroll rounded border border-slate-700/50 bg-slate-900/30"
+                ref={tableBottomScrollbarRef}
+                onScroll={(e) => {
+                  if (tableScrollRef.current) {
+                    tableScrollRef.current.scrollLeft = e.currentTarget.scrollLeft;
+                  }
+                }}
+              >
+                <div ref={tableBottomScrollbarInnerRef} className="h-1" />
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <span>Rows per page</span>
+                  <Select
+                    value={String(paperOverviewPageSize)}
+                    onValueChange={(value) =>
+                      setPaperOverviewPageSize(
+                        value === "all" ? "all" : (Number(value) as 10 | 20 | 50)
+                      )
+                    }
+                  >
+                    <SelectTrigger className="h-7 w-[90px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <span>
+                    {paperOverviewPageSize === "all"
+                      ? `Showing all ${totalPaperOverviewRows} records`
+                      : `Page ${paperOverviewCurrentPage}/${totalPaperOverviewPages} · ${totalPaperOverviewRows} records`}
+                  </span>
+                  {paperOverviewPageSize !== "all" && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        disabled={paperOverviewCurrentPage <= 1}
+                        onClick={() => setPaperOverviewPage((prev) => Math.max(1, prev - 1))}
+                      >
+                        Prev
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        disabled={paperOverviewCurrentPage >= totalPaperOverviewPages}
+                        onClick={() => setPaperOverviewPage((prev) => Math.min(totalPaperOverviewPages, prev + 1))}
+                      >
+                        Next
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -6427,27 +6830,64 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                 {showUploadArea && (
                   <div className="p-4 mb-3 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/30 text-center">
                     <Upload className="w-8 h-8 text-blue-300 mx-auto mb-2" />
-                    <p className="text-xs text-slate-500 mb-2">Drag & drop files here, or click to browse</p>
-                    <Button size="sm" className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white" onClick={handleUploadFile}>
+                    <p className="text-xs text-slate-500 mb-2">Choose one or more local image files to upload into the system</p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => void handleUploadFile(e)}
+                    />
+                    <Button
+                      size="sm"
+                      className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
                       <Plus className="w-3 h-3 mr-1" />
-                      Simulate Upload
+                      Select Images to Upload
                     </Button>
                   </div>
                 )}
                 {uploadedFiles.length > 0 ? (
                   <div className="space-y-2">
                     {uploadedFiles.map((file, i) => (
-                      <div key={i} className="flex items-center gap-3 p-2 bg-slate-800/40 rounded-lg">
+                      <div key={file.id || i} className="flex items-center gap-3 p-2 bg-slate-800/40 rounded-lg">
                         <FileText className="w-4 h-4 text-slate-400" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium text-slate-700 truncate">{file.name}</p>
                           <p className="text-[10px] text-slate-400">{file.size} · {file.date}</p>
+                          {file.uploading ? (
+                            <div className="mt-1">
+                              <div className="h-1.5 w-full rounded bg-slate-700/60 overflow-hidden">
+                                <div
+                                  className="h-full bg-cyan-500 transition-all"
+                                  style={{ width: `${file.progress || 0}%` }}
+                                />
+                              </div>
+                              <p className="text-[10px] text-cyan-300 mt-0.5">Uploading... {file.progress || 0}%</p>
+                            </div>
+                          ) : null}
+                          {file.failed ? (
+                            <p className="text-[10px] text-red-400 mt-0.5">{file.errorMessage || "Upload failed"}</p>
+                          ) : null}
                         </div>
                         <div className="shrink-0">
-                          {file.addedToVisual ? (
+                          {file.uploading ? (
+                            <Badge className="text-[9px] bg-cyan-100 text-cyan-700 border-cyan-200">Uploading</Badge>
+                          ) : file.failed ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-[10px] h-6 px-2 border-red-300 text-red-600 hover:bg-red-50"
+                              onClick={() => void handleRetryUpload(file.id)}
+                            >
+                              Retry
+                            </Button>
+                          ) : file.addedToVisual ? (
                             <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-emerald-200">
                               <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />
-                              Added to Visual
+                              Saved to My Artifacts / Visuals
                             </Badge>
                           ) : (
                             <Link to="/artifacts?tab=visual">
