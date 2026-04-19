@@ -361,28 +361,54 @@ export default function PdfViewer({
     setTranslatedText("正在翻译为中文...");
 
     try {
-      const response = await axios.post("/api/v1/aihub/gentxt", {
-        model: "gpt-5-chat",
-        stream: false,
-        temperature: 0.2,
-        max_tokens: 1200,
-        messages: [
-          {
-            role: "system",
-            content: "You are a translation assistant. Translate the user's English text to natural simplified Chinese only.",
-          },
-          {
-            role: "user",
-            content: selectionState.text,
-          },
-        ],
-      });
+      const models = ["gpt-5-chat", "gemini-2.5-pro", "deepseek-v3.2"];
+      let translated = "";
+      let lastError: unknown = null;
 
-      const translated = response?.data?.content?.trim();
-      setTranslatedText(translated || "翻译失败：未返回有效内容。");
+      for (const model of models) {
+        try {
+          const response = await axios.post("/api/v1/aihub/gentxt", {
+            model,
+            stream: false,
+            temperature: 0.2,
+            max_tokens: 1200,
+            messages: [
+              {
+                role: "system",
+                content: "You are a translation assistant. Translate the user's English text to natural simplified Chinese only.",
+              },
+              {
+                role: "user",
+                content: selectionState.text,
+              },
+            ],
+          });
+
+          translated = response?.data?.content?.trim() || "";
+          if (translated) {
+            break;
+          }
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      if (translated) {
+        setTranslatedText(translated);
+      } else {
+        const detail =
+          axios.isAxiosError(lastError)
+            ? (lastError.response?.data as { detail?: string } | undefined)?.detail
+            : undefined;
+        setTranslatedText(detail ? `翻译失败：${detail}` : "翻译失败：未返回有效内容。");
+      }
     } catch (error) {
       console.error("Failed to translate text:", error);
-      setTranslatedText("翻译失败，请稍后重试。");
+      const detail =
+        axios.isAxiosError(error)
+          ? (error.response?.data as { detail?: string } | undefined)?.detail
+          : undefined;
+      setTranslatedText(detail ? `翻译失败：${detail}` : "翻译失败，请稍后重试。");
     }
 
     clearSelectionState();

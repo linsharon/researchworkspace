@@ -59,7 +59,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [searchParams] = useSearchParams();
   const { t, lang, setLang } = useI18n();
   const { user, logout } = useAuth();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Project switcher state
   const [showProjectSwitcher, setShowProjectSwitcher] = useState(false);
