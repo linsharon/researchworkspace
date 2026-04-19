@@ -114,7 +114,22 @@ interface ConceptDefinitionMeta {
   page?: number;
 }
 
+interface LiteratureNoteContentMeta {
+  formType?: string;
+  originalQuote?: string;
+}
+
 const normalizeText = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
+
+const parseJsonObject = <T extends Record<string, unknown>>(value?: string): T | null => {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? (parsed as T) : null;
+  } catch {
+    return null;
+  }
+};
 
 const hexToRgba = (hexColor: string, alpha: number) => {
   const cleaned = hexColor.replace("#", "");
@@ -219,19 +234,18 @@ export default function PdfViewer({
   const conceptBands = useMemo<AnnotationBandMarker[]>(() => {
     return conceptsForBands
       .map((concept) => {
-        let parsed: ConceptDefinitionMeta | null = null;
-        try {
-          parsed = concept.definition ? (JSON.parse(concept.definition) as ConceptDefinitionMeta) : null;
-        } catch {
-          parsed = null;
-        }
+        const parsed = parseJsonObject<ConceptDefinitionMeta>(concept.definition);
 
         const sourcePaperId = parsed?.sourcePaper?.id || parsed?.sourcePaperId;
-        if (paperId && sourcePaperId && sourcePaperId !== paperId) {
+        if (!paperId || !sourcePaperId || sourcePaperId !== paperId) {
           return null;
         }
 
-        const page = typeof parsed?.page === "number" && parsed.page > 0 ? parsed.page : resolvedPage;
+        const selectedText = (parsed?.selectedText || "").trim();
+        const page = typeof parsed?.page === "number" && parsed.page > 0 ? parsed.page : null;
+        if (!page || selectedText.length < 8) {
+          return null;
+        }
 
         return {
           id: `concept-${concept.id}`,
@@ -239,38 +253,57 @@ export default function PdfViewer({
           page,
           label: concept.title,
           color: parsed?.color || "#a78bfa",
-          text: parsed?.selectedText || concept.description || "",
+          text: selectedText,
           concept,
         };
       })
       .filter((item): item is AnnotationBandMarker => Boolean(item));
-  }, [conceptsForBands, paperId, resolvedPage]);
+  }, [conceptsForBands, paperId]);
 
   const noteBands = useMemo<AnnotationBandMarker[]>(() => {
     return notesForBands
-      .map((note) => ({
-        id: `note-${note.id}`,
-        type: "note" as const,
-        page: typeof note.page === "number" && note.page > 0 ? note.page : resolvedPage,
-        label: note.title,
-        color: "#38bdf8",
-        text: note.description || note.content || "",
-        note,
-      }));
-  }, [notesForBands, resolvedPage]);
+      .map((note) => {
+        const content = parseJsonObject<LiteratureNoteContentMeta>(note.content);
+        const quote = (content?.originalQuote || "").trim();
+        const page = typeof note.page === "number" && note.page > 0 ? note.page : null;
+        if (note.note_type !== "literature-note" || !page || quote.length < 8) {
+          return null;
+        }
+
+        return {
+          id: `note-${note.id}`,
+          type: "note" as const,
+          page,
+          label: note.title,
+          color: "#38bdf8",
+          text: quote,
+          note,
+        };
+      })
+      .filter((item): item is AnnotationBandMarker => Boolean(item));
+  }, [notesForBands]);
 
   const highlightBands = useMemo<AnnotationBandMarker[]>(() => {
     return highlightsForBands
-      .map((item) => ({
-        id: `highlight-${item.id}`,
-        type: "highlight" as const,
-        page: typeof item.page === "number" && item.page > 0 ? item.page : resolvedPage,
-        label: item.text.slice(0, 42),
-        color: "#facc15",
-        text: item.text,
-        highlight: item,
-      }));
-  }, [highlightsForBands, resolvedPage]);
+      .map((item) => {
+        const page = typeof item.page === "number" && item.page > 0 ? item.page : null;
+        const text = (item.text || "").trim();
+        if (!page || text.length < 8) {
+          return null;
+        }
+
+        return {
+          id: `highlight-${item.id}`,
+          type: "highlight" as const,
+          page,
+          label: text.slice(0, 42),
+          color: "#facc15",
+          text,
+          highlight: item,
+        };
+      })
+      .filter((item): item is AnnotationBandMarker => Boolean(item));
+  }, [highlightsForBands]);
 
   const annotationBands = useMemo(() => {
     return [...highlightBands, ...noteBands, ...conceptBands].sort((left, right) => {
@@ -887,16 +920,10 @@ export default function PdfViewer({
 
       markers.forEach((marker) => {
         const source = normalizeText(marker.text || marker.label);
-        if (!source) return;
+        if (source.length < 8) return;
 
-        const prefix = source.slice(0, Math.min(26, source.length));
-        const tokens = source.split(" ").filter((token) => token.length >= 4);
-        const strongToken = tokens[0] || prefix;
-
-        let startIndex = spans.findIndex((span) => normalizeText(span.textContent || "").includes(prefix));
-        if (startIndex < 0 && strongToken) {
-          startIndex = spans.findIndex((span) => normalizeText(span.textContent || "").includes(strongToken));
-        }
+        const anchorPrefix = source.slice(0, Math.min(28, source.length));
+        const startIndex = spans.findIndex((span) => normalizeText(span.textContent || "").includes(anchorPrefix));
         if (startIndex < 0) return;
 
         const markCount = Math.min(4, Math.max(1, Math.ceil(source.length / 40)));
