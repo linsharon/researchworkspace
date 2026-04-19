@@ -211,21 +211,33 @@ class DraftErrorBoundary extends React.Component<React.PropsWithChildren, DraftE
       return this.props.children;
     }
 
+    const isZh =
+      typeof window !== "undefined" &&
+      window.localStorage.getItem("app-lang") === "zh";
+
     return (
       <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-5 space-y-3">
         <div>
-          <h2 className="text-sm font-semibold text-rose-300">Draft 页面加载失败</h2>
+          <h2 className="text-sm font-semibold text-rose-300">
+            {isZh ? "Draft 页面加载失败" : "Draft Page Failed to Load"}
+          </h2>
           <p className="text-xs text-rose-100/90 mt-1">
-            请把下面的错误信息和日志直接复制给我，我可以继续定位。
+            {isZh
+              ? "请把下面的错误信息和日志直接复制给我，我可以继续定位。"
+              : "Please copy the error details and logs below so I can keep debugging."}
           </p>
         </div>
         <div className="rounded-lg border border-rose-400/20 bg-black/20 p-3">
-          <p className="text-xs font-semibold text-rose-200 mb-1">Error Message</p>
+          <p className="text-xs font-semibold text-rose-200 mb-1">
+            {isZh ? "错误信息" : "Error Message"}
+          </p>
           <pre className="text-xs whitespace-pre-wrap text-white">{this.state.message}</pre>
         </div>
         <div className="rounded-lg border border-rose-400/20 bg-black/20 p-3">
           <p className="text-xs font-semibold text-rose-200 mb-1">Log / Stack</p>
-          <pre className="text-xs whitespace-pre-wrap text-white max-h-72 overflow-auto">{this.state.stack || "No stack available"}</pre>
+          <pre className="text-xs whitespace-pre-wrap text-white max-h-72 overflow-auto">
+            {this.state.stack || (isZh ? "暂无堆栈信息" : "No stack available")}
+          </pre>
         </div>
       </div>
     );
@@ -340,13 +352,30 @@ const getBlockedPaperTitlesFromDecisionHistory = (projectId: string) => {
 };
 
 export default function WorkflowWorkspace() {
+  const { t, lang } = useI18n();
+  const isZh = lang === "zh";
+  const tr = (en: string, zh: string) => (isZh ? zh : en);
   const { projectId = "proj-1", step } = useParams<{ projectId: string; step: string }>();
   const currentStep = (parseInt(step || "1") as WorkflowStep) || 1;
-  const stepMeta = STEP_META[currentStep];
+  const stepMeta = {
+    ...STEP_META[currentStep],
+    label: t(`step.${currentStep}.short`, STEP_META[currentStep].label),
+    description: t(`step.${currentStep}.desc`, STEP_META[currentStep].description),
+  };
   const prevStep = currentStep > 1 ? ((currentStep - 1) as WorkflowStep) : null;
-  const prevStepMeta = prevStep ? STEP_META[prevStep] : null;
+  const prevStepMeta = prevStep
+    ? {
+        ...STEP_META[prevStep],
+        label: t(`step.${prevStep}.short`, STEP_META[prevStep].label),
+      }
+    : null;
   const nextStep = currentStep < 6 ? ((currentStep + 1) as WorkflowStep) : null;
-  const nextStepMeta = nextStep ? STEP_META[nextStep] : null;
+  const nextStepMeta = nextStep
+    ? {
+        ...STEP_META[nextStep],
+        label: t(`step.${nextStep}.short`, STEP_META[nextStep].label),
+      }
+    : null;
 
   // Ensure the project row exists in DB on first visit
   useEffect(() => {
@@ -373,9 +402,15 @@ export default function WorkflowWorkspace() {
 
   const handleClearWorkflowCaches = () => {
     clearWorkflowAuxCaches("manual-clear");
-    toast.success("Workflow 辅助缓存已清理", {
-      description: "已清除决策历史和 Artifact 本地缓存。",
-    });
+    toast.success(
+      tr("Workflow auxiliary cache cleared", "Workflow 辅助缓存已清理"),
+      {
+        description: tr(
+          "Decision history and local artifact cache have been cleared.",
+          "已清除决策历史和 Artifact 本地缓存。"
+        ),
+      }
+    );
   };
 
   return (
@@ -395,7 +430,7 @@ export default function WorkflowWorkspace() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold text-slate-100">
-                  {`Step ${currentStep}: ${stepMeta.label}`}
+                  {isZh ? `步骤 ${currentStep}：${stepMeta.label}` : `Step ${currentStep}: ${stepMeta.label}`}
                 </h1>
               </div>
               <p className="text-sm text-slate-500">
@@ -406,7 +441,7 @@ export default function WorkflowWorkspace() {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleClearWorkflowCaches}>
               <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-              清理缓存
+              {tr("Clear Cache", "清理缓存")}
             </Button>
           </div>
         </div>
@@ -425,12 +460,22 @@ export default function WorkflowWorkspace() {
 
         <div className="border border-slate-700/50 rounded-xl bg-[#0d1b30] p-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs text-slate-400">{nextStep ? "Next Step" : "Workflow Complete"}</p>
+            <p className="text-xs text-slate-400">
+              {nextStep ? tr("Next Step", "下一步") : tr("Workflow Complete", "工作流已完成")}
+            </p>
             <p className="text-sm text-slate-200 font-medium">
-              {nextStepMeta ? `Step ${nextStep}: ${nextStepMeta.label}` : "You are at the final step."}
+              {nextStepMeta
+                ? isZh
+                  ? `步骤 ${nextStep}：${nextStepMeta.label}`
+                  : `Step ${nextStep}: ${nextStepMeta.label}`
+                : tr("You are at the final step.", "你已经在最后一步。")}
             </p>
             {prevStepMeta ? (
-              <p className="text-xs text-slate-500 mt-1">{`Last Step: Step ${prevStep} ${prevStepMeta.label}`}</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {isZh
+                  ? `上一步：步骤 ${prevStep} ${prevStepMeta.label}`
+                  : `Last Step: Step ${prevStep} ${prevStepMeta.label}`}
+              </p>
             ) : null}
           </div>
           <div className="flex items-center gap-2">
@@ -438,20 +483,20 @@ export default function WorkflowWorkspace() {
               <Link to={`/workflow/${projectId}/${prevStep}`}>
                 <Button variant="outline">
                   <ArrowLeft className="w-4 h-4 mr-1.5" />
-                  {`Go to Step ${prevStep}`}
+                  {isZh ? `前往步骤 ${prevStep}` : `Go to Step ${prevStep}`}
                 </Button>
               </Link>
             ) : null}
             {nextStep ? (
               <Link to={`/workflow/${projectId}/${nextStep}`}>
                 <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">
-                  {`Go to Step ${nextStep}`}
+                  {isZh ? `前往步骤 ${nextStep}` : `Go to Step ${nextStep}`}
                   <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
               </Link>
             ) : (
               <Link to="/">
-                <Button variant="outline">Back to Dashboard</Button>
+                <Button variant="outline">{tr("Back to Dashboard", "返回仪表盘")}</Button>
               </Link>
             )}
           </div>
@@ -495,6 +540,23 @@ function ModalOverlay({
 // Step 1: Purpose Workspace
 // ============================================================
 function PurposeWorkspace({ projectId }: { projectId: string }) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
+  const tr = (en: string, zh: string) => (isZh ? zh : en);
+  const purposeLabel = (value: string) => {
+    if (!isZh) return value;
+    const map: Record<string, string> = {
+      "Understand the field": "了解该领域",
+      "Find key concepts": "查找关键概念",
+      "Find theories": "查找理论",
+      "Find methods": "查找方法",
+      "Find research questions": "查找研究问题",
+      "Prepare for literature review": "准备文献综述",
+      "Prepare for introduction": "准备引言",
+    };
+    return map[value] || value;
+  };
+
   const [selected, setSelected] = useState<string[]>(["Find research questions"]);
   const [customPurposes, setCustomPurposes] = useState<string[]>([]);
   const [newCustomPurpose, setNewCustomPurpose] = useState("");
@@ -513,19 +575,20 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
   };
 
   const handleGeneratePurposeCard = () => {
+    const selectedDisplay = selected.map((item) => purposeLabel(item));
     const title =
-      selected.length
-        ? `Research Purpose: ${selected.slice(0, 2).join(", ")}${selected.length > 2 ? "..." : ""}`
-        : "Research Purpose";
+      selectedDisplay.length
+        ? `${tr("Research Purpose", "研究目的")}: ${selectedDisplay.slice(0, 2).join(", ")}${selectedDisplay.length > 2 ? "..." : ""}`
+        : tr("Research Purpose", "研究目的");
     const card: Artifact = {
       id: `purpose-${Date.now()}`,
       title,
       type: "purpose",
       projectId,
       sourceStep: 1,
-      description: notes.trim() || selected.join(", ") || "Reading purpose",
+      description: notes.trim() || selectedDisplay.join(", ") || tr("Reading purpose", "阅读目的"),
       updatedAt: new Date().toISOString().split("T")[0],
-      content: `Goals: ${selected.join(", ")}${notes.trim() ? `\n\nFocus: ${notes.trim()}` : ""}`,
+      content: `${tr("Goals", "目标")}: ${selectedDisplay.join(", ")}${notes.trim() ? `\n\n${tr("Focus", "关注点")}: ${notes.trim()}` : ""}`,
     };
     try {
       const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
@@ -538,8 +601,8 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
     } catch {
       // ignore storage errors
     }
-    toast.success("Purpose Card 已生成", {
-      description: "已保存到 Artifact Center › Purposes",
+    toast.success(tr("Purpose Card generated", "Purpose Card 已生成"), {
+      description: tr("Saved to Artifact Center > Purposes", "已保存到 Artifact Center > Purposes"),
       duration: 3000,
     });
     // Reset page
@@ -555,13 +618,13 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
       <Card className="border-slate-700/50">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">
-            What is your reading purpose?
+            {tr("What is your reading purpose?", "你的阅读目的是什么？")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="space-y-2">
-              <p className="text-xs font-medium text-slate-500">Predefined Purposes</p>
+              <p className="text-xs font-medium text-slate-500">{tr("Predefined Purposes", "预设目的")}</p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {allPurposes.map((option) => (
                   <label
@@ -581,10 +644,10 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
                         else setSelected(selected.filter((s) => s !== option));
                       }}
                     />
-                    <span className="record-item-title">{option}</span>
+                    <span className="record-item-title">{purposeLabel(option)}</span>
                     {customPurposes.includes(option) && (
                       <Badge variant="outline" className="text-[9px] ml-auto text-blue-500 border-blue-300">
-                        Custom
+                        {tr("Custom", "自定义")}
                       </Badge>
                     )}
                   </label>
@@ -593,12 +656,12 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-medium text-slate-500">Add Custom Purpose</p>
+              <p className="text-xs font-medium text-slate-500">{tr("Add Custom Purpose", "添加自定义目的")}</p>
               <div className="flex gap-2">
                 <Input
                   value={newCustomPurpose}
                   onChange={(e) => setNewCustomPurpose(e.target.value)}
-                  placeholder="Enter a custom reading purpose..."
+                  placeholder={tr("Enter a custom reading purpose...", "输入自定义阅读目的...")}
                   className="text-sm"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -613,11 +676,11 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
                   className="bg-cyan-600 hover:bg-cyan-700 text-white shrink-0"
                 >
                   <Plus className="w-4 h-4 mr-1" />
-                  Add Purpose
+                  {tr("Add Purpose", "添加目的")}
                 </Button>
               </div>
               <p className="text-xs text-slate-500">
-                Added custom purposes will appear in the predefined list on the left.
+                {tr("Added custom purposes will appear in the predefined list on the left.", "新增的自定义目的会出现在左侧预设列表中。")}
               </p>
             </div>
           </div>
@@ -625,12 +688,12 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
           <Separator />
 
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-slate-100">Additional Notes</p>
+            <p className="text-sm font-semibold text-slate-100">{tr("Additional Notes", "补充说明")}</p>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
-              placeholder="Describe your specific research interest..."
+              placeholder={tr("Describe your specific research interest...", "描述你的具体研究兴趣...")}
               className="text-sm"
             />
           </div>
@@ -642,19 +705,19 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4" />
-              Purpose Card Generated
+              {tr("Purpose Card Generated", "Purpose Card 已生成")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="p-4 bg-[#0d1b30] rounded-lg border border-emerald-200">
               <h4 className="font-medium text-sm text-slate-200 mb-2">
-                Research Purpose: AI & SRL in Higher Ed
+                {tr("Research Purpose", "研究目的")}: AI & SRL in Higher Ed
               </h4>
               <p className="text-xs text-slate-600 mb-2">
-                <strong>Goals:</strong> {selected.join(", ")}
+                <strong>{tr("Goals", "目标")}:</strong> {selected.map((item) => purposeLabel(item)).join(", ")}
               </p>
               <p className="text-xs text-slate-600">
-                <strong>Focus:</strong> {notes}
+                <strong>{tr("Focus", "关注点")}:</strong> {notes}
               </p>
             </div>
           </CardContent>
@@ -668,7 +731,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
           className="bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50"
         >
           <Sparkles className="w-4 h-4 mr-2" />
-          Generate Purpose Card
+          {tr("Generate Purpose Card", "生成 Purpose Card")}
         </Button>
       </div>
     </div>
@@ -679,6 +742,24 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
 // Step 2: Entry Paper Workspace
 // ============================================================
 function EntryPaperWorkspace({ projectId }: { projectId: string }) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
+  const tr = (en: string, zh: string) => (isZh ? zh : en);
+  const discoveryPathLabel = (value: string) => {
+    if (!isZh) return value;
+    const map: Record<string, string> = {
+      "Academic Database": "学术数据库",
+      "AI Academic Search Engine": "AI 学术搜索引擎",
+      "Search Engine": "搜索引擎",
+      "Manual Search": "手动检索",
+      "Social Platform": "社交平台",
+      "RSS Subscription": "RSS 订阅",
+      "Expert Consultation": "专家咨询",
+      Other: "其他",
+    };
+    return map[value] || value;
+  };
+
   const BOOLEAN_CONNECTORS = ["AND", "OR", "NOT"] as const;
   type BooleanConnector = (typeof BOOLEAN_CONNECTORS)[number];
 
@@ -2415,19 +2496,19 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               value="keywords"
               className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
             >
-              Keywords
+              {tr("Keywords", "关键词")}
             </TabsTrigger>
             <TabsTrigger
               value="search"
               className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
             >
-              Search Log
+              {tr("Search Log", "检索日志")}
             </TabsTrigger>
             <TabsTrigger
               value="candidates"
               className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
             >
-              Candidate Papers
+              {tr("Candidate Papers", "候选文献")}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -2441,7 +2522,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold">
-                Keyword Builder
+                {tr("Keyword Builder", "关键词构建器")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -2449,7 +2530,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 <Input
                   value={newKeyword}
                   onChange={(e) => setNewKeyword(e.target.value)}
-                  placeholder="Add a keyword..."
+                  placeholder={tr("Add a keyword...", "添加关键词...")}
                   className="text-sm"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -2515,7 +2596,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     to={`/artifacts?tab=concepts&projectId=${projectId}`}
                     className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
                   >
-                    Read all others in My Artifacts / Keywords
+                    {tr("Read all others in My Artifacts / Keywords", "在 My Artifacts / Keywords 中查看其余内容")}
                   </Link>
                 </div>
               )}
@@ -3080,7 +3161,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                                 variant="outline"
                                 className="text-[10px] border-cyan-300 text-cyan-600"
                               >
-                                via {paper.discoveryPath}
+                                {tr("via", "来源")} {paper.discoveryPath}
                               </Badge>
                             )}
                           </div>
@@ -3109,7 +3190,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                                 <a href={paper.doiUrl} target="_blank" rel="noreferrer" className="inline-flex">
                                   <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" type="button">
                                     <ExternalLink className="w-2.5 h-2.5 mr-1" />
-                                    DOI Link
+                                    {tr("DOI Link", "DOI 链接")}
                                   </Button>
                                 </a>
                               )}
@@ -3117,7 +3198,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                                 <a href={paper.externalSourceUrl} target="_blank" rel="noreferrer" className="inline-flex">
                                   <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" type="button">
                                     <Eye className="w-2.5 h-2.5 mr-1" />
-                                    Open Original Page
+                                    {tr("Open Original Page", "打开原始页面")}
                                   </Button>
                                 </a>
                               )}
@@ -3144,7 +3225,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           onClick={() => openEditPaperDialog(paper)}
                         >
                           <PenTool className="w-3 h-3 mr-1" />
-                          Edit
+                          {tr("Edit", "编辑")}
                         </Button>
                         <Button
                           size="sm"
@@ -3153,7 +3234,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           onClick={() => handleDeleteCandidatePaper(paper.id)}
                         >
                           <X className="w-3 h-3 mr-1" />
-                          Delete
+                          {tr("Delete", "删除")}
                         </Button>
                         <Button
                           size="sm"
@@ -3165,7 +3246,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           }}
                         >
                           <Star className="w-3 h-3 mr-1" />
-                          Mark Relevant
+                          {tr("Mark Relevant", "标记相关性")}
                         </Button>
                         <Button
                           size="sm"
@@ -3181,12 +3262,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           {entryPapers.includes(paper.id) ? (
                             <>
                               <Check className="w-3 h-3 mr-1" />
-                              Entry Paper
+                              {tr("Entry Paper", "Entry 文献")}
                             </>
                           ) : (
                             <>
                               <Target className="w-3 h-3 mr-1" />
-                              To Entry
+                              {tr("To Entry", "加入 Entry")}
                             </>
                           )}
                         </Button>
@@ -3211,17 +3292,17 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setConceptColor("#22d3ee");
           setConceptPurposeCardId("");
         }}
-        title="Add a new keyword"
+        title={tr("Add a new keyword", "添加新关键词")}
       >
         <div className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-slate-700">
-              Concept Name <span className="text-red-500">*</span>
+              {tr("Concept Name", "概念名称")} <span className="text-red-500">*</span>
             </label>
             <Input
               value={conceptName}
               onChange={(e) => setConceptName(e.target.value)}
-              placeholder="Enter concept name..."
+              placeholder={tr("Enter concept name...", "输入概念名称...")}
               className="text-sm"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -3233,11 +3314,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-700">Description</label>
+            <label className="text-xs font-medium text-slate-700">{tr("Description", "描述")}</label>
             <Textarea
               value={conceptDescription}
               onChange={(e) => setConceptDescription(e.target.value)}
-              placeholder="What does this concept mean in your research context? Add details, definitions, or notes..."
+              placeholder={tr(
+                "What does this concept mean in your research context? Add details, definitions, or notes...",
+                "这个概念在你的研究语境中是什么意思？可补充定义、细节或备注..."
+              )}
               rows={4}
               className="text-sm resize-none"
             />
@@ -3245,24 +3329,24 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-700">Category</label>
+              <label className="text-xs font-medium text-slate-700">{tr("Category", "分类")}</label>
               <Select value={conceptCategory} onValueChange={setConceptCategory}>
                 <SelectTrigger className="text-sm h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Concept">Concept</SelectItem>
-                  <SelectItem value="Construct">Construct</SelectItem>
-                  <SelectItem value="Theory">Theory</SelectItem>
-                  <SelectItem value="Framework">Framework</SelectItem>
-                  <SelectItem value="Method">Method</SelectItem>
-                  <SelectItem value="Variable">Variable</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
+                  <SelectItem value="Concept">{tr("Concept", "概念")}</SelectItem>
+                  <SelectItem value="Construct">{tr("Construct", "构念")}</SelectItem>
+                  <SelectItem value="Theory">{tr("Theory", "理论")}</SelectItem>
+                  <SelectItem value="Framework">{tr("Framework", "框架")}</SelectItem>
+                  <SelectItem value="Method">{tr("Method", "方法")}</SelectItem>
+                  <SelectItem value="Variable">{tr("Variable", "变量")}</SelectItem>
+                  <SelectItem value="Other">{tr("Other", "其他")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-700">Color</label>
+              <label className="text-xs font-medium text-slate-700">{tr("Color", "颜色")}</label>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {CONCEPT_COLORS.map((c) => (
                   <button
@@ -3284,16 +3368,16 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-700">Associate to Purpose Card</label>
+            <label className="text-xs font-medium text-slate-700">{tr("Associate to Purpose Card", "关联到 Purpose Card")}</label>
             <Select
               value={conceptPurposeCardId || PURPOSE_CARD_NONE}
               onValueChange={(value) => setConceptPurposeCardId(value === PURPOSE_CARD_NONE ? "" : value)}
             >
               <SelectTrigger className="text-sm h-9">
-                <SelectValue placeholder="Select a purpose card..." />
+                <SelectValue placeholder={tr("Select a purpose card...", "选择一个 Purpose Card...")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={PURPOSE_CARD_NONE}>Select...</SelectItem>
+                <SelectItem value={PURPOSE_CARD_NONE}>{tr("Select...", "请选择...")}</SelectItem>
                 {purposeCards.map((card) => (
                   <SelectItem key={card.id} value={card.id}>{card.title}</SelectItem>
                 ))}
@@ -3303,7 +3387,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           {conceptName.trim() && (
             <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
-              <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">Preview</p>
+              <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">{tr("Preview", "预览")}</p>
               <Badge
                 className="text-xs px-3 py-1 gap-1 border"
                 style={{ backgroundColor: `${conceptColor}18`, borderColor: `${conceptColor}55`, color: conceptColor }}
@@ -3322,7 +3406,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               disabled={!conceptName.trim()}
             >
               <Lightbulb className="w-3 h-3 mr-1" />
-              Add Concept
+              {tr("Add Concept", "添加概念")}
             </Button>
             <Button
               variant="ghost"
@@ -3336,7 +3420,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 setConceptPurposeCardId("");
               }}
             >
-              Cancel
+              {tr("Cancel", "取消")}
             </Button>
           </div>
         </div>
@@ -3348,14 +3432,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setShowEditPaperDialog(false);
           setEditingPaperId(null);
         }}
-        title="Edit Candidate Paper"
+        title={tr("Edit Candidate Paper", "编辑候选文献")}
       >
         <div className="space-y-3">
-          <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder="Paper title" />
-          <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder="Authors (comma separated)" />
+          <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder={tr("Paper title", "文献标题")} />
+          <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={tr("Authors (comma separated)", "作者（用逗号分隔）")} />
           <div className="grid grid-cols-2 gap-3">
-            <Input value={newPaperYear} onChange={(e) => setNewPaperYear(e.target.value)} placeholder="Year" />
-            <Input value={newPaperJournal} onChange={(e) => setNewPaperJournal(e.target.value)} placeholder="Journal" />
+            <Input value={newPaperYear} onChange={(e) => setNewPaperYear(e.target.value)} placeholder={tr("Year", "年份")} />
+            <Input value={newPaperJournal} onChange={(e) => setNewPaperJournal(e.target.value)} placeholder={tr("Journal", "期刊")} />
           </div>
           <Select value={newPaperDiscoveryPath} onValueChange={setNewPaperDiscoveryPath}>
             <SelectTrigger>
@@ -3367,10 +3451,10 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               ))}
             </SelectContent>
           </Select>
-          <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} placeholder="Discovery note" rows={3} />
+          <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} placeholder={tr("Discovery note", "发现备注")} rows={3} />
           <div className="flex justify-end gap-2">
-            <Button onClick={() => setShowEditPaperDialog(false)} type="button" variant="outline">Cancel</Button>
-            <Button onClick={handleSaveEditedPaper} type="button">Save Changes</Button>
+            <Button onClick={() => setShowEditPaperDialog(false)} type="button" variant="outline">{tr("Cancel", "取消")}</Button>
+            <Button onClick={handleSaveEditedPaper} type="button">{tr("Save Changes", "保存修改")}</Button>
           </div>
         </div>
       </ModalOverlay>
@@ -3379,19 +3463,19 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       <ModalOverlay
         open={showSearchDialog}
         onClose={() => setShowSearchDialog(false)}
-        title="Add Search Record"
+        title={tr("Add Search Record", "新增检索记录")}
       >
         <div className="space-y-4">
           {/* Keywords & Concepts selection */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-600">Keywords / Concepts</label>
+            <label className="text-xs font-medium text-slate-600">{tr("Keywords / Concepts", "关键词 / 概念")}</label>
             <div className="flex items-center gap-2 mb-1">
               <button
                 type="button"
                 className="text-[10px] text-cyan-600 hover:text-cyan-500 underline"
                 onClick={() => setSrKeywords([...keywords.map((k) => k.term), ...concepts.map((c) => c.name)])}
               >
-                Select All
+                {tr("Select All", "全选")}
               </button>
               <span className="text-[10px] text-slate-400">·</span>
               <button
@@ -4033,7 +4117,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             </div>
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-600">Discovery Path</label>
+            <label className="text-xs font-medium text-slate-600">{tr("Discovery Path", "发现路径")}</label>
             <div className="grid grid-cols-2 gap-1.5">
               {DISCOVERY_PATH_OPTIONS.map((path) => (
                 <label
@@ -4052,18 +4136,18 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     onChange={() => setNewPaperDiscoveryPath(path)}
                     className="accent-cyan-600"
                   />
-                  {path}
+                  {discoveryPathLabel(path)}
                 </label>
               ))}
             </div>
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-600">Discovery Note</label>
+            <label className="text-xs font-medium text-slate-600">{tr("Discovery Note", "发现备注")}</label>
             <Textarea
               value={newPaperDiscoveryNote}
               onChange={(e) => setNewPaperDiscoveryNote(e.target.value)}
               rows={2}
-              placeholder="How did you find this paper? Any additional details..."
+              placeholder={tr("How did you find this paper? Any additional details...", "你是如何发现这篇文献的？可补充更多细节...")}
               className="text-xs"
             />
           </div>
@@ -4073,14 +4157,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               onClick={handleAddCandidatePaper}
             >
               <Plus className="w-3 h-3 mr-1" />
-              Add Paper
+              {tr("Add Paper", "添加文献")}
             </Button>
             <Button
               variant="ghost"
               className="text-xs"
               onClick={() => setShowAddPaperDialog(false)}
             >
-              Cancel
+              {tr("Cancel", "取消")}
             </Button>
           </div>
         </div>
@@ -4093,7 +4177,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setBulkDoiInput("");
           setBulkSearchRecordId("");
         }}
-        title="Add Multiple Candidate Papers"
+        title={tr("Add Multiple Candidate Papers", "批量添加候选文献")}
       >
         <div className="space-y-3">
           {searchRecords.length > 0 && (
@@ -4101,7 +4185,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               <label className="text-xs font-medium text-slate-600">关联 Search Record（可选）</label>
               <Select value={bulkSearchRecordId || "__none__"} onValueChange={(v) => setBulkSearchRecordId(v === "__none__" ? "" : v)}>
                 <SelectTrigger className="text-xs h-8">
-                  <SelectValue placeholder="选择对应的 Search Record..." />
+                  <SelectValue placeholder={tr("Select a related Search Record...", "选择关联的 Search Record...")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">— 不关联 Search Record —</SelectItem>
@@ -4116,7 +4200,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           )}
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-600">DOI 链接（每行一个）</label>
+            <label className="text-xs font-medium text-slate-600">{tr("DOI links (one per line)", "DOI 链接（每行一个）")}</label>
             <Textarea
               value={bulkDoiInput}
               onChange={(e) => setBulkDoiInput(e.target.value)}
@@ -4133,14 +4217,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               disabled={bulkImporting || !bulkDoiInput.trim()}
             >
               <Sparkles className="w-3 h-3 mr-1" />
-              {bulkImporting ? "Importing..." : "Import All"}
+              {bulkImporting ? tr("Importing...", "导入中...") : tr("Import All", "全部导入")}
             </Button>
             <Button
               variant="ghost"
               className="text-xs"
               onClick={() => setShowAddMultiplePaperDialog(false)}
             >
-              Cancel
+              {tr("Cancel", "取消")}
             </Button>
           </div>
         </div>
@@ -4153,7 +4237,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setShowDiscoveryDialog(false);
           setDiscoveryPaperId(null);
         }}
-        title="Set Discovery Path"
+        title={tr("Set Discovery Path", "设置发现路径")}
       >
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-1.5">
@@ -4174,17 +4258,17 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   onChange={() => setDiscoveryPathValue(path)}
                   className="accent-cyan-600"
                 />
-                {path}
+                {discoveryPathLabel(path)}
               </label>
             ))}
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-600">Note</label>
+            <label className="text-xs font-medium text-slate-600">{tr("Note", "备注")}</label>
             <Textarea
               value={discoveryNoteValue}
               onChange={(e) => setDiscoveryNoteValue(e.target.value)}
               rows={2}
-              placeholder="Describe how you found this paper..."
+              placeholder={tr("Describe how you found this paper...", "描述你是如何发现这篇文献的...")}
               className="text-xs"
             />
           </div>
@@ -4194,7 +4278,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               onClick={handleSaveDiscoveryPath}
             >
               <Save className="w-3 h-3 mr-1" />
-              Save
+              {tr("Save", "保存")}
             </Button>
             <Button
               variant="ghost"
@@ -4204,7 +4288,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 setDiscoveryPaperId(null);
               }}
             >
-              Cancel
+              {tr("Cancel", "取消")}
             </Button>
           </div>
         </div>
@@ -4612,7 +4696,7 @@ function ReadWorkspace() {
                         className="text-[10px] h-6 px-2"
                       >
                         <BookOpen className="w-3 h-3 mr-1" />
-                        Link to Original
+                        {tr("Link to Original", "链接到原文")}
                       </Button>
                       <Button
                         size="sm"
@@ -4626,15 +4710,15 @@ function ReadWorkspace() {
                       >
                         <PenTool className="w-3 h-3 mr-1" />
                         {quotedToDraft === ann.id
-                          ? "Quoted ✓"
-                          : "Quote to Draft"}
+                          ? tr("Quoted ✓", "已引用 ✓")
+                          : tr("Quote to Draft", "引用到 Draft")}
                       </Button>
                     </div>
                   </div>
                 ))}
                 {annotations.length === 0 && (
                   <div className="text-center py-6 text-slate-400 text-xs">
-                    No annotations yet. Start highlighting key passages.
+                    {tr("No annotations yet. Start highlighting key passages.", "暂无批注，开始高亮关键段落吧。")}
                   </div>
                 )}
               </div>
@@ -4826,7 +4910,7 @@ function ReadWorkspace() {
                         onClick={() => setNoteSaved(true)}
                       >
                         <Save className="w-3 h-3 mr-1" />
-                        Save
+                        {tr("Save", "保存")}
                       </Button>
                       <Button
                         size="sm"
@@ -4834,7 +4918,7 @@ function ReadWorkspace() {
                         className="text-xs h-7"
                       >
                         <BookOpen className="w-3 h-3 mr-1" />
-                        Link to Original
+                        {tr("Link to Original", "链接到原文")}
                       </Button>
                       <Link to="/draft">
                         <Button
@@ -4843,7 +4927,7 @@ function ReadWorkspace() {
                           className="text-xs h-7 border-[#2D6A4F]/30 text-[#2D6A4F] hover:bg-emerald-50"
                         >
                           <PenTool className="w-3 h-3 mr-1" />
-                          Quote to Draft
+                          {tr("Quote to Draft", "引用到 Draft")}
                         </Button>
                       </Link>
                     </div>
@@ -4857,7 +4941,7 @@ function ReadWorkspace() {
                     <Input
                       value={newPermTitle}
                       onChange={(e) => setNewPermTitle(e.target.value)}
-                      placeholder="Permanent note title (e.g., 'Core insight: SRL gap')"
+                      placeholder={tr("Permanent note title (e.g., 'Core insight: SRL gap')", "永久笔记标题（例如：核心洞见：SRL 缺口）")}
                       className="text-sm"
                     />
                     <Textarea
@@ -5005,7 +5089,7 @@ function ReadWorkspace() {
                           <div className="flex gap-1.5">
                             <Button size="sm" variant="outline" className="text-[10px] h-6 px-2">
                               <BookOpen className="w-3 h-3 mr-1" />
-                              Link to Original
+                              {tr("Link to Original", "链接到原文")}
                             </Button>
                             <Link to="/draft">
                               <Button
@@ -5014,7 +5098,7 @@ function ReadWorkspace() {
                                 className="text-[10px] h-6 px-2 border-[#2D6A4F]/30 text-[#2D6A4F]"
                               >
                                 <PenTool className="w-3 h-3 mr-1" />
-                                Quote to Draft
+                                {tr("Quote to Draft", "引用到 Draft")}
                               </Button>
                             </Link>
                           </div>
@@ -5022,7 +5106,7 @@ function ReadWorkspace() {
                       ))}
                       {permNotes.length === 0 && (
                         <div className="text-center py-6 text-slate-400 text-xs">
-                          No permanent notes yet. Synthesize your literature notes into permanent insights.
+                          {tr("No permanent notes yet. Synthesize your literature notes into permanent insights.", "暂无永久笔记，请将文献笔记综合为稳定洞见。")}
                         </div>
                       )}
                     </div>
@@ -5367,7 +5451,10 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
       setRecordsForMode("entry-paper", "references", []);
       setRecordsForMode("entry-paper", "citations", []);
       setExpandError(
-        "Unable to pull references or citations from OpenAlex for this entry paper. You can still use the DOI/URL pull inside each tab or add records manually."
+        tr(
+          "Unable to pull references or citations from OpenAlex for this entry paper. You can still use the DOI/URL pull inside each tab or add records manually.",
+          "无法为该 Entry 文献从 OpenAlex 拉取 references/citations。你仍可在各标签中通过 DOI/URL 拉取，或手动添加记录。"
+        )
       );
     } finally {
       setLoadingRecords(false);
@@ -5380,7 +5467,11 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
   ) => {
     const normalizedInput = sourceInput.trim();
     if (!normalizedInput) {
-      setExpandError(`Please enter a DOI or URL to pull ${direction}.`);
+      setExpandError(
+        isZh
+          ? `请输入 DOI 或 URL 以拉取${direction === "references" ? "参考文献" : "引文"}。`
+          : `Please enter a DOI or URL to pull ${direction}.`
+      );
       return;
     }
 
@@ -5393,7 +5484,11 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
       const targetMode: ExpandMode = expandMode === "entry-paper" ? "doi-url" : expandMode;
       setRecordsForMode(targetMode, direction, records);
     } catch {
-      setExpandError(`Unable to pull ${direction} from OpenAlex with the provided DOI/URL.`);
+      setExpandError(
+        isZh
+          ? `无法使用提供的 DOI/URL 从 OpenAlex 拉取${direction === "references" ? "参考文献" : "引文"}。`
+          : `Unable to pull ${direction} from OpenAlex with the provided DOI/URL.`
+      );
     } finally {
       setLoadingRecords(false);
     }
@@ -9433,12 +9528,12 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     )
                   }
                 />
-                Also push this change to source {editingInserted.segment.kind}.
+                {tr("Also push this change to source", "同时将此修改回推到来源")} {editingInserted.segment.kind}.
               </label>
               <div className="flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => setEditingInserted(null)}>Cancel</Button>
+                <Button variant="ghost" onClick={() => setEditingInserted(null)}>{tr("Cancel", "取消")}</Button>
                 <Button onClick={() => void handleSaveInsertedEdit()} className="bg-cyan-600 hover:bg-cyan-700 text-white">
-                  Save Changes
+                  {tr("Save Changes", "保存修改")}
                 </Button>
               </div>
             </div>
@@ -9452,7 +9547,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
           <div className="bg-[#0d1b30] rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-[#0d1b30] z-10">
               <h3 className="text-sm font-semibold text-cyan-300">
-                Full Preview — {activeStyle.name}
+                {tr("Full Preview", "完整预览")} - {activeStyle.name}
               </h3>
               <button onClick={() => setShowPreview(false)} className="p-1 hover:bg-slate-800 rounded">
                 <X className="w-4 h-4 text-slate-500" />
