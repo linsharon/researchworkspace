@@ -362,13 +362,26 @@ export const paperAPI = {
     );
   },
 
-  uploadPdf: async (paperId: string, file: File): Promise<Paper> => {
+  uploadPdf: async (
+    paperId: string,
+    file: File,
+    onProgress?: (progressPercent: number) => void
+  ): Promise<Paper> => {
     const formData = new FormData();
     formData.append("file", file);
 
     const response = await axios.post(`${API_BASE_URL}/papers/${paperId}/pdf`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
       timeout: PAPER_PDF_UPLOAD_TIMEOUT_MS,
+      onUploadProgress: (event) => {
+        if (!onProgress) return;
+        if (!event.total) {
+          onProgress(0);
+          return;
+        }
+        const percent = Math.min(100, Math.max(0, Math.round((event.loaded / event.total) * 100)));
+        onProgress(percent);
+      },
     });
     return response.data;
   },

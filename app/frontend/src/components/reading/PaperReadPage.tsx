@@ -244,7 +244,10 @@ export default function PaperReadPage() {
           <PaperReadingArea
             paper={paper}
             projectId={projectId}
-            onChanged={() => setHasChanged(true)}
+            onChanged={async () => {
+              setHasChanged(true);
+              await loadPaper();
+            }}
             onHighlightCreated={() => setHighlightPulse((prev) => prev + 1)}
             onNoteCreated={() => loadPaper()}
             onConceptCreated={() => loadPaper()}

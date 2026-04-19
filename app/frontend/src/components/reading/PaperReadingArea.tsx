@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import {
   Upload,
   FileText,
@@ -18,6 +19,7 @@ import {
   Copy,
   Check,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import type { Paper, Highlight } from "@/lib/manuscript-api";
 import { paperAPI } from "@/lib/manuscript-api";
@@ -26,7 +28,7 @@ import PdfViewer from "@/components/pdf/PdfViewer";
 interface PaperReadingAreaProps {
   paper: Paper;
   projectId?: string;
-  onChanged: () => void;
+  onChanged: () => void | Promise<void>;
   onTextSelected?: (text: string) => void;
   onHighlightCreated?: (highlight: Highlight) => void;
   onNoteCreated?: () => void;
@@ -183,6 +185,17 @@ export default function PaperReadingArea({
   const [copiedUploadLog, setCopiedUploadLog] = useState(false);
   const [previewErrorLog, setPreviewErrorLog] = useState<string | null>(null);
   const [copiedPreviewLog, setCopiedPreviewLog] = useState(false);
+  const [uploadState, setUploadState] = useState<"idle" | "uploading" | "refreshing" | "success" | "error">("idle");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadFileName, setUploadFileName] = useState<string | null>(null);
+
+  const isBusyUploading = uploadState === "uploading" || uploadState === "refreshing";
+
+  useEffect(() => {
+    setUploadState("idle");
+    setUploadProgress(0);
+    setUploadFileName(null);
+  }, [paper.id]);
 
   useEffect(() => {
     setTitleExpanded(false);
@@ -231,6 +244,7 @@ export default function PaperReadingArea({
   }, [paper.id, paper.pdf_path]);
 
   const handleUploadPDF = async () => {
+    if (isBusyUploading) return;
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".pdf,application/pdf";
@@ -239,12 +253,26 @@ export default function PaperReadingArea({
       if (!file) return;
 
       try {
+        setUploadState("uploading");
+        setUploadProgress(0);
+        setUploadFileName(file.name);
         setUploadErrorLog(null);
         setCopiedUploadLog(false);
-        await paperAPI.uploadPdf(paper.id, file);
-        onChanged();
+        await paperAPI.uploadPdf(paper.id, file, (percent) => {
+          setUploadProgress(percent);
+        });
+        setUploadProgress(100);
+        setUploadState("refreshing");
+        await Promise.resolve(onChanged());
+        setUploadState("success");
+        window.setTimeout(() => {
+          setUploadState("idle");
+          setUploadProgress(0);
+          setUploadFileName(null);
+        }, 2500);
       } catch (error) {
         console.error("PDF upload failed:", error);
+        setUploadState("error");
         setUploadErrorLog(formatUploadErrorLog(error, paper, file));
       }
     };
@@ -364,6 +392,36 @@ export default function PaperReadingArea({
       </>
 
       <div className="flex-1 overflow-hidden flex flex-col">
+        {uploadState !== "idle" ? (
+          <div className="px-4 pt-4">
+            <Alert className={uploadState === "error" ? "border-rose-500/40 bg-rose-950/30 text-rose-100" : "border-cyan-500/40 bg-cyan-950/30 text-cyan-100"}>
+              {isBusyUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : uploadState === "success" ? <Check className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+              <AlertTitle>
+                {uploadState === "uploading" && "Uploading PDF"}
+                {uploadState === "refreshing" && "Refreshing Reader"}
+                {uploadState === "success" && "Upload Completed"}
+                {uploadState === "error" && "Upload Failed"}
+              </AlertTitle>
+              <AlertDescription>
+                <p className="text-sm mb-2">
+                  {uploadState === "uploading" && `${uploadFileName || "PDF file"} is uploading...`}
+                  {uploadState === "refreshing" && "Upload succeeded. Refreshing paper data and viewer..."}
+                  {uploadState === "success" && "PDF is now available in the reader."}
+                  {uploadState === "error" && "Please check the detailed error log below."}
+                </p>
+                {(uploadState === "uploading" || uploadState === "refreshing") ? (
+                  <div className="space-y-1">
+                    <Progress value={uploadState === "refreshing" ? 100 : uploadProgress} className="h-2" />
+                    <p className="text-[11px] opacity-85">
+                      {uploadState === "refreshing" ? "Server processing..." : `${uploadProgress}%`}
+                    </p>
+                  </div>
+                ) : null}
+              </AlertDescription>
+            </Alert>
+          </div>
+        ) : null}
+
         {uploadErrorLog ? (
           <div className="px-4 pt-4">
             <Alert className="border-rose-500/40 bg-rose-950/30 text-rose-100">
@@ -398,9 +456,9 @@ export default function PaperReadingArea({
                     This PDF was stored locally and was removed when the backend was redeployed. Please re-upload the file to continue.
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <Button className="h-8" onClick={handleUploadPDF} size="sm" variant="default">
-                      <Upload className="h-3.5 w-3.5 mr-1" />
-                      Re-upload PDF
+                    <Button className="h-8" onClick={handleUploadPDF} size="sm" variant="default" disabled={isBusyUploading}>
+                      {isBusyUploading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Upload className="h-3.5 w-3.5 mr-1" />}
+                      {isBusyUploading ? "Uploading..." : "Re-upload PDF"}
                     </Button>
                     <Button className="h-8" onClick={handleCopyPreviewLog} size="sm" variant="outline">
                       {copiedPreviewLog ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -481,9 +539,9 @@ export default function PaperReadingArea({
                   This paper does not have an attached PDF yet. Upload one to start annotation.
                 </p>
               </div>
-              <Button className="gap-2 mt-4" onClick={handleUploadPDF}>
-                <Upload className="h-4 w-4" />
-                Upload PDF
+              <Button className="gap-2 mt-4" onClick={handleUploadPDF} disabled={isBusyUploading}>
+                {isBusyUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {isBusyUploading ? "Uploading..." : "Upload PDF"}
               </Button>
             </div>
           </div>
