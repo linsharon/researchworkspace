@@ -298,7 +298,7 @@ export default function PaperToolsArea({
         note_type: "literature-note",
         page: Number.isNaN(parsedPage) ? undefined : parsedPage,
         keywords: [
-          ...(note.doiOrUrl.trim() ? [note.doiOrUrl.trim()] : []),
+          ...(paper.url?.trim() ? [paper.url.trim()] : []),
           ...note.keywords,
         ],
         citations: [],
@@ -626,7 +626,7 @@ export default function PaperToolsArea({
           <DialogHeader>
             <DialogTitle>Add Literature Note</DialogTitle>
           </DialogHeader>
-          <LiteratureNoteForm onSubmit={handleAddLiteratureFormNote} />
+          <LiteratureNoteForm paper={paper} onSubmit={handleAddLiteratureFormNote} />
         </DialogContent>
       </Dialog>
 

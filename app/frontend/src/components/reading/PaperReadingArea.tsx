@@ -20,9 +20,12 @@ import {
   Check,
   AlertCircle,
   Loader2,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import type { Paper, Highlight } from "@/lib/manuscript-api";
 import { paperAPI } from "@/lib/manuscript-api";
+import { pdfAPI } from "@/lib/pdf-api";
 import PdfViewer from "@/components/pdf/PdfViewer";
 
 interface PaperReadingAreaProps {
@@ -188,6 +191,7 @@ export default function PaperReadingArea({
   const [uploadState, setUploadState] = useState<"idle" | "uploading" | "refreshing" | "success" | "error">("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadFileName, setUploadFileName] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(100);
 
   const isBusyUploading = uploadState === "uploading" || uploadState === "refreshing";
 
@@ -490,6 +494,79 @@ export default function PaperReadingArea({
         ) : null}
 
         {paper.pdf_path ? (
+          <>
+            {/* PDF toolbar: download / replace / delete / zoom */}
+            <div className="flex-shrink-0 flex items-center gap-1 px-2 py-1 border-b border-slate-700/50 bg-slate-800/60">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-[11px] text-slate-300 hover:text-white"
+                title="Download PDF"
+                onClick={async () => {
+                  try {
+                    const { url, filename } = await paperAPI.downloadPdf(paper.id);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = filename || paper.pdf_path!.split("/").pop() || "paper.pdf";
+                    a.click();
+                    window.setTimeout(() => URL.revokeObjectURL(url), 5000);
+                  } catch {
+                    alert("Download failed. Please try again.");
+                  }
+                }}
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Download
+              </Button>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-[11px] text-slate-300 hover:text-white"
+                title="Replace PDF"
+                disabled={isBusyUploading}
+                onClick={handleReplacePDF}
+              >
+                <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                Replace
+              </Button>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-[11px] text-rose-400 hover:text-rose-300"
+                title="Delete PDF"
+                disabled={isBusyUploading}
+                onClick={handleDeletePDF}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Delete
+              </Button>
+
+              <div className="flex-1" />
+
+              {/* Zoom controls */}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0 text-slate-300 hover:text-white"
+                title="Zoom out"
+                onClick={() => setZoomLevel(prev => Math.max(30, prev - 10))}
+              >
+                <ZoomOut className="h-3.5 w-3.5" />
+              </Button>
+              <span className="text-[11px] text-slate-400 min-w-[38px] text-center select-none">{zoomLevel}%</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0 text-slate-300 hover:text-white"
+                title="Zoom in"
+                onClick={() => setZoomLevel(prev => Math.min(300, prev + 10))}
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+
           <div className="flex-1 min-h-0 p-2">
             {resolvingPdfUrl ? (
               <div className="h-full flex items-center justify-center text-sm text-slate-400">
@@ -522,6 +599,8 @@ export default function PaperReadingArea({
                 showTitleBar={false}
                 showToolbar={false}
                 title={paper.pdf_path}
+                zoom={zoomLevel}
+                onZoomChange={setZoomLevel}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-sm text-rose-400">
@@ -529,6 +608,7 @@ export default function PaperReadingArea({
               </div>
             )}
           </div>
+          </>
         ) : (
           <div className="h-full flex items-center justify-center">
             <div className="text-center space-y-4 px-6">

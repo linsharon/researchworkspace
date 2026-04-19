@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import NoteTagInput from "./NoteTagInput";
+import type { Paper } from "@/lib/manuscript-api";
 
 export interface LiteratureNote {
   title: string;
-  doiOrUrl: string;
   pageNumber: string;
   keywords: string[];
   contentGist: string;
@@ -19,19 +19,19 @@ export interface LiteratureNote {
 
 interface LiteratureNoteFormProps {
   initialValue?: Partial<LiteratureNote>;
+  paper?: Paper;
   onSubmit?: (note: LiteratureNote) => void | Promise<void>;
 }
 
 const defaultNote: LiteratureNote = {
   title: "",
-  doiOrUrl: "",
   pageNumber: "",
   keywords: [],
   contentGist: "",
   originalQuote: "",
 };
 
-export function LiteratureNoteForm({ initialValue, onSubmit }: LiteratureNoteFormProps) {
+export function LiteratureNoteForm({ initialValue, paper, onSubmit }: LiteratureNoteFormProps) {
   const [form, setForm] = useState<LiteratureNote>({ ...defaultNote, ...initialValue });
   const [errors, setErrors] = useState<Partial<Record<keyof LiteratureNote, string>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -113,16 +113,6 @@ export function LiteratureNoteForm({ initialValue, onSubmit }: LiteratureNoteFor
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="lit-doi">DOI / URL</Label>
-                  <Input
-                    id="lit-doi"
-                    placeholder="https://doi.org/..."
-                    value={form.doiOrUrl}
-                    onChange={event => updateField("doiOrUrl", event.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="lit-page">Page Number</Label>
                   <Input
                     id="lit-page"
@@ -169,6 +159,27 @@ export function LiteratureNoteForm({ initialValue, onSubmit }: LiteratureNoteFor
                   <p className="text-xs text-rose-600">{errors.originalQuote}</p>
                 ) : null}
               </div>
+
+              {paper ? (
+                <div className="rounded-md border border-slate-700/40 bg-slate-800/50 px-3 py-2.5 space-y-1">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Source Metadata</p>
+                  {paper.title ? (
+                    <p className="text-xs text-slate-300"><span className="text-slate-500 mr-1">Title:</span>{paper.title}</p>
+                  ) : null}
+                  {paper.authors && paper.authors.length > 0 ? (
+                    <p className="text-xs text-slate-300"><span className="text-slate-500 mr-1">Authors:</span>{paper.authors.join(", ")}</p>
+                  ) : null}
+                  {paper.year ? (
+                    <p className="text-xs text-slate-300"><span className="text-slate-500 mr-1">Year:</span>{paper.year}</p>
+                  ) : null}
+                  {paper.journal ? (
+                    <p className="text-xs text-slate-300"><span className="text-slate-500 mr-1">Journal:</span>{paper.journal}</p>
+                  ) : null}
+                  {paper.url ? (
+                    <p className="text-xs text-slate-300 break-all"><span className="text-slate-500 mr-1">URL:</span>{paper.url}</p>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div className="flex justify-end">
                 <Button disabled={submitting} type="submit">
