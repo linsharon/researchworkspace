@@ -998,6 +998,26 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     return () => window.clearTimeout(timer);
   }, [activeTab, highlightedSearchQuery, searchRecords]);
 
+  useEffect(() => {
+    if (!projectId) return;
+    persistArtifacts((prev) => {
+      const kept = prev.filter(
+        (artifact) => !(artifact.projectId === projectId && artifact.type === "search-log")
+      );
+      const mapped = searchRecords.map((record) => ({
+        id: `search-log-${record.id}`,
+        title: `Search Log: ${(record.query || "").slice(0, 80)}`,
+        type: "search-log" as const,
+        projectId,
+        sourceStep: 2 as const,
+        description: `${record.database} · ${record.date} · ${record.relevant}/${record.results} relevant`,
+        updatedAt: record.date,
+        content: JSON.stringify(record, null, 2),
+      }));
+      return [...kept, ...mapped];
+    });
+  }, [searchRecords, projectId]);
+
   // Helper: map API paper to local Paper type
   const apiPaperToLocal = (p: ApiPaper): CandidatePaper => ({
     id: p.id,
@@ -6976,10 +6996,6 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     setInsertedSegments(parseInsertedSegmentMap(window.localStorage.getItem(draftInsertedSegmentsStorageKey)));
   }, [draftComponentsStorageKey, draftStructureStorageKey, draftInsertedSegmentsStorageKey]);
 
-  const handleManualSave = () => {
-    setLastSaved(new Date().toLocaleTimeString());
-  };
-
   const handleInsertArtifact = (artifactId: string) => {
     const artifact = allArtifacts.find((a) => a.id === artifactId);
     if (!artifact || !insertTarget) return;
@@ -7526,7 +7542,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     };
   }, [projectId, selectedStyle]);
 
-  const handleSaveAsWritingDraft = async () => {
+  const handleSaveDraftNow = async () => {
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0];
     const timeStr = now.toLocaleTimeString();
@@ -7607,6 +7623,95 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
       setSelectedVersionId(versionId);
       setShowDraftBrowser(false);
     }
+  };
+
+  const parseDraftArtifactVersions = (artifact: Artifact): WritingDraftVersion[] => {
+    if (!artifact.content) return [];
+    try {
+      const parsed = JSON.parse(artifact.content) as { versions?: WritingDraftVersion[] };
+      return Array.isArray(parsed.versions) ? parsed.versions : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const draftArtifacts = allArtifacts
+    .filter((artifact) => artifact.type === "writing-draft" && (!artifact.projectId || artifact.projectId === projectId))
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+  const handleSaveDraftToArtifact = () => {
+    if (typeof window === "undefined") return;
+
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+    const timeStr = now.toLocaleTimeString();
+    const currentContent = { ...componentContents };
+    const currentDraftName =
+      writingDrafts.find((draft) => draft.id === selectedDraftId)?.name || `Draft — ${activeStyle.name}`;
+
+    const nextVersion: WritingDraftVersion = {
+      id: `v-${Date.now()}`,
+      content: currentContent,
+      savedAt: `${dateStr} ${timeStr}`,
+    };
+
+    try {
+      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+      const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
+      const current = Array.isArray(parsed) ? parsed : [];
+
+      const existing = current.find(
+        (artifact) =>
+          artifact.type === "writing-draft" &&
+          artifact.projectId === projectId &&
+          artifact.title === currentDraftName
+      );
+
+      const previousVersions = existing ? parseDraftArtifactVersions(existing) : [];
+      const nextVersions = [...previousVersions, nextVersion];
+
+      const draftArtifact: Artifact = {
+        id: existing?.id || `draft-artifact-${projectId}-${Date.now()}`,
+        title: currentDraftName,
+        type: "writing-draft",
+        projectId,
+        sourceStep: 6,
+        description: `Draft artifact with ${nextVersions.length} version${nextVersions.length > 1 ? "s" : ""}`,
+        updatedAt: dateStr,
+        content: JSON.stringify(
+          {
+            styleId: selectedStyle,
+            versions: nextVersions,
+          },
+          null,
+          2
+        ),
+      };
+
+      const next = existing
+        ? current.map((artifact) => (artifact.id === existing.id ? draftArtifact : artifact))
+        : [...current, draftArtifact];
+
+      window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(next));
+      window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+      setDraftSaveMsg(`Saved to draft artifact "${currentDraftName}" at ${timeStr}`);
+      setTimeout(() => setDraftSaveMsg(null), 3000);
+    } catch {
+      toast.error("保存到 Draft Artifact 失败");
+    }
+  };
+
+  const handleLoadDraftArtifactVersion = (artifactId: string, versionId: string) => {
+    const artifact = draftArtifacts.find((item) => item.id === artifactId);
+    if (!artifact) return;
+    const versions = parseDraftArtifactVersions(artifact);
+    const version = versions.find((item) => item.id === versionId);
+    if (!version) return;
+
+    setComponentContents(version.content);
+    setShowArtifactBrowser(false);
+    setDraftSaveMsg(`Loaded version from "${artifact.title}"`);
+    setTimeout(() => setDraftSaveMsg(null), 3000);
   };
 
   const previewArtifact = allArtifacts.find((a) => a.id === previewArtifactId);
@@ -8193,6 +8298,54 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                 </div>
               )}
 
+              {/* Draft Artifact Browser */}
+              {showArtifactBrowser && (
+                <div className="p-3 rounded-lg border-2 border-dashed border-cyan-300/40 bg-cyan-500/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-cyan-200">📦 Draft Artifacts</p>
+                    <button onClick={() => setShowArtifactBrowser(false)} className="hover:bg-slate-700/50 rounded p-0.5">
+                      <X className="w-3 h-3 text-cyan-200" />
+                    </button>
+                  </div>
+                  {draftArtifacts.length === 0 ? (
+                    <p className="text-[10px] text-slate-400 text-center py-3">
+                      No draft artifacts yet. Use Save as Draft → Save to Artifact.
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-[260px] overflow-y-auto">
+                      {draftArtifacts.map((artifact) => {
+                        const versions = parseDraftArtifactVersions(artifact);
+                        return (
+                          <div key={artifact.id} className="p-2 rounded-lg border border-cyan-300/30 bg-[#0d1b30]">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="text-xs font-medium text-slate-200">{artifact.title}</h4>
+                              <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                {versions.length} version{versions.length > 1 ? "s" : ""}
+                              </Badge>
+                            </div>
+                            <p className="text-[9px] text-slate-400 mb-1.5">Updated: {artifact.updatedAt}</p>
+                            <div className="space-y-1">
+                              {versions.map((version) => (
+                                <button
+                                  key={version.id}
+                                  onClick={() => handleLoadDraftArtifactVersion(artifact.id, version.id)}
+                                  className="w-full text-left p-1.5 rounded text-[10px] transition-all border bg-slate-800/40 border-slate-700/50 hover:border-cyan-300 text-slate-300"
+                                >
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="w-2.5 h-2.5" />
+                                    {version.savedAt}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Component Tabs */}
               <div className="flex gap-1 flex-wrap pb-1">
                 {activeStyle.components.map((comp) => (
@@ -8270,17 +8423,28 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     Saved {lastSaved}
                   </span>
                 )}
-                <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleManualSave}>
-                  <Save className="w-3 h-3 mr-1" />
-                  Save
-                </Button>
-                <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleSaveAsWritingDraft}>
-                  <FileText className="w-3 h-3 mr-1" />
-                  Save as Draft
-                </Button>
-                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setShowDraftBrowser(!showDraftBrowser)}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" className="text-xs h-7">
+                      <FileText className="w-3 h-3 mr-1" />
+                      Save as Draft
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-44">
+                    <DropdownMenuItem onClick={() => void handleSaveDraftNow()}>
+                      <Save className="w-3.5 h-3.5 mr-2" />
+                      Save Now
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleSaveDraftToArtifact}>
+                      <Box className="w-3.5 h-3.5 mr-2" />
+                      Save to Artifact
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setShowArtifactBrowser(!showArtifactBrowser)}>
                   <FolderUp className="w-3 h-3 mr-1" />
-                  Load Draft
+                  Load Draft Artifact
                 </Button>
                 <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setShowPreview(true)}>
                   <Eye className="w-3 h-3 mr-1" />

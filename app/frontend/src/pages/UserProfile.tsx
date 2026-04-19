@@ -1,270 +1,319 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/dialog";
-import { User, Upload, Lock, Globe, Edit2, Check, X } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Lock, Globe, Upload, User, Trash2 } from "lucide-react";
 import { type UserProfile } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-const DEFAULT_AVATAR_URL = "https://api.dicebear.com/7.x/avataaars/svg?seed=default";
 const USER_PROFILES_KEY = "rw-user-profiles";
-const CURRENT_USER_KEY = "rw-current-user";
+const PASSWORD_OVERRIDES_KEY = "rw-user-password-overrides";
+const MY_DOWNLOADED_PACKAGES_KEY = "rw-my-downloaded-packages";
+const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
+
+const emptyProfile = (userId: string, email: string, name?: string): UserProfile => ({
+  userId,
+  email,
+  username: name || email.split("@")[0] || "User",
+  bio: "",
+  avatarUrl: "",
+  isPublic: true,
+  updatedAt: new Date().toISOString(),
+});
 
 export default function UserProfilePage() {
-  const { userId } = useParams<{ userId: string }>();
-  const navigate = useNavigate();
-  const { user: authUser } = useAuth();
-  
+  const { userId: userIdParam } = useParams<{ userId: string }>();
+  const { user, logout } = useAuth();
+
+  const effectiveUserId = userIdParam || user?.id || "";
+  const isOwnProfile = !!user && effectiveUserId === user.id;
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ username: "", bio: "" });
-  const [isPublic, setIsPublic] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [isOwnProfile, setIsOwnProfile] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-
-  const loadProfile = (id: string) => {
-    if (typeof window === "undefined") return null;
-    try {
-      const saved = window.localStorage.getItem(USER_PROFILES_KEY);
-      const profiles: Record<string, UserProfile> = saved ? JSON.parse(saved) : {};
-      return profiles[id] || null;
-    } catch {
-      return null;
-    }
-  };
-
-  const saveProfile = (profile: UserProfile) => {
-    if (typeof window === "undefined") return;
-    try {
-      const saved = window.localStorage.getItem(USER_PROFILES_KEY);
-      const profiles: Record<string, UserProfile> = saved ? JSON.parse(saved) : {};
-      profiles[profile.userId] = profile;
-      window.localStorage.setItem(USER_PROFILES_KEY, JSON.stringify(profiles));
-      if (isOwnProfile) {
-        window.localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(profile));
-      }
-    } catch {
-      // ignore
-    }
-  };
+  const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
+  const [isPublic, setIsPublic] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   useEffect(() => {
-    if (!userId) return;
-    const loaded = loadProfile(userId);
-    if (loaded) {
-      setProfile(loaded);
-      setEditForm({ username: loaded.username, bio: loaded.bio || "" });
-      setIsPublic(loaded.isPublic);
-      setIsOwnProfile(authUser?.id === userId);
+    if (!effectiveUserId) {
       setLoading(false);
       return;
     }
-    setLoading(false);
-  }, [userId, authUser?.id]);
+
+    try {
+      const saved = window.localStorage.getItem(USER_PROFILES_KEY);
+      const map: Record<string, UserProfile> = saved ? JSON.parse(saved) : {};
+      let next = map[effectiveUserId] || null;
+
+      if (!next && isOwnProfile && user) {
+        next = emptyProfile(user.id, user.email, user.name);
+        map[user.id] = next;
+        window.localStorage.setItem(USER_PROFILES_KEY, JSON.stringify(map));
+      }
+
+      setProfile(next);
+      setUsername(next?.username || "");
+      setBio(next?.bio || "");
+      setIsPublic(next?.isPublic ?? true);
+      setAvatarUrl(next?.avatarUrl || "");
+    } catch {
+      setProfile(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [effectiveUserId, isOwnProfile, user]);
+
+  const canView = useMemo(() => {
+    if (!profile) return false;
+    if (isOwnProfile) return true;
+    return profile.isPublic;
+  }, [profile, isOwnProfile]);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !profile) return;
-    setUploadingAvatar(true);
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      const updated = { ...profile, avatar: base64, updatedAt: new Date().toISOString() };
-      setProfile(updated);
-      saveProfile(updated);
-      setUploadingAvatar(false);
+      const result = event.target?.result as string;
+      setAvatarUrl(result || "");
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSaveEdits = () => {
-    if (!profile || !editForm.username.trim()) return;
-    const updated = {
-      ...profile,
-      username: editForm.username.trim(),
-      bio: editForm.bio.trim(),
+  const handleSaveProfile = () => {
+    if (!user || !isOwnProfile) return;
+    if (!username.trim()) {
+      toast.error("Display name is required");
+      return;
+    }
+
+    const nextProfile: UserProfile = {
+      userId: user.id,
+      email: user.email,
+      username: username.trim(),
+      bio: bio.trim(),
+      avatarUrl,
       isPublic,
       updatedAt: new Date().toISOString(),
     };
-    setProfile(updated);
-    saveProfile(updated);
-    setIsEditing(false);
+
+    try {
+      const saved = window.localStorage.getItem(USER_PROFILES_KEY);
+      const map: Record<string, UserProfile> = saved ? JSON.parse(saved) : {};
+      map[user.id] = nextProfile;
+      window.localStorage.setItem(USER_PROFILES_KEY, JSON.stringify(map));
+      setProfile(nextProfile);
+      toast.success("Profile updated");
+    } catch {
+      toast.error("Failed to save profile");
+    }
+  };
+
+  const handleChangePassword = () => {
+    if (!user || !isOwnProfile) return;
+    if (!newPassword || newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    try {
+      const saved = window.localStorage.getItem(PASSWORD_OVERRIDES_KEY);
+      const map: Record<string, string> = saved ? JSON.parse(saved) : {};
+      map[user.email.toLowerCase()] = newPassword;
+      window.localStorage.setItem(PASSWORD_OVERRIDES_KEY, JSON.stringify(map));
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("Password updated");
+    } catch {
+      toast.error("Failed to update password");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user || !isOwnProfile) return;
+    if (deleteConfirmText.trim().toUpperCase() !== "DELETE") {
+      toast.error("Type DELETE to confirm");
+      return;
+    }
+
+    try {
+      const profileRaw = window.localStorage.getItem(USER_PROFILES_KEY);
+      const profiles: Record<string, UserProfile> = profileRaw ? JSON.parse(profileRaw) : {};
+      delete profiles[user.id];
+      window.localStorage.setItem(USER_PROFILES_KEY, JSON.stringify(profiles));
+
+      const downloadsRaw = window.localStorage.getItem(MY_DOWNLOADED_PACKAGES_KEY);
+      const downloadsMap: Record<string, unknown[]> = downloadsRaw ? JSON.parse(downloadsRaw) : {};
+      delete downloadsMap[user.id];
+      window.localStorage.setItem(MY_DOWNLOADED_PACKAGES_KEY, JSON.stringify(downloadsMap));
+
+      const communityRaw = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
+      const community = communityRaw ? JSON.parse(communityRaw) : [];
+      const filtered = Array.isArray(community)
+        ? community.filter((pkg: { ownerId?: string }) => pkg.ownerId !== user.id)
+        : [];
+      window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(filtered));
+
+      toast.success("Account deletion request processed");
+      await logout();
+    } catch {
+      toast.error("Failed to delete account");
+    }
   };
 
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center py-12">
-          <p className="text-slate-400">Loading...</p>
-        </div>
+        <div className="p-6 text-slate-400">Loading profile...</div>
       </AppLayout>
     );
   }
 
-  if (!profile) {
+  if (!profile || !canView) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center py-12">
-          <p className="text-slate-400">User profile not found.</p>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (!profile.isPublic && !isOwnProfile) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center py-12">
-          <p className="text-slate-400">This profile is private.</p>
-        </div>
+        <div className="p-6 text-slate-400">Profile not available.</div>
       </AppLayout>
     );
   }
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
-        {/* Header with Avatar */}
-        <Card className="border-slate-700/50">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-6">
-              <div className="shrink-0">
-                <img
-                  src={profile.avatar || DEFAULT_AVATAR_URL}
-                  alt={profile.username}
-                  className="w-24 h-24 rounded-full border-2 border-cyan-400/50 object-cover"
-                />
+      <div className="p-6 max-w-3xl mx-auto space-y-5">
+        <Card className="border-slate-700/50 bg-[#0d1b30]">
+          <CardHeader>
+            <CardTitle className="text-sm text-slate-100 flex items-center gap-2">
+              <User className="w-4 h-4 text-cyan-300" />
+              Personal Profile
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="space-y-2">
+                <Avatar className="w-20 h-20">
+                  <AvatarImage src={avatarUrl || undefined} alt={username} />
+                  <AvatarFallback className="bg-cyan-500/20 text-cyan-200 text-xl font-semibold">
+                    {(username || profile.email || "U").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
                 {isOwnProfile && (
-                  <label className="mt-3 inline-flex items-center justify-center w-full">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs"
-                      asChild
-                      disabled={uploadingAvatar}
-                    >
+                  <label className="inline-flex">
+                    <Button size="sm" variant="outline" className="text-xs" asChild>
                       <span>
                         <Upload className="w-3 h-3 mr-1" />
-                        {uploadingAvatar ? "Uploading..." : "Change Avatar"}
+                        Avatar
                       </span>
                     </Button>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarUpload}
-                      disabled={uploadingAvatar}
-                      className="hidden"
-                    />
+                    <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
                   </label>
                 )}
               </div>
-              <div className="flex-1">
-                {isEditing ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs font-medium text-slate-400">Username</label>
-                      <Input
-                        value={editForm.username}
-                        onChange={(e) => setEditForm((p) => ({ ...p, username: e.target.value }))}
-                        className="mt-1 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-slate-400">Bio</label>
-                      <Textarea
-                        value={editForm.bio}
-                        onChange={(e) => setEditForm((p) => ({ ...p, bio: e.target.value }))}
-                        className="mt-1 text-sm min-h-[80px]"
-                        placeholder="Tell us about yourself..."
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 p-2 rounded border border-slate-700/50 bg-slate-900/40">
-                      {isPublic ? (
-                        <Globe className="w-4 h-4 text-cyan-300" />
-                      ) : (
-                        <Lock className="w-4 h-4 text-slate-400" />
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-xs"
-                        onClick={() => setIsPublic(!isPublic)}
-                      >
-                        {isPublic ? "Public Profile" : "Private Profile"}
-                      </Button>
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        size="sm"
-                        className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
-                        onClick={handleSaveEdits}
-                      >
-                        <Check className="w-3 h-3 mr-1" />
-                        Save Changes
-                      </Button>
-                      <Button size="sm" variant="outline" className="text-xs" onClick={() => setIsEditing(false)}>
-                        <X className="w-3 h-3 mr-1" />
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h1 className="text-2xl font-bold text-slate-100">{profile.username}</h1>
-                      <Badge variant="outline" className={profile.isPublic ? "text-cyan-300 border-cyan-500/40" : "text-slate-400"}>
-                        {profile.isPublic ? <Globe className="w-3 h-3 mr-1" /> : <Lock className="w-3 h-3 mr-1" />}
-                        {profile.isPublic ? "Public" : "Private"}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-slate-400 mb-2">{profile.email}</p>
-                    {profile.bio && <p className="text-sm text-slate-300 mb-3">{profile.bio}</p>}
-                    <p className="text-xs text-slate-500">Joined {profile.createdAt}</p>
-                    {isOwnProfile && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="mt-3 text-xs"
-                        onClick={() => setIsEditing(true)}
-                      >
-                        <Edit2 className="w-3 h-3 mr-1" />
-                        Edit Profile
-                      </Button>
-                    )}
-                  </>
+              <div className="flex-1 space-y-3">
+                <div>
+                  <label className="text-xs text-slate-400">Display Name</label>
+                  <Input
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    disabled={!isOwnProfile}
+                    className="mt-1 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400">Email</label>
+                  <Input value={profile.email} disabled className="mt-1 text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400">Bio</label>
+                  <Textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    disabled={!isOwnProfile}
+                    className="mt-1 text-sm"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={isPublic ? "text-cyan-300 border-cyan-500/40" : "text-slate-400"}>
+                    {isPublic ? <Globe className="w-3 h-3 mr-1" /> : <Lock className="w-3 h-3 mr-1" />}
+                    {isPublic ? "Public" : "Private"}
+                  </Badge>
+                  {isOwnProfile && (
+                    <Button size="sm" variant="outline" className="text-xs" onClick={() => setIsPublic((v) => !v)}>
+                      Toggle Visibility
+                    </Button>
+                  )}
+                </div>
+                {isOwnProfile && (
+                  <Button size="sm" className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white" onClick={handleSaveProfile}>
+                    Save Profile
+                  </Button>
                 )}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* User Info Card */}
-        <Card className="border-slate-700/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Profile Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-400">User ID:</span>
-              <span className="text-slate-200 font-mono text-xs">{profile.id}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Visibility:</span>
-              <span className="text-slate-200">{profile.isPublic ? "Public" : "Private"}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Last Updated:</span>
-              <span className="text-slate-200">{profile.updatedAt.split("T")[0]}</span>
-            </div>
-          </CardContent>
-        </Card>
+        {isOwnProfile && (
+          <Card className="border-slate-700/50 bg-[#0d1b30]">
+            <CardHeader>
+              <CardTitle className="text-sm text-slate-100">Change Password</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="New password"
+                className="text-sm"
+              />
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                className="text-sm"
+              />
+              <Button size="sm" variant="outline" className="text-xs" onClick={handleChangePassword}>
+                Update Password
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {isOwnProfile && (
+          <Card className="border-red-500/30 bg-red-950/10">
+            <CardHeader>
+              <CardTitle className="text-sm text-red-300">Delete Account</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-slate-400">
+                This removes your local profile, your created community packages, and downloaded package records.
+              </p>
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder='Type "DELETE" to confirm'
+                className="text-sm"
+              />
+              <Button size="sm" variant="outline" className="text-xs text-red-400 border-red-500/40" onClick={() => void handleDeleteAccount()}>
+                <Trash2 className="w-3 h-3 mr-1" />
+                Request Account Deletion
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </AppLayout>
   );

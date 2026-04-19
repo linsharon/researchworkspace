@@ -61,6 +61,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [searchParams] = useSearchParams();
   const { t, lang, setLang } = useI18n();
   const { user, logout } = useAuth();
+  const [headerDisplayName, setHeaderDisplayName] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Project switcher state
@@ -76,6 +77,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const isPremiumUser = Boolean(user?.is_premium) || user?.role === "admin";
   const hasReachedFreeProjectLimit = !isPremiumUser && projects.length >= 1;
+
+  useEffect(() => {
+    if (!user) {
+      setHeaderDisplayName("");
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem("rw-user-profiles");
+      const map = raw ? (JSON.parse(raw) as Record<string, { username?: string }>) : {};
+      setHeaderDisplayName(map[user.id]?.username || user.name || user.email);
+    } catch {
+      setHeaderDisplayName(user.name || user.email);
+    }
+  }, [user?.id, user?.name, user?.email]);
 
   const reloadProjects = async () => {
     try {
@@ -675,9 +690,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </>
             ) : (
               <>
-                <Badge variant="outline" className="text-xs text-slate-300 border-slate-600">
-                  {user.name || user.email}
-                </Badge>
+                <Link to="/profile">
+                  <Badge variant="outline" className="text-xs text-slate-300 border-slate-600 hover:border-cyan-400/60 cursor-pointer">
+                    {headerDisplayName || user.name || user.email}
+                  </Badge>
+                </Link>
                 <Button
                   size="sm"
                   variant="outline"
