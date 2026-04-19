@@ -7050,43 +7050,6 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     return <div className="whitespace-pre-wrap leading-relaxed">{chunks}</div>;
   };
 
-  const renderCitationsClickable = (
-    text: string,
-    baseClassName: string,
-    keyPrefix: string,
-    onCitationClick?: (num: number) => void
-  ) => {
-    return text.split(/(\[\d+\])/g).map((part, index) => {
-      if (!part) return null;
-      const match = part.match(/^\[(\d+)\]$/);
-      if (match) {
-        const number = Number.parseInt(match[1], 10);
-        if (onCitationClick) {
-          return (
-            <button
-              key={`${keyPrefix}-citation-btn-${index}`}
-              type="button"
-              className="text-yellow-300 hover:text-yellow-200 underline-offset-2 hover:underline"
-              onClick={() => onCitationClick(number)}
-            >
-              {part}
-            </button>
-          );
-        }
-        return (
-          <span key={`${keyPrefix}-citation-${index}`} className="text-yellow-300">
-            {part}
-          </span>
-        );
-      }
-      return (
-        <span key={`${keyPrefix}-text-${index}`} className={baseClassName}>
-          {part}
-        </span>
-      );
-    });
-  };
-
   const jumpToReference = (citationNumber: number) => {
     const referenceComp = activeStyle.components.find((comp) => comp.id.includes("reference"));
     if (!referenceComp) return;
@@ -7094,19 +7057,37 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     setReferenceJumpNumber(citationNumber);
   };
 
-  const renderInteractiveEditorContent = (compId: string, content: string) => {
+  const escapeEditorHtml = (text: string) =>
+    text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+
+  const renderEditorChunkHtml = (text: string, className: string) => {
+    return text
+      .split(/(\[\d+\])/g)
+      .filter(Boolean)
+      .map((part) => {
+        const match = part.match(/^\[(\d+)\]$/);
+        if (match) {
+          return `<span contenteditable="false" data-citation-number="${match[1]}" class="text-yellow-300 cursor-pointer hover:text-yellow-200 underline-offset-2 hover:underline">${escapeEditorHtml(part)}</span>`;
+        }
+        return `<span class="${className}">${escapeEditorHtml(part)}</span>`;
+      })
+      .join("");
+  };
+
+  const buildInteractiveEditorHtml = (compId: string, content: string) => {
     const key = getContentKey(compId);
     const segments = (insertedSegments[key] || []).filter((segment) => !!segment.text);
     if (segments.length === 0) {
-      return (
-        <div className="whitespace-pre-wrap leading-relaxed">
-          {renderCitationsClickable(content, "text-white", `${key}-editor-plain`, jumpToReference)}
-        </div>
-      );
+      return renderEditorChunkHtml(content, "text-white");
     }
 
     const segmentTexts = [...new Set(segments.map((segment) => segment.text))].sort((a, b) => b.length - a.length);
-    const chunks: React.ReactNode[] = [];
+    const chunks: string[] = [];
     let cursor = 0;
 
     while (cursor < content.length) {
@@ -7123,42 +7104,119 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
 
       if (nextMatchIndex === -1) {
         const tail = content.slice(cursor);
-        chunks.push(...renderCitationsClickable(tail, "text-white", `${key}-editor-tail-${cursor}`, jumpToReference));
+        chunks.push(renderEditorChunkHtml(tail, "text-white"));
         break;
       }
 
       if (nextMatchIndex > cursor) {
         const plain = content.slice(cursor, nextMatchIndex);
-        chunks.push(...renderCitationsClickable(plain, "text-white", `${key}-editor-plain-${cursor}`, jumpToReference));
+        chunks.push(renderEditorChunkHtml(plain, "text-white"));
       }
 
       const matchedSegment = segments.find((segment) => segment.text === nextMatchText) || null;
       if (matchedSegment) {
+        const sourceId = encodeURIComponent(matchedSegment.sourceId || "");
+        const segmentText = encodeURIComponent(matchedSegment.text || "");
         chunks.push(
-          <button
-            key={`${key}-inserted-segment-${nextMatchIndex}`}
-            type="button"
-            className="text-cyan-300 hover:text-cyan-200 underline-offset-2 hover:underline text-left"
-            onClick={() =>
-              setEditingInserted({
-                compId,
-                segment: matchedSegment,
-                nextText: matchedSegment.text,
-                pushToSource: false,
-              })
-            }
-          >
-            {renderCitationsClickable(nextMatchText, "text-cyan-300", `${key}-editor-ins-${nextMatchIndex}`, jumpToReference)}
-          </button>
+          `<span contenteditable="false" data-inserted-segment="1" data-source-id="${sourceId}" data-segment-text="${segmentText}" class="text-cyan-300 cursor-pointer hover:text-cyan-200 underline-offset-2 hover:underline">${renderEditorChunkHtml(nextMatchText, "text-cyan-300")}</span>`
         );
       } else {
-        chunks.push(...renderCitationsClickable(nextMatchText, "text-cyan-300", `${key}-editor-fallback-${nextMatchIndex}`, jumpToReference));
+        chunks.push(renderEditorChunkHtml(nextMatchText, "text-cyan-300"));
       }
 
       cursor = nextMatchIndex + nextMatchText.length;
     }
 
-    return <div className="whitespace-pre-wrap leading-relaxed">{chunks}</div>;
+    return chunks.join("");
+  };
+
+  const getEditorCaretOffset = (editorEl: HTMLDivElement) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return editorEl.innerText.length;
+    const range = selection.getRangeAt(0).cloneRange();
+    const preCaretRange = range.cloneRange();
+    preCaretRange.selectNodeContents(editorEl);
+    preCaretRange.setEnd(range.endContainer, range.endOffset);
+    return preCaretRange.toString().length;
+  };
+
+  const setEditorCaretOffset = (editorEl: HTMLDivElement, offset: number) => {
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    const safeOffset = Math.max(0, Math.min(offset, editorEl.innerText.length));
+    const walker = document.createTreeWalker(editorEl, NodeFilter.SHOW_TEXT);
+    let traversed = 0;
+    let current = walker.nextNode();
+
+    while (current) {
+      const textNode = current as Text;
+      const nextTraversed = traversed + textNode.length;
+      if (safeOffset <= nextTraversed) {
+        const range = document.createRange();
+        range.setStart(textNode, safeOffset - traversed);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        return;
+      }
+      traversed = nextTraversed;
+      current = walker.nextNode();
+    }
+
+    const range = document.createRange();
+    range.selectNodeContents(editorEl);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  };
+
+  const handleEditorInput = (compId: string, editorEl: HTMLDivElement) => {
+    const value = editorEl.innerText.replace(/\u00a0/g, " ");
+    handleContentChange(compId, value);
+
+    const pos = getEditorCaretOffset(editorEl);
+    const textBefore = value.slice(0, pos);
+    const slashIdx = textBefore.lastIndexOf("/");
+    if (slashIdx !== -1) {
+      const between = textBefore.slice(slashIdx + 1);
+      if (!between.includes(" ") && !between.includes("\n")) {
+        openSlashMenu(compId, slashIdx, between);
+        return;
+      }
+    }
+    if (slashMenuOpen && slashCompId === compId) closeSlashMenu();
+  };
+
+  const handleEditorClick = (compId: string, event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const citation = target.closest("[data-citation-number]") as HTMLElement | null;
+    if (citation?.dataset.citationNumber) {
+      const number = Number.parseInt(citation.dataset.citationNumber, 10);
+      if (Number.isFinite(number)) {
+        jumpToReference(number);
+        return;
+      }
+    }
+
+    const inserted = target.closest("[data-inserted-segment='1']") as HTMLElement | null;
+    if (!inserted) return;
+
+    const key = getContentKey(compId);
+    const segments = insertedSegments[key] || [];
+    const sourceId = decodeURIComponent(inserted.dataset.sourceId || "");
+    const segmentText = decodeURIComponent(inserted.dataset.segmentText || "");
+    const matchedSegment =
+      segments.find((segment) => segment.sourceId === sourceId && segment.text === segmentText) ||
+      segments.find((segment) => segment.text === segmentText);
+    if (!matchedSegment) return;
+
+    setEditingInserted({
+      compId,
+      segment: matchedSegment,
+      nextText: matchedSegment.text,
+      pushToSource: false,
+    });
   };
 
   const syncHighlightToLocal = (highlightId: string, text: string) => {
@@ -7478,6 +7536,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [slashTypeFilter, setSlashTypeFilter] = useState<"all" | "notes" | "highlights">("all");
   const [slashOnlyCurrentProject, setSlashOnlyCurrentProject] = useState(false);
   const slashInputRef = React.useRef<HTMLInputElement>(null);
+  const editorRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
 
   const buildReferenceText = (paper?: ApiPaper) => {
     if (!paper) return "Unknown source";
@@ -7652,6 +7711,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
 
     const gistWithCitation = `${a.gist.replace(/\s+$/, "")} [${citationNumber}]`;
     const nextTargetVal = `${before}${gistWithCitation}${after}`;
+    const nextCaretOffset = before.length + gistWithCitation.length;
 
     const shouldAppendReference = !referenceLines.some((line) => line.toLowerCase().includes(a.paperTitle.toLowerCase()));
     const referenceEntry = `[${citationNumber}] ${a.referenceText}`;
@@ -7688,6 +7748,14 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     setAutoSaveTimer(timer);
 
     closeSlashMenu();
+
+    const targetEditor = editorRefs.current[slashCompId];
+    if (targetEditor) {
+      requestAnimationFrame(() => {
+        targetEditor.focus();
+        setEditorCaretOffset(targetEditor, nextCaretOffset);
+      });
+    }
   };
 
   const buildPreviewMarkdown = () => {
@@ -8113,38 +8181,25 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                       </div>
                     )}
                     <div className="relative">
-                      <Textarea
-                        value={componentContents[getContentKey(comp.id)] || ""}
-                        onChange={(e) => {
-                          handleContentChange(comp.id, e.target.value);
-                          const val = e.target.value;
-                          const pos = e.target.selectionStart || 0;
-                          const textBefore = val.slice(0, pos);
-                          const slashIdx = textBefore.lastIndexOf("/");
-                          if (slashIdx !== -1) {
-                            const between = textBefore.slice(slashIdx + 1);
-                            if (!between.includes(" ") && !between.includes("\n")) {
-                              openSlashMenu(comp.id, slashIdx, between);
-                              return;
-                            }
-                          }
-                          if (slashMenuOpen && slashCompId === comp.id) closeSlashMenu();
+                      <div
+                        ref={(node) => {
+                          editorRefs.current[comp.id] = node;
                         }}
+                        role="textbox"
+                        aria-multiline="true"
+                        contentEditable
+                        suppressContentEditableWarning
+                        onInput={(e) => handleEditorInput(comp.id, e.currentTarget)}
+                        onClick={(e) => handleEditorClick(comp.id, e)}
+                        onFocus={() => setInsertTarget(comp.id)}
                         onKeyDown={(e) => {
                           if (e.key === "Escape") closeSlashMenu();
                         }}
-                        rows={18}
-                        placeholder={comp.placeholder + "\n\nTip: type / to search and insert artifacts"}
-                        className="text-sm font-mono leading-relaxed text-white placeholder:text-slate-500"
+                        className="min-h-[360px] rounded-md border border-input bg-background px-3 py-2 text-sm font-mono leading-relaxed ring-offset-background text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 whitespace-pre-wrap"
+                        dangerouslySetInnerHTML={{
+                          __html: buildInteractiveEditorHtml(comp.id, componentContents[getContentKey(comp.id)] || ""),
+                        }}
                       />
-                    </div>
-                    <div className="rounded-lg border border-slate-700/60 bg-slate-900/40 p-3">
-                      <p className="text-[10px] text-slate-400 mb-2">
-                        Styled View: white = your text, cyan = inserted notes/highlights, yellow = citations. Click cyan text to edit source snippet; click [n] to jump references.
-                      </p>
-                      <div className="text-sm min-h-[72px]">
-                        {renderInteractiveEditorContent(comp.id, componentContents[getContentKey(comp.id)] || "")}
-                      </div>
                     </div>
                     {insertTarget === comp.id && (
                       <div className="p-2 bg-cyan-500/10 border border-cyan-400/20 rounded text-[10px] text-cyan-300">
