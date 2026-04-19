@@ -5,6 +5,7 @@ import AppLayout from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { paperAPI, conceptAPI, projectAPI, searchRecordAPI, noteAPI, highlightAPI } from "@/lib/manuscript-api";
+import { documentAPI } from "@/lib/document-api";
 import { useAuth } from "@/contexts/AuthContext";
 import type {
   Concept as ApiConcept,
@@ -13,10 +14,12 @@ import type {
   Paper as ApiPaper,
   SearchRecord as ApiSearchRecord,
 } from "@/lib/manuscript-api";
+import { Document as WordDocument, Packer, Paragraph, TextRun } from "docx";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -135,7 +138,16 @@ type SlashInsertItem = {
   updatedAt?: string;
 };
 
-type InsertedSegmentMap = Record<string, string[]>;
+type InsertedSegment = {
+  text: string;
+  sourceId: string;
+  kind: "note" | "highlight";
+  subtype: "literature-note" | "permanent-note" | "highlight";
+  paperId: string;
+  citationNumber: number;
+};
+
+type InsertedSegmentMap = Record<string, InsertedSegment[]>;
 
 type DraftErrorBoundaryState = {
   hasError: boolean;
@@ -6770,8 +6782,26 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     if (typeof window === "undefined") return {};
     try {
       const saved = window.localStorage.getItem(`${DRAFT_INSERTED_SEGMENTS_STORAGE_KEY}:${projectId}`);
-      const parsed = saved ? (JSON.parse(saved) as InsertedSegmentMap) : {};
-      return parsed && typeof parsed === "object" ? parsed : {};
+      const parsed = saved ? (JSON.parse(saved) as InsertedSegmentMap | Record<string, string[]>) : {};
+      if (!parsed || typeof parsed !== "object") return {};
+
+      const migrated: InsertedSegmentMap = {};
+      Object.entries(parsed).forEach(([key, value]) => {
+        if (!Array.isArray(value)) return;
+        if (value.length > 0 && typeof value[0] === "string") {
+          migrated[key] = (value as string[]).map((text) => ({
+            text,
+            sourceId: "",
+            kind: "note",
+            subtype: "literature-note",
+            paperId: "",
+            citationNumber: Number.parseInt((text.match(/\[(\d+)\]$/)?.[1] || "0"), 10) || 0,
+          }));
+        } else {
+          migrated[key] = value as InsertedSegment[];
+        }
+      });
+      return migrated;
     } catch {
       return {};
     }
@@ -6979,7 +7009,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
 
   const renderPreviewContent = (compId: string, content: string) => {
     const key = getContentKey(compId);
-    const matchedSegments = [...new Set((insertedSegments[key] || []).filter(Boolean))].sort(
+    const matchedSegments = [...new Set((insertedSegments[key] || []).map((seg) => seg.text).filter(Boolean))].sort(
       (left, right) => right.length - left.length
     );
 
@@ -7018,6 +7048,179 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     }
 
     return <div className="whitespace-pre-wrap leading-relaxed">{chunks}</div>;
+  };
+
+  const renderCitationsClickable = (
+    text: string,
+    baseClassName: string,
+    keyPrefix: string,
+    onCitationClick?: (num: number) => void
+  ) => {
+    return text.split(/(\[\d+\])/g).map((part, index) => {
+      if (!part) return null;
+      const match = part.match(/^\[(\d+)\]$/);
+      if (match) {
+        const number = Number.parseInt(match[1], 10);
+        if (onCitationClick) {
+          return (
+            <button
+              key={`${keyPrefix}-citation-btn-${index}`}
+              type="button"
+              className="text-yellow-300 hover:text-yellow-200 underline-offset-2 hover:underline"
+              onClick={() => onCitationClick(number)}
+            >
+              {part}
+            </button>
+          );
+        }
+        return (
+          <span key={`${keyPrefix}-citation-${index}`} className="text-yellow-300">
+            {part}
+          </span>
+        );
+      }
+      return (
+        <span key={`${keyPrefix}-text-${index}`} className={baseClassName}>
+          {part}
+        </span>
+      );
+    });
+  };
+
+  const jumpToReference = (citationNumber: number) => {
+    const referenceComp = activeStyle.components.find((comp) => comp.id.includes("reference"));
+    if (!referenceComp) return;
+    setActiveComponentId(referenceComp.id);
+    setReferenceJumpNumber(citationNumber);
+  };
+
+  const renderInteractiveEditorContent = (compId: string, content: string) => {
+    const key = getContentKey(compId);
+    const segments = (insertedSegments[key] || []).filter((segment) => !!segment.text);
+    if (segments.length === 0) {
+      return (
+        <div className="whitespace-pre-wrap leading-relaxed">
+          {renderCitationsClickable(content, "text-white", `${key}-editor-plain`, jumpToReference)}
+        </div>
+      );
+    }
+
+    const segmentTexts = [...new Set(segments.map((segment) => segment.text))].sort((a, b) => b.length - a.length);
+    const chunks: React.ReactNode[] = [];
+    let cursor = 0;
+
+    while (cursor < content.length) {
+      let nextMatchText = "";
+      let nextMatchIndex = -1;
+
+      for (const text of segmentTexts) {
+        const idx = content.indexOf(text, cursor);
+        if (idx !== -1 && (nextMatchIndex === -1 || idx < nextMatchIndex)) {
+          nextMatchIndex = idx;
+          nextMatchText = text;
+        }
+      }
+
+      if (nextMatchIndex === -1) {
+        const tail = content.slice(cursor);
+        chunks.push(...renderCitationsClickable(tail, "text-white", `${key}-editor-tail-${cursor}`, jumpToReference));
+        break;
+      }
+
+      if (nextMatchIndex > cursor) {
+        const plain = content.slice(cursor, nextMatchIndex);
+        chunks.push(...renderCitationsClickable(plain, "text-white", `${key}-editor-plain-${cursor}`, jumpToReference));
+      }
+
+      const matchedSegment = segments.find((segment) => segment.text === nextMatchText) || null;
+      if (matchedSegment) {
+        chunks.push(
+          <button
+            key={`${key}-inserted-segment-${nextMatchIndex}`}
+            type="button"
+            className="text-cyan-300 hover:text-cyan-200 underline-offset-2 hover:underline text-left"
+            onClick={() =>
+              setEditingInserted({
+                compId,
+                segment: matchedSegment,
+                nextText: matchedSegment.text,
+                pushToSource: false,
+              })
+            }
+          >
+            {renderCitationsClickable(nextMatchText, "text-cyan-300", `${key}-editor-ins-${nextMatchIndex}`, jumpToReference)}
+          </button>
+        );
+      } else {
+        chunks.push(...renderCitationsClickable(nextMatchText, "text-cyan-300", `${key}-editor-fallback-${nextMatchIndex}`, jumpToReference));
+      }
+
+      cursor = nextMatchIndex + nextMatchText.length;
+    }
+
+    return <div className="whitespace-pre-wrap leading-relaxed">{chunks}</div>;
+  };
+
+  const syncHighlightToLocal = (highlightId: string, text: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("rw-manuscript-highlights");
+      const parsed = raw ? (JSON.parse(raw) as Array<Record<string, unknown>>) : [];
+      const next = parsed.map((item) =>
+        item.id === highlightId
+          ? {
+              ...item,
+              note: text,
+            }
+          : item
+      );
+      window.localStorage.setItem("rw-manuscript-highlights", JSON.stringify(next));
+      window.dispatchEvent(new CustomEvent("highlights-updated"));
+    } catch {
+      // ignore local sync errors
+    }
+  };
+
+  const handleSaveInsertedEdit = async () => {
+    if (!editingInserted) return;
+    const { compId, segment, nextText, pushToSource } = editingInserted;
+    const key = getContentKey(compId);
+    const current = componentContents[key] || "";
+    const next = current.replace(segment.text, nextText);
+    setComponentContents((prev) => ({ ...prev, [key]: next }));
+    setInsertedSegments((prev) => ({
+      ...prev,
+      [key]: (prev[key] || []).map((item) => (item.text === segment.text ? { ...item, text: nextText } : item)),
+    }));
+
+    if (pushToSource && segment.sourceId) {
+      if (segment.kind === "note") {
+        try {
+          const noteId = segment.sourceId.replace(/^note-/, "");
+          const note = await noteAPI.get(noteId);
+          let nextContent = note.content || "";
+          try {
+            const parsed = nextContent ? (JSON.parse(nextContent) as Record<string, unknown>) : {};
+            parsed.contentGist = nextText.replace(/\s*\[\d+\]\s*$/, "");
+            nextContent = JSON.stringify(parsed, null, 2);
+          } catch {
+            nextContent = nextText;
+          }
+          await noteAPI.update(noteId, {
+            description: nextText.replace(/\s*\[\d+\]\s*$/, ""),
+            content: nextContent,
+          });
+          window.dispatchEvent(new CustomEvent("notes-updated"));
+        } catch {
+          toast.error("Failed to sync note changes to source note.");
+        }
+      } else if (segment.kind === "highlight") {
+        const highlightId = segment.sourceId.replace(/^highlight-/, "");
+        syncHighlightToLocal(highlightId, nextText.replace(/\s*\[\d+\]\s*$/, ""));
+      }
+    }
+
+    setEditingInserted(null);
   };
 
   // Pre-writing state
@@ -7127,6 +7330,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     styleId: string;
     versions: WritingDraftVersion[];
     createdAt: string;
+    remoteDocId?: string;
   }
   const [writingDrafts, setWritingDrafts] = useState<WritingDraft[]>([]);
   const [showDraftBrowser, setShowDraftBrowser] = useState(false);
@@ -7134,8 +7338,53 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [draftSaveMsg, setDraftSaveMsg] = useState<string | null>(null);
+  const [editingInserted, setEditingInserted] = useState<{
+    compId: string;
+    segment: InsertedSegment;
+    nextText: string;
+    pushToSource: boolean;
+  } | null>(null);
+  const [referenceJumpNumber, setReferenceJumpNumber] = useState<number | null>(null);
 
-  const handleSaveAsWritingDraft = () => {
+  useEffect(() => {
+    let disposed = false;
+    const loadRemoteDrafts = async () => {
+      try {
+        const response = await documentAPI.search({ tag: "writing-draft", limit: 200, offset: 0 });
+        const drafts = response.items
+          .filter((doc) => !projectId || doc.project_id === projectId)
+          .map((doc) => {
+            let payload: { styleId?: string; versions?: WritingDraftVersion[]; createdAt?: string } = {};
+            try {
+              payload = doc.description ? JSON.parse(doc.description) : {};
+            } catch {
+              payload = {};
+            }
+            return {
+              id: `wd-${doc.id}`,
+              remoteDocId: doc.id,
+              name: doc.title,
+              styleId: payload.styleId || selectedStyle,
+              versions: payload.versions || [],
+              createdAt: payload.createdAt || doc.created_at.split("T")[0],
+            } as WritingDraft;
+          })
+          .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+        if (!disposed) {
+          setWritingDrafts(drafts);
+        }
+      } catch {
+        // Keep local in-memory drafts if remote loading fails
+      }
+    };
+
+    void loadRemoteDrafts();
+    return () => {
+      disposed = true;
+    };
+  }, [projectId, selectedStyle]);
+
+  const handleSaveAsWritingDraft = async () => {
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0];
     const timeStr = now.toLocaleTimeString();
@@ -7143,6 +7392,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
 
     // Check if we have a selected draft to save a new version to
     if (selectedDraftId) {
+      let updatedDraft: WritingDraft | null = null;
       setWritingDrafts((prev) =>
         prev.map((d) =>
           d.id === selectedDraftId
@@ -7156,6 +7406,25 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
             : d
         )
       );
+      updatedDraft = writingDrafts.find((d) => d.id === selectedDraftId) || null;
+
+      if (updatedDraft?.remoteDocId) {
+        const nextVersions = [
+          ...(updatedDraft.versions || []),
+          { id: `v-${Date.now()}`, content: currentContent, savedAt: `${dateStr} ${timeStr}` },
+        ];
+        await documentAPI.update(updatedDraft.remoteDocId, {
+          title: updatedDraft.name,
+          description: JSON.stringify({
+            styleId: updatedDraft.styleId,
+            versions: nextVersions,
+            createdAt: updatedDraft.createdAt,
+          }),
+          tags: ["writing-draft", "step6"],
+          status: "draft",
+        });
+      }
+
       setDraftSaveMsg(`New version saved to "${writingDrafts.find((d) => d.id === selectedDraftId)?.name}" at ${timeStr}`);
     } else {
       const newDraft: WritingDraft = {
@@ -7165,8 +7434,23 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
         versions: [{ id: `v-${Date.now()}`, content: currentContent, savedAt: `${dateStr} ${timeStr}` }],
         createdAt: dateStr,
       };
-      setWritingDrafts([...writingDrafts, newDraft]);
-      setSelectedDraftId(newDraft.id);
+
+      const created = await documentAPI.create({
+        title: newDraft.name,
+        project_id: projectId,
+        status: "draft",
+        permission: "private",
+        tags: ["writing-draft", "step6"],
+        description: JSON.stringify({
+          styleId: newDraft.styleId,
+          versions: newDraft.versions,
+          createdAt: newDraft.createdAt,
+        }),
+      });
+
+      const nextDraft = { ...newDraft, id: `wd-${created.id}`, remoteDocId: created.id };
+      setWritingDrafts([...writingDrafts, nextDraft]);
+      setSelectedDraftId(nextDraft.id);
       setDraftSaveMsg(`Writing draft "${newDraft.name}" saved at ${timeStr}`);
     }
     setTimeout(() => setDraftSaveMsg(null), 3000);
@@ -7384,7 +7668,17 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     }));
     setInsertedSegments((prev) => ({
       ...prev,
-      [targetKey]: Array.from(new Set([...(prev[targetKey] || []), gistWithCitation])),
+      [targetKey]: [
+        ...(prev[targetKey] || []),
+        {
+          text: gistWithCitation,
+          sourceId: a.id,
+          kind: a.kind,
+          subtype: a.subtype,
+          paperId: a.paperId,
+          citationNumber,
+        },
+      ],
     }));
 
     if (autoSaveTimer) clearTimeout(autoSaveTimer);
@@ -7394,6 +7688,61 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     setAutoSaveTimer(timer);
 
     closeSlashMenu();
+  };
+
+  const buildPreviewMarkdown = () => {
+    return activeStyle.components
+      .map((comp) => {
+        const content = (componentContents[getContentKey(comp.id)] || "").trim();
+        if (!content) return "";
+        return `## ${comp.label}\n\n${content}`;
+      })
+      .filter(Boolean)
+      .join("\n\n---\n\n");
+  };
+
+  const downloadBlob = (blob: Blob, fileName: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportMarkdown = () => {
+    const markdown = buildPreviewMarkdown();
+    const blob = new Blob([markdown || ""], { type: "text/markdown;charset=utf-8" });
+    const fileName = `${activeStyle.name.replace(/\s+/g, "-").toLowerCase()}-draft.md`;
+    downloadBlob(blob, fileName);
+  };
+
+  const handleExportWord = async () => {
+    const sections = activeStyle.components
+      .map((comp) => ({
+        label: comp.label,
+        content: (componentContents[getContentKey(comp.id)] || "").trim(),
+      }))
+      .filter((item) => item.content);
+
+    const doc = new WordDocument({
+      sections: [
+        {
+          properties: {},
+          children: sections.flatMap((item) => [
+            new Paragraph({
+              children: [new TextRun({ text: item.label, bold: true, size: 28 })],
+            }),
+            ...item.content.split("\n").map((line) => new Paragraph({ text: line })),
+            new Paragraph({ text: "" }),
+          ]),
+        },
+      ],
+    });
+
+    const buffer = await Packer.toBlob(doc);
+    const fileName = `${activeStyle.name.replace(/\s+/g, "-").toLowerCase()}-draft.docx`;
+    downloadBlob(buffer, fileName);
   };
 
   return (
@@ -7597,7 +7946,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
       <Card className="border-slate-700/50">
         <CardContent className="p-3">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider shrink-0">
+            <span className="text-xs font-semibold text-white uppercase tracking-wider shrink-0">
               Reporting Style:
             </span>
             <div className="flex gap-2 flex-wrap">
@@ -7622,13 +7971,13 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
               ))}
             </div>
           </div>
-          <p className="text-[10px] text-slate-400 mt-1.5">{activeStyle.description}</p>
+          <p className="text-[10px] text-white/80 mt-1.5">{activeStyle.description}</p>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-[2fr_1fr] gap-5">
+      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-5 items-start">
         {/* Left+Middle Column: Writing Block */}
-        <div className="space-y-3">
+        <div className="space-y-3 min-w-0">
           <Card className="border-slate-700/50">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -7727,7 +8076,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
               )}
 
               {/* Component Tabs */}
-              <div className="flex gap-1 overflow-x-auto pb-1">
+              <div className="flex gap-1 flex-wrap pb-1">
                 {activeStyle.components.map((comp) => (
                   <button
                     key={comp.id}
@@ -7758,6 +8107,11 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                       <p className="text-xs font-medium text-cyan-300 mb-0.5">{comp.label}</p>
                       <p className="text-[10px] text-white">{comp.description}</p>
                     </div>
+                    {comp.id.includes("reference") && referenceJumpNumber && (
+                      <div className="p-2 rounded border border-yellow-400/30 bg-yellow-400/10 text-[11px] text-yellow-200">
+                        Jumped from citation [{referenceJumpNumber}]. You can now locate and edit the matching reference entry.
+                      </div>
+                    )}
                     <div className="relative">
                       <Textarea
                         value={componentContents[getContentKey(comp.id)] || ""}
@@ -7781,8 +8135,16 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                         }}
                         rows={18}
                         placeholder={comp.placeholder + "\n\nTip: type / to search and insert artifacts"}
-                        className="text-sm font-mono leading-relaxed"
+                        className="text-sm font-mono leading-relaxed text-white placeholder:text-slate-500"
                       />
+                    </div>
+                    <div className="rounded-lg border border-slate-700/60 bg-slate-900/40 p-3">
+                      <p className="text-[10px] text-slate-400 mb-2">
+                        Styled View: white = your text, cyan = inserted notes/highlights, yellow = citations. Click cyan text to edit source snippet; click [n] to jump references.
+                      </p>
+                      <div className="text-sm min-h-[72px]">
+                        {renderInteractiveEditorContent(comp.id, componentContents[getContentKey(comp.id)] || "")}
+                      </div>
                     </div>
                     {insertTarget === comp.id && (
                       <div className="p-2 bg-cyan-500/10 border border-cyan-400/20 rounded text-[10px] text-cyan-300">
@@ -7796,8 +8158,8 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
         </div>
 
         {/* Right Column: Structure Check */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        <div className="space-y-3 min-w-0">
+          <h3 className="text-xs font-semibold text-white uppercase tracking-wider">
             Structure Check
           </h3>
 
@@ -7811,7 +8173,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all capitalize",
                   checkTab === tab
                     ? "bg-cyan-600 text-white"
-                    : "text-slate-500 hover:bg-slate-800"
+                    : "text-white/80 hover:bg-slate-800"
                 )}
               >
                 {tab}
@@ -7823,7 +8185,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
           {checkTab === "macro" && (
             <Card className="border-slate-700/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-semibold text-slate-600">
+                <CardTitle className="text-xs font-semibold text-white">
                   Macro Level — Overall Structure
                 </CardTitle>
               </CardHeader>
@@ -7842,7 +8204,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                           }
                           className="mt-0.5"
                         />
-                        <span className={cn("text-xs", macroChecked[item.id] ? "text-emerald-700 line-through" : "text-slate-600")}>
+                        <span className={cn("text-xs", macroChecked[item.id] ? "text-emerald-400 line-through" : "text-white")}>
                           {item.label}
                         </span>
                       </label>
@@ -7868,10 +8230,10 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
             <Card className="border-slate-700/50">
               <CardHeader className="pb-2">
                 <div>
-                  <CardTitle className="text-xs font-semibold text-slate-600">
+                  <CardTitle className="text-xs font-semibold text-white">
                     Meso Level — Toulmin Argumentation
                   </CardTitle>
-                  <p className="text-[9px] text-slate-400 mt-0.5">
+                  <p className="text-[9px] text-white/70 mt-0.5">
                     Claim → Data → Warrant → Backing → Qualifier → Rebuttal
                   </p>
                 </div>
@@ -7892,7 +8254,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                           className="mt-0.5"
                         />
                         <div>
-                          <span className={cn("text-xs", mesoChecked[item.id] ? "text-emerald-700 line-through" : "text-slate-600")}>
+                          <span className={cn("text-xs", mesoChecked[item.id] ? "text-emerald-400 line-through" : "text-white")}>
                             {item.label}
                           </span>
                           <Badge variant="outline" className="text-[8px] ml-1.5 px-1 py-0">
@@ -7921,7 +8283,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
           {checkTab === "micro" && (
             <Card className="border-slate-700/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-semibold text-slate-600">
+                <CardTitle className="text-xs font-semibold text-white">
                   Micro Level — Language & Details
                 </CardTitle>
               </CardHeader>
@@ -7930,7 +8292,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   <div className="space-y-3">
                     {/* Basic Errors */}
                     <div>
-                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                      <p className="text-[10px] font-semibold text-white uppercase tracking-wider mb-1.5">
                         🔍 Eliminate Basic Errors
                       </p>
                       <div className="space-y-1">
@@ -7943,7 +8305,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                               }
                               className="mt-0.5"
                             />
-                            <span className={cn("text-[11px]", microBasicChecked[item.id] ? "text-emerald-700 line-through" : "text-slate-600")}>
+                            <span className={cn("text-[11px]", microBasicChecked[item.id] ? "text-emerald-400 line-through" : "text-white")}>
                               {item.label}
                             </span>
                           </label>
@@ -7953,7 +8315,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
 
                     {/* Readability */}
                     <div>
-                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                      <p className="text-[10px] font-semibold text-white uppercase tracking-wider mb-1.5">
                         📖 Improve Readability
                       </p>
                       <div className="space-y-1">
@@ -7966,7 +8328,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                               }
                               className="mt-0.5"
                             />
-                            <span className={cn("text-[11px]", microReadChecked[item.id] ? "text-emerald-700 line-through" : "text-slate-600")}>
+                            <span className={cn("text-[11px]", microReadChecked[item.id] ? "text-emerald-400 line-through" : "text-white")}>
                               {item.label}
                             </span>
                           </label>
@@ -7976,7 +8338,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
 
                     {/* Credibility */}
                     <div>
-                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                      <p className="text-[10px] font-semibold text-white uppercase tracking-wider mb-1.5">
                         🏛️ Establish Credibility
                       </p>
                       <div className="space-y-1">
@@ -7989,7 +8351,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                               }
                               className="mt-0.5"
                             />
-                            <span className={cn("text-[11px]", microCredChecked[item.id] ? "text-emerald-700 line-through" : "text-slate-600")}>
+                            <span className={cn("text-[11px]", microCredChecked[item.id] ? "text-emerald-400 line-through" : "text-white")}>
                               {item.label}
                             </span>
                           </label>
@@ -8097,6 +8459,55 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
         </div>
       )}
 
+      <Dialog open={!!editingInserted} onOpenChange={(open) => !open && setEditingInserted(null)}>
+        <DialogContent className="bg-[#0d1b30] border border-slate-600 text-white">
+          <DialogHeader>
+            <DialogTitle>Edit Inserted {editingInserted?.segment.kind === "highlight" ? "Highlight" : "Note"}</DialogTitle>
+          </DialogHeader>
+          {editingInserted && (
+            <div className="space-y-3">
+              <Textarea
+                value={editingInserted.nextText}
+                onChange={(e) =>
+                  setEditingInserted((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          nextText: e.target.value,
+                        }
+                      : prev
+                  )
+                }
+                rows={6}
+                className="text-white"
+              />
+              <label className="flex items-center gap-2 text-xs text-slate-300">
+                <Checkbox
+                  checked={editingInserted.pushToSource}
+                  onCheckedChange={(checked) =>
+                    setEditingInserted((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            pushToSource: !!checked,
+                          }
+                        : prev
+                    )
+                  }
+                />
+                Also push this change to source {editingInserted.segment.kind}.
+              </label>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setEditingInserted(null)}>Cancel</Button>
+                <Button onClick={() => void handleSaveInsertedEdit()} className="bg-cyan-600 hover:bg-cyan-700 text-white">
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Full Preview Modal */}
       {showPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -8137,11 +8548,11 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
       )}
 
       <div className="flex gap-2">
-        <Button variant="outline">
+        <Button variant="outline" onClick={handleExportMarkdown}>
           <FileText className="w-4 h-4 mr-2" />
           Export Markdown
         </Button>
-        <Button variant="outline">
+        <Button variant="outline" onClick={() => void handleExportWord()}>
           <FileText className="w-4 h-4 mr-2" />
           Export Word
         </Button>
