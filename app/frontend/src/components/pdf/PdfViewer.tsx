@@ -655,12 +655,12 @@ export default function PdfViewer({
         />
 
         {translatedText ? (
-          <div className="absolute bottom-4 right-4 z-20 max-w-sm rounded-xl border border-emerald-200 bg-[#0d1b30]/95 p-4 shadow-xl backdrop-blur">
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-emerald-700">
+          <div className="absolute bottom-4 right-4 z-20 max-w-sm rounded-xl border border-cyan-500/40 bg-[#0d1b30]/95 p-4 shadow-xl backdrop-blur">
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-cyan-400">
               <Sparkles className="h-4 w-4" />
               Translate (EN -&gt; CN)
             </div>
-            <p className="whitespace-pre-wrap text-sm text-slate-700">{translatedText}</p>
+            <p className="whitespace-pre-wrap text-sm text-white">{translatedText}</p>
             <div className="mt-3 flex justify-end">
               <Button onClick={() => setTranslatedText(null)} size="sm" type="button" variant="outline">
                 Close
@@ -680,6 +680,7 @@ export default function PdfViewer({
               originalQuote: selectionState.text || viewerState.selectedText,
               keywords: [],
             }}
+            paper={paper}
             onSubmit={handleSaveLiteratureNote}
           />
         </DialogContent>

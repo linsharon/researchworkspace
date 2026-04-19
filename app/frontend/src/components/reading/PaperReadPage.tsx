@@ -3,7 +3,8 @@
  * PDF-first layout: large reading area + collapsible notes panel + floating AI chat
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import axios from "axios";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -52,19 +53,46 @@ export default function PaperReadPage() {
     }
   }, [chatMessages, showChat]);
 
+  const sendToAI = useCallback(async (userContent: string) => {
+    const userMsg = { id: `msg-${Date.now()}`, role: "user" as const, content: userContent };
+    setChatMessages((prev) => [...prev, userMsg]);
+    const thinkingId = `msg-${Date.now()}-thinking`;
+    setChatMessages((prev) => [...prev, { id: thinkingId, role: "assistant" as const, content: "…" }]);
+
+    const models = ["gpt-5-chat", "gemini-2.5-pro", "deepseek-v3.2"];
+    let reply = "";
+    for (const model of models) {
+      try {
+        const res = await axios.post("/api/v1/aihub/gentxt", {
+          model,
+          stream: false,
+          temperature: 0.5,
+          max_tokens: 1200,
+          messages: [
+            { role: "system", content: "You are a helpful literature review assistant. Answer concisely and accurately." },
+            { role: "user", content: userContent },
+          ],
+        });
+        reply = res?.data?.content?.trim() || "";
+        if (reply) break;
+      } catch {
+        // try next model
+      }
+    }
+
+    if (!reply) {
+      // Fallback: call OpenAI-compatible endpoint failed, show error
+      reply = "Sorry, the AI service is temporarily unavailable. Please try again later.";
+    }
+
+    setChatMessages((prev) => prev.map((m) => m.id === thinkingId ? { ...m, content: reply } : m));
+  }, []);
+
   const handleSendMessage = () => {
     const trimmed = chatInput.trim();
     if (!trimmed) return;
-    const userMsg = { id: `msg-${Date.now()}`, role: "user" as const, content: trimmed };
-    setChatMessages((prev) => [...prev, userMsg]);
     setChatInput("");
-    setTimeout(() => {
-      setChatMessages((prev) => [...prev, {
-        id: `msg-${Date.now()}-ai`,
-        role: "assistant" as const,
-        content: "Thank you for your question! In a production environment I would analyze the paper and respond accordingly. For now, try refining your research question or exploring related concepts.",
-      }]);
-    }, 1000);
+    sendToAI(trimmed);
   };
 
   useEffect(() => {
@@ -252,8 +280,8 @@ export default function PaperReadPage() {
             onNoteCreated={() => loadPaper()}
             onConceptCreated={() => loadPaper()}
             onAskAI={text => {
-              setChatInput(`Selected text:\n"${text}"\n\nQuestion: `);
               setShowChat(true);
+              sendToAI(`Please explain the following selected text from this paper:\n\n"${text}"`);
             }}
           />
         </div>
@@ -356,7 +384,7 @@ export default function PaperReadPage() {
                       "max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed",
                       msg.role === "user"
                         ? "bg-cyan-600 text-white rounded-br-md"
-                        : "bg-slate-800 text-slate-700 rounded-bl-md"
+                        : "bg-slate-800 text-white rounded-bl-md"
                     )}
                   >
                     {msg.content}

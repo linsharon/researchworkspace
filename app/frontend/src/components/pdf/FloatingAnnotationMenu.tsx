@@ -52,8 +52,8 @@ export default function FloatingAnnotationMenu({
         Add Note
       </Button>
 
-      <Button className="h-8 gap-1.5 px-2 text-xs text-white hover:bg-slate-800" onClick={onTranslate} size="sm" type="button" variant="ghost">
-        <Languages className="h-3.5 w-3.5 text-emerald-300" />
+      <Button className="h-8 gap-1.5 px-2 text-xs text-cyan-400 hover:bg-slate-800" onClick={onTranslate} size="sm" type="button" variant="ghost">
+        <Languages className="h-3.5 w-3.5 text-cyan-400" />
         Translate
       </Button>
 
