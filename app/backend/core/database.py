@@ -45,6 +45,29 @@ class DatabaseManager:
             logger.error(f"Failed to parse database URL: {e}")
             return raw_url
 
+        # Guard against ephemeral SQLite DB usage unless explicitly allowed.
+        # In-memory DB resets on every restart and looks like "data deleted after commit".
+        allow_ephemeral = os.getenv("MGX_ALLOW_EPHEMERAL_DB", "").strip().lower() in {"1", "true", "yes"}
+        if (url.drivername or "").startswith("sqlite"):
+            db_name = (url.database or "").strip().lower()
+            if db_name == ":memory:" and not allow_ephemeral:
+                raise ValueError(
+                    "Refusing to use in-memory SQLite database because it is ephemeral. "
+                    "Set MGX_ALLOW_EPHEMERAL_DB=true only for temporary test sessions."
+                )
+
+            # Resolve relative SQLite file paths against backend directory to keep a stable DB
+            # regardless of process working directory.
+            if url.database and url.database not in {":memory:"}:
+                db_path = Path(url.database)
+                if not db_path.is_absolute():
+                    stable_root = Path(__file__).resolve().parent.parent
+                    resolved = (stable_root / db_path).resolve()
+                    resolved.parent.mkdir(parents=True, exist_ok=True)
+                    url = url.set(database=str(resolved))
+                    raw_url = url.render_as_string(hide_password=False)
+                    logger.info("Normalized SQLite path to stable absolute location: %s", resolved)
+
         drivername = url.drivername or ""
 
         # Already async drivers

@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
@@ -81,10 +81,6 @@ import {
 import {
   STEP_META,
   ARTIFACT_TYPE_META,
-  DUMMY_PAPERS,
-  DUMMY_KEYWORDS,
-  DUMMY_SEARCH_RECORDS,
-  DUMMY_ARTIFACTS,
   PURPOSE_OPTIONS,
   VIZ_VIEWS,
   DISCOVERY_PATH_OPTIONS,
@@ -925,7 +921,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     try {
       const raw = window.localStorage.getItem(keywordsStorageKey);
       if (!raw) {
-        setKeywords([...DUMMY_KEYWORDS]);
+        setKeywords([]);
         setKeywordsHydrated(true);
         return;
       }
@@ -935,10 +931,10 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         setKeywordsHydrated(true);
         return;
       }
-      setKeywords([...DUMMY_KEYWORDS]);
+      setKeywords([]);
       setKeywordsHydrated(true);
     } catch {
-      setKeywords([...DUMMY_KEYWORDS]);
+      setKeywords([]);
       setKeywordsHydrated(true);
     }
   }, [keywordsStorageKey]);
@@ -4183,7 +4179,12 @@ function TagInput({
 // Step 3: Read Workspace
 // ============================================================
 function ReadWorkspace() {
-  const paper = DUMMY_PAPERS[0];
+  const paper = {
+    id: "local-paper",
+    title: "Current Paper",
+    authors: ["Unknown Author"],
+    year: new Date().getFullYear(),
+  };
 
   const [litNotes, setLitNotes] = useState([
     {
@@ -5840,8 +5841,6 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
   const [vizSection, setVizSection] = useState<"research" | "viztools">("research");
   const [researchSubTab, setResearchSubTab] = useState<"papers" | "files" | "ai-summary" | "perm-notes" | "synthesis">("papers");
 
-  // Research content stats
-  const papers = DUMMY_PAPERS;
   const [paperAnalyticsLoading, setPaperAnalyticsLoading] = useState(true);
   const [paperAnalyticsRows, setPaperAnalyticsRows] = useState<Array<{
     paper: ApiPaper;
@@ -5995,6 +5994,27 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
 
   const entryPaperRows = paperAnalyticsRows.filter((row) => row.paper.is_entry_paper);
   const expandedPaperRows = paperAnalyticsRows.filter((row) => row.paper.is_expanded_paper);
+
+  const papers = useMemo(
+    () =>
+      paperAnalyticsRows.map((row) => ({
+        id: row.paper.id,
+        title: row.paper.title,
+        authors: row.paper.authors,
+        year: row.paper.year || new Date().getFullYear(),
+        journal: row.paper.journal || "",
+        researchQuestion: row.paper.discovery_note || "",
+        method: "",
+        findings: row.paper.abstract || "",
+        annotations: Array.from({ length: row.highlights }, (_, index) => ({
+          id: `${row.paper.id}-h-${index}`,
+          text: "",
+          note: "",
+          color: "yellow",
+        })),
+      })),
+    [paperAnalyticsRows]
+  );
 
   // Upload state
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: string; date: string; addedToVisual?: boolean }>>([]);
