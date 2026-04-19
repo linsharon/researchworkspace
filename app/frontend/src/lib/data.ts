@@ -33,6 +33,7 @@ export type ArtifactType =
   | "entry-paper"
   | "literature-note"
   | "permanent-note"
+  | "pre-writing-note"
   | "visualization"
   | "rq-draft"
   | "writing-block"
@@ -132,6 +133,7 @@ export const ARTIFACT_TYPE_META: Record<
   "entry-paper": { label: "Entry Paper Card", color: "text-emerald-700", bgColor: "bg-emerald-50" },
   "literature-note": { label: "Literature Note", color: "text-amber-700", bgColor: "bg-amber-50" },
   "permanent-note": { label: "Permanent Note", color: "text-rose-700", bgColor: "bg-rose-50" },
+  "pre-writing-note": { label: "Pre-Writing Note", color: "text-sky-700", bgColor: "bg-sky-50" },
   visualization: { label: "Visualization Board", color: "text-cyan-700", bgColor: "bg-cyan-50" },
   "rq-draft": { label: "RQ Draft", color: "text-teal-700", bgColor: "bg-teal-50" },
   "writing-block": { label: "Writing Block", color: "text-slate-700", bgColor: "bg-slate-100" },

@@ -7347,9 +7347,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   // Pre-writing state
   const [preWriteTab, setPreWriteTab] = useState<"brainstorming" | "listing" | "clustering" | "freewriting">("brainstorming");
   const [preWriteNotes, setPreWriteNotes] = useState<Record<string, Array<{ id: string; title: string; content: string; date: string }>>>({
-    brainstorming: [
-      { id: "pw-1", title: "Initial Ideas on AI & SRL", content: "What if AI tutoring actually hinders SRL by doing too much for students? Need to explore the 'scaffolding paradox' — support vs. dependency.", date: "2026-03-08" },
-    ],
+    brainstorming: [],
     listing: [],
     clustering: [],
     freewriting: [],
@@ -7357,7 +7355,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [showNewPreWrite, setShowNewPreWrite] = useState(false);
   const [newPreWriteTitle, setNewPreWriteTitle] = useState("");
   const [newPreWriteContent, setNewPreWriteContent] = useState("");
-  const [preWriteCollapsed, setPreWriteCollapsed] = useState(false);
+  const [preWriteCollapsed, setPreWriteCollapsed] = useState(true);
 
   // Tool & upload state for pre-writing notes
   const [newPreWriteTool, setNewPreWriteTool] = useState("");
@@ -7425,11 +7423,34 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
       ...prev,
       [preWriteTab]: [...(prev[preWriteTab] || []), newNote],
     }));
+
+    if (typeof window !== "undefined") {
+      try {
+        const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+        const parsed = saved ? (JSON.parse(saved) as Artifact[]) : [];
+        const current = Array.isArray(parsed) ? parsed : [];
+        const artifact: Artifact = {
+          id: `prewrite-note-${newNote.id}`,
+          title: newPreWriteTitle.trim(),
+          type: "pre-writing-note",
+          projectId,
+          sourceStep: 6,
+          description: `${preWriteStrategies[preWriteTab].label} · Pre-Writing Note`,
+          updatedAt: newNote.date,
+          content: newNote.content,
+        };
+        const next = [...current.filter((item) => item.id !== artifact.id), artifact];
+        window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(next));
+        window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+      } catch {
+        // Ignore local persistence errors for pre-writing artifacts.
+      }
+    }
+
     setNewPreWriteTitle("");
     setNewPreWriteContent("");
     setNewPreWriteTool("");
     setNewPreWriteUploads([]);
-    setShowNewPreWrite(false);
   };
 
   const handleSimulateUpload = () => {
@@ -7961,7 +7982,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
               <Button
                 size="sm"
                 className="text-xs h-7 bg-amber-500 hover:bg-amber-600 text-white"
-                onClick={() => setShowNewPreWrite(!showNewPreWrite)}
+                onClick={() => setShowNewPreWrite(true)}
               >
                 <Plus className="w-3 h-3 mr-1" />
                 New Note
@@ -8116,41 +8137,6 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                 <CardTitle className="text-sm font-semibold">
                   Writing Block — {activeStyle.name}
                 </CardTitle>
-                <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                  {draftSaveMsg && (
-                    <span className="text-[10px] text-emerald-500 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      {draftSaveMsg}
-                    </span>
-                  )}
-                  {lastSaved && !draftSaveMsg && (
-                    <span className="text-[10px] text-emerald-500 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Saved {lastSaved}
-                    </span>
-                  )}
-                  <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleManualSave}>
-                    <Save className="w-3 h-3 mr-1" />
-                    Save
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-xs h-7 border-orange-300 text-orange-700 hover:bg-orange-50" onClick={handleSaveAsWritingDraft}>
-                    <FileText className="w-3 h-3 mr-1" />
-                    Save as Draft
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setShowDraftBrowser(!showDraftBrowser)}>
-                    <FolderUp className="w-3 h-3 mr-1" />
-                    Load Draft
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs h-7"
-                    onClick={() => setShowPreview(true)}
-                  >
-                    <Eye className="w-3 h-3 mr-1" />
-                    Preview
-                  </Button>
-                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -8244,6 +8230,9 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                         Jumped from citation [{referenceJumpNumber}]. You can now locate and edit the matching reference entry.
                       </div>
                     )}
+                    <div className="p-2 bg-cyan-500/10 border border-cyan-400/30 rounded text-[10px] text-cyan-200">
+                      Type <kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">/</kbd> anywhere in the editor to search and insert an artifact.
+                    </div>
                     <div className="relative">
                       <div
                         ref={(node) => {
@@ -8259,19 +8248,45 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                         onKeyDown={(e) => {
                           if (e.key === "Escape") closeSlashMenu();
                         }}
-                        className="min-h-[360px] rounded-md border border-input bg-background px-3 py-2 text-sm font-mono leading-relaxed ring-offset-background text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 whitespace-pre-wrap"
+                        className="min-h-[360px] rounded-md border border-cyan-400/50 bg-background px-3 py-2 text-sm font-mono leading-relaxed ring-offset-background text-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 whitespace-pre-wrap"
                         dangerouslySetInnerHTML={{
                           __html: buildInteractiveEditorHtml(comp.id, componentContents[getContentKey(comp.id)] || ""),
                         }}
                       />
                     </div>
-                    {insertTarget === comp.id && (
-                      <div className="p-2 bg-cyan-500/10 border border-cyan-400/20 rounded text-[10px] text-cyan-300">
-                        Type <kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">/</kbd> anywhere in the editor to search and insert an artifact.
-                      </div>
-                    )}
                   </div>
                 ))}
+              {/* Editor action buttons */}
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                {draftSaveMsg && (
+                  <span className="text-[10px] text-emerald-500 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    {draftSaveMsg}
+                  </span>
+                )}
+                {lastSaved && !draftSaveMsg && (
+                  <span className="text-[10px] text-emerald-500 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Saved {lastSaved}
+                  </span>
+                )}
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleManualSave}>
+                  <Save className="w-3 h-3 mr-1" />
+                  Save
+                </Button>
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={handleSaveAsWritingDraft}>
+                  <FileText className="w-3 h-3 mr-1" />
+                  Save as Draft
+                </Button>
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setShowDraftBrowser(!showDraftBrowser)}>
+                  <FolderUp className="w-3 h-3 mr-1" />
+                  Load Draft
+                </Button>
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setShowPreview(true)}>
+                  <Eye className="w-3 h-3 mr-1" />
+                  Preview
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -8309,7 +8324,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="max-h-[350px]">
+                <ScrollArea className="max-h-[460px] pr-2">
                   <div className="space-y-1.5">
                     {MACRO_CHECKLIST.map((item) => (
                       <label
@@ -8323,7 +8338,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                           }
                           className="mt-0.5"
                         />
-                        <span className={cn("text-xs", macroChecked[item.id] ? "text-emerald-400 line-through" : "text-white")}>
+                        <span className={cn("text-xs leading-relaxed break-words", macroChecked[item.id] ? "text-emerald-400 line-through" : "text-white")}>
                           {item.label}
                         </span>
                       </label>
@@ -8506,20 +8521,20 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
 
           {/* AI Check Result */}
           {aiCheckResult && (
-            <Card className="border-cyan-200 bg-cyan-50/30">
+            <Card className="border-cyan-400/40 bg-cyan-500/10">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-semibold text-cyan-700 flex items-center gap-1">
+                  <CardTitle className="text-xs font-semibold text-white flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
                     AI Analysis Result
                   </CardTitle>
-                  <button onClick={() => setAiCheckResult(null)} className="hover:bg-cyan-100 rounded p-0.5">
-                    <X className="w-3 h-3 text-cyan-400" />
+                  <button onClick={() => setAiCheckResult(null)} className="hover:bg-cyan-500/20 rounded p-0.5">
+                    <X className="w-3 h-3 text-white" />
                   </button>
                 </div>
               </CardHeader>
               <CardContent>
-                <pre className="text-[10px] text-cyan-800 whitespace-pre-wrap leading-relaxed">
+                <pre className="text-[10px] text-white whitespace-pre-wrap leading-relaxed">
                   {aiCheckResult}
                 </pre>
               </CardContent>
@@ -8667,20 +8682,25 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
       )}
 
       <div className="flex gap-2">
-        <Button variant="outline" onClick={handleExportMarkdown}>
-          <FileText className="w-4 h-4 mr-2" />
-          Export Markdown
-        </Button>
-        <Button variant="outline" onClick={() => void handleExportWord()}>
-          <FileText className="w-4 h-4 mr-2" />
-          Export Word
-        </Button>
-        <Link to="/workflow/3">
-          <Button variant="outline">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Reading (Iterate)
-          </Button>
-        </Link>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline">
+              <FileText className="w-4 h-4 mr-2" />
+              Export
+              <ChevronDown className="w-3.5 h-3.5 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-44">
+            <DropdownMenuItem onClick={handleExportMarkdown}>
+              <FileText className="w-3.5 h-3.5 mr-2" />
+              Export as Markdown
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void handleExportWord()}>
+              <FileText className="w-3.5 h-3.5 mr-2" />
+              Export as .docx
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Slash Command Artifact Picker Overlay */}

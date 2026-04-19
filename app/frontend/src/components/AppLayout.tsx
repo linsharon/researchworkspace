@@ -281,18 +281,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { id: "wf-draft", path: activeProject.id ? `/workflow/${activeProject.id}/6` : "/", label: t("nav.draft"), icon: PenTool },
   ];
 
-  const withProjectScope = (tab: string) =>
-    activeProject.id ? `/artifacts?tab=${tab}&projectId=${activeProject.id}` : `/artifacts?tab=${tab}`;
-
-  const ARTIFACT_NAV_ITEMS = [
-    { path: withProjectScope("all"), label: t("nav.allArtifacts"), icon: Archive },
-    { path: withProjectScope("purpose"), label: t("nav.purposeCards"), icon: Target },
-    { path: withProjectScope("search"), label: t("nav.searchLogs"), icon: Search },
-    { path: withProjectScope("notes"), label: t("nav.notes"), icon: FileText },
-    { path: withProjectScope("drafts"), label: t("nav.drafts"), icon: PenTool },
-    { path: withProjectScope("visual"), label: t("nav.visualizations"), icon: Map },
-  ];
-
   return (
     <div className="flex h-screen bg-[#061423] overflow-hidden">
       {/* Left Sidebar */}
@@ -563,28 +551,36 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <p className="text-[10px] uppercase tracking-wider text-slate-500 px-2 pt-4 pb-1">
               {t("nav.artifacts")}
             </p>
-            {ARTIFACT_NAV_ITEMS.map((item) => {
-              const isActive =
-                location.pathname + location.search === item.path ||
-                (location.pathname === "/artifacts" && item.path.includes("tab=all") && !location.search);
-              const Icon = item.icon;
-              return (
-                <Link key={item.path} to={item.path}>
-                  <div
-                    data-selected={isActive}
-                    className={cn(
-                      "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
-                      isActive
-                        ? "text-cyan-200 border-cyan-500/30"
-                        : "text-slate-400 border-slate-700/40"
-                    )}
-                  >
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span className="truncate record-item-title">{item.label}</span>
-                  </div>
-                </Link>
-              );
-            })}
+            {/* My Artifacts */}
+            <Link to={activeProject.id ? `/artifacts?tab=all&projectId=${activeProject.id}` : "/artifacts?tab=all"}>
+              <div
+                data-selected={location.pathname === "/artifacts"}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
+                  location.pathname === "/artifacts"
+                    ? "text-cyan-200 border-cyan-500/30"
+                    : "text-slate-400 border-slate-700/40"
+                )}
+              >
+                <Archive className="w-4 h-4 shrink-0" />
+                <span className="truncate record-item-title">{lang === "zh" ? "我的 Artifacts" : "My Artifacts"}</span>
+              </div>
+            </Link>
+            {/* Community Artifacts */}
+            <Link to="/community-artifacts">
+              <div
+                data-selected={location.pathname === "/community-artifacts"}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
+                  location.pathname === "/community-artifacts"
+                    ? "text-cyan-200 border-cyan-500/30"
+                    : "text-slate-400 border-slate-700/40"
+                )}
+              >
+                <Globe className="w-4 h-4 shrink-0" />
+                <span className="truncate record-item-title">{lang === "zh" ? "社区 Artifacts" : "Community Artifacts"}</span>
+              </div>
+            </Link>
 
             <p className="text-[10px] uppercase tracking-wider text-slate-500 px-2 pt-4 pb-1">
               {lang === "zh" ? "文件管理" : "Files"}
@@ -799,7 +795,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <AlertDialogDescription className="text-slate-300">
               {lang === "zh"
                 ? `你将删除项目“${activeProject.title}”。该操作不可撤销，请确认。`
-                : `You are about to delete project \"${activeProject.title}\". This action cannot be undone.`}
+                : `You are about to delete project "${activeProject.title}". This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

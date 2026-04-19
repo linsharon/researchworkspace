@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Archive,
   Clock,
@@ -20,6 +21,13 @@ import {
   Network,
   Map as MapIcon,
   PenLine,
+  Package,
+  PackageCheck,
+  Globe,
+  CheckSquare,
+  Square,
+  Share2,
+  X,
 } from "lucide-react";
 import {
   DUMMY_ARTIFACTS,
@@ -34,7 +42,7 @@ import { cn } from "@/lib/utils";
 
 const STATIC_ARTIFACTS = DUMMY_ARTIFACTS.filter(
   (artifact) =>
-    artifact.type !== "literature-note" && artifact.type !== "permanent-note"
+    artifact.type !== "literature-note" && artifact.type !== "permanent-note" && artifact.type !== "pre-writing-note"
 );
 
 function formatArtifactDate(value: string) {
@@ -173,15 +181,25 @@ const FILTER_MAP: Record<string, ArtifactType[]> = {
   purpose: ["purpose"],
   literature: ["entry-paper"],
   search: ["keyword", "search-log"],
-  notes: ["literature-note", "permanent-note"],
+  notes: ["literature-note", "permanent-note", "pre-writing-note"],
   visual: ["visualization"],
   drafts: ["rq-draft", "writing-block", "writing-draft"],
+};
+
+type ArtifactPackage = {
+  id: string;
+  name: string;
+  description: string;
+  artifacts: Artifact[];
+  createdAt: string;
+  shared: boolean;
 };
 
 export default function ArtifactCenter() {
   const NOTES_UPDATED_EVENT = "notes-updated";
   const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
   const ARTIFACTS_UPDATED_EVENT = "artifacts-updated";
+  const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const tabFromUrl = searchParams.get("tab") || "all";
@@ -204,6 +222,14 @@ export default function ArtifactCenter() {
     category: "",
     color: "#6366f1",
   });
+  // Pack & Share state
+  const [packMode, setPackMode] = useState(false);
+  const [selectedForPack, setSelectedForPack] = useState<Set<string>>(new Set());
+  const [showPackDialog, setShowPackDialog] = useState(false);
+  const [packName, setPackName] = useState("");
+  const [packDescription, setPackDescription] = useState("");
+  const [packSaved, setPackSaved] = useState(false);
+  const [myPackages, setMyPackages] = useState<ArtifactPackage[]>([]);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -211,6 +237,10 @@ export default function ArtifactCenter() {
       setFilter(tab);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    setMyPackages(loadPackages());
+  }, []);
 
   const loadLocalArtifacts = (): Artifact[] => {
     if (typeof window === "undefined") return [];
@@ -227,6 +257,23 @@ export default function ArtifactCenter() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(artifactsToSave));
     window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+  };
+
+  const loadPackages = (): ArtifactPackage[] => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? (parsed as ArtifactPackage[]) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const savePackages = (packages: ArtifactPackage[]) => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(packages));
+    setMyPackages(packages);
   };
 
   const loadApiConcepts = async () => {
@@ -305,6 +352,17 @@ export default function ArtifactCenter() {
       a.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  const packTypeGroups = useMemo(() => {
+    const groups = new Map<ArtifactType, Artifact[]>();
+    for (const artifact of filteredArtifacts) {
+      if (!groups.has(artifact.type)) {
+        groups.set(artifact.type, []);
+      }
+      groups.get(artifact.type)?.push(artifact);
+    }
+    return Array.from(groups.entries());
+  }, [filteredArtifacts]);
 
   const selected = artifacts.find((a) => a.id === selectedArtifact);
   const selectedConcept = concepts.find((c) => c.id === selectedConceptId) || null;
@@ -425,6 +483,81 @@ export default function ArtifactCenter() {
     navigate(target);
   };
 
+  const togglePackSelect = (id: string) => {
+    setSelectedForPack((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllVisibleForPack = () => {
+    setSelectedForPack(new Set(filteredArtifacts.map((artifact) => artifact.id)));
+  };
+
+  const toggleSelectTypeForPack = (type: ArtifactType) => {
+    setSelectedForPack((prev) => {
+      const next = new Set(prev);
+      const ids = filteredArtifacts.filter((artifact) => artifact.type === type).map((artifact) => artifact.id);
+      const allSelected = ids.every((id) => next.has(id));
+      if (allSelected) {
+        ids.forEach((id) => next.delete(id));
+      } else {
+        ids.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleCreatePackage = () => {
+    if (!packName.trim() || selectedForPack.size === 0) return;
+    const selectedArtifacts = artifacts.filter((a) => selectedForPack.has(a.id));
+    const pkg: ArtifactPackage = {
+      id: `pkg-${Date.now()}`,
+      name: packName.trim(),
+      description: packDescription.trim(),
+      artifacts: selectedArtifacts,
+      createdAt: new Date().toISOString().split("T")[0],
+      shared: true,
+    };
+    savePackages([...myPackages, pkg]);
+    setPackSaved(true);
+    setTimeout(() => {
+      setPackSaved(false);
+      setShowPackDialog(false);
+      setPackName("");
+      setPackDescription("");
+      setSelectedForPack(new Set());
+      setPackMode(false);
+    }, 1500);
+  };
+
+  const handleTogglePackageShare = (packageId: string) => {
+    const next = myPackages.map((pkg) =>
+      pkg.id === packageId ? { ...pkg, shared: !pkg.shared } : pkg
+    );
+    savePackages(next);
+  };
+
+  const handleDeletePackage = (packageId: string) => {
+    savePackages(myPackages.filter((pkg) => pkg.id !== packageId));
+  };
+
+  const handleUnpackToMyArtifacts = (pkg: ArtifactPackage) => {
+    const localArtifacts = loadLocalArtifacts();
+    const unpacked = pkg.artifacts.map((artifact) => ({
+      ...artifact,
+      id: `${artifact.id}-unpack-${Date.now()}`,
+      title: `${artifact.title} (Unpacked)`
+    }));
+    saveLocalArtifacts([...localArtifacts, ...unpacked]);
+    setArtifacts((prev) => {
+      const merged = [...prev, ...unpacked];
+      return Array.from(new Map(merged.map((artifact) => [artifact.id, artifact])).values());
+    });
+  };
+
   const getFilterCount = (filterValue: string) => {
     if (filterValue === "all") {
       return artifacts.length + concepts.length;
@@ -493,10 +626,137 @@ export default function ArtifactCenter() {
               </p>
             </div>
           </div>
-          <Badge variant="outline" className="text-xs">
-            {filter === "concepts" ? `${visibleConcepts.length} keywords` : `${filteredArtifacts.length} artifacts`}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              {filter === "concepts" ? `${visibleConcepts.length} keywords` : `${filteredArtifacts.length} artifacts`}
+            </Badge>
+            <Button
+              size="sm"
+              variant={packMode ? "default" : "outline"}
+              className={packMode ? "bg-cyan-600 hover:bg-cyan-700 text-white text-xs" : "text-xs"}
+              onClick={() => {
+                setPackMode(!packMode);
+                setSelectedForPack(new Set());
+              }}
+            >
+              <Package className="w-3.5 h-3.5 mr-1.5" />
+              {packMode ? "Cancel Pack" : "Pack & Share"}
+            </Button>
+            <Link to="/community-artifacts">
+              <Button size="sm" variant="outline" className="text-xs">
+                <Globe className="w-3.5 h-3.5 mr-1.5" />
+                Community
+              </Button>
+            </Link>
+          </div>
         </div>
+
+        {/* Pack mode selection bar */}
+        {packMode && (
+          <div className="p-3 rounded-lg bg-cyan-500/10 border border-cyan-400/30 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm text-cyan-200">
+                <PackageCheck className="w-4 h-4" />
+                <span>{selectedForPack.size} artifact{selectedForPack.size !== 1 ? "s" : ""} selected</span>
+                {selectedForPack.size > 0 && (
+                  <button
+                    className="text-xs text-cyan-400 hover:underline ml-1"
+                    onClick={() => setSelectedForPack(new Set())}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button size="sm" variant="outline" className="text-xs h-7" onClick={selectAllVisibleForPack}>
+                  Select Visible
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={selectedForPack.size === 0}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+                  onClick={() => setShowPackDialog(true)}
+                >
+                  <Share2 className="w-3.5 h-3.5 mr-1.5" />
+                  Create Package
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {packTypeGroups.map(([type, items]) => {
+                const allSelected = items.every((item) => selectedForPack.has(item.id));
+                return (
+                  <Button
+                    key={type}
+                    size="sm"
+                    variant={allSelected ? "default" : "outline"}
+                    className={cn("text-xs h-7", allSelected && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+                    onClick={() => toggleSelectTypeForPack(type)}
+                  >
+                    {ARTIFACT_TYPE_META[type].label} ({items.length})
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* My Artifact Packages */}
+        {myPackages.length > 0 && (
+          <Card className="border-slate-700/50 bg-slate-900/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-slate-100 flex items-center gap-2">
+                <PackageCheck className="w-4 h-4 text-cyan-300" />
+                My Artifact Packages
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {myPackages.map((pkg) => (
+                <div key={pkg.id} className="p-3 rounded-lg border border-slate-700/50 bg-[#0d1b30]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-200">{pkg.name}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{pkg.description || "No description"}</p>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        {pkg.artifacts.length} artifacts · Created {pkg.createdAt}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className={pkg.shared ? "text-emerald-300 border-emerald-500/40" : "text-slate-400"}>
+                      {pkg.shared ? "Shared" : "Private"}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => handleTogglePackageShare(pkg.id)}
+                    >
+                      {pkg.shared ? "Not Share" : "Share"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => handleUnpackToMyArtifacts(pkg)}
+                    >
+                      Unpack to My Artifacts
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs text-red-500 hover:text-red-400"
+                      onClick={() => handleDeletePackage(pkg.id)}
+                    >
+                      <X className="w-3 h-3 mr-1" />
+                      Remove Package
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Search & Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -713,20 +973,35 @@ export default function ArtifactCenter() {
               <Dialog key={artifact.id}>
                 <DialogTrigger asChild>
                   <div
-                    className="p-4 bg-[#0d1b30] border border-slate-700/50 rounded-xl hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group"
-                    onClick={() => setSelectedArtifact(artifact.id)}
+                    className={cn(
+                      "p-4 bg-[#0d1b30] border border-slate-700/50 rounded-xl hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group",
+                      packMode && selectedForPack.has(artifact.id) && "border-cyan-400/60 bg-cyan-500/10"
+                    )}
+                    onClick={() => {
+                      if (packMode) { togglePackSelect(artifact.id); return; }
+                      setSelectedArtifact(artifact.id);
+                    }}
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          "text-[10px] px-2 py-0.5",
-                          typeMeta.bgColor,
-                          typeMeta.color
+                      <div className="flex items-center gap-2">
+                        {packMode && (
+                          <span className="shrink-0 text-cyan-400">
+                            {selectedForPack.has(artifact.id)
+                              ? <CheckSquare className="w-4 h-4" />
+                              : <Square className="w-4 h-4 text-slate-500" />}
+                          </span>
                         )}
-                      >
-                        {typeMeta.label}
-                      </Badge>
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            "text-[10px] px-2 py-0.5",
+                            typeMeta.bgColor,
+                            typeMeta.color
+                          )}
+                        >
+                          {typeMeta.label}
+                        </Badge>
+                      </div>
                       <span className="text-[10px] text-slate-400 flex items-center gap-1">
                         {artifact.sourceStep === 1 && <Target className="w-3 h-3 inline mr-0.5" />}
                         {artifact.sourceStep === 2 && <Search className="w-3 h-3 inline mr-0.5" />}
@@ -900,6 +1175,52 @@ export default function ArtifactCenter() {
             </p>
           </div>
         )}
+
+        <Dialog open={showPackDialog} onOpenChange={setShowPackDialog}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-base">Create Artifact Package</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-700">Package Name</label>
+                <Input
+                  value={packName}
+                  onChange={(e) => setPackName(e.target.value)}
+                  placeholder="e.g. RL Draft Starter Kit"
+                  className="text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-700">Description</label>
+                <Textarea
+                  value={packDescription}
+                  onChange={(e) => setPackDescription(e.target.value)}
+                  placeholder="What does this package contain and when should others use it?"
+                  className="text-sm min-h-[90px]"
+                />
+              </div>
+              <div className="p-2 rounded border border-slate-700/50 bg-slate-900/40 text-xs text-slate-400">
+                Selected artifacts: {selectedForPack.size}
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  size="sm"
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+                  disabled={!packName.trim() || selectedForPack.size === 0}
+                  onClick={handleCreatePackage}
+                >
+                  <Share2 className="w-3 h-3 mr-1" />
+                  Share Package
+                </Button>
+                <Button size="sm" variant="ghost" className="text-xs" onClick={() => setShowPackDialog(false)}>
+                  Cancel
+                </Button>
+                {packSaved && <span className="text-xs text-emerald-500">Package shared.</span>}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={showConceptDialog} onOpenChange={setShowConceptDialog}>
           <DialogContent className="max-w-lg">

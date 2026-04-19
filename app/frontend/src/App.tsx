@@ -24,6 +24,7 @@ import AdminActivity from './pages/AdminActivity';
 import DocumentCenter from './pages/DocumentCenter';
 import ProjectMembers from './pages/ProjectMembers';
 import PremiumPlans from './pages/PremiumPlans';
+import CommunityArtifacts from './pages/CommunityArtifacts';
 // MODULE_IMPORTS_START
 // MODULE_IMPORTS_END
 
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/documents" element={<ProtectedRoute><DocumentCenter /></ProtectedRoute>} />
               <Route path="/projects/members" element={<ProtectedRoute><ProjectMembers /></ProtectedRoute>} />
               <Route path="/premium" element={<ProtectedRoute><PremiumPlans /></ProtectedRoute>} />
+              <Route path="/community-artifacts" element={<ProtectedRoute><CommunityArtifacts /></ProtectedRoute>} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/auth/error" element={<AuthError />} />
               <Route path="/auth/login" element={<AuthLogin />} />
