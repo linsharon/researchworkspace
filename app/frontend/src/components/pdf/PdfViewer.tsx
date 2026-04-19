@@ -472,6 +472,7 @@ export default function PdfViewer({
           <div className="pdf-scroll-host h-full min-h-0 overflow-auto bg-[#0d1b30] p-2">
             <Worker workerUrl={PDF_WORKER_URL}>
               <Viewer
+                key={resolvedZoom}
                 fileUrl={viewerUrl}
                 defaultScale={resolvedZoom / 100}
                 pageLayout={pageLayout}

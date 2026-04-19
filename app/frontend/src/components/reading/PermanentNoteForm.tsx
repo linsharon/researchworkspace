@@ -145,8 +145,8 @@ export function PermanentNoteForm({
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle className="text-emerald-950">Permanent Note</CardTitle>
-            <CardDescription className="text-emerald-800/80">
+            <CardTitle className="text-cyan-400">Permanent Note</CardTitle>
+            <CardDescription className="text-cyan-600">
               Distill an atomic claim, then wire it into your note network.
             </CardDescription>
           </div>

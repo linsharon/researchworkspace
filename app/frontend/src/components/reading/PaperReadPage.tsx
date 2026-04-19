@@ -35,7 +35,7 @@ export default function PaperReadPage() {
   const [hasChanged, setHasChanged] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<"Reading" | "Completed" | "To Read">("Reading");
-  const [toolsExpanded, setToolsExpanded] = useState(false);
+  const [toolsExpanded, setToolsExpanded] = useState(true);
   const [highlightPulse, setHighlightPulse] = useState(0);
 
   // Floating AI chat

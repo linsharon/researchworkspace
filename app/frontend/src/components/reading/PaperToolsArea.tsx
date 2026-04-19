@@ -447,8 +447,8 @@ export default function PaperToolsArea({
             onClick={() => setActiveTab("notes")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === "notes"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
+                ? "text-cyan-400 border-b-2 border-cyan-400"
+                : "text-white hover:text-cyan-300 border-b-2 border-white/30"
             }`}
           >
             Notes ({notes.length})
@@ -457,8 +457,8 @@ export default function PaperToolsArea({
             onClick={() => setActiveTab("highlights")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === "highlights"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
+                ? "text-cyan-400 border-b-2 border-cyan-400"
+                : "text-white hover:text-cyan-300 border-b-2 border-white/30"
             }`}
           >
             Highlights ({highlights.length})
@@ -504,7 +504,7 @@ export default function PaperToolsArea({
                 </div>
               )}
               {!notesLoading && notes.length === 0 && !noteError && (
-                <div className="rounded-md bg-slate-800 border border-slate-700/50 p-2 text-xs text-slate-600">
+                <div className="rounded-md bg-slate-800 border border-slate-700/50 p-2 text-xs text-white">
                   No saved notes for this paper yet.
                 </div>
               )}
@@ -586,7 +586,7 @@ export default function PaperToolsArea({
               </div>
             )}
             {!highlightsLoading && highlights.length === 0 && !highlightError && (
-              <div className="rounded-md bg-slate-800 border border-slate-700/50 p-2 text-xs text-slate-600">
+              <div className="rounded-md bg-slate-800 border border-slate-700/50 p-2 text-xs text-white">
                 No highlights yet. Select text in PDF and click Highlight.
               </div>
             )}
