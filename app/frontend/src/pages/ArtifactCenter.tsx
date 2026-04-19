@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import {
   Target,
   BookOpen,
   Network,
-  Map,
+  Map as MapIcon,
   PenLine,
 } from "lucide-react";
 import {
@@ -88,6 +88,37 @@ function paperToArtifact(paper: {
 const defaultConceptCategory = "Concept";
 const defaultConceptColor = "#6366f1";
 
+const CATEGORY_ORDER = [
+  "Concept",
+  "Construct",
+  "Theory",
+  "Framework",
+  "Method",
+  "Variable",
+  "Other",
+] as const;
+
+const CATEGORY_ALIAS_MAP: Record<string, (typeof CATEGORY_ORDER)[number]> = {
+  keyword: "Concept",
+  concept: "Concept",
+  construct: "Construct",
+  theory: "Theory",
+  framework: "Framework",
+  method: "Method",
+  variable: "Variable",
+  finding: "Other",
+  findings: "Other",
+  result: "Other",
+  results: "Other",
+  other: "Other",
+};
+
+function normalizeCategory(raw?: string): (typeof CATEGORY_ORDER)[number] {
+  const key = (raw || "").trim().toLowerCase();
+  if (!key) return defaultConceptCategory;
+  return CATEGORY_ALIAS_MAP[key] || defaultConceptCategory;
+}
+
 function parseConceptDefinition(definition?: string): { category: string; color: string } {
   if (!definition) {
     return { category: defaultConceptCategory, color: defaultConceptColor };
@@ -110,7 +141,7 @@ function apiConceptToLocal(concept: ApiConcept) {
     id: concept.id,
     name: concept.title,
     description: concept.description || "",
-    category: meta.category,
+    category: normalizeCategory(meta.category),
     color: meta.color,
   };
 }
@@ -120,7 +151,7 @@ function localConceptToApiPayload(concept: { name: string; description: string; 
     title: concept.name,
     description: concept.description,
     definition: JSON.stringify({
-      category: concept.category || defaultConceptCategory,
+      category: normalizeCategory(concept.category),
       color: concept.color || defaultConceptColor,
     }),
   };
@@ -165,6 +196,8 @@ export default function ArtifactCenter() {
   const [showConceptDialog, setShowConceptDialog] = useState(false);
   const [conceptDialogMode, setConceptDialogMode] = useState<"view" | "edit">("view");
   const [selectedConceptId, setSelectedConceptId] = useState<string | null>(null);
+  const [selectedKeywordCategory, setSelectedKeywordCategory] = useState<string>("all");
+  const [expandedKeywordCategories, setExpandedKeywordCategories] = useState<Record<string, boolean>>({});
   const [conceptForm, setConceptForm] = useState({
     name: "",
     description: "",
@@ -412,6 +445,38 @@ export default function ArtifactCenter() {
     );
   });
 
+  const keywordCategoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const concept of filteredConcepts) {
+      const normalized = normalizeCategory(concept.category);
+      counts[normalized] = (counts[normalized] || 0) + 1;
+    }
+    return counts;
+  }, [filteredConcepts]);
+
+  const keywordCategories = useMemo(() => {
+    const available = Object.keys(keywordCategoryCounts);
+    return CATEGORY_ORDER.filter((category) => available.includes(category));
+  }, [keywordCategoryCounts]);
+
+  const visibleConcepts = useMemo(() => {
+    if (selectedKeywordCategory === "all") {
+      return filteredConcepts;
+    }
+    return filteredConcepts.filter(
+      (concept) => normalizeCategory(concept.category) === selectedKeywordCategory
+    );
+  }, [filteredConcepts, selectedKeywordCategory]);
+
+  const groupedVisibleConcepts = useMemo(() => {
+    return keywordCategories
+      .map((category) => ({
+        category,
+        items: visibleConcepts.filter((concept) => normalizeCategory(concept.category) === category),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [keywordCategories, visibleConcepts]);
+
   return (
     <AppLayout>
       <div className="p-6 max-w-5xl mx-auto space-y-5">
@@ -429,7 +494,7 @@ export default function ArtifactCenter() {
             </div>
           </div>
           <Badge variant="outline" className="text-xs">
-            {filter === "concepts" ? `${filteredConcepts.length} artifacts` : `${filteredArtifacts.length} artifacts`}
+            {filter === "concepts" ? `${visibleConcepts.length} keywords` : `${filteredArtifacts.length} artifacts`}
           </Badge>
         </div>
 
@@ -440,7 +505,7 @@ export default function ArtifactCenter() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search artifacts..."
+              placeholder={filter === "concepts" ? "Search keywords, categories, description..." : "Search artifacts..."}
               className="pl-9 text-sm"
             />
           </div>
@@ -466,21 +531,85 @@ export default function ArtifactCenter() {
         {/* Artifact/Concept Grid */}
         {filter === "concepts" ? (
           (() => {
-            const categories = Array.from(new Set(filteredConcepts.map((c) => c.category))).sort();
+            if (visibleConcepts.length === 0 && selectedKeywordCategory !== "all") {
+              return (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                      onClick={() => setSelectedKeywordCategory("all")}
+                    >
+                      All ({filteredConcepts.length})
+                    </Button>
+                    {keywordCategories.map((category) => (
+                      <Button
+                        key={category}
+                        size="sm"
+                        variant={selectedKeywordCategory === category ? "default" : "outline"}
+                        className={cn(
+                          "text-xs",
+                          selectedKeywordCategory === category && "bg-cyan-600 hover:bg-cyan-700 text-white"
+                        )}
+                        onClick={() => setSelectedKeywordCategory(category)}
+                      >
+                        {category} ({keywordCategoryCounts[category] || 0})
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="text-center py-12 border border-slate-700/50 rounded-lg bg-slate-800/30">
+                    <p className="text-sm text-slate-400">No keywords in this category for current search.</p>
+                  </div>
+                </div>
+              );
+            }
+
             if (filteredConcepts.length === 0) return null;
+
             return (
               <div className="space-y-6">
-                {categories.map((cat) => {
-                  const items = filteredConcepts.filter((c) => c.category === cat);
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-800/30 p-2">
+                  <Button
+                    size="sm"
+                    variant={selectedKeywordCategory === "all" ? "default" : "outline"}
+                    className={cn("text-xs", selectedKeywordCategory === "all" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+                    onClick={() => setSelectedKeywordCategory("all")}
+                  >
+                    All ({filteredConcepts.length})
+                  </Button>
+                  {keywordCategories.map((category) => (
+                    <Button
+                      key={category}
+                      size="sm"
+                      variant={selectedKeywordCategory === category ? "default" : "outline"}
+                      className={cn(
+                        "text-xs",
+                        selectedKeywordCategory === category && "bg-cyan-600 hover:bg-cyan-700 text-white"
+                      )}
+                      onClick={() => setSelectedKeywordCategory(category)}
+                    >
+                      {category} ({keywordCategoryCounts[category] || 0})
+                    </Button>
+                  ))}
+                  <span className="ml-auto text-xs text-slate-500 px-2">
+                    Showing {visibleConcepts.length} of {filteredConcepts.length}
+                  </span>
+                </div>
+
+                {groupedVisibleConcepts.map(({ category, items }) => {
+                  const isExpanded = expandedKeywordCategories[category] || false;
+                  const compactItems = isExpanded ? items : items.slice(0, 6);
+                  const hiddenCount = Math.max(items.length - compactItems.length, 0);
                   return (
-                    <div key={cat}>
+                    <div key={category}>
                       <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
                         <Lightbulb className="w-3.5 h-3.5" />
-                        {cat}
+                        {category}
                         <span className="text-slate-600 font-normal normal-case tracking-normal">· {items.length}</span>
                       </h2>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {items.map((concept) => (
+                        {compactItems.map((concept) => (
                           <Card key={concept.id} className="border-slate-700/50 hover:shadow-md transition-all group">
                             <CardHeader className="pb-2">
                               <div className="flex items-center justify-between gap-2">
@@ -494,7 +623,7 @@ export default function ArtifactCenter() {
                                   }}
                                 >
                                   <Lightbulb className="w-3 h-3 mr-1" />
-                                  {concept.category}
+                                  {normalizeCategory(concept.category)}
                                 </Badge>
                               </div>
                               <CardTitle className="text-sm mt-2">{concept.name}</CardTitle>
@@ -536,6 +665,39 @@ export default function ArtifactCenter() {
                           </Card>
                         ))}
                       </div>
+                      {hiddenCount > 0 ? (
+                        <div className="pt-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            onClick={() =>
+                              setExpandedKeywordCategories((prev) => ({
+                                ...prev,
+                                [category]: true,
+                              }))
+                            }
+                          >
+                            Show {hiddenCount} more in {category}
+                          </Button>
+                        </div>
+                      ) : isExpanded && items.length > 6 ? (
+                        <div className="pt-3">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-xs"
+                            onClick={() =>
+                              setExpandedKeywordCategories((prev) => ({
+                                ...prev,
+                                [category]: false,
+                              }))
+                            }
+                          >
+                            Collapse {category}
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -570,7 +732,7 @@ export default function ArtifactCenter() {
                         {artifact.sourceStep === 2 && <Search className="w-3 h-3 inline mr-0.5" />}
                         {artifact.sourceStep === 3 && <BookOpen className="w-3 h-3 inline mr-0.5" />}
                         {artifact.sourceStep === 4 && <Network className="w-3 h-3 inline mr-0.5" />}
-                        {artifact.sourceStep === 5 && <Map className="w-3 h-3 inline mr-0.5" />}
+                        {artifact.sourceStep === 5 && <MapIcon className="w-3 h-3 inline mr-0.5" />}
                         {artifact.sourceStep === 6 && <PenLine className="w-3 h-3 inline mr-0.5" />}
                         Step {artifact.sourceStep}
                       </span>
