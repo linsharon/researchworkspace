@@ -28,6 +28,12 @@ type EditFormState = {
   selectedArtifactIds: string[];
 };
 
+type UnpackConflictState = {
+  pkg: ArtifactPackage;
+  duplicateCount: number;
+  duplicateKeys: string[];
+};
+
 export default function MyPackages() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
@@ -42,6 +48,8 @@ export default function MyPackages() {
     description: "",
     selectedArtifactIds: [],
   });
+  const [unpackConflict, setUnpackConflict] = useState<UnpackConflictState | null>(null);
+  const [showUnpackConflictDialog, setShowUnpackConflictDialog] = useState(false);
 
   const loadPackages = () => {
     if (typeof window === "undefined" || !user) return;
@@ -176,21 +184,88 @@ export default function MyPackages() {
     toast.success("Removed from downloaded packages");
   };
 
+  const buildArtifactFingerprint = (artifact: Artifact) => {
+    const title = (artifact.title || "").trim().toLowerCase();
+    const description = (artifact.description || "").trim().toLowerCase();
+    const content = (artifact.content || "").trim().toLowerCase();
+    return `${artifact.type}::${title}::${description}::${content}`;
+  };
+
+  const importArtifactFromPackage = (artifact: Artifact, ownerName: string) => ({
+    ...artifact,
+    id: `${artifact.id}-unpack-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    title: `${artifact.title} (from ${ownerName})`,
+  });
+
+  const applyUnpackStrategy = (
+    pkg: ArtifactPackage,
+    mode: "keep-mine" | "use-community",
+    duplicateKeys: string[]
+  ) => {
+    if (typeof window === "undefined") return;
+    const duplicateSet = new Set(duplicateKeys);
+
+    try {
+      const savedArtifacts = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+      const currentArtifacts: Artifact[] = savedArtifacts ? JSON.parse(savedArtifacts) : [];
+
+      const importedArtifacts = pkg.artifacts.map((artifact) => importArtifactFromPackage(artifact, pkg.ownerName));
+
+      let finalArtifacts: Artifact[] = currentArtifacts;
+      let importedCount = 0;
+      let replacedCount = 0;
+
+      if (mode === "keep-mine") {
+        const nonDuplicateImports = importedArtifacts.filter(
+          (artifact) => !duplicateSet.has(buildArtifactFingerprint(artifact))
+        );
+        importedCount = nonDuplicateImports.length;
+        finalArtifacts = [...currentArtifacts, ...nonDuplicateImports];
+      } else {
+        const beforeCount = currentArtifacts.length;
+        const mineWithoutDuplicates = currentArtifacts.filter(
+          (artifact) => !duplicateSet.has(buildArtifactFingerprint(artifact))
+        );
+        replacedCount = beforeCount - mineWithoutDuplicates.length;
+        importedCount = importedArtifacts.length;
+        finalArtifacts = [...mineWithoutDuplicates, ...importedArtifacts];
+      }
+
+      window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(finalArtifacts));
+      window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+
+      if (mode === "keep-mine") {
+        toast.success(`Imported ${importedCount} new artifacts, kept your ${duplicateKeys.length} duplicates`);
+      } else {
+        toast.success(`Imported ${importedCount} artifacts and replaced ${replacedCount} duplicates`);
+      }
+    } catch {
+      toast.error("Failed to unpack package");
+    }
+  };
+
   const handleUnpackToArtifactCenter = (pkg: ArtifactPackage) => {
     if (typeof window === "undefined") return;
     try {
       const savedArtifacts = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
       const currentArtifacts: Artifact[] = savedArtifacts ? JSON.parse(savedArtifacts) : [];
 
-      const unpacked = pkg.artifacts.map((artifact) => ({
-        ...artifact,
-        id: `${artifact.id}-unpack-${Date.now()}`,
-        title: `${artifact.title} (from ${pkg.ownerName})`,
-      }));
+      const currentFingerprintSet = new Set(currentArtifacts.map(buildArtifactFingerprint));
+      const duplicateKeys = pkg.artifacts
+        .map(buildArtifactFingerprint)
+        .filter((fingerprint) => currentFingerprintSet.has(fingerprint));
 
-      window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify([...currentArtifacts, ...unpacked]));
-      window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
-      toast.success("Unpacked to Artifact Center");
+      if (duplicateKeys.length > 0) {
+        setUnpackConflict({
+          pkg,
+          duplicateCount: duplicateKeys.length,
+          duplicateKeys,
+        });
+        setShowUnpackConflictDialog(true);
+        return;
+      }
+
+      applyUnpackStrategy(pkg, "keep-mine", []);
     } catch {
       toast.error("Failed to unpack package");
     }
@@ -399,6 +474,57 @@ export default function MyPackages() {
                 </Button>
                 <Button className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white flex-1" onClick={handleSaveEdit}>
                   Save Changes
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showUnpackConflictDialog} onOpenChange={setShowUnpackConflictDialog}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Duplicate Artifacts Detected</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-slate-300">
+                Found <span className="font-semibold text-cyan-300">{unpackConflict?.duplicateCount || 0}</span> duplicate records between this community package and your Artifact Center.
+              </p>
+              <p className="text-xs text-slate-400">
+                Choose which version to keep for duplicates:
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                <Button
+                  variant="outline"
+                  className="justify-start text-left h-auto py-2"
+                  onClick={() => {
+                    if (!unpackConflict) return;
+                    applyUnpackStrategy(unpackConflict.pkg, "keep-mine", unpackConflict.duplicateKeys);
+                    setShowUnpackConflictDialog(false);
+                    setUnpackConflict(null);
+                  }}
+                >
+                  Keep My Version
+                </Button>
+                <Button
+                  className="justify-start text-left h-auto py-2 bg-cyan-600 hover:bg-cyan-700 text-white"
+                  onClick={() => {
+                    if (!unpackConflict) return;
+                    applyUnpackStrategy(unpackConflict.pkg, "use-community", unpackConflict.duplicateKeys);
+                    setShowUnpackConflictDialog(false);
+                    setUnpackConflict(null);
+                  }}
+                >
+                  Use Community Package Version
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="justify-start text-left h-auto py-2 text-slate-400"
+                  onClick={() => {
+                    setShowUnpackConflictDialog(false);
+                    setUnpackConflict(null);
+                  }}
+                >
+                  Cancel
                 </Button>
               </div>
             </div>
