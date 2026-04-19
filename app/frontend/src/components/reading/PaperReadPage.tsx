@@ -407,18 +407,18 @@ export default function PaperReadPage() {
           </div>
 
           {/* Chat Messages */}
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="p-4 space-y-3">
+          <ScrollArea className="flex-1 min-h-0 w-full border-b border-slate-700/50">
+            <div className="p-4 space-y-3 w-full">
               {chatMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}
+                  className={cn("flex w-full", msg.role === "user" ? "justify-end" : "justify-start")}
                 >
                   <div
                     className={cn(
-                      "max-w-[85%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed",
+                      "max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
                       msg.role === "user"
-                        ? "bg-cyan-600 text-white rounded-br-md"
+                        ? "bg-cyan-600 text-white rounded-br-md font-medium"
                         : "bg-slate-800 text-white rounded-bl-md"
                     )}
                   >
