@@ -2995,12 +2995,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         <div className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-slate-700">
-              Concept Name <span className="text-red-500">*</span>
+              Keyword Name <span className="text-red-500">*</span>
             </label>
             <Input
               value={conceptName}
               onChange={(e) => setConceptName(e.target.value)}
-              placeholder="Enter concept name..."
+              placeholder="Enter keyword name..."
               className="text-sm"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -3016,7 +3016,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             <Textarea
               value={conceptDescription}
               onChange={(e) => setConceptDescription(e.target.value)}
-              placeholder="What does this concept mean in your research context? Add details, definitions, or notes..."
+              placeholder="What does this keyword mean in your research context? Add details, definitions, or notes..."
               rows={4}
               className="text-sm resize-none"
             />
