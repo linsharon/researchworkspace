@@ -6636,7 +6636,33 @@ function DraftWorkspaceInline() {
   const [aiCheckResult, setAiCheckResult] = useState<string | null>(null);
   const [aiChecking, setAiChecking] = useState(false);
 
-  const allArtifacts = DUMMY_ARTIFACTS;
+  const [storedArtifacts, setStoredArtifacts] = useState<Artifact[]>(() => {
+    try {
+      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+      const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const onUpdate = () => {
+      try {
+        const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
+        const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
+        setStoredArtifacts(Array.isArray(parsed) ? parsed : []);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener(ARTIFACTS_UPDATED_EVENT, onUpdate);
+    window.addEventListener("storage", onUpdate);
+    return () => {
+      window.removeEventListener(ARTIFACTS_UPDATED_EVENT, onUpdate);
+      window.removeEventListener("storage", onUpdate);
+    };
+  }, []);
+
+  const allArtifacts = storedArtifacts.length > 0 ? storedArtifacts : DUMMY_ARTIFACTS;
 
   const getContentKey = (compId: string) => `${selectedStyle}-${compId}`;
 
