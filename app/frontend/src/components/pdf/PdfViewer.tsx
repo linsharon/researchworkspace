@@ -4,6 +4,7 @@ import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { ScrollMode, type Plugin, Viewer, Worker } from "@react-pdf-viewer/core";
+import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 
 import { cn } from "@/lib/utils";
@@ -154,6 +155,10 @@ export default function PdfViewer({
   const [documentPageCount, setDocumentPageCount] = useState<number>(totalPages ?? 0);
   const [pageThumbnails, setPageThumbnails] = useState<Array<string | null>>([]);
   const [thumbnailsLoading, setThumbnailsLoading] = useState(false);
+  const [pendingJumpPage, setPendingJumpPage] = useState<number | null>(null);
+
+  const pageNavigationPluginInstance = useMemo(() => pageNavigationPlugin(), []);
+  const { jumpToPage: jumpToPageByPlugin } = pageNavigationPluginInstance;
 
   const pageLayout = useMemo(
     () => ({
@@ -183,12 +188,24 @@ export default function PdfViewer({
 
   const jumpToPage = useCallback((page: number) => {
     const boundedPage = Math.max(1, Math.min(page, resolvedTotalPages || page));
-    const target = containerRef.current?.querySelector(`[data-testid="core__page-layer-${boundedPage - 1}"]`);
-    if (target instanceof HTMLElement) {
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (!isDocumentLoaded) {
+      setPendingJumpPage(boundedPage);
+      return;
     }
+
+    // Prefer the official page-navigation API to avoid failures caused by virtualized page DOM.
+    jumpToPageByPlugin(boundedPage - 1);
     handlePageChange(boundedPage);
-  }, [resolvedTotalPages]);
+  }, [handlePageChange, isDocumentLoaded, jumpToPageByPlugin, resolvedTotalPages]);
+
+  useEffect(() => {
+    if (!isDocumentLoaded || pendingJumpPage == null) {
+      return;
+    }
+    jumpToPageByPlugin(Math.max(0, pendingJumpPage - 1));
+    handlePageChange(pendingJumpPage);
+    setPendingJumpPage(null);
+  }, [handlePageChange, isDocumentLoaded, jumpToPageByPlugin, pendingJumpPage]);
 
   const applyZoom = (nextZoom: number) => {
     const bounded = Math.min(Math.max(nextZoom, 30), 300);
@@ -668,7 +685,7 @@ export default function PdfViewer({
                 fileUrl={viewerUrl}
                 defaultScale={resolvedZoom / 100}
                 pageLayout={pageLayout}
-                plugins={[selectionPlugin]}
+                plugins={[selectionPlugin, pageNavigationPluginInstance]}
                 scrollMode={ScrollMode.Vertical}
                 onDocumentLoad={(event: any) => {
                   setIsDocumentLoaded(true);
