@@ -33,8 +33,8 @@ export default function UserProfilePage() {
     if (typeof window === "undefined") return null;
     try {
       const saved = window.localStorage.getItem(USER_PROFILES_KEY);
-      const profiles: UserProfile[] = saved ? JSON.parse(saved) : [];
-      return profiles.find((p) => p.id === id) || null;
+      const profiles: Record<string, UserProfile> = saved ? JSON.parse(saved) : {};
+      return profiles[id] || null;
     } catch {
       return null;
     }
@@ -44,9 +44,9 @@ export default function UserProfilePage() {
     if (typeof window === "undefined") return;
     try {
       const saved = window.localStorage.getItem(USER_PROFILES_KEY);
-      const profiles: UserProfile[] = saved ? JSON.parse(saved) : [];
-      const filtered = profiles.filter((p) => p.id !== profile.id);
-      window.localStorage.setItem(USER_PROFILES_KEY, JSON.stringify([...filtered, profile]));
+      const profiles: Record<string, UserProfile> = saved ? JSON.parse(saved) : {};
+      profiles[profile.userId] = profile;
+      window.localStorage.setItem(USER_PROFILES_KEY, JSON.stringify(profiles));
       if (isOwnProfile) {
         window.localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(profile));
       }

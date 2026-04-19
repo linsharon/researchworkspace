@@ -14,14 +14,10 @@ const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
 const USER_PROFILES_KEY = "rw-user-profiles";
 const CURRENT_USER_KEY = "rw-current-user";
 
-interface LocalPackageData extends ArtifactPackage {
-  localId?: string;
-}
-
 export default function MyPackages() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
-  const [packages, setPackages] = useState<LocalPackageData[]>([]);
+  const [packages, setPackages] = useState<ArtifactPackage[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: "", description: "" });
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -30,13 +26,9 @@ export default function MyPackages() {
     if (typeof window === "undefined" || !user) return;
     try {
       const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
-      const allPackages: LocalPackageData[] = saved ? JSON.parse(saved) : [];
+      const allPackages: ArtifactPackage[] = saved ? JSON.parse(saved) : [];
       
-      const userPackages = allPackages.map((pkg) => ({
-        ...pkg,
-        localId: `${pkg.id}-${pkg.source}`,
-        source: pkg.source || (pkg.authorId === user.id ? "created" : "downloaded"),
-      }));
+      const userPackages = allPackages.filter((pkg) => pkg.ownerId === user.id);
 
       setPackages(userPackages);
     } catch {

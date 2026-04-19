@@ -9,28 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Download, Globe, Package, Search, User2, ArrowRight } from "lucide-react";
-import { ARTIFACT_TYPE_META, type Artifact } from "@/lib/data";
-
-type ArtifactPackage = {
-  id: string;
-  name: string;
-  description: string;
-  artifacts: Artifact[];
-  createdAt: string;
-  shared: boolean;
-  ownerId: string;
-  ownerName: string;
-};
-
-type UserProfile = {
-  userId: string;
-  email: string;
-  username: string;
-  bio: string;
-  avatarUrl: string;
-  isPublic: boolean;
-  updatedAt: string;
-};
+import { ARTIFACT_TYPE_META, type Artifact, type ArtifactPackage, type UserProfile } from "@/lib/data";
 
 const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
 const ARTIFACTS_STORAGE_KEY = "rw-artifacts";

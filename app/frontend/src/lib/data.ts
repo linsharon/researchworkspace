@@ -40,13 +40,12 @@ export type ArtifactType =
   | "writing-draft";
 
 export interface UserProfile {
-  id: string;
+  userId: string;
   email: string;
   username: string;
-  avatar?: string;
-  bio?: string;
+  bio: string;
+  avatarUrl: string;
   isPublic: boolean;
-  createdAt: string;
   updatedAt: string;
 }
 
@@ -57,10 +56,8 @@ export interface ArtifactPackage {
   artifacts: Artifact[];
   createdAt: string;
   shared: boolean;
-  authorId: string;
-  authorUsername: string;
-  authorAvatar?: string;
-  source: "created" | "downloaded";
+  ownerId: string;
+  ownerName: string;
 }
 
 export interface Paper {

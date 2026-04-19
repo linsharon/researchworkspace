@@ -5,16 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { User2, ArrowLeft } from "lucide-react";
-
-type UserProfile = {
-  userId: string;
-  email: string;
-  username: string;
-  bio: string;
-  avatarUrl: string;
-  isPublic: boolean;
-  updatedAt: string;
-};
+import { type UserProfile } from "@/lib/data";
 
 const USER_PROFILES_KEY = "rw-user-profiles";
 

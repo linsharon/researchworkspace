@@ -35,6 +35,7 @@ import {
   STEP_META,
   type Artifact,
   type ArtifactType,
+  type ArtifactPackage,
 } from "@/lib/data";
 import { conceptAPI, noteAPI, paperAPI, projectAPI } from "@/lib/manuscript-api";
 import type { Concept as ApiConcept, Note } from "@/lib/manuscript-api";
@@ -185,17 +186,6 @@ const FILTER_MAP: Record<string, ArtifactType[]> = {
   notes: ["literature-note", "permanent-note", "pre-writing-note"],
   visual: ["visualization"],
   drafts: ["rq-draft", "writing-block", "writing-draft"],
-};
-
-type ArtifactPackage = {
-  id: string;
-  name: string;
-  description: string;
-  artifacts: Artifact[];
-  createdAt: string;
-  shared: boolean;
-  ownerId: string;
-  ownerName: string;
 };
 
 export default function ArtifactCenter() {
