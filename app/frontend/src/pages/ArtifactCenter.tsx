@@ -224,6 +224,7 @@ export default function ArtifactCenter() {
   const [packDescription, setPackDescription] = useState("");
   const [packSaved, setPackSaved] = useState(false);
   const [myPackages, setMyPackages] = useState<ArtifactPackage[]>([]);
+  const [paperTitleMap, setPaperTitleMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -298,6 +299,7 @@ export default function ArtifactCenter() {
         const papers = projectIdFromUrl
           ? await paperAPI.list(projectIdFromUrl)
           : (await Promise.all((await projectAPI.list()).map((project) => paperAPI.list(project.id)))).flat();
+        setPaperTitleMap(Object.fromEntries(papers.map((paper) => [paper.id, paper.title])));
         const literatureArtifacts = papers
           .filter((paper) => paper.is_entry_paper || paper.is_expanded_paper)
           .map((paper) => paperToArtifact(paper));
@@ -313,6 +315,7 @@ export default function ArtifactCenter() {
         setArtifacts(deduped);
       } catch (error) {
         console.error("Failed to load notes for Artifact Center:", error);
+        setPaperTitleMap({});
         setArtifacts([
           ...STATIC_ARTIFACTS,
           ...loadLocalArtifacts().filter((artifact) => !projectIdFromUrl || artifact.projectId === projectIdFromUrl),
@@ -360,6 +363,62 @@ export default function ArtifactCenter() {
 
   const selected = artifacts.find((a) => a.id === selectedArtifact);
   const selectedConcept = concepts.find((c) => c.id === selectedConceptId) || null;
+
+  const parseArtifactJson = (value?: string): Record<string, unknown> | null => {
+    if (!value) return null;
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const resolveDraftDisplayTitle = (artifact: Artifact) => {
+    if (artifact.type !== "rq-draft" && artifact.type !== "writing-block" && artifact.type !== "writing-draft") {
+      return artifact.title;
+    }
+
+    const payload = parseArtifactJson(artifact.content);
+    const getString = (key: string) => {
+      const value = payload?.[key];
+      return typeof value === "string" ? value.trim() : "";
+    };
+
+    const sourcePaper = payload?.sourcePaper && typeof payload.sourcePaper === "object"
+      ? (payload.sourcePaper as Record<string, unknown>)
+      : null;
+
+    const directTitle =
+      getString("paperTitle") ||
+      getString("sourcePaperTitle") ||
+      (typeof sourcePaper?.title === "string" ? sourcePaper.title.trim() : "");
+
+    if (directTitle) return directTitle;
+
+    const paperId =
+      getString("paperId") ||
+      getString("paper_id") ||
+      getString("sourcePaperId") ||
+      (typeof sourcePaper?.id === "string" ? sourcePaper.id.trim() : "");
+
+    if (paperId && paperTitleMap[paperId]) {
+      return paperTitleMap[paperId];
+    }
+
+    return artifact.title;
+  };
+
+  const deriveLiteratureTags = (artifact: Artifact) => {
+    if (artifact.type !== "entry-paper") {
+      return { isEntry: false, isExpanded: false };
+    }
+    const desc = artifact.description || "";
+    return {
+      isEntry: /Entry Paper/i.test(desc),
+      isExpanded: /Expanded Paper/i.test(desc),
+    };
+  };
 
   const openConceptDialog = (conceptId: string, mode: "view" | "edit") => {
     const concept = concepts.find((c) => c.id === conceptId);
@@ -909,6 +968,8 @@ export default function ArtifactCenter() {
             {filteredArtifacts.map((artifact) => {
             const typeMeta = ARTIFACT_TYPE_META[artifact.type];
             const stepMeta = STEP_META[artifact.sourceStep];
+            const displayTitle = resolveDraftDisplayTitle(artifact);
+            const literatureTags = deriveLiteratureTags(artifact);
             return (
               <Dialog key={artifact.id}>
                 <DialogTrigger asChild>
@@ -953,8 +1014,22 @@ export default function ArtifactCenter() {
                       </span>
                     </div>
                     <h4 className="text-sm font-medium text-slate-200 mb-1 group-hover:text-cyan-300 transition-colors line-clamp-2">
-                      {artifact.title}
+                      {displayTitle}
                     </h4>
+                    {artifact.type === "entry-paper" && (literatureTags.isEntry || literatureTags.isExpanded) && (
+                      <div className="mb-2 flex flex-wrap gap-1.5">
+                        {literatureTags.isEntry ? (
+                          <Badge variant="outline" className="text-[10px] border-emerald-500/60 text-emerald-300">
+                            Entry
+                          </Badge>
+                        ) : null}
+                        {literatureTags.isExpanded ? (
+                          <Badge variant="outline" className="text-[10px] border-cyan-500/60 text-cyan-300">
+                            Expanded
+                          </Badge>
+                        ) : null}
+                      </div>
+                    )}
                     <p className="text-xs text-slate-500 line-clamp-2 mb-3">
                       {artifact.description}
                     </p>
@@ -1031,7 +1106,7 @@ export default function ArtifactCenter() {
                 <DialogContent className="max-w-lg">
                   <DialogHeader>
                     <DialogTitle className="text-base">
-                      {artifact.title}
+                      {displayTitle}
                     </DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">

@@ -288,12 +288,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
   };
 
   const NAV_ITEMS = [
-    { id: "wf-purpose", path: activeProject.id ? `/workflow/${activeProject.id}/1` : "/", label: t("nav.purpose"), icon: Target },
-    { id: "wf-discover", path: activeProject.id ? `/workflow/${activeProject.id}/2` : "/", label: t("nav.discover"), icon: Search },
-    { id: "wf-read", path: activeProject.id ? `/workflow/${activeProject.id}/3` : "/", label: t("nav.read"), icon: BookOpen },
-    { id: "wf-expand", path: activeProject.id ? `/workflow/${activeProject.id}/4` : "/", label: t("nav.expand"), icon: Network },
-    { id: "wf-visualize", path: activeProject.id ? `/workflow/${activeProject.id}/5` : "/", label: t("nav.visualize"), icon: Eye },
-    { id: "wf-draft", path: activeProject.id ? `/workflow/${activeProject.id}/6` : "/", label: t("nav.draft"), icon: PenTool },
+    { id: "wf-purpose", path: activeProject.id ? `/workflow/${activeProject.id}/1` : null, label: t("nav.purpose"), icon: Target },
+    { id: "wf-discover", path: activeProject.id ? `/workflow/${activeProject.id}/2` : null, label: t("nav.discover"), icon: Search },
+    { id: "wf-read", path: activeProject.id ? `/workflow/${activeProject.id}/3` : null, label: t("nav.read"), icon: BookOpen },
+    { id: "wf-expand", path: activeProject.id ? `/workflow/${activeProject.id}/4` : null, label: t("nav.expand"), icon: Network },
+    { id: "wf-visualize", path: activeProject.id ? `/workflow/${activeProject.id}/5` : null, label: t("nav.visualize"), icon: Eye },
+    { id: "wf-draft", path: activeProject.id ? `/workflow/${activeProject.id}/6` : null, label: t("nav.draft"), icon: PenTool },
   ];
 
   return (
@@ -529,21 +529,31 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </p>
             {NAV_ITEMS.map((item, idx) => {
               const isActive =
-                location.pathname === item.path ||
-                (item.path !== "/" && location.pathname.startsWith(item.path));
+                Boolean(item.path) &&
+                (location.pathname === item.path || location.pathname.startsWith(item.path));
               const Icon = item.icon;
               const stepNum = idx;
               const isCompleted = stepNum > 0 && stepNum < activeProject.currentStep;
               const isCurrent = stepNum === activeProject.currentStep;
 
               return (
-                <Link key={item.id} to={item.path}>
+                <Link
+                  key={item.id}
+                  to={item.path || "#"}
+                  onClick={(event) => {
+                    if (!item.path) {
+                      event.preventDefault();
+                    }
+                  }}
+                >
                   <div
                     data-selected={isActive}
                     className={cn(
                       "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                       isActive
                         ? "text-cyan-200 border-cyan-500/30"
+                        : !item.path
+                        ? "text-slate-600 border-slate-800/40"
                         : "text-slate-400 border-slate-700/40"
                     )}
                   >

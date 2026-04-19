@@ -394,7 +394,7 @@ export default function WorkflowWorkspace() {
         {currentStep === 2 && <EntryPaperWorkspace projectId={projectId} />}
         {currentStep === 3 && <Step3ReadFoundPapers projectId={projectId} />}
         {currentStep === 4 && <ExpandWorkspace projectId={projectId} />}
-        {currentStep === 5 && <VisualizeWorkspace />}
+        {currentStep === 5 && <VisualizeWorkspace projectId={projectId} />}
         {currentStep === 6 && (
           <DraftErrorBoundary>
             <DraftWorkspaceInline projectId={projectId} />
@@ -5836,13 +5836,165 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
 // ============================================================
 // Step 5: Visualize Workspace
 // ============================================================
-function VisualizeWorkspace() {
+function VisualizeWorkspace({ projectId }: { projectId: string }) {
   const [vizSection, setVizSection] = useState<"research" | "viztools">("research");
   const [researchSubTab, setResearchSubTab] = useState<"papers" | "files" | "ai-summary" | "perm-notes" | "synthesis">("papers");
 
   // Research content stats
   const papers = DUMMY_PAPERS;
-  const readPapers = papers.filter((p) => p.annotations.length > 0);
+  const [paperAnalyticsLoading, setPaperAnalyticsLoading] = useState(true);
+  const [paperAnalyticsRows, setPaperAnalyticsRows] = useState<Array<{
+    paper: ApiPaper;
+    highlights: number;
+    literatureNotes: number;
+    permanentNotes: number;
+    conceptCounts: Record<string, number>;
+    processingTime: string;
+  }>>([]);
+
+  const normalizeConceptCategory = (raw?: string) => {
+    const value = (raw || "").trim().toLowerCase();
+    if (!value) return "concept";
+    if (["concept", "construct", "theory", "framework", "method", "variable", "other"].includes(value)) {
+      return value;
+    }
+    return "concept";
+  };
+
+  const formatDuration = (milliseconds: number) => {
+    const minutes = Math.max(0, Math.floor(milliseconds / 60000));
+    const hh = String(Math.floor(minutes / 60)).padStart(2, "0");
+    const mm = String(minutes % 60).padStart(2, "0");
+    return `${hh}:${mm}`;
+  };
+
+  useEffect(() => {
+    let disposed = false;
+
+    const loadPaperAnalytics = async () => {
+      setPaperAnalyticsLoading(true);
+      try {
+        const [allPapers, allNotes, allConcepts] = await Promise.all([
+          paperAPI.list(projectId),
+          noteAPI.listByProject(projectId),
+          conceptAPI.list(projectId),
+        ]);
+
+        const readingPapers = allPapers.filter((paper) => paper.is_entry_paper || paper.is_expanded_paper);
+        const highlightGroups = await Promise.all(
+          readingPapers.map((paper) =>
+            highlightAPI
+              .list(paper.id)
+              .then((highlights) => ({ paperId: paper.id, highlights }))
+              .catch(() => ({ paperId: paper.id, highlights: [] as ApiHighlight[] }))
+          )
+        );
+
+        const highlightMap = new Map(highlightGroups.map((item) => [item.paperId, item.highlights]));
+        const noteMap = new Map<string, ApiNote[]>();
+        allNotes.forEach((note) => {
+          const existing = noteMap.get(note.paper_id) || [];
+          existing.push(note);
+          noteMap.set(note.paper_id, existing);
+        });
+
+        const conceptByPaperId = new Map<string, ApiConcept[]>();
+        allConcepts.forEach((concept) => {
+          try {
+            const parsed = concept.definition ? (JSON.parse(concept.definition) as Record<string, unknown>) : null;
+            const sourcePaper = parsed?.sourcePaper && typeof parsed.sourcePaper === "object"
+              ? (parsed.sourcePaper as Record<string, unknown>)
+              : null;
+            const sourcePaperId =
+              (typeof sourcePaper?.id === "string" ? sourcePaper.id : "") ||
+              (typeof parsed?.sourcePaperId === "string" ? (parsed.sourcePaperId as string) : "");
+            if (!sourcePaperId) return;
+            const existing = conceptByPaperId.get(sourcePaperId) || [];
+            existing.push(concept);
+            conceptByPaperId.set(sourcePaperId, existing);
+          } catch {
+            // Ignore malformed concept definition
+          }
+        });
+
+        const rows = readingPapers.map((paper) => {
+          const paperHighlights = highlightMap.get(paper.id) || [];
+          const paperNotes = noteMap.get(paper.id) || [];
+          const paperConcepts = conceptByPaperId.get(paper.id) || [];
+
+          const conceptCounts: Record<string, number> = {
+            concept: 0,
+            theory: 0,
+            construct: 0,
+            variable: 0,
+            framework: 0,
+            method: 0,
+            other: 0,
+          };
+
+          paperConcepts.forEach((concept) => {
+            try {
+              const parsed = concept.definition ? (JSON.parse(concept.definition) as Record<string, unknown>) : null;
+              const key = normalizeConceptCategory(typeof parsed?.category === "string" ? parsed.category : "");
+              conceptCounts[key] = (conceptCounts[key] || 0) + 1;
+            } catch {
+              conceptCounts.concept += 1;
+            }
+          });
+
+          const timestamps: number[] = [];
+          paperHighlights.forEach((item) => {
+            const ms = new Date(item.created_at).getTime();
+            if (!Number.isNaN(ms)) timestamps.push(ms);
+          });
+          paperNotes.forEach((item) => {
+            const createdMs = new Date(item.created_at).getTime();
+            const updatedMs = new Date(item.updated_at).getTime();
+            if (!Number.isNaN(createdMs)) timestamps.push(createdMs);
+            if (!Number.isNaN(updatedMs)) timestamps.push(updatedMs);
+          });
+          paperConcepts.forEach((item) => {
+            const ms = new Date(item.created_at).getTime();
+            if (!Number.isNaN(ms)) timestamps.push(ms);
+          });
+
+          const minTime = timestamps.length ? Math.min(...timestamps) : 0;
+          const maxTime = timestamps.length ? Math.max(...timestamps) : 0;
+          const elapsed = timestamps.length > 1 ? maxTime - minTime : 0;
+
+          return {
+            paper,
+            highlights: paperHighlights.length,
+            literatureNotes: paperNotes.filter((note) => note.note_type === "literature-note").length,
+            permanentNotes: paperNotes.filter((note) => note.note_type === "permanent-note").length,
+            conceptCounts,
+            processingTime: formatDuration(elapsed),
+          };
+        });
+
+        if (!disposed) {
+          setPaperAnalyticsRows(rows);
+        }
+      } catch (error) {
+        console.error("Failed to load Step 5 paper analytics:", error);
+        if (!disposed) {
+          setPaperAnalyticsRows([]);
+        }
+      } finally {
+        if (!disposed) {
+          setPaperAnalyticsLoading(false);
+        }
+      }
+    };
+
+    void loadPaperAnalytics();
+    return () => {
+      disposed = true;
+    };
+  }, [projectId]);
+
+  const entryPaperRows = paperAnalyticsRows.filter((row) => row.paper.is_entry_paper);
+  const expandedPaperRows = paperAnalyticsRows.filter((row) => row.paper.is_expanded_paper);
 
   // Upload state
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; size: string; date: string; addedToVisual?: boolean }>>([]);
@@ -5930,10 +6082,7 @@ function VisualizeWorkspace() {
   };
 
   // Sort papers
-  const [paperSort, setPaperSort] = useState<"year" | "access">("year");
-  const sortedPapers = [...papers].sort((a, b) =>
-    paperSort === "year" ? b.year - a.year : 0
-  );
+  const [paperSort, setPaperSort] = useState<"year" | "title" | "status" | "access">("year");
 
   const handleAiSummarize = () => {
     setAiSummarizing(true);
@@ -6091,23 +6240,63 @@ function VisualizeWorkspace() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-slate-200">{papers.length}</p>
-                <p className="text-[10px] text-slate-500 uppercase">Total Papers</p>
+                <p className="text-2xl font-bold text-slate-200">{paperAnalyticsRows.length}</p>
+                <p className="text-[10px] text-slate-500 uppercase">Total Reading Papers</p>
               </CardContent>
             </Card>
             <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-emerald-600">{readPapers.length}</p>
-                <p className="text-[10px] text-slate-500 uppercase">Papers Read</p>
+                <p className="text-2xl font-bold text-emerald-600">{entryPaperRows.length}</p>
+                <p className="text-[10px] text-slate-500 uppercase">Entry Papers</p>
               </CardContent>
             </Card>
             <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
-                <p className="text-2xl font-bold text-amber-600">{papers.length - readPapers.length}</p>
-                <p className="text-[10px] text-slate-500 uppercase">Unread</p>
+                <p className="text-2xl font-bold text-amber-600">{expandedPaperRows.length}</p>
+                <p className="text-[10px] text-slate-500 uppercase">Expanded Papers</p>
               </CardContent>
             </Card>
           </div>
+
+          <Card className="border-slate-700/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold">Reading Paper Index</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300 mb-2">
+                  Entry Papers ({entryPaperRows.length})
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {entryPaperRows.map((row) => (
+                    <Link
+                      key={`entry-title-${row.paper.id}`}
+                      to={`/paper-read/${projectId}/${row.paper.id}`}
+                      className="text-xs rounded-md border border-emerald-500/40 px-2 py-1 text-emerald-200 hover:bg-emerald-500/10"
+                    >
+                      {row.paper.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-cyan-300 mb-2">
+                  Expanded Papers ({expandedPaperRows.length})
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {expandedPaperRows.map((row) => (
+                    <Link
+                      key={`expanded-title-${row.paper.id}`}
+                      to={`/paper-read/${projectId}/${row.paper.id}`}
+                      className="text-xs rounded-md border border-cyan-500/40 px-2 py-1 text-cyan-200 hover:bg-cyan-500/10"
+                    >
+                      {row.paper.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Research Content Sub-Tabs */}
           <div className="flex gap-1.5 overflow-x-auto pb-1">
@@ -6162,32 +6351,55 @@ function VisualizeWorkspace() {
                 </div>
               </CardHeader>
               <CardContent>
+                {paperAnalyticsLoading ? (
+                  <p className="text-xs text-slate-400">Loading paper metrics...</p>
+                ) : null}
                 <ScrollArea className="max-h-[400px]">
                   <div className="space-y-2">
-                    {sortedPapers.map((paper) => (
-                      <div key={paper.id} className="p-3 rounded-lg border border-slate-700/50 transition-all record-item">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-xs font-medium text-slate-200 line-clamp-1 record-item-title">{paper.title}</h4>
-                            <p className="text-[10px] text-slate-500">{paper.authors.join(", ")} ({paper.year})</p>
+                    {paperAnalyticsRows
+                      .slice()
+                      .sort((left, right) => {
+                        if (paperSort === "year") return (right.paper.year || 0) - (left.paper.year || 0);
+                        if (paperSort === "title") return left.paper.title.localeCompare(right.paper.title);
+                        if (paperSort === "status") return (left.paper.reading_status || "").localeCompare(right.paper.reading_status || "");
+                        if (paperSort === "access") return left.processingTime.localeCompare(right.processingTime);
+                        return 0;
+                      })
+                      .map((row) => (
+                        <div key={row.paper.id} className="p-3 rounded-lg border border-slate-700/50 transition-all record-item space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <Link
+                                to={`/paper-read/${projectId}/${row.paper.id}`}
+                                className="text-xs font-medium text-cyan-300 hover:underline line-clamp-1 record-item-title"
+                              >
+                                {row.paper.title}
+                              </Link>
+                              <p className="text-[10px] text-slate-500">{(row.paper.authors || []).join(", ")} ({row.paper.year || "-"})</p>
+                              <div className="flex gap-1.5 mt-1">
+                                {row.paper.is_entry_paper ? <Badge variant="outline" className="text-[9px] border-emerald-500/50 text-emerald-300">Entry</Badge> : null}
+                                {row.paper.is_expanded_paper ? <Badge variant="outline" className="text-[9px] border-cyan-500/50 text-cyan-300">Expanded</Badge> : null}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] text-slate-500">Processing</p>
+                              <p className="text-xs font-semibold text-amber-300">{row.processingTime}</p>
+                            </div>
                           </div>
-                          <div className="flex gap-2 shrink-0">
-                            <div className="text-center">
-                              <p className="text-xs font-bold text-yellow-600">{paper.annotations.length}</p>
-                              <p className="text-[8px] text-slate-400">Highlights</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-xs font-bold text-blue-600">{Math.max(1, paper.annotations.length - 1)}</p>
-                              <p className="text-[8px] text-slate-400">Lit Notes</p>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-xs font-bold text-rose-600">{paper.annotations.length > 1 ? 1 : 0}</p>
-                              <p className="text-[8px] text-slate-400">Perm Notes</p>
-                            </div>
+                          <div className="grid grid-cols-3 md:grid-cols-6 gap-2 text-center">
+                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-yellow-300">{row.highlights}</p><p className="text-[9px] text-slate-500">Highlights</p></div>
+                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-blue-300">{row.literatureNotes}</p><p className="text-[9px] text-slate-500">Lit Notes</p></div>
+                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-rose-300">{row.permanentNotes}</p><p className="text-[9px] text-slate-500">Perm Notes</p></div>
+                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.concept}</p><p className="text-[9px] text-slate-500">Concept</p></div>
+                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.theory}</p><p className="text-[9px] text-slate-500">Theory</p></div>
+                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.construct}</p><p className="text-[9px] text-slate-500">Construct</p></div>
+                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.variable}</p><p className="text-[9px] text-slate-500">Variable</p></div>
+                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.framework}</p><p className="text-[9px] text-slate-500">Framework</p></div>
+                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.method}</p><p className="text-[9px] text-slate-500">Method</p></div>
+                            <div className="rounded border border-slate-700/40 p-1.5"><p className="text-xs font-semibold text-violet-300">{row.conceptCounts.other}</p><p className="text-[9px] text-slate-500">Other</p></div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </ScrollArea>
               </CardContent>
