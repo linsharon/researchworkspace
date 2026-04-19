@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Component, type ErrorInfo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { ScrollMode, type Plugin, Viewer, Worker } from "@react-pdf-viewer/core";
+import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
 import { thumbnailPlugin } from "@react-pdf-viewer/thumbnail";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/thumbnail/lib/styles/index.css";
@@ -89,6 +90,28 @@ const CONCEPTS_STORAGE_KEY = "rw-concepts";
 const CONCEPTS_UPDATED_EVENT = "concepts-updated";
 const HIGHLIGHTS_UPDATED_EVENT = "highlights-updated";
 
+class ThumbnailErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode; fallback: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Thumbnail panel crashed, using fallback list:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
 export default function PdfViewer({
   pdfUrl,
   title = "PDF Viewer",
@@ -154,6 +177,8 @@ export default function PdfViewer({
   const [conceptColor, setConceptColor] = useState("#22d3ee");
   const [documentPageCount, setDocumentPageCount] = useState<number>(totalPages ?? 0);
 
+  const pageNavigationPluginInstance = useMemo(() => pageNavigationPlugin(), []);
+  const { jumpToPage } = pageNavigationPluginInstance;
   const thumbnailPluginInstance = useMemo(() => thumbnailPlugin(), []);
   const { Thumbnails } = thumbnailPluginInstance;
 
@@ -182,6 +207,16 @@ export default function PdfViewer({
     }
     setViewerState(prev => ({ ...prev, currentPage: bounded }));
   };
+
+  const jumpToPageSafely = useCallback((pageNumber: number) => {
+    if (!isDocumentLoaded || resolvedTotalPages <= 0) {
+      return;
+    }
+
+    const bounded = Math.min(Math.max(pageNumber, 1), resolvedTotalPages);
+    jumpToPage(bounded - 1);
+    handlePageChange(bounded);
+  }, [handlePageChange, isDocumentLoaded, jumpToPage, resolvedTotalPages]);
 
   const applyZoom = (nextZoom: number) => {
     const bounded = Math.min(Math.max(nextZoom, 30), 300);
@@ -549,7 +584,37 @@ export default function PdfViewer({
               Pages
             </div>
             <div className="flex-1 overflow-y-auto px-2 py-3 [scrollbar-color:#06b6d4_#0f172a] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-900/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-500/70">
-              <Thumbnails />
+              {isDocumentLoaded ? (
+                <ThumbnailErrorBoundary
+                  fallback={
+                    <div className="space-y-1.5">
+                      {Array.from({ length: resolvedTotalPages }, (_, idx) => {
+                        const pageNumber = idx + 1;
+                        const isActive = resolvedPage === pageNumber;
+                        return (
+                          <button
+                            key={pageNumber}
+                            className={cn(
+                              "w-full rounded-md border px-2 py-1.5 text-left text-xs",
+                              isActive
+                                ? "border-cyan-400 bg-cyan-500/10 text-cyan-300"
+                                : "border-slate-700 bg-[#0d1b30] text-slate-200 hover:border-cyan-400/70"
+                            )}
+                            onClick={() => jumpToPageSafely(pageNumber)}
+                            type="button"
+                          >
+                            Page {pageNumber}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  }
+                >
+                  <Thumbnails />
+                </ThumbnailErrorBoundary>
+              ) : (
+                <div className="px-1 py-2 text-center text-xs text-slate-400">Loading previews...</div>
+              )}
             </div>
           </aside>
         ) : null}
@@ -563,7 +628,7 @@ export default function PdfViewer({
                 fileUrl={viewerUrl}
                 defaultScale={resolvedZoom / 100}
                 pageLayout={pageLayout}
-                plugins={[selectionPlugin, thumbnailPluginInstance]}
+                plugins={[selectionPlugin, pageNavigationPluginInstance, thumbnailPluginInstance]}
                 scrollMode={ScrollMode.Vertical}
                 onDocumentLoad={(event: any) => {
                   setIsDocumentLoaded(true);
