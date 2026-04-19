@@ -105,6 +105,8 @@ const WORKFLOW_CACHE_META_KEY = "rw-workflow-cache-meta";
 const WORKFLOW_CACHE_VERSION = "m3-2026-04-06";
 const DISCOVER_KEYWORDS_STORAGE_KEY_PREFIX = "rw-discover-keywords";
 const SEARCH_RECORD_PURPOSE_LINKS_KEY_PREFIX = "rw-search-record-purpose-links";
+const DRAFT_COMPONENTS_STORAGE_KEY = "rw-draft-components";
+const DRAFT_STRUCTURE_STORAGE_KEY = "rw-draft-structure-check";
 const WORKFLOW_AUX_CACHE_KEYS = [PAPER_DECISIONS_KEY, ARTIFACTS_STORAGE_KEY] as const;
 
 type WorkflowCacheMeta = {
@@ -6599,15 +6601,15 @@ function DraftWorkspaceInline() {
   const activeStyle = REPORTING_STYLES.find((s) => s.id === selectedStyle) || REPORTING_STYLES[0];
 
   // Component contents keyed by style-component id
-  const [componentContents, setComponentContents] = useState<Record<string, string>>({
-    "apa-introduction":
-      "The integration of artificial intelligence in educational settings has garnered significant attention in recent years. AI-powered tutoring systems, in particular, have shown promise in improving student learning outcomes through personalized instruction and adaptive feedback mechanisms.\n\nHowever, a critical gap exists in our understanding of how these systems affect deeper learning processes. While studies consistently demonstrate improvements in test scores and completion rates (Chen et al., 2024), the impact on self-regulated learning (SRL) — the ability of students to plan, monitor, and evaluate their own learning — remains largely unexplored.",
-    "apa-literature-review": "",
-    "apa-method": "",
-    "apa-results": "",
-    "apa-discussion": "",
-    "apa-abstract":
-      "This study investigates how AI-powered adaptive tutoring systems influence self-regulated learning strategies among graduate students.",
+  const [componentContents, setComponentContents] = useState<Record<string, string>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = window.localStorage.getItem(DRAFT_COMPONENTS_STORAGE_KEY);
+      const parsed = saved ? (JSON.parse(saved) as Record<string, string>) : {};
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
   });
 
   // Active component being edited
@@ -6628,11 +6630,56 @@ function DraftWorkspaceInline() {
 
   // Structure check state
   const [checkTab, setCheckTab] = useState<"macro" | "meso" | "micro">("macro");
-  const [macroChecked, setMacroChecked] = useState<Record<string, boolean>>({});
-  const [mesoChecked, setMesoChecked] = useState<Record<string, boolean>>({});
-  const [microBasicChecked, setMicroBasicChecked] = useState<Record<string, boolean>>({});
-  const [microReadChecked, setMicroReadChecked] = useState<Record<string, boolean>>({});
-  const [microCredChecked, setMicroCredChecked] = useState<Record<string, boolean>>({});
+  const [macroChecked, setMacroChecked] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = window.localStorage.getItem(DRAFT_STRUCTURE_STORAGE_KEY);
+      const parsed = saved ? (JSON.parse(saved) as { macroChecked?: Record<string, boolean> }) : {};
+      return parsed.macroChecked && typeof parsed.macroChecked === "object" ? parsed.macroChecked : {};
+    } catch {
+      return {};
+    }
+  });
+  const [mesoChecked, setMesoChecked] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = window.localStorage.getItem(DRAFT_STRUCTURE_STORAGE_KEY);
+      const parsed = saved ? (JSON.parse(saved) as { mesoChecked?: Record<string, boolean> }) : {};
+      return parsed.mesoChecked && typeof parsed.mesoChecked === "object" ? parsed.mesoChecked : {};
+    } catch {
+      return {};
+    }
+  });
+  const [microBasicChecked, setMicroBasicChecked] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = window.localStorage.getItem(DRAFT_STRUCTURE_STORAGE_KEY);
+      const parsed = saved ? (JSON.parse(saved) as { microBasicChecked?: Record<string, boolean> }) : {};
+      return parsed.microBasicChecked && typeof parsed.microBasicChecked === "object" ? parsed.microBasicChecked : {};
+    } catch {
+      return {};
+    }
+  });
+  const [microReadChecked, setMicroReadChecked] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = window.localStorage.getItem(DRAFT_STRUCTURE_STORAGE_KEY);
+      const parsed = saved ? (JSON.parse(saved) as { microReadChecked?: Record<string, boolean> }) : {};
+      return parsed.microReadChecked && typeof parsed.microReadChecked === "object" ? parsed.microReadChecked : {};
+    } catch {
+      return {};
+    }
+  });
+  const [microCredChecked, setMicroCredChecked] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const saved = window.localStorage.getItem(DRAFT_STRUCTURE_STORAGE_KEY);
+      const parsed = saved ? (JSON.parse(saved) as { microCredChecked?: Record<string, boolean> }) : {};
+      return parsed.microCredChecked && typeof parsed.microCredChecked === "object" ? parsed.microCredChecked : {};
+    } catch {
+      return {};
+    }
+  });
   const [aiCheckResult, setAiCheckResult] = useState<string | null>(null);
   const [aiChecking, setAiChecking] = useState(false);
 
@@ -6677,6 +6724,25 @@ function DraftWorkspaceInline() {
     setAutoSaveTimer(timer);
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(DRAFT_COMPONENTS_STORAGE_KEY, JSON.stringify(componentContents));
+  }, [componentContents]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      DRAFT_STRUCTURE_STORAGE_KEY,
+      JSON.stringify({
+        macroChecked,
+        mesoChecked,
+        microBasicChecked,
+        microReadChecked,
+        microCredChecked,
+      })
+    );
+  }, [macroChecked, mesoChecked, microBasicChecked, microReadChecked, microCredChecked]);
+
   const handleManualSave = () => {
     setLastSaved(new Date().toLocaleTimeString());
   };
@@ -6694,14 +6760,33 @@ function DraftWorkspaceInline() {
   const handleAiCheck = () => {
     setAiChecking(true);
     setTimeout(() => {
-      setAiCheckResult(
-        "AI Analysis Complete:\n\n" +
-        "✅ Macro: Introduction and abstract are well-structured. Literature review section needs more content.\n" +
-        "⚠️ Meso (Toulmin): Claims are stated but warrants need strengthening. Consider adding more explicit logical connections between evidence and claims. Rebuttals are missing in 2 paragraphs.\n" +
-        "⚠️ Micro: 3 potential grammar issues detected. Signposting could be improved in paragraphs 2-3. Citation recency is good (80% within 5 years)."
-      );
+      const filledSections = activeStyle.components.filter(
+        (comp) => (componentContents[getContentKey(comp.id)] || "").trim().length > 0
+      ).length;
+      const totalSections = activeStyle.components.length;
+      const abstractText = (componentContents[getContentKey("abstract")] || "").trim();
+      const introText = (componentContents[getContentKey("introduction")] || "").trim();
+
+      const macroDone = Object.values(macroChecked).filter(Boolean).length;
+      const mesoDone = Object.values(mesoChecked).filter(Boolean).length;
+      const microDone =
+        Object.values(microBasicChecked).filter(Boolean).length +
+        Object.values(microReadChecked).filter(Boolean).length +
+        Object.values(microCredChecked).filter(Boolean).length;
+
+      const summary = [
+        "Current Draft Snapshot:\n",
+        `- Filled sections: ${filledSections}/${totalSections}`,
+        `- Abstract: ${abstractText ? `${abstractText.split(/\s+/).length} words` : "empty"}`,
+        `- Introduction: ${introText ? `${introText.split(/\s+/).length} words` : "empty"}`,
+        `- Macro checks completed: ${macroDone}/${MACRO_CHECKLIST.length}`,
+        `- Meso checks completed: ${mesoDone}/${MESO_TOULMIN_CHECKLIST.length}`,
+        `- Micro checks completed: ${microDone}/${MICRO_CHECKLIST_BASIC.length + MICRO_CHECKLIST_READABILITY.length + MICRO_CHECKLIST_CREDIBILITY.length}`,
+      ].join("\n");
+
+      setAiCheckResult(summary);
       setAiChecking(false);
-    }, 1500);
+    }, 300);
   };
 
   const getFullText = () => {
