@@ -23,6 +23,7 @@ import { Globe, Package, Search, User2, ArrowRight, Crown } from "lucide-react";
 import { ARTIFACT_TYPE_META, type Artifact, type ArtifactPackage } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
 import { type UserProfileSummary, userProfileApi } from "@/lib/user-profile-api";
+import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 
 const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
@@ -30,6 +31,9 @@ const MY_DOWNLOADED_PACKAGES_KEY = "rw-my-downloaded-packages";
 
 export default function CommunityArtifacts() {
   const { user } = useAuth();
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
+  const tr = (en: string, zh: string) => (isZh ? zh : en);
   const navigate = useNavigate();
   const isPremiumUser = Boolean(user?.is_premium) || user?.role === "admin";
   const [packages, setPackages] = useState<ArtifactPackage[]>([]);
@@ -119,7 +123,7 @@ export default function CommunityArtifacts() {
           (item.ownerId === pkg.ownerId && item.name === pkg.name && item.createdAt === pkg.createdAt)
       );
       if (alreadyDownloaded) {
-        toast.info("Already in your downloaded packages");
+        toast.info(tr("Already in your downloaded packages", "已在你的已下载产物集中"));
         return;
       }
 
@@ -148,10 +152,10 @@ export default function CommunityArtifacts() {
       );
       window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(updatedCommunity));
 
-      toast.success("Added to My Packages");
+      toast.success(tr("Added to My Packages", "已添加到我的产物集"));
       setSelectedPackageId(null);
     } catch {
-      toast.error("Failed to add package");
+      toast.error(tr("Failed to add package", "添加产物集失败"));
     }
   };
 
@@ -162,19 +166,19 @@ export default function CommunityArtifacts() {
           <div className="flex items-center gap-3">
             <Globe className="w-7 h-7 text-cyan-400" />
             <div>
-              <h1 className="text-xl font-bold text-slate-100">Community Artifacts</h1>
-              <p className="text-sm text-slate-500">Shared artifact packages from the community.</p>
+              <h1 className="text-xl font-bold text-slate-100">{isZh ? "社区产物集" : "Community Packages"}</h1>
+              <p className="text-sm text-slate-500">{isZh ? "来自社区共享的产物集。" : "Shared packages from the community."}</p>
             </div>
           </div>
           <Badge variant="outline" className="text-xs">
-            {filteredPackages.length} packages
+            {filteredPackages.length} {tr("packages", "个产物集")}
           </Badge>
         </div>
 
         {!isPremiumUser && user ? (
           <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm text-cyan-100">Free accounts can add up to 2 community packages to My Packages.</p>
+              <p className="text-sm text-cyan-100">{tr("Free accounts can add up to 2 community packages to My Packages.", "Free 账号最多可将 2 个社区产物集添加到我的产物集。")}</p>
               <p className="text-xs text-slate-300 mt-1">Upgrade to Premium to unlock Team access and higher package limits.</p>
             </div>
             <button
@@ -195,7 +199,7 @@ export default function CommunityArtifacts() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search packages, artifacts, categories..."
+            placeholder={tr("Search packages, artifacts, categories...", "搜索产物集、产物件、分类...")}
             className="pl-9 text-sm"
           />
         </div>
@@ -217,8 +221,10 @@ export default function CommunityArtifacts() {
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <span>
               {cardPageSize === "all"
-                ? `Showing all ${filteredPackages.length} packages`
-                : `Page ${currentCardPage}/${totalCardPages} · ${filteredPackages.length} packages`}
+                ? (isZh ? `显示全部 ${filteredPackages.length} 个产物集` : `Showing all ${filteredPackages.length} packages`)
+                : (isZh
+                  ? `第 ${currentCardPage}/${totalCardPages} 页 · ${filteredPackages.length} 个产物集`
+                  : `Page ${currentCardPage}/${totalCardPages} · ${filteredPackages.length} packages`)}
             </span>
             {cardPageSize !== "all" && totalCardPages > 1 ? (
               <>
@@ -248,7 +254,7 @@ export default function CommunityArtifacts() {
                   <CardTitle className="text-base text-slate-100">{pkg.name}</CardTitle>
                   <p className="text-xs text-slate-400 mt-1">{pkg.description || "No description"}</p>
                   <p className="text-[11px] text-slate-500">
-                    {pkg.artifacts.length} artifacts · {pkg.createdAt} · {pkg.downloadCount || 0} downloads
+                    {pkg.artifacts.length} {tr("artifacts", "个产物件")} · {pkg.createdAt} · {pkg.downloadCount || 0} {tr("downloads", "次下载")}
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -287,7 +293,7 @@ export default function CommunityArtifacts() {
                       }}
                     >
                       <Package className="w-3.5 h-3.5 mr-1.5" />
-                      Add to My Packages
+                      {tr("Add to My Packages", "添加到我的产物集")}
                     </Button>
                   </div>
                 </CardContent>
@@ -299,7 +305,7 @@ export default function CommunityArtifacts() {
         {filteredPackages.length === 0 && (
           <div className="text-center py-16 border border-slate-700/50 rounded-lg bg-slate-800/30">
             <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm text-slate-400">No shared packages found.</p>
+            <p className="text-sm text-slate-400">{tr("No shared packages found.", "未找到共享产物集。")}</p>
           </div>
         )}
 
@@ -341,7 +347,7 @@ export default function CommunityArtifacts() {
 
                 {/* Artifacts List */}
                 <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-slate-100">Artifacts ({selectedPackage.artifacts.length})</h3>
+                  <h3 className="text-sm font-semibold text-slate-100">{tr("Artifacts", "产物件")} ({selectedPackage.artifacts.length})</h3>
                   <ScrollArea className="h-[300px] rounded border border-slate-700/50 bg-slate-900/30 p-3">
                     <div className="space-y-2">
                       {selectedPackage.artifacts.map((artifact) => (
@@ -371,7 +377,7 @@ export default function CommunityArtifacts() {
                     onClick={() => handleAddToMyPackages(selectedPackage)}
                   >
                     <Package className="w-3.5 h-3.5 mr-1.5" />
-                    Add to My Packages
+                    {tr("Add to My Packages", "添加到我的产物集")}
                   </Button>
                 </div>
               </div>
@@ -384,7 +390,10 @@ export default function CommunityArtifacts() {
             <AlertDialogHeader>
               <AlertDialogTitle>Upgrade to Premium</AlertDialogTitle>
               <AlertDialogDescription className="text-slate-300">
-                Free accounts can add at most 2 packages from Community Artifacts to My Packages. Upgrade to Premium to add more packages and unlock Team features.
+                {tr(
+                  "Free accounts can add at most 2 packages from Community Packages to My Packages. Upgrade to Premium to add more packages and unlock Team features.",
+                  "Free 账号最多可将 2 个社区产物集添加到我的产物集。升级 Premium 以获得更高产物集额度和 Team 功能。"
+                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="flex justify-start">

@@ -136,8 +136,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
       id: "welcome",
       role: "assistant",
       content: lang === "zh"
-        ? "你好！我是 LitFlow AI 助手。我可以帮助你进行文献综述的各个环节，包括研究问题构建、文献检索策略、阅读笔记整理等。请问有什么可以帮你的？"
-        : "Hello! I'm the LitFlow AI Assistant. I can help you with various aspects of your literature review, including research question formulation, search strategies, reading notes, and more. How can I help you?",
+        ? "你好！我是你的AI助手西西，请问有什么可以帮你的？"
+        : "Hello, I am Sisyphus, your AI Assistant here. How can I help you today",
     },
   ]);
   const [chatInput, setChatInput] = useState("");
@@ -575,7 +575,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 )}
               >
                 <Archive className="w-4 h-4 shrink-0" />
-                <span className="truncate record-item-title">{lang === "zh" ? "我的 Artifacts" : "My Artifacts"}</span>
+                <span className="truncate record-item-title">{lang === "zh" ? "我的产物件" : "My Artifacts"}</span>
               </div>
             </Link>
             {/* My Packages */}
@@ -590,10 +590,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 )}
               >
                 <Archive className="w-4 h-4 shrink-0" />
-                <span className="truncate record-item-title">{lang === "zh" ? "我的 Packages" : "My Packages"}</span>
+                <span className="truncate record-item-title">{lang === "zh" ? "我的产物集" : "My Packages"}</span>
               </div>
             </Link>
-            {/* Community Artifacts */}
+            {/* Community Packages */}
             <Link to="/community-artifacts">
               <div
                 data-selected={location.pathname === "/community-artifacts"}
@@ -605,7 +605,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 )}
               >
                 <Globe className="w-4 h-4 shrink-0" />
-                <span className="truncate record-item-title">{lang === "zh" ? "社区 Artifacts" : "Community Artifacts"}</span>
+                <span className="truncate record-item-title">{lang === "zh" ? "社区产物集" : "Community Packages"}</span>
               </div>
             </Link>
 
@@ -874,10 +874,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </div>
               <div>
                 <p className="text-sm font-semibold">
-                  {lang === "zh" ? "AI 助手" : "AI Assistant"}
-                </p>
-                <p className="text-[10px] text-white/60">
-                  {lang === "zh" ? "LitFlow 文献综述助手" : "LitFlow Literature Review"}
+                  {lang === "zh" ? "AI助手：西西" : "AI Assistant: Sisyphus"}
                 </p>
               </div>
             </div>
@@ -957,7 +954,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             ? "bg-slate-700 hover:bg-slate-600 rotate-0"
             : "bg-cyan-500 hover:bg-cyan-600 hover:scale-105"
         )}
-        title={lang === "zh" ? "AI 助手" : "AI Assistant"}
+        title={lang === "zh" ? "AI助手：西西" : "AI Assistant: Sisyphus"}
       >
         {showChat ? (
           <X className="w-6 h-6 text-white" />

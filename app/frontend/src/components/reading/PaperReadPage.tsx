@@ -42,7 +42,7 @@ export default function PaperReadPage() {
   // Floating AI chat
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ id: string; role: "user" | "assistant"; content: string }>>([
-    { id: "welcome", role: "assistant", content: "Hello! I'm the LitFlow AI Assistant. Ask me anything about this paper or your research." },
+    { id: "welcome", role: "assistant", content: "Hello, I am Sisyphus, your AI Assistant here. How can I help you today" },
   ]);
   const [chatInput, setChatInput] = useState("");
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -398,8 +398,7 @@ export default function PaperReadPage() {
                 <Bot className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold">AI Assistant</p>
-                <p className="text-[10px] text-white/60">LitFlow Literature Review</p>
+                <p className="text-sm font-semibold">AI Assistant: Sisyphus</p>
               </div>
             </div>
             <button
@@ -466,7 +465,7 @@ export default function PaperReadPage() {
           "fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200",
           showChat ? "bg-slate-600 hover:bg-slate-700" : "bg-cyan-600 hover:bg-cyan-700 hover:scale-105"
         )}
-        title="AI Assistant"
+        title="AI Assistant: Sisyphus"
       >
         {showChat ? (
           <X className="w-6 h-6 text-white" />

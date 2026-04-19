@@ -103,8 +103,8 @@ export default function PremiumPlans() {
           </h1>
           <p className="text-sm text-slate-300 mt-2 max-w-3xl">
             {isZh
-              ? "Free 用户最多创建 1 个项目，不能删除项目，不能使用 Team，并且从 Community Artifacts 最多只能添加 2 个 packages 到 My Packages。Premium 用户可使用 Team、创建多个项目、删除项目，并拥有更高的协作与资源额度。"
-              : "Free users can create up to 1 project, cannot delete projects, cannot use Team, and can add at most 2 packages from Community Artifacts into My Packages. Premium users get Team access, multi-project creation, project deletion, and higher collaboration limits."}
+              ? "Free 用户最多创建 1 个项目，不能删除项目，不能使用 Team，并且从 Community Packages 最多只能添加 2 个产物集到我的产物集。Premium 用户可使用 Team、创建多个项目、删除项目，并拥有更高的协作与资源额度。"
+              : "Free users can create up to 1 project, cannot delete projects, cannot use Team, and can add at most 2 packages from Community Packages into My Packages. Premium users get Team access, multi-project creation, project deletion, and higher collaboration limits."}
           </p>
         </div>
 
@@ -139,8 +139,8 @@ export default function PremiumPlans() {
                     <td className="px-3 py-2 text-emerald-300">{isZh ? "支持" : "Available"}</td>
                   </tr>
                   <tr className="border-b border-slate-800/80">
-                    <td className="px-3 py-2 text-slate-300">{isZh ? "Community Packages 添加到 My Packages" : "Community Packages added to My Packages"}</td>
-                    <td className="px-3 py-2 text-slate-400">{isZh ? "最多 2 个" : "Up to 2 packages"}</td>
+                    <td className="px-3 py-2 text-slate-300">{isZh ? "社区产物集添加到我的产物集" : "Community Packages added to My Packages"}</td>
+                    <td className="px-3 py-2 text-slate-400">{isZh ? "最多 2 个产物集" : "Up to 2 packages"}</td>
                     <td className="px-3 py-2 text-slate-100">{isZh ? "更多额度" : "Higher limit"}</td>
                   </tr>
                   <tr>
