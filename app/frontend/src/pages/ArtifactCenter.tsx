@@ -347,8 +347,6 @@ export default function ArtifactCenter() {
     return matchesFilter && matchesSearch;
   });
 
-  const user = useContext?.()("AuthContext") as any;
-  
   const packTypeGroups = useMemo(() => {
     const groups = new Map<ArtifactType, Artifact[]>();
     for (const artifact of filteredArtifacts) {
