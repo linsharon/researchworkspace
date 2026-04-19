@@ -59,7 +59,23 @@ export default function PaperReadPage() {
     const thinkingId = `msg-${Date.now()}-thinking`;
     setChatMessages((prev) => [...prev, { id: thinkingId, role: "assistant" as const, content: "…" }]);
 
-    const models = ["gpt-5-chat", "gemini-2.5-pro", "deepseek-v3.2"];
+    // Try both legacy model names and common provider names for broad compatibility
+    const models = [
+      // OpenRouter style names
+      "openai/gpt-4-turbo",
+      "google/gemini-2.0-flash",
+      "anthropic/claude-3.5-sonnet",
+      // SiliconFlow style names  
+      "Qwen/Qwen-Max",
+      "deepseek-ai/deepseek-v3",
+      // Direct OpenAI style names
+      "gpt-4o",
+      "gpt-4-turbo",
+      // Fallback to legacy names for backward compatibility
+      "gpt-5-chat",
+      "gemini-2.5-pro",
+      "deepseek-v3.2",
+    ];
     let reply = "";
     let lastError: string | null = null;
     

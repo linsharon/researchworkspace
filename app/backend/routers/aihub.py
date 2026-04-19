@@ -110,12 +110,11 @@ async def generate_text(
     - stream=false: return a full JSON response
     - stream=true: return an SSE streaming response
 
-    Available models:
-    - gpt-5-chat: high stability and compliance, suitable for JSON output and customer service scenarios
-    - gemini-2.5-pro: production-grade multimodal model for daily multimodal tasks
-    - gemini-3-pro-preview: deep reasoning and ultra-long context (1M+ tokens)
-    - claude-4-5-sonnet: ideal for complex engineering and cross-file code refactoring
-    - deepseek-v3.2: large-scale batch processing in cost-sensitive scenarios (text only)
+    Available models (depends on your AI provider's API):
+    - OpenRouter: openai/gpt-4-turbo, google/gemini-2.0-flash, anthropic/claude-3.5-sonnet, deepseek-ai/deepseek-v3
+    - SiliconFlow: Qwen/Qwen-Max, deepseek-ai/deepseek-v3
+    - OpenAI direct: gpt-4o, gpt-4-turbo
+    - Custom model names from your API provider
     """
     try:
         service = AIHubService()
