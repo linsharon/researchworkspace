@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { ScrollMode, type Plugin, Viewer, Worker } from "@react-pdf-viewer/core";
-import { pageNavigationPlugin } from "@react-pdf-viewer/page-navigation";
+import { thumbnailPlugin } from "@react-pdf-viewer/thumbnail";
 import "@react-pdf-viewer/core/lib/styles/index.css";
+import "@react-pdf-viewer/thumbnail/lib/styles/index.css";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -153,12 +153,9 @@ export default function PdfViewer({
   const [conceptCategory, setConceptCategory] = useState("Concept");
   const [conceptColor, setConceptColor] = useState("#22d3ee");
   const [documentPageCount, setDocumentPageCount] = useState<number>(totalPages ?? 0);
-  const [pageThumbnails, setPageThumbnails] = useState<Array<string | null>>([]);
-  const [thumbnailsLoading, setThumbnailsLoading] = useState(false);
-  const [pendingJumpPage, setPendingJumpPage] = useState<number | null>(null);
 
-  const pageNavigationPluginInstance = useMemo(() => pageNavigationPlugin(), []);
-  const { jumpToPage: jumpToPageByPlugin } = pageNavigationPluginInstance;
+  const thumbnailPluginInstance = useMemo(() => thumbnailPlugin(), []);
+  const { Thumbnails } = thumbnailPluginInstance;
 
   const pageLayout = useMemo(
     () => ({
@@ -185,27 +182,6 @@ export default function PdfViewer({
     }
     setViewerState(prev => ({ ...prev, currentPage: bounded }));
   };
-
-  const jumpToPage = useCallback((page: number) => {
-    const boundedPage = Math.max(1, Math.min(page, resolvedTotalPages || page));
-    if (!isDocumentLoaded) {
-      setPendingJumpPage(boundedPage);
-      return;
-    }
-
-    // Prefer the official page-navigation API to avoid failures caused by virtualized page DOM.
-    jumpToPageByPlugin(boundedPage - 1);
-    handlePageChange(boundedPage);
-  }, [handlePageChange, isDocumentLoaded, jumpToPageByPlugin, resolvedTotalPages]);
-
-  useEffect(() => {
-    if (!isDocumentLoaded || pendingJumpPage == null) {
-      return;
-    }
-    jumpToPageByPlugin(Math.max(0, pendingJumpPage - 1));
-    handlePageChange(pendingJumpPage);
-    setPendingJumpPage(null);
-  }, [handlePageChange, isDocumentLoaded, jumpToPageByPlugin, pendingJumpPage]);
 
   const applyZoom = (nextZoom: number) => {
     const bounded = Math.min(Math.max(nextZoom, 30), 300);
@@ -538,68 +514,6 @@ export default function PdfViewer({
   }, [pdfUrl]);
 
   useEffect(() => {
-    if (!viewerUrl) {
-      setPageThumbnails([]);
-      setThumbnailsLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-    let loadingTask: ReturnType<typeof getDocument> | null = null;
-
-    const renderThumbnails = async () => {
-      try {
-        setThumbnailsLoading(true);
-        GlobalWorkerOptions.workerSrc = PDF_WORKER_URL;
-        loadingTask = getDocument(viewerUrl);
-        const pdf = await loadingTask.promise;
-        if (cancelled) return;
-
-        setDocumentPageCount(pdf.numPages);
-        setPageThumbnails(Array.from({ length: pdf.numPages }, () => null));
-
-        for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-          const page = await pdf.getPage(pageNumber);
-          const viewport = page.getViewport({ scale: 0.18 });
-          const canvas = document.createElement("canvas");
-          const context = canvas.getContext("2d");
-          if (!context) {
-            continue;
-          }
-
-          canvas.width = Math.ceil(viewport.width);
-          canvas.height = Math.ceil(viewport.height);
-          await page.render({ canvasContext: context, viewport }).promise;
-
-          if (cancelled) {
-            break;
-          }
-
-          const thumbnailUrl = canvas.toDataURL("image/jpeg", 0.72);
-          setPageThumbnails((prev) => {
-            const next = prev.length === pdf.numPages ? [...prev] : Array.from({ length: pdf.numPages }, () => null);
-            next[pageNumber - 1] = thumbnailUrl;
-            return next;
-          });
-        }
-      } catch (error) {
-        console.error("Failed to render PDF thumbnails:", error);
-      } finally {
-        if (!cancelled) {
-          setThumbnailsLoading(false);
-        }
-      }
-    };
-
-    void renderThumbnails();
-
-    return () => {
-      cancelled = true;
-      void loadingTask?.destroy();
-    };
-  }, [viewerUrl]);
-
-  useEffect(() => {
     if (!pdfUrl || isDocumentLoaded || loadError) {
       return;
     }
@@ -635,43 +549,7 @@ export default function PdfViewer({
               Pages
             </div>
             <div className="flex-1 overflow-y-auto px-2 py-3 [scrollbar-color:#06b6d4_#0f172a] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-900/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-500/70">
-              <div className="space-y-2">
-                {Array.from({ length: resolvedTotalPages }, (_, index) => {
-                  const pageNumber = index + 1;
-                  const isActive = pageNumber === resolvedPage;
-                  const thumbnail = pageThumbnails[index];
-
-                  return (
-                    <button
-                      key={pageNumber}
-                      className={cn(
-                        "group block w-full rounded-lg border p-2 text-left transition-all",
-                        isActive
-                          ? "border-cyan-400 bg-cyan-500/10 shadow-[0_0_0_1px_rgba(34,211,238,0.2)]"
-                          : "border-slate-700/70 bg-[#0d1b30] hover:border-cyan-400/80 hover:bg-slate-900"
-                      )}
-                      onClick={() => jumpToPage(pageNumber)}
-                      type="button"
-                    >
-                      <div className={cn(
-                        "overflow-hidden rounded-md border transition-colors",
-                        isActive ? "border-cyan-400/80" : "border-slate-700/60 group-hover:border-cyan-400/60"
-                      )}>
-                        {thumbnail ? (
-                          <img alt={`Page ${pageNumber} preview`} className="block h-auto w-full bg-white" src={thumbnail} />
-                        ) : (
-                          <div className="flex aspect-[3/4] items-center justify-center bg-slate-950/70 text-[11px] font-medium text-slate-400">
-                            {thumbnailsLoading ? "Loading..." : `Page ${pageNumber}`}
-                          </div>
-                        )}
-                      </div>
-                      <div className={cn("mt-2 text-center text-xs font-medium", isActive ? "text-cyan-400" : "text-white group-hover:text-cyan-300")}>
-                        {pageNumber}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              <Thumbnails />
             </div>
           </aside>
         ) : null}
@@ -685,7 +563,7 @@ export default function PdfViewer({
                 fileUrl={viewerUrl}
                 defaultScale={resolvedZoom / 100}
                 pageLayout={pageLayout}
-                plugins={[selectionPlugin, pageNavigationPluginInstance]}
+                plugins={[selectionPlugin, thumbnailPluginInstance]}
                 scrollMode={ScrollMode.Vertical}
                 onDocumentLoad={(event: any) => {
                   setIsDocumentLoaded(true);
