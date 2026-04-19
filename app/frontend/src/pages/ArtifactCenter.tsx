@@ -569,7 +569,7 @@ export default function ArtifactCenter() {
 
             return (
               <div className="space-y-6">
-                <div className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-slate-700/50 bg-[#0d1b30]/95 p-2 shadow-sm backdrop-blur">
+                <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-slate-700/50 border-b-slate-500/70 bg-[#0d1b30]/95 p-2 shadow-sm backdrop-blur">
                   <Button
                     size="sm"
                     variant={selectedKeywordCategory === "all" ? "default" : "outline"}
