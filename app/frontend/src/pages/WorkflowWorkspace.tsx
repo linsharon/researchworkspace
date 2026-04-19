@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
@@ -6858,10 +6858,41 @@ function DraftWorkspaceInline() {
   const [slashQuery, setSlashQuery] = useState("");
   const [slashStart, setSlashStart] = useState(-1);
   const [slashCompId, setSlashCompId] = useState("");
+  const slashInputRef = React.useRef<HTMLInputElement>(null);
 
   const slashFilteredArtifacts = allArtifacts.filter((a) =>
     !slashQuery || a.title.toLowerCase().includes(slashQuery.toLowerCase())
   );
+
+  const openSlashMenu = (compId: string, slashIdx: number, queryAfterSlash: string) => {
+    setSlashMenuOpen(true);
+    setSlashCompId(compId);
+    setSlashStart(slashIdx);
+    setSlashQuery(queryAfterSlash);
+    setTimeout(() => slashInputRef.current?.focus(), 30);
+  };
+
+  const closeSlashMenu = () => {
+    setSlashMenuOpen(false);
+    setSlashQuery("");
+    setSlashCompId("");
+    setSlashStart(-1);
+  };
+
+  const insertSlashArtifact = (artifactId: string) => {
+    const a = allArtifacts.find((x) => x.id === artifactId);
+    if (!a) return;
+    const key = getContentKey(slashCompId);
+    const currentVal = componentContents[key] || "";
+    // Replace from slashStart (the "/") through slashStart+1+slashQuery.length
+    const before = currentVal.slice(0, slashStart);
+    const after = currentVal.slice(slashStart + 1 + slashQuery.length);
+    const insertText = a.content
+      ? `\n\n---\n*[${a.title}]*\n\n${a.content}\n\n---\n`
+      : `[${a.title}]`;
+    handleContentChange(slashCompId, before + insertText + after);
+    closeSlashMenu();
+  };
 
   return (
     <div className="space-y-5">
@@ -7237,70 +7268,23 @@ function DraftWorkspaceInline() {
                           if (slashIdx !== -1) {
                             const between = textBefore.slice(slashIdx + 1);
                             if (!between.includes(" ") && !between.includes("\n")) {
-                              setSlashMenuOpen(true);
-                              setSlashQuery(between);
-                              setSlashStart(slashIdx);
-                              setSlashCompId(comp.id);
+                              openSlashMenu(comp.id, slashIdx, between);
                               return;
                             }
                           }
-                          setSlashMenuOpen(false);
-                          setSlashQuery("");
+                          if (slashMenuOpen && slashCompId === comp.id) closeSlashMenu();
                         }}
                         onKeyDown={(e) => {
-                          if (e.key === "Escape") { setSlashMenuOpen(false); setSlashQuery(""); }
+                          if (e.key === "Escape") closeSlashMenu();
                         }}
                         rows={18}
                         placeholder={comp.placeholder + "\n\nTip: type / to search and insert artifacts"}
                         className="text-sm font-mono leading-relaxed"
                       />
-                      {slashMenuOpen && slashCompId === comp.id && (
-                        <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-[#0d1b30] border border-slate-600 rounded-lg shadow-2xl max-h-64 overflow-y-auto">
-                          <div className="p-2 border-b border-slate-700 flex items-center gap-2 sticky top-0 bg-[#0d1b30]">
-                            <Search className="w-3 h-3 text-slate-400" />
-                            <span className="text-xs text-slate-300">
-                              Insert artifact{slashQuery ? ` — "${slashQuery}"` : " — type to search"}
-                            </span>
-                            <button className="ml-auto" onClick={() => { setSlashMenuOpen(false); setSlashQuery(""); }}>
-                              <X className="w-3 h-3 text-slate-500 hover:text-white" />
-                            </button>
-                          </div>
-                          {slashFilteredArtifacts.length === 0 ? (
-                            <p className="text-xs text-slate-400 text-center py-4">No artifacts found</p>
-                          ) : (
-                            slashFilteredArtifacts.map((a) => {
-                              const meta = ARTIFACT_TYPE_META[a.type];
-                              return (
-                                <button
-                                  key={a.id}
-                                  className="w-full text-left px-3 py-2 hover:bg-cyan-500/10 transition-colors flex items-center gap-2 border-b border-slate-800/50 last:border-0"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    const currentVal = componentContents[getContentKey(comp.id)] || "";
-                                    const before = currentVal.slice(0, slashStart);
-                                    const after = currentVal.slice(slashStart + 1 + slashQuery.length);
-                                    const insertText = a.content
-                                      ? `\n\n---\n*[${a.title}]*\n\n${a.content}\n\n---\n`
-                                      : `[${a.title}]`;
-                                    handleContentChange(comp.id, before + insertText + after);
-                                    setSlashMenuOpen(false);
-                                    setSlashQuery("");
-                                  }}
-                                >
-                                  <Badge variant="secondary" className={cn("text-[9px] px-1 py-0 shrink-0", meta.bgColor, meta.color)}>
-                                    {meta.label}
-                                  </Badge>
-                                  <span className="text-xs text-slate-200 truncate">{a.title}</span>
-                                </button>
-                              );
-                            })
-                          )}
-                        </div>
-                      )}
                     </div>
                     {insertTarget === comp.id && (
                       <div className="p-2 bg-cyan-500/10 border border-cyan-400/20 rounded text-[10px] text-cyan-300">
-                        Type <kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">/</kbd> in the editor to search and insert an artifact.
+                        Type <kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">/</kbd> anywhere in the editor to search and insert an artifact.
                       </div>
                     )}
                   </div>
@@ -7666,6 +7650,69 @@ function DraftWorkspaceInline() {
           </Button>
         </Link>
       </div>
+
+      {/* Slash Command Artifact Picker Overlay */}
+      {slashMenuOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) closeSlashMenu(); }}
+        >
+          <div className="bg-[#0d1b30] border border-slate-600 rounded-xl shadow-2xl w-[480px] max-h-[480px] flex flex-col">
+            {/* Header search input */}
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-700">
+              <Search className="w-4 h-4 text-slate-400 shrink-0" />
+              <input
+                ref={slashInputRef}
+                type="text"
+                value={slashQuery}
+                onChange={(e) => setSlashQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") closeSlashMenu();
+                  if (e.key === "Enter" && slashFilteredArtifacts.length > 0) {
+                    insertSlashArtifact(slashFilteredArtifacts[0].id);
+                  }
+                }}
+                placeholder="Search artifacts to insert…"
+                className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none"
+              />
+              <button onClick={closeSlashMenu} className="text-slate-500 hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Results list */}
+            <div className="overflow-y-auto flex-1">
+              {slashFilteredArtifacts.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-10">No matching artifacts found</p>
+              ) : (
+                slashFilteredArtifacts.map((a) => {
+                  const meta = ARTIFACT_TYPE_META[a.type];
+                  return (
+                    <button
+                      key={a.id}
+                      className="w-full text-left px-4 py-3 hover:bg-cyan-500/10 transition-colors flex items-start gap-3 border-b border-slate-800/60 last:border-0"
+                      onClick={() => insertSlashArtifact(a.id)}
+                    >
+                      <Badge variant="secondary" className={cn("text-[9px] px-1.5 py-0.5 mt-0.5 shrink-0", meta.bgColor, meta.color)}>
+                        {meta.label}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-200 truncate">{a.title}</p>
+                        {a.content && (
+                          <p className="text-[11px] text-slate-500 truncate">{a.content.slice(0, 80)}</p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <div className="px-4 py-2 border-t border-slate-700 text-[10px] text-slate-500 flex items-center gap-3">
+              <span><kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">↵</kbd> to insert first result</span>
+              <span><kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">Esc</kbd> to cancel</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
