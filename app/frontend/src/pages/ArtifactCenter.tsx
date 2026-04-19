@@ -697,63 +697,6 @@ export default function ArtifactCenter() {
           </div>
         )}
 
-        {/* My Artifact Packages */}
-        {myPackages.length > 0 && (
-          <Card className="border-slate-700/50 bg-slate-900/30">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-slate-100 flex items-center gap-2">
-                <PackageCheck className="w-4 h-4 text-cyan-300" />
-                My Artifact Packages
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {myPackages.map((pkg) => (
-                <div key={pkg.id} className="p-3 rounded-lg border border-slate-700/50 bg-[#0d1b30]">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-slate-200">{pkg.name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">{pkg.description || "No description"}</p>
-                      <p className="text-[11px] text-slate-500 mt-1">
-                        {pkg.artifacts.length} artifacts · Created {pkg.createdAt}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className={pkg.shared ? "text-emerald-300 border-emerald-500/40" : "text-slate-400"}>
-                      {pkg.shared ? "Shared" : "Private"}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      onClick={() => handleTogglePackageShare(pkg.id)}
-                    >
-                      {pkg.shared ? "Not Share" : "Share"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      onClick={() => handleUnpackToMyArtifacts(pkg)}
-                    >
-                      Unpack to My Artifacts
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs text-red-500 hover:text-red-400"
-                      onClick={() => handleDeletePackage(pkg.id)}
-                    >
-                      <X className="w-3 h-3 mr-1" />
-                      Remove Package
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
         {/* Search & Filters */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1 max-w-sm">
