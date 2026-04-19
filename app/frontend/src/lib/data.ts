@@ -39,6 +39,30 @@ export type ArtifactType =
   | "writing-block"
   | "writing-draft";
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  username: string;
+  avatar?: string;
+  bio?: string;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ArtifactPackage {
+  id: string;
+  name: string;
+  description: string;
+  artifacts: Artifact[];
+  createdAt: string;
+  shared: boolean;
+  authorId: string;
+  authorUsername: string;
+  authorAvatar?: string;
+  source: "created" | "downloaded";
+}
+
 export interface Paper {
   id: string;
   title: string;

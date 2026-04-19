@@ -5546,7 +5546,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm font-medium text-slate-700">1. Select one entry paper to expand</p>
+                <p className="text-sm font-bold text-white">1. Select one entry paper to expand</p>
                 <div className="max-h-[280px] overflow-y-auto space-y-2 pr-1">
                   {entryPapers.map((paper) => {
                     const paperUrl = (paper as ApiPaper & { url?: string }).url;
@@ -5617,7 +5617,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
               </div>
 
               <div className="space-y-3">
-                <p className="text-sm font-medium text-slate-700">2. Pulled Expansion Results</p>
+                <p className="text-sm font-bold text-white">2. Pulled Expansion Results</p>
                 <Tabs value={activePath} onValueChange={(value) => setActivePath(value as "references" | "citations")}>
                   <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
                     <TabsTrigger
@@ -8286,6 +8286,25 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   <Eye className="w-3 h-3 mr-1" />
                   Preview
                 </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white border border-cyan-400/50">
+                      <FileText className="w-3 h-3 mr-1" />
+                      Export
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-44">
+                    <DropdownMenuItem onClick={handleExportMarkdown}>
+                      <FileText className="w-3.5 h-3.5 mr-2" />
+                      Export as Markdown
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => void handleExportWord()}>
+                      <FileText className="w-3.5 h-3.5 mr-2" />
+                      Export as .docx
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </CardContent>
           </Card>
@@ -8681,27 +8700,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      <div className="flex gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline">
-              <FileText className="w-4 h-4 mr-2" />
-              Export
-              <ChevronDown className="w-3.5 h-3.5 ml-1" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-44">
-            <DropdownMenuItem onClick={handleExportMarkdown}>
-              <FileText className="w-3.5 h-3.5 mr-2" />
-              Export as Markdown
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => void handleExportWord()}>
-              <FileText className="w-3.5 h-3.5 mr-2" />
-              Export as .docx
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+
 
       {/* Slash Command Artifact Picker Overlay */}
       {slashMenuOpen && (

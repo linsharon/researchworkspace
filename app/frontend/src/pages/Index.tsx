@@ -443,7 +443,7 @@ function AuthenticatedLanding() {
             <AlertDialogDescription className="text-slate-300">
               {isZh
                 ? `你将删除项目“${pendingDeleteProject?.title || ""}”，该操作不可撤销。`
-                : `You are about to delete project \"${pendingDeleteProject?.title || ""}\". This action cannot be undone.`}
+                : `You are about to delete project "${pendingDeleteProject?.title || ""}". This action cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

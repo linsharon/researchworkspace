@@ -8,7 +8,7 @@ interface ChatMessageContentProps {
 }
 
 function renderInline(text: string): ReactNode[] {
-  const tokens = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^\)]+\))/g).filter(Boolean);
+  const tokens = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g).filter(Boolean);
 
   return tokens.map((token, index) => {
     if (token.startsWith("**") && token.endsWith("**")) {
@@ -23,7 +23,7 @@ function renderInline(text: string): ReactNode[] {
       );
     }
 
-    const linkMatch = token.match(/^\[([^\]]+)\]\(([^\)]+)\)$/);
+    const linkMatch = token.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (linkMatch) {
       return (
         <a
@@ -67,11 +67,11 @@ function renderAssistantBlock(block: string, index: number) {
     );
   }
 
-  if (lines.every(line => /^\d+[\.)]\s+/.test(line))) {
+  if (lines.every(line => /^\d+[.)]\s+/.test(line))) {
     return (
       <ol key={index} className="space-y-1 pl-5 text-white/95 list-decimal marker:text-cyan-300">
         {lines.map((line, lineIndex) => (
-          <li key={lineIndex}>{renderInline(line.replace(/^\d+[\.)]\s+/, ""))}</li>
+          <li key={lineIndex}>{renderInline(line.replace(/^\d+[.)]\s+/, ""))}</li>
         ))}
       </ol>
     );
