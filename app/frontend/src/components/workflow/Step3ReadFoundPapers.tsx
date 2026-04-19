@@ -11,6 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -18,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, ArrowUpDown, BookOpen, Clock, ExternalLink } from "lucide-react";
+import { AlertCircle, ArrowUpDown, BookOpen, Clock, ExternalLink, ChevronDown, Plus, Sparkles } from "lucide-react";
 import { paperAPI } from "@/lib/manuscript-api";
 import type { Paper } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
@@ -73,6 +77,27 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
   const [sortKey, setSortKey] = useState<"title" | "year" | "status" | "type">("year");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [paperDecisionMap, setPaperDecisionMap] = useState<Map<string, PaperDecisionRecord>>(new Map());
+  const [showAddPaperDialog, setShowAddPaperDialog] = useState(false);
+  const [showAddMultiplePaperDialog, setShowAddMultiplePaperDialog] = useState(false);
+  const [newPaperTitle, setNewPaperTitle] = useState("");
+  const [newPaperAuthors, setNewPaperAuthors] = useState("");
+  const [newPaperYear, setNewPaperYear] = useState("");
+  const [newPaperJournal, setNewPaperJournal] = useState("");
+  const [newPaperDiscoveryPath, setNewPaperDiscoveryPath] = useState("Academic Database");
+  const [newPaperDiscoveryNote, setNewPaperDiscoveryNote] = useState("");
+  const [newPaperDoiUrl, setNewPaperDoiUrl] = useState("");
+  const [doiFetching, setDoiFetching] = useState(false);
+  const [doiFetchError, setDoiFetchError] = useState<string | null>(null);
+  const [bulkDoiInput, setBulkDoiInput] = useState("");
+  const [bulkImporting, setBulkImporting] = useState(false);
+
+  const DISCOVERY_PATH_OPTIONS = [
+    "Academic Database",
+    "Google Scholar",
+    "Reference Mining",
+    "Citation Tracking",
+    "Manual Add",
+  ];
 
   useEffect(() => {
     try {
@@ -284,6 +309,179 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
     }
   };
 
+  const extractDoiFromText = (input: string) => {
+    const doiMatch = input.match(/\b10\.\d{4,}\/[^\s]+/i);
+    return doiMatch ? doiMatch[0].replace(/[.,;)>]+$/, "") : null;
+  };
+
+  const handleFetchByDoiUrl = async () => {
+    const input = newPaperDoiUrl.trim();
+    if (!input) return;
+    const doi = extractDoiFromText(input);
+    if (!doi) {
+      setDoiFetchError("Unable to find a valid DOI. Please check input or fill manually.");
+      return;
+    }
+
+    setDoiFetching(true);
+    setDoiFetchError(null);
+    try {
+      const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`);
+      if (!res.ok) throw new Error("Not found");
+      const json = (await res.json()) as {
+        message: {
+          title?: string[];
+          author?: Array<{ given?: string; family?: string }>;
+          published?: { "date-parts"?: number[][] };
+          "container-title"?: string[];
+          publisher?: string;
+        };
+      };
+      const work = json.message;
+      if (work.title?.[0]) setNewPaperTitle(work.title[0]);
+      const authors = (work.author ?? []).map((a) => [a.given, a.family].filter(Boolean).join(" "));
+      if (authors.length) setNewPaperAuthors(authors.join(", "));
+      const year = work.published?.["date-parts"]?.[0]?.[0];
+      if (year) setNewPaperYear(String(year));
+      const journal = work["container-title"]?.[0] ?? work.publisher;
+      if (journal) setNewPaperJournal(journal);
+    } catch {
+      setDoiFetchError("Failed to fetch by DOI. Please fill the fields manually.");
+    } finally {
+      setDoiFetching(false);
+    }
+  };
+
+  const createEntryPaper = async (payload: {
+    title: string;
+    authors: string[];
+    year?: number;
+    journal?: string;
+    url?: string;
+    discoveryPath?: string;
+    discoveryNote?: string;
+  }) => {
+    const created = await paperAPI.create({
+      title: payload.title,
+      authors: payload.authors,
+      year: payload.year,
+      journal: payload.journal,
+      url: payload.url,
+      discovery_path: payload.discoveryPath,
+      discovery_note: payload.discoveryNote,
+      project_id: projectId,
+    });
+
+    try {
+      const updated = await paperAPI.update(created.id, { is_entry_paper: true });
+      return updated;
+    } catch {
+      return { ...created, is_entry_paper: true } as Paper;
+    }
+  };
+
+  const handleAddEntryPaper = async () => {
+    if (!newPaperTitle.trim()) return;
+    try {
+      const nextPaper = await createEntryPaper({
+        title: newPaperTitle.trim(),
+        authors: newPaperAuthors.split(",").map((a) => a.trim()).filter(Boolean),
+        year: parseInt(newPaperYear, 10) || undefined,
+        journal: newPaperJournal.trim() || undefined,
+        url: newPaperDoiUrl.trim() || undefined,
+        discoveryPath: newPaperDiscoveryPath,
+        discoveryNote: newPaperDiscoveryNote.trim() || undefined,
+      });
+      setPapers((prev) => [...prev, nextPaper]);
+      setShowAddPaperDialog(false);
+      setNewPaperTitle("");
+      setNewPaperAuthors("");
+      setNewPaperYear("");
+      setNewPaperJournal("");
+      setNewPaperDiscoveryPath("Academic Database");
+      setNewPaperDiscoveryNote("");
+      setNewPaperDoiUrl("");
+      setDoiFetchError(null);
+      toast.success("Entry paper added");
+    } catch {
+      toast.error("Failed to add entry paper");
+    }
+  };
+
+  const handleAddMultipleEntryPapers = async () => {
+    const lines = bulkDoiInput
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    if (!lines.length) return;
+
+    setBulkImporting(true);
+    let imported = 0;
+    let failed = 0;
+
+    for (const line of lines) {
+      const doi = extractDoiFromText(line);
+      if (!doi) {
+        failed += 1;
+        continue;
+      }
+
+      try {
+        const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(doi)}`);
+        if (!res.ok) {
+          failed += 1;
+          continue;
+        }
+
+        const json = (await res.json()) as {
+          message: {
+            title?: string[];
+            author?: Array<{ given?: string; family?: string }>;
+            published?: { "date-parts"?: number[][] };
+            "container-title"?: string[];
+            publisher?: string;
+          };
+        };
+
+        const work = json.message;
+        const title = work.title?.[0]?.trim();
+        if (!title) {
+          failed += 1;
+          continue;
+        }
+
+        const authors = (work.author ?? []).map((a) => [a.given, a.family].filter(Boolean).join(" ")).filter(Boolean);
+        const year = work.published?.["date-parts"]?.[0]?.[0];
+        const journal = work["container-title"]?.[0] ?? work.publisher;
+
+        const nextPaper = await createEntryPaper({
+          title,
+          authors,
+          year,
+          journal,
+          url: `https://doi.org/${encodeURIComponent(doi)}`,
+          discoveryPath: "Academic Database",
+          discoveryNote: "Added from DOI in Step 3: Read",
+        });
+
+        setPapers((prev) => [...prev, nextPaper]);
+        imported += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+
+    setBulkImporting(false);
+    setShowAddMultiplePaperDialog(false);
+    setBulkDoiInput("");
+    if (imported > 0) {
+      toast.success(`Added ${imported} entry paper(s)`);
+    }
+    if (failed > 0) {
+      toast.error(`${failed} DOI row(s) failed`);
+    }
+  };
+
   return (
     <div className="w-full space-y-6">
       {loading && (
@@ -340,6 +538,25 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
             </div>
 
             <div className="flex flex-wrap items-center justify-end gap-1.5">
+              {selectedTab === "entry" && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-7 text-xs">
+                      <Plus className="w-3 h-3 mr-1" />
+                      Add Paper
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem onClick={() => setShowAddPaperDialog(true)}>
+                      Add One
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowAddMultiplePaperDialog(true)}>
+                      Add Multiple
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <Select
                 value={sortKey}
                 onValueChange={(value) =>
@@ -600,6 +817,124 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
           </TabsContent>
         </Tabs>
       )}
+
+      <Dialog open={showAddPaperDialog} onOpenChange={setShowAddPaperDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Entry Paper</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">DOI or URL (optional)</label>
+              <div className="flex gap-2">
+                <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder="https://doi.org/..." className="text-sm" />
+                <Button type="button" variant="outline" className="text-xs" disabled={doiFetching || !newPaperDoiUrl.trim()} onClick={() => void handleFetchByDoiUrl()}>
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  {doiFetching ? "Fetching..." : "Auto-fill"}
+                </Button>
+              </div>
+              {doiFetchError ? <p className="text-[11px] text-rose-500">{doiFetchError}</p> : null}
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Title</label>
+              <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder="Paper title..." className="text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Authors (comma-separated)</label>
+              <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder="Author 1, Author 2..." className="text-sm" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">Year</label>
+                <Input type="number" value={newPaperYear} onChange={(e) => setNewPaperYear(e.target.value)} placeholder="2024" className="text-sm" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">Journal</label>
+                <Input value={newPaperJournal} onChange={(e) => setNewPaperJournal(e.target.value)} placeholder="Journal name..." className="text-sm" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Discovery Path</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {DISCOVERY_PATH_OPTIONS.map((path) => (
+                  <label
+                    key={path}
+                    className={cn(
+                      "flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-xs transition-all",
+                      newPaperDiscoveryPath === path
+                        ? "border-cyan-400 bg-cyan-50/50"
+                        : "border-slate-700/50 hover:border-slate-300"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="new-paper-discovery-step3"
+                      checked={newPaperDiscoveryPath === path}
+                      onChange={() => setNewPaperDiscoveryPath(path)}
+                      className="accent-cyan-600"
+                    />
+                    {path}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">Discovery Note</label>
+              <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} rows={2} placeholder="How did you find this paper?" className="text-xs" />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs" onClick={() => void handleAddEntryPaper()}>
+                <Plus className="w-3 h-3 mr-1" />
+                Add Paper
+              </Button>
+              <Button variant="ghost" className="text-xs" onClick={() => setShowAddPaperDialog(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showAddMultiplePaperDialog}
+        onOpenChange={(open) => {
+          setShowAddMultiplePaperDialog(open);
+          if (!open) {
+            setBulkDoiInput("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Add Multiple Entry Papers</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-600">DOI links (one per line)</label>
+              <Textarea
+                value={bulkDoiInput}
+                onChange={(e) => setBulkDoiInput(e.target.value)}
+                rows={8}
+                placeholder={"https://doi.org/10.xxxx/xxxx\n10.1145/1234567"}
+                className="text-xs font-mono"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button
+                className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+                onClick={() => void handleAddMultipleEntryPapers()}
+                disabled={bulkImporting || !bulkDoiInput.trim()}
+              >
+                <Sparkles className="w-3 h-3 mr-1" />
+                {bulkImporting ? "Importing..." : "Import by DOI"}
+              </Button>
+              <Button variant="ghost" className="text-xs" onClick={() => setShowAddMultiplePaperDialog(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
