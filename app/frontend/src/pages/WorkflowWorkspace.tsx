@@ -4,9 +4,11 @@ import { toast } from "sonner";
 import AppLayout from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { paperAPI, conceptAPI, projectAPI, searchRecordAPI, noteAPI } from "@/lib/manuscript-api";
+import { paperAPI, conceptAPI, projectAPI, searchRecordAPI, noteAPI, highlightAPI } from "@/lib/manuscript-api";
+import { useAuth } from "@/contexts/AuthContext";
 import type {
   Concept as ApiConcept,
+  Highlight as ApiHighlight,
   Note as ApiNote,
   Paper as ApiPaper,
   SearchRecord as ApiSearchRecord,
@@ -117,6 +119,19 @@ type WorkflowCacheMeta = {
   lastInvalidatedAt?: string;
   reason?: string;
   invalidatedKeys?: string[];
+};
+
+type SlashInsertItem = {
+  id: string;
+  kind: "note" | "highlight";
+  subtype: "literature-note" | "permanent-note" | "highlight";
+  projectId: string;
+  paperId: string;
+  paperTitle: string;
+  title: string;
+  gist: string;
+  referenceText: string;
+  updatedAt?: string;
 };
 
 const writeWorkflowCacheMeta = (partial: Partial<WorkflowCacheMeta>) => {
@@ -6597,6 +6612,9 @@ function VisualizeWorkspace() {
 // Step 6: Draft Workspace (Inline version)
 // ============================================================
 function DraftWorkspaceInline({ projectId }: { projectId: string }) {
+  const { user } = useAuth();
+  const isPremiumUser = Boolean(user?.is_premium) || user?.role === "admin";
+
   // Reporting style
   const [selectedStyle, setSelectedStyle] = useState("apa");
   const activeStyle = REPORTING_STYLES.find((s) => s.id === selectedStyle) || REPORTING_STYLES[0];
@@ -7028,12 +7046,124 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [slashQuery, setSlashQuery] = useState("");
   const [slashStart, setSlashStart] = useState(-1);
   const [slashCompId, setSlashCompId] = useState("");
+  const [slashItems, setSlashItems] = useState<SlashInsertItem[]>([]);
   const slashInputRef = React.useRef<HTMLInputElement>(null);
 
-  const slashFilteredArtifacts = allArtifacts.filter((a) => {
+  const buildReferenceText = (paper?: ApiPaper) => {
+    if (!paper) return "Unknown source";
+    const authors = paper.authors?.length ? paper.authors.join(", ") : "Unknown author";
+    const year = paper.year ? String(paper.year) : "n.d.";
+    const journal = paper.journal ? ` ${paper.journal}.` : "";
+    return `${authors} (${year}). ${paper.title}.${journal}`.replace(/\s+/g, " ").trim();
+  };
+
+  const parseNoteGist = (note: ApiNote) => {
+    try {
+      if (note.content) {
+        const parsed = JSON.parse(note.content) as { contentGist?: string; originalQuote?: string };
+        if (parsed.contentGist?.trim()) return parsed.contentGist.trim();
+        if (parsed.originalQuote?.trim()) return parsed.originalQuote.trim();
+      }
+    } catch {
+      // Fallback to plain fields if content isn't JSON
+    }
+    return note.description?.trim() || note.content?.trim() || note.title;
+  };
+
+  useEffect(() => {
+    if (!projectId) return;
+
+    let disposed = false;
+
+    const loadSlashItems = async () => {
+      const projectIds = isPremiumUser
+        ? await projectAPI
+            .list()
+            .then((projects) => projects.map((p) => p.id))
+            .catch(() => [projectId])
+        : [projectId];
+
+      const uniqueProjectIds = Array.from(new Set(projectIds.filter(Boolean)));
+      const collected: SlashInsertItem[] = [];
+
+      for (const pid of uniqueProjectIds) {
+        const papers = await paperAPI.list(pid).catch(() => []);
+        const notes = await noteAPI.listByProject(pid).catch(() => []);
+        const paperMap = new Map(papers.map((paper) => [paper.id, paper]));
+
+        notes
+          .filter((note) => note.note_type === "literature-note" || note.note_type === "permanent-note")
+          .forEach((note) => {
+            const paper = paperMap.get(note.paper_id);
+            const gist = parseNoteGist(note);
+            if (!gist.trim()) return;
+            collected.push({
+              id: `note-${note.id}`,
+              kind: "note",
+              subtype: note.note_type,
+              projectId: note.project_id,
+              paperId: note.paper_id,
+              paperTitle: paper?.title || "Unknown paper",
+              title: note.title,
+              gist,
+              referenceText: buildReferenceText(paper),
+              updatedAt: note.updated_at,
+            });
+          });
+
+        const highlightGroups = await Promise.all(
+          papers.map((paper) =>
+            highlightAPI.list(paper.id).then((highlights) => ({ paper, highlights })).catch(() => ({ paper, highlights: [] as ApiHighlight[] }))
+          )
+        );
+
+        highlightGroups.forEach(({ paper, highlights }) => {
+          highlights.forEach((highlight) => {
+            const gist = (highlight.note || highlight.text || "").trim();
+            if (!gist) return;
+            collected.push({
+              id: `highlight-${highlight.id}`,
+              kind: "highlight",
+              subtype: "highlight",
+              projectId: paper.project_id,
+              paperId: paper.id,
+              paperTitle: paper.title,
+              title: `p.${highlight.page || "-"} ${paper.title}`,
+              gist,
+              referenceText: buildReferenceText(paper),
+              updatedAt: highlight.created_at,
+            });
+          });
+        });
+      }
+
+      const deduped = Array.from(new Map(collected.map((item) => [item.id, item])).values()).sort((a, b) =>
+        (b.updatedAt || "").localeCompare(a.updatedAt || "")
+      );
+      if (!disposed) {
+        setSlashItems(deduped);
+      }
+    };
+
+    void loadSlashItems();
+    const refresh = () => {
+      void loadSlashItems();
+    };
+    window.addEventListener("notes-updated", refresh);
+    window.addEventListener("highlights-updated", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      disposed = true;
+      window.removeEventListener("notes-updated", refresh);
+      window.removeEventListener("highlights-updated", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, [projectId, isPremiumUser]);
+
+  const slashFilteredArtifacts = slashItems.filter((a) => {
     if (!slashQuery) return true;
     const q = slashQuery.toLowerCase();
-    return [a.title, a.description, a.content, a.type]
+    return [a.title, a.gist, a.paperTitle, a.referenceText, a.subtype, a.projectId]
       .filter(Boolean)
       .some((field) => String(field).toLowerCase().includes(q));
   });
@@ -7054,17 +7184,57 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   };
 
   const insertSlashArtifact = (artifactId: string) => {
-    const a = allArtifacts.find((x) => x.id === artifactId);
+    const a = slashItems.find((x) => x.id === artifactId);
     if (!a) return;
-    const key = getContentKey(slashCompId);
-    const currentVal = componentContents[key] || "";
-    // Replace from slashStart (the "/") through slashStart+1+slashQuery.length
-    const before = currentVal.slice(0, slashStart);
-    const after = currentVal.slice(slashStart + 1 + slashQuery.length);
-    const insertText = a.content
-      ? `\n\n---\n*[${a.title}]*\n\n${a.content}\n\n---\n`
-      : `[${a.title}]`;
-    handleContentChange(slashCompId, before + insertText + after);
+
+    const targetKey = getContentKey(slashCompId);
+    const currentTargetVal = componentContents[targetKey] || "";
+    const before = currentTargetVal.slice(0, slashStart);
+    const after = currentTargetVal.slice(slashStart + 1 + slashQuery.length);
+
+    const referenceComponentId = activeStyle.components.find((comp) => comp.id.includes("reference"))?.id;
+    const referenceKey = referenceComponentId ? getContentKey(referenceComponentId) : null;
+    const currentReferences = referenceKey ? componentContents[referenceKey] || "" : "";
+    const referenceLines = currentReferences.split("\n").map((line) => line.trim()).filter(Boolean);
+
+    let citationNumber: number | null = null;
+    const existingLine = referenceLines.find((line) => line.toLowerCase().includes(a.paperTitle.toLowerCase()));
+    if (existingLine) {
+      const match = existingLine.match(/^\[(\d+)\]/);
+      if (match) citationNumber = Number.parseInt(match[1], 10);
+    }
+
+    if (!citationNumber) {
+      const existingNumbers = referenceLines
+        .map((line) => line.match(/^\[(\d+)\]/))
+        .filter(Boolean)
+        .map((match) => Number.parseInt((match as RegExpMatchArray)[1], 10));
+      citationNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+    }
+
+    const gistWithCitation = `${a.gist.replace(/\s+$/, "")} [${citationNumber}]`;
+    const nextTargetVal = `${before}${gistWithCitation}${after}`;
+
+    const shouldAppendReference = !referenceLines.some((line) => line.toLowerCase().includes(a.paperTitle.toLowerCase()));
+    const referenceEntry = `[${citationNumber}] ${a.referenceText}`;
+    const nextReferences = referenceKey
+      ? shouldAppendReference
+        ? `${currentReferences}${currentReferences.trim() ? "\n" : ""}${referenceEntry}`
+        : currentReferences
+      : "";
+
+    setComponentContents((prev) => ({
+      ...prev,
+      [targetKey]: nextTargetVal,
+      ...(referenceKey ? { [referenceKey]: nextReferences } : {}),
+    }));
+
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    const timer = setTimeout(() => {
+      setLastSaved(new Date().toLocaleTimeString());
+    }, 2000);
+    setAutoSaveTimer(timer);
+
     closeSlashMenu();
   };
 
@@ -7846,7 +8016,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     insertSlashArtifact(slashFilteredArtifacts[0].id);
                   }
                 }}
-                placeholder="Search artifacts to insert…"
+                placeholder="Search notes/highlights to insert…"
                 className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none"
               />
               <button onClick={closeSlashMenu} className="text-slate-500 hover:text-white transition-colors">
@@ -7855,29 +8025,43 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
             </div>
             {/* Results list */}
             <div className="overflow-y-auto flex-1">
-              {allArtifacts.length === 0 ? (
+              {slashItems.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-10">
-                  当前项目还没有任何 Artifacts。请先在 Artifact Center 或前面步骤创建后再插入。
+                  {isPremiumUser
+                    ? "暂无可用的 notes/highlights。请先在任一项目里创建 Literature Notes、Permanent Notes 或 Highlights。"
+                    : "当前项目暂无可用的 notes/highlights。请先创建 Literature Notes、Permanent Notes 或 Highlights。"}
                 </p>
               ) : slashFilteredArtifacts.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-10">No matching artifacts found</p>
+                <p className="text-sm text-slate-400 text-center py-10">No matching notes/highlights found</p>
               ) : (
                 slashFilteredArtifacts.map((a) => {
-                  const meta = ARTIFACT_TYPE_META[a.type];
                   return (
                     <button
                       key={a.id}
                       className="w-full text-left px-4 py-3 hover:bg-cyan-500/10 transition-colors flex items-start gap-3 border-b border-slate-800/60 last:border-0"
                       onClick={() => insertSlashArtifact(a.id)}
                     >
-                      <Badge variant="secondary" className={cn("text-[9px] px-1.5 py-0.5 mt-0.5 shrink-0", meta.bgColor, meta.color)}>
-                        {meta.label}
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "text-[9px] px-1.5 py-0.5 mt-0.5 shrink-0",
+                          a.subtype === "literature-note"
+                            ? "bg-amber-50 text-amber-700"
+                            : a.subtype === "permanent-note"
+                              ? "bg-rose-50 text-rose-700"
+                              : "bg-yellow-50 text-yellow-700"
+                        )}
+                      >
+                        {a.subtype === "literature-note"
+                          ? "Literature Note"
+                          : a.subtype === "permanent-note"
+                            ? "Permanent Note"
+                            : "Highlight"}
                       </Badge>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-slate-200 truncate">{a.title}</p>
-                        {a.content && (
-                          <p className="text-[11px] text-slate-500 truncate">{a.content.slice(0, 80)}</p>
-                        )}
+                        <p className="text-[11px] text-slate-500 truncate">{a.gist}</p>
+                        <p className="text-[10px] text-slate-500 truncate">{a.paperTitle} · {a.projectId}</p>
                       </div>
                     </button>
                   );
@@ -7887,6 +8071,8 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
             <div className="px-4 py-2 border-t border-slate-700 text-[10px] text-slate-500 flex items-center gap-3">
               <span><kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">↵</kbd> to insert first result</span>
               <span><kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">Esc</kbd> to cancel</span>
+              {!isPremiumUser && <span>Free: current project only</span>}
+              {isPremiumUser && <span>Premium: multi-project search</span>}
             </div>
           </div>
         </div>
