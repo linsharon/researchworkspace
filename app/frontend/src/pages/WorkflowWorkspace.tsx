@@ -7047,6 +7047,8 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const [slashStart, setSlashStart] = useState(-1);
   const [slashCompId, setSlashCompId] = useState("");
   const [slashItems, setSlashItems] = useState<SlashInsertItem[]>([]);
+  const [slashTypeFilter, setSlashTypeFilter] = useState<"all" | "notes" | "highlights">("all");
+  const [slashOnlyCurrentProject, setSlashOnlyCurrentProject] = useState(false);
   const slashInputRef = React.useRef<HTMLInputElement>(null);
 
   const buildReferenceText = (paper?: ApiPaper) => {
@@ -7160,7 +7162,13 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     };
   }, [projectId, isPremiumUser]);
 
-  const slashFilteredArtifacts = slashItems.filter((a) => {
+  const slashScopedItems = slashItems.filter(
+    (item) => !isPremiumUser || !slashOnlyCurrentProject || item.projectId === projectId
+  );
+
+  const slashFilteredArtifacts = slashScopedItems.filter((a) => {
+    if (slashTypeFilter === "notes" && a.kind !== "note") return false;
+    if (slashTypeFilter === "highlights" && a.kind !== "highlight") return false;
     if (!slashQuery) return true;
     const q = slashQuery.toLowerCase();
     return [a.title, a.gist, a.paperTitle, a.referenceText, a.subtype, a.projectId]
@@ -7181,6 +7189,8 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     setSlashQuery("");
     setSlashCompId("");
     setSlashStart(-1);
+    setSlashTypeFilter("all");
+    setSlashOnlyCurrentProject(false);
   };
 
   const insertSlashArtifact = (artifactId: string) => {
@@ -8023,6 +8033,41 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                 <X className="w-4 h-4" />
               </button>
             </div>
+            <div className="px-4 py-2 border-b border-slate-700/70 flex items-center gap-2 flex-wrap">
+              {([
+                { id: "all" as const, label: "All" },
+                { id: "notes" as const, label: "Notes" },
+                { id: "highlights" as const, label: "Highlights" },
+              ]).map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setSlashTypeFilter(opt.id)}
+                  className={cn(
+                    "px-2 py-1 text-[11px] rounded border transition-colors",
+                    slashTypeFilter === opt.id
+                      ? "border-cyan-400 text-cyan-300 bg-cyan-500/10"
+                      : "border-slate-600 text-slate-300 hover:border-cyan-400/60"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              {isPremiumUser && (
+                <button
+                  type="button"
+                  onClick={() => setSlashOnlyCurrentProject((prev) => !prev)}
+                  className={cn(
+                    "ml-auto px-2 py-1 text-[11px] rounded border transition-colors",
+                    slashOnlyCurrentProject
+                      ? "border-cyan-400 text-cyan-300 bg-cyan-500/10"
+                      : "border-slate-600 text-slate-300 hover:border-cyan-400/60"
+                  )}
+                >
+                  仅当前项目
+                </button>
+              )}
+            </div>
             {/* Results list */}
             <div className="overflow-y-auto flex-1">
               {slashItems.length === 0 ? (
@@ -8030,6 +8075,10 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   {isPremiumUser
                     ? "暂无可用的 notes/highlights。请先在任一项目里创建 Literature Notes、Permanent Notes 或 Highlights。"
                     : "当前项目暂无可用的 notes/highlights。请先创建 Literature Notes、Permanent Notes 或 Highlights。"}
+                </p>
+              ) : slashScopedItems.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-10">
+                  当前筛选范围无可用内容，请关闭“仅当前项目”或切换筛选条件。
                 </p>
               ) : slashFilteredArtifacts.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-10">No matching notes/highlights found</p>
