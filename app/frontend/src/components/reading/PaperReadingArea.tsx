@@ -28,8 +28,6 @@ import { paperAPI } from "@/lib/manuscript-api";
 import { pdfAPI } from "@/lib/pdf-api";
 import PdfViewer from "@/components/pdf/PdfViewer";
 import { useI18n } from "@/lib/i18n";
-  const { lang } = useI18n();
-  const isZh = lang === "zh";
 
 interface PaperReadingAreaProps {
   paper: Paper;
