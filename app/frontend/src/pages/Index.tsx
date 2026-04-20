@@ -48,42 +48,42 @@ function UnauthenticatedLanding() {
   const featureBlocks = [
     {
       icon: Compass,
-      title: "Purpose",
+      title: isZh ? "研究目的" : "Purpose",
       desc: isZh
         ? "明确阅读目标与研究问题方向，生成可追踪的目的卡片。"
         : "Define research intent and generate purpose cards that drive your reading decisions.",
     },
     {
       icon: Search,
-      title: "Discover",
+      title: isZh ? "检索" : "Discover",
       desc: isZh
         ? "管理检索记录、关键词与候选文献，沉淀可复用检索策略。"
         : "Track search logs, keywords, and candidate papers with reusable search strategies.",
     },
     {
       icon: BookOpen,
-      title: "Read & Notes",
+      title: isZh ? "阅读和笔记" : "Read & Notes",
       desc: isZh
         ? "围绕 PDF 阅读、标注、文献笔记与永久笔记形成知识资产。"
         : "Build knowledge assets with PDF reading, highlights, literature notes, and permanent notes.",
     },
     {
       icon: Network,
-      title: "Expand",
+      title: isZh ? "扩展" : "Expand",
       desc: isZh
         ? "沿引文网络与主题关系扩展文献池，形成系统化阅读路径。"
         : "Expand your pool through citation trails and thematic relations for systematic coverage.",
     },
     {
       icon: BarChart3,
-      title: "Visualize",
+      title: isZh ? "可视化" : "Visualize",
       desc: isZh
         ? "将概念、证据与论证结构可视化，快速识别研究空白。"
         : "Visualize concept maps and evidence structures to spot meaningful research gaps.",
     },
     {
       icon: PenTool,
-      title: "Draft",
+      title: isZh ? "草稿" : "Draft",
       desc: isZh
         ? "把卡片与笔记回填到写作，完成从阅读到论文草稿的闭环。"
         : "Convert notes and artifacts into structured writing blocks and paper drafts.",
@@ -93,21 +93,21 @@ function UnauthenticatedLanding() {
   const artifactModules = [
     {
       icon: Archive,
-      title: isZh ? "My Artifacts" : "My Artifacts",
+      title: isZh ? "我的产件" : "My Artifacts",
       desc: isZh
         ? "集中管理项目里的目的卡片、检索日志、笔记、概念和草稿，让研究产件不再散落在不同步骤里。"
         : "Keep purpose cards, search logs, notes, concepts, and drafts in one place so research artifacts stay connected instead of scattered.",
     },
     {
       icon: Package,
-      title: isZh ? "My Packages" : "My Packages",
+      title: isZh ? "我的产集" : "My Packages",
       desc: isZh
         ? "把一组高价值产件打包成可复用的研究包，用于个人沉淀、跨项目复用和知识迁移。"
         : "Bundle high-value artifacts into reusable packages for personal libraries, cross-project reuse, and faster knowledge transfer.",
     },
     {
       icon: Globe,
-      title: isZh ? "Community Packages" : "Community Packages",
+      title: isZh ? "社区产集" : "Community Packages",
       desc: isZh
         ? "浏览社区共享的研究包，吸收他人的结构化产出，并将合适内容纳入自己的研究工作台。"
         : "Explore community-shared packages, learn from other researchers' structured outputs, and import the ones worth building on.",
@@ -117,7 +117,7 @@ function UnauthenticatedLanding() {
   const teamFeatures = [
     isZh ? "邀请项目成员围绕同一研究主题协作，避免资料和判断分散在聊天工具里。" : "Invite project members into the same research space instead of splitting evidence across chat threads and documents.",
     isZh ? "围绕共享项目查看相同的文献、产件与工作流上下文，减少交接成本。" : "Work from the same papers, artifacts, and workflow context so handoffs are lighter and decisions stay visible.",
-    isZh ? "Premium 解锁 Team 与更高协作额度，适合导师-学生、小组和联合写作场景。" : "Premium unlocks Team access and higher collaboration limits for advisors, research groups, and co-writing workflows.",
+    isZh ? "高级版解锁团队与更高协作额度，适合导师-学生、小组和联合写作场景。" : "Premium unlocks Team access and higher collaboration limits for advisors, research groups, and co-writing workflows.",
   ];
 
   const planRows = [
@@ -132,22 +132,22 @@ function UnauthenticatedLanding() {
       premium: isZh ? "支持" : "Available",
     },
     {
-      label: isZh ? "My Artifacts" : "My Artifacts",
+      label: isZh ? "我的产件" : "My Artifacts",
       free: isZh ? "支持" : "Included",
       premium: isZh ? "支持" : "Included",
     },
     {
-      label: isZh ? "My Packages" : "My Packages",
+      label: isZh ? "我的产集" : "My Packages",
       free: isZh ? "支持" : "Included",
       premium: isZh ? "支持" : "Included",
     },
     {
-      label: isZh ? "Community Packages 导入" : "Community Packages imports",
+      label: isZh ? "社区产集导入" : "Community Packages imports",
       free: isZh ? "最多 2 个产集" : "Up to 2 packages",
       premium: isZh ? "更高额度" : "Higher limits",
     },
     {
-      label: isZh ? "Team 协作" : "Team collaboration",
+      label: isZh ? "团队协作" : "Team collaboration",
       free: isZh ? "不支持" : "Not available",
       premium: isZh ? "支持" : "Included",
     },
@@ -162,7 +162,7 @@ function UnauthenticatedLanding() {
               <img src={BRAND_FAVICON_URL} alt="Research Workspace logo" className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-100">Research Workspace</p>
+              <p className="text-sm font-semibold text-slate-100">{isZh ? "研究工作流" : "Research Workspace"}</p>
               <p className="text-[11px] text-slate-400">
                 {isZh ? "结构化学术阅读与写作" : "Structured Academic Reading & Writing"}
               </p>
@@ -245,14 +245,14 @@ function UnauthenticatedLanding() {
         <section className="mt-12">
           <div className="max-w-3xl">
             <Badge className="bg-amber-500/15 text-amber-200 border-amber-300/20">
-              {isZh ? "Research Artifacts" : "Research Artifacts"}
+              {isZh ? "研究产物" : "Research Artifacts"}
             </Badge>
             <h2 className="mt-4 text-2xl md:text-3xl font-bold text-slate-100">
               {isZh ? "让研究产件可沉淀、可打包、可共享" : "Make research artifacts persistent, packageable, and shareable"}
             </h2>
             <p className="mt-3 text-slate-300 text-sm md:text-base max-w-2xl leading-relaxed">
               {isZh
-                ? "除了工作流步骤本身，Research Workspace 还提供一层面向成果沉淀的 artifacts 体系，帮助你把过程产出变成可复用资产。"
+                ? "除了工作流步骤本身，研究工作流还提供一层面向成果沉淀的研究产物体系，帮助你把过程产出变成可复用资产。"
                 : "Beyond the workflow itself, Research Workspace includes an artifacts layer that turns working outputs into reusable research assets."}
             </p>
           </div>
@@ -286,13 +286,13 @@ function UnauthenticatedLanding() {
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-cyan-400/15 text-cyan-300">
                   <Users className="h-4 w-4" />
                 </span>
-                {isZh ? "Team 协作" : "Team Collaboration"}
+                {isZh ? "团队协作" : "Team Collaboration"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-slate-300 leading-relaxed">
                 {isZh
-                  ? "当研究不再是一个人的任务，Team 能把成员、文献、产件与写作上下文维持在同一个项目空间。"
+                  ? "当研究不再是一个人的任务，团队能把成员、文献、产件与写作上下文维持在同一个项目空间。"
                   : "When research is not a solo activity, Team keeps members, papers, artifacts, and writing context inside one shared project space."}
               </p>
               {teamFeatures.map((item) => (
@@ -309,7 +309,7 @@ function UnauthenticatedLanding() {
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-amber-400/15 text-amber-300">
                   <Crown className="h-4 w-4" />
                 </span>
-                {isZh ? "免费版与付费版" : "Free vs Premium"}
+                {isZh ? "免费版与高级版" : "Free vs Premium"}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -318,8 +318,8 @@ function UnauthenticatedLanding() {
                   <thead>
                     <tr className="border-b border-slate-700/60 text-left">
                       <th className="px-2 py-2 text-slate-400">{isZh ? "能力" : "Capability"}</th>
-                      <th className="px-2 py-2 text-slate-300">Free</th>
-                      <th className="px-2 py-2 text-amber-300">Premium</th>
+                      <th className="px-2 py-2 text-slate-300">{isZh ? "免费版" : "Free"}</th>
+                      <th className="px-2 py-2 text-amber-300">{isZh ? "高级版" : "Premium"}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -335,7 +335,7 @@ function UnauthenticatedLanding() {
               </div>
               <p className="mt-4 text-xs text-slate-400 leading-relaxed">
                 {isZh
-                  ? "Free 适合先体验完整工作流与 artifacts 体系。Premium 面向需要多项目管理、社区资源扩展和 Team 协作的持续研究场景。"
+                  ? "免费版适合先体验完整工作流与研究产物体系。高级版面向需要多项目管理、社区资源扩展和团队协作的持续研究场景。"
                   : "Free is enough to experience the workflow and artifacts system. Premium is designed for ongoing research that needs multi-project organization, broader package access, and team collaboration."}
               </p>
             </CardContent>
