@@ -236,6 +236,8 @@ export default function MyPackages() {
     ...artifact,
     id: `${artifact.id}-unpack-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     title: `${artifact.title} (from ${ownerName})`,
+    projectId: "",
+    updatedAt: new Date().toISOString().split("T")[0],
   });
 
   const applyUnpackStrategy = (

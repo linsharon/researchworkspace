@@ -350,6 +350,11 @@ export default function ArtifactCenter() {
     window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
   };
 
+  const isArtifactVisibleInScope = (artifact: Artifact) => {
+    if (!projectIdFromUrl) return true;
+    return !artifact.projectId || artifact.projectId === projectIdFromUrl;
+  };
+
   const persistVisualArtifact = (payload: {
     fileName: string;
     fileSize: number;
@@ -592,9 +597,7 @@ export default function ArtifactCenter() {
           ? await noteAPI.listByProject(projectIdFromUrl)
           : await noteAPI.listAll();
         const savedNoteArtifacts = savedNotes.map(noteToArtifact);
-        const localArtifacts = loadLocalArtifacts().filter(
-          (artifact) => !projectIdFromUrl || artifact.projectId === projectIdFromUrl
-        );
+        const localArtifacts = loadLocalArtifacts().filter(isArtifactVisibleInScope);
         const merged = [...STATIC_ARTIFACTS, ...localArtifacts, ...literatureArtifacts, ...savedNoteArtifacts];
         const deduped = Array.from(new Map(merged.map((artifact) => [artifact.id, artifact])).values());
         setArtifacts(deduped);
@@ -603,7 +606,7 @@ export default function ArtifactCenter() {
         setPaperTitleMap({});
         setArtifacts([
           ...STATIC_ARTIFACTS,
-          ...loadLocalArtifacts().filter((artifact) => !projectIdFromUrl || artifact.projectId === projectIdFromUrl),
+          ...loadLocalArtifacts().filter(isArtifactVisibleInScope),
         ]);
       }
     };
@@ -1160,8 +1163,10 @@ export default function ArtifactCenter() {
     const localArtifacts = loadLocalArtifacts();
     const unpacked = pkg.artifacts.map((artifact) => ({
       ...artifact,
-      id: `${artifact.id}-unpack-${Date.now()}`,
-      title: `${artifact.title} (from ${pkg.ownerName})`
+      id: `${artifact.id}-unpack-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      title: `${artifact.title} (from ${pkg.ownerName})`,
+      projectId: "",
+      updatedAt: new Date().toISOString().split("T")[0],
     }));
     saveLocalArtifacts([...localArtifacts, ...unpacked]);
     setArtifacts((prev) => {
