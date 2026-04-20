@@ -49,7 +49,7 @@ import {
 import { type WorkflowStep, type ProjectItem } from "@/lib/data";
 import { projectAPI } from "@/lib/manuscript-api";
 
-const BRAND_LOGO_URL = "/logo-tran.png";
+const BRAND_FAVICON_URL = "https://public-frontend-cos.metadl.com/mgx/img/favicon_atoms.ico";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -303,7 +303,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <div className="flex items-center gap-2 px-4 h-12 border-b border-slate-700/30 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <img
-              src={BRAND_LOGO_URL}
+              src={BRAND_FAVICON_URL}
               alt="Research Workspace logo"
               className="w-5 h-5 shrink-0"
               style={{ filter: 'brightness(0) saturate(100%) invert(72%) sepia(98%) saturate(400%) hue-rotate(152deg) brightness(103%)' }}
@@ -676,7 +676,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             {sidebarCollapsed && (
               <div className="flex items-center gap-2">
                 <img
-                  src={BRAND_LOGO_URL}
+                  src={BRAND_FAVICON_URL}
                   alt="Research Workspace logo"
                   className="w-5 h-5"
                   style={{ filter: 'brightness(0) saturate(100%) invert(72%) sepia(98%) saturate(400%) hue-rotate(152deg) brightness(103%)' }}
