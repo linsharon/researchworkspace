@@ -305,7 +305,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="flex items-center gap-2 min-w-0">
             <img
               src={BRAND_FAVICON_URL}
-              alt={isZh ? "研究工作区标志" : "Research Workspace logo"}
+              alt={isZh ? "研究工作区标志" : isZh ? "研究工作空间商标" : isZh ? "研究工作空间商标" : "Research Workspace logo"}
               className="w-5 h-5 shrink-0"
               style={{ filter: 'brightness(0) saturate(100%) invert(72%) sepia(98%) saturate(400%) hue-rotate(152deg) brightness(103%)' }}
             />
@@ -790,14 +790,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
         <footer className="h-10 border-t border-slate-700/30 bg-[#061423] px-4 flex items-center justify-center">
           <p className="text-[11px] text-slate-400">
-            {lang === "zh" ? "版权所有" : "Copyright"} © {new Date().getFullYear()} ·
+            {lang === "zh" ? "版权" : "Copyright"} © {new Date().getFullYear()} ·
             <a
               href="https://researchic.com"
               target="_blank"
               rel="noreferrer"
               className="ml-1 text-cyan-300 hover:text-cyan-200"
             >
-              {lang === "zh" ? "西西弗斯林" : "Sisyphus Lynn"}
+              {lang === "zh" ? "西西弗斯·林恩" : "Sisyphus Lynn"}
             </a>
             <span className="mx-2 text-slate-500">·</span>
             <a
@@ -824,7 +824,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="border-slate-600 text-slate-200">
-              {lang === "zh" ? "稍后再说" : "Maybe later"}
+              {lang === "zh" ? "稍后再试" : "Maybe later"}
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-cyan-500 hover:bg-cyan-400 text-slate-900"
@@ -839,7 +839,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
           <AlertDialogHeader>
-            <AlertDialogTitle>{lang === "zh" ? "确认项目删除" : "Confirm project deletion"}</AlertDialogTitle>
+            <AlertDialogTitle>{lang === "zh" ? "确认删除项目" : "Confirm project deletion"}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300">
               {lang === "zh"
                 ? `你将删除项目“${activeProject.title}”。该操作不可撤销，请确认。`
@@ -875,7 +875,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </div>
               <div>
                 <p className="text-sm font-semibold">
-                  {lang === "zh" ? "AI助手：西西弗斯" : "AI Assistant: Sisyphus"}
+                  {lang === "zh" ? "AI助手: 西西弗斯" : "AI Assistant: Sisyphus"}
                 </p>
               </div>
             </div>

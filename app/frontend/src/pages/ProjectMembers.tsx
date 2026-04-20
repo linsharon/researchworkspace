@@ -48,7 +48,7 @@ export default function ProjectMembers() {
       }
     } catch (error) {
       console.error(error);
-      toast.error(isZh ? "项目加载失败" : "Failed to load projects");
+      toast.error(isZh ? "项目加载失败" : isZh ? "项目加载失败" : "Failed to load projects");
     } finally {
       setLoadingProjects(false);
     }
@@ -66,7 +66,7 @@ export default function ProjectMembers() {
       setMembers(result);
     } catch (error) {
       console.error(error);
-      toast.error(isZh ? "项目成员加载失败" : "Failed to load project members");
+      toast.error(isZh ? "项目成员加载失败" : isZh ? "项目成员加载失败" : "Failed to load project members");
       setMembers([]);
     } finally {
       setLoadingMembers(false);
@@ -75,11 +75,11 @@ export default function ProjectMembers() {
 
   const handleAddMember = async () => {
     if (!selectedProjectId) {
-      toast.error(isZh ? "请先选择一个项目" : "Please select a project first");
+      toast.error(isZh ? "请先选择一个项目" : isZh ? "请先选择一个项目" : "Please select a project first");
       return;
     }
     if (!selectedCandidate) {
-      toast.error(isZh ? "请选择一个用户" : "Please select a user");
+      toast.error(isZh ? "请选择一个用户" : isZh ? "请选择一个用户" : "Please select a user");
       return;
     }
 
@@ -88,7 +88,7 @@ export default function ProjectMembers() {
         user_id: selectedCandidate.id,
         role: grantRole,
       });
-      toast.success(isZh ? "项目成员更新" : "Project member updated");
+      toast.success(isZh ? "项目成员更新" : isZh ? "项目成员更新" : "Project member updated");
       setSearchQuery("");
       setCandidates([]);
       setSelectedCandidate(null);
@@ -104,7 +104,7 @@ export default function ProjectMembers() {
     if (!selectedProjectId) return;
     try {
       await projectAPI.updateMember(selectedProjectId, member.user_id, { role });
-      toast.success(isZh ? "成员角色更新" : "Member role updated");
+      toast.success(isZh ? "成员角色更新" : isZh ? "成员角色更新" : "Member role updated");
       await loadMembers(selectedProjectId);
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -116,7 +116,7 @@ export default function ProjectMembers() {
     if (!selectedProjectId) return;
     try {
       await projectAPI.removeMember(selectedProjectId, member.user_id);
-      toast.success(isZh ? "成员已移除" : "Member removed");
+      toast.success(isZh ? "成员已移除" : isZh ? "成员已移除" : "Member removed");
       await loadMembers(selectedProjectId);
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -237,7 +237,7 @@ export default function ProjectMembers() {
                   setSearchQuery(event.target.value);
                   setSelectedCandidate(null);
                 }}
-                placeholder={isZh ? "按电子邮件/姓名搜索用户" : "Search user by email/name"}
+                placeholder={isZh ? "按电子邮件/姓名搜索用户" : isZh ? "按电子邮件/姓名搜索用户" : "Search user by email/name"}
               />
               {searchLoading && <p className="text-xs text-slate-400">Searching users...</p>}
               {!searchLoading && searchQuery.trim().length >= 2 && candidates.length === 0 && (

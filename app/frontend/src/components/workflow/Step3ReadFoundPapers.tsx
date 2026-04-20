@@ -534,7 +534,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
           <CardContent className="pt-6 flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-yellow-600" />
             <p className="text-yellow-800">
-              {tr("No papers marked as entry or expanded. Go back to Step 2 to mark papers.", "没有标记为条目或展开的论文。返回第二步标记论文。")}
+              {tr("No papers marked as entry or expanded. Go back to Step 2 to mark papers.", "没有标记为入口文献或扩展文献。前往步骤2或步骤4标记文献。")}
             </p>
           </CardContent>
         </Card>
@@ -562,13 +562,13 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                   value="entry"
                   className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
-                  {tr("Entry", "条目")} ({papers.filter((p) => p.is_entry_paper).length})
+                  {tr("Entry", "入口文献")} ({papers.filter((p) => p.is_entry_paper).length})
                 </TabsTrigger>
                 <TabsTrigger
                   value="expanded"
                   className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
-                  {tr("Expanded", "展开")} ({papers.filter((p) => p.is_expanded_paper).length})
+                  {tr("Expanded", "扩展文献")} ({papers.filter((p) => p.is_expanded_paper).length})
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -603,10 +603,10 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                   <SelectValue placeholder={tr("Sort by", "排序方式")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="title">{tr("Sort: Title", "按标题排序")}</SelectItem>
-                  <SelectItem value="year">{tr("Sort: Year", "按年份排序")}</SelectItem>
+                  <SelectItem value="title">{tr("Sort: Title", "排序：标题")}</SelectItem>
+                  <SelectItem value="year">{tr("Sort: Year", "排序：年份")}</SelectItem>
                   <SelectItem value="status">{tr("Sort: Status", "按状态排序")}</SelectItem>
-                  <SelectItem value="type">{tr("Sort: Type", "按类型排序")}</SelectItem>
+                  <SelectItem value="type">{tr("Sort: Type", "排序：类型")}</SelectItem>
                 </SelectContent>
               </Select>
               <button
@@ -815,7 +815,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                       className="block w-full rounded bg-slate-800/40 p-3 text-left text-sm italic text-slate-400 hover:bg-cyan-600/10 hover:text-cyan-200 transition-colors"
                       onClick={(e) => handleNoteClick(e, paper)}
                     >
-                      {tr("Note", "备注")}: {paper.discovery_note}
+                      {tr("Note", "笔记")}: {paper.discovery_note}
                     </button>
                   )}
 
@@ -863,9 +863,9 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">{tr("DOI or URL (optional)", "DOI或URL（可选）")}</label>
+              <label className="text-xs font-medium text-slate-600">{tr("DOI or URL (optional)", "DOI 或 URL（可选）")}</label>
               <div className="flex gap-2">
-                <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder={isZh ? "https://doi.org/..." : "https://doi.org/..."} className="text-sm" />
+                <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder={isZh ? isZh ? "https://doi.org/..." : "https://doi.org/..." : "https://doi.org/..."} className="text-sm" />
                 <Button type="button" variant="outline" className="text-xs" disabled={doiFetching || !newPaperDoiUrl.trim()} onClick={() => void handleFetchByDoiUrl()}>
                   <Sparkles className="w-3 h-3 mr-1" />
                   {doiFetching ? tr("Fetching...", "获取中...") : tr("Auto-fill", "自动填充")}
@@ -879,7 +879,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-600">{tr("Authors (comma-separated)", "作者（逗号分隔）")}</label>
-              <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={tr("Author 1, Author 2...", "作者1, 作者2...")} className="text-sm" />
+              <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={tr("Author 1, Author 2...", "作者 1, 作者 2...")} className="text-sm" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -944,11 +944,11 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
       >
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>{tr("Add Multiple Entry Papers", "添加多篇入口文献")}</DialogTitle>
+            <DialogTitle>{tr("Add Multiple Entry Papers", "添加多个入口文献")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">{tr("DOI links (one per line)", "DOI链接（每行一个）")}</label>
+              <label className="text-xs font-medium text-slate-600">{tr("DOI links (one per line)", "DOI 链接（每行一个）")}</label>
               <Textarea
                 value={bulkDoiInput}
                 onChange={(e) => setBulkDoiInput(e.target.value)}
@@ -964,7 +964,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                 disabled={bulkImporting || !bulkDoiInput.trim()}
               >
                 <Sparkles className="w-3 h-3 mr-1" />
-                {bulkImporting ? tr("Importing...", "正在导入...") : tr("Import by DOI", "通过DOI导入")}
+                {bulkImporting ? tr("Importing...", "导入中...") : tr("Import by DOI", "通过DOI导入")}
               </Button>
               <Button variant="ghost" className="text-xs" onClick={() => setShowAddMultiplePaperDialog(false)}>
                 {tr("Cancel", "取消")}

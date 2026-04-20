@@ -148,7 +148,7 @@ export default function VisualizationBoard() {
           <div className="w-[280px]">
             <Select value={projectId} onValueChange={setProjectId}>
               <SelectTrigger>
-                <SelectValue placeholder={isZh ? "选择项目" : "Select project"} />
+                <SelectValue placeholder={isZh ? "选择项目" : isZh ? "选择项目" : "Select project"} />
               </SelectTrigger>
               <SelectContent>
                 {projects.map((project) => (

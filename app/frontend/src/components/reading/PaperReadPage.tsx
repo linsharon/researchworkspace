@@ -401,7 +401,7 @@ export default function PaperReadPage() {
                 <Bot className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold">{isZh ? "AI助手: 西西弗斯" : "AI Assistant: Sisyphus"}</p>
+                <p className="text-sm font-semibold">{isZh ? "AI助手: 西西弗斯" : isZh ? "AI助手: 西西弗斯" : "AI Assistant: Sisyphus"}</p>
               </div>
             </div>
             <button
@@ -442,7 +442,7 @@ export default function PaperReadPage() {
               <Input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder={isZh ? "询问关于这篇论文..." : "Ask about this paper..."}
+                placeholder={isZh ? "询问关于这篇论文..." : isZh ? "询问关于这篇论文..." : "Ask about this paper..."}
                 className="text-sm h-9 rounded-full px-4 border-slate-700/50 focus-visible:ring-[#1E3A5F]"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSendMessage(); } }}
               />

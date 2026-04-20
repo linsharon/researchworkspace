@@ -43,7 +43,7 @@ export function LiteratureNoteForm({ initialValue, paper, onSubmit }: Literature
     const nextErrors: Partial<Record<keyof LiteratureNote, string>> = {};
 
     if (!value.title.trim()) {
-      nextErrors.title = isZh ? "标题是必须的（作者-年份）。" : "Title is required (Author-Year).";
+      nextErrors.title = isZh ? "标题是必须的（作者-年份）。" : isZh ? "标题是必须的（作者-年份）。" : "Title is required (Author-Year).";
     }
     if (!value.contentGist.trim()) {
       nextErrors.contentGist = "Content Gist is required.";
@@ -108,7 +108,7 @@ export function LiteratureNoteForm({ initialValue, paper, onSubmit }: Literature
                   <Label htmlFor="lit-title">{isZh ? "标题（作者-年份）" : "Title (Author-Year)"}</Label>
                   <Input
                     id="lit-title"
-                    placeholder={isZh ? "例如，Smith-2021" : "e.g., Smith-2021"}
+                    placeholder={isZh ? "例如，Smith-2021" : isZh ? "例如，Smith-2021" : "e.g., Smith-2021"}
                     value={form.title}
                     onChange={event => updateField("title", event.target.value)}
                   />
@@ -119,7 +119,7 @@ export function LiteratureNoteForm({ initialValue, paper, onSubmit }: Literature
                   <Label htmlFor="lit-page">{isZh ? "页码" : "Page Number"}</Label>
                   <Input
                     id="lit-page"
-                    placeholder={isZh ? "例如，42" : "e.g., 42"}
+                    placeholder={isZh ? "例如，42" : isZh ? "例如，42" : "e.g., 42"}
                     value={form.pageNumber}
                     onChange={event => updateField("pageNumber", event.target.value)}
                   />
@@ -129,7 +129,7 @@ export function LiteratureNoteForm({ initialValue, paper, onSubmit }: Literature
                   <Label htmlFor="lit-keywords">{isZh ? "关键词" : "Keywords"}</Label>
                   <NoteTagInput
                     onChange={keywords => updateField("keywords", keywords)}
-                    placeholder={isZh ? "输入关键词并按回车" : "Type keyword and press Enter"}
+                    placeholder={isZh ? "输入关键词并按回车" : isZh ? "输入关键词后按回车键" : "Type keyword and press Enter"}
                     tags={form.keywords}
                   />
                 </div>
@@ -140,7 +140,7 @@ export function LiteratureNoteForm({ initialValue, paper, onSubmit }: Literature
                 <Textarea
                   id="lit-gist"
                   rows={4}
-                  placeholder={isZh ? "用自己的话总结这段文字为何重要。" : "Summarize why this passage matters in your own words."}
+                  placeholder={isZh ? "用自己的话总结这段文字为何重要。" : isZh ? "用自己的话总结这段文字为何重要。" : "Summarize why this passage matters in your own words."}
                   value={form.contentGist}
                   onChange={event => updateField("contentGist", event.target.value)}
                 />
@@ -154,7 +154,7 @@ export function LiteratureNoteForm({ initialValue, paper, onSubmit }: Literature
                 <Textarea
                   id="lit-quote"
                   rows={5}
-                  placeholder={isZh ? "粘贴来自源的准确引用。" : "Paste exact quotation from the source."}
+                  placeholder={isZh ? "粘贴来自源的准确引用。" : isZh ? "粘贴来自源的准确引用。" : "Paste exact quotation from the source."}
                   value={form.originalQuote}
                   onChange={event => updateField("originalQuote", event.target.value)}
                 />

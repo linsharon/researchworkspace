@@ -120,7 +120,7 @@ export default function DocumentCenter() {
       setOffset(nextOffset);
     } catch (error) {
       console.error(error);
-      toast.error(isZh ? "加载文档失败" : "Failed to load documents");
+      toast.error(isZh ? "加载文档失败" : isZh ? "加载文档失败" : "Failed to load documents");
     } finally {
       setLoading(false);
     }
@@ -133,7 +133,7 @@ export default function DocumentCenter() {
       setRecycleItems(response.items);
     } catch (error) {
       console.error(error);
-      toast.error(isZh ? "加载回收站失败" : "Failed to load recycle bin");
+      toast.error(isZh ? "加载回收站失败" : isZh ? "加载回收站失败" : "Failed to load recycle bin");
     } finally {
       setRecycleLoading(false);
     }
@@ -147,7 +147,7 @@ export default function DocumentCenter() {
       setVersions(data);
     } catch (error) {
       console.error(error);
-      toast.error(isZh ? "加载版本失败" : "Failed to load versions");
+      toast.error(isZh ? "加载版本失败" : isZh ? "加载版本失败" : "Failed to load versions");
       setVersions([]);
     } finally {
       setVersionsLoading(false);
@@ -166,7 +166,7 @@ export default function DocumentCenter() {
       setShares(data);
     } catch (error) {
       console.error(error);
-      toast.error(isZh ? "加载共享失败" : "Failed to load shares");
+      toast.error(isZh ? "加载共享失败" : isZh ? "加载共享失败" : "Failed to load shares");
       setShares([]);
     } finally {
       setSharesLoading(false);
@@ -175,7 +175,7 @@ export default function DocumentCenter() {
 
   const handleGrantShare = async () => {
     if (!shareDoc || !selectedCandidate?.id) {
-      toast.error(isZh ? "请选择要授权的用户" : "Please select a user to grant access");
+      toast.error(isZh ? "请选择要授权的用户" : isZh ? "请选择要授权的用户" : "Please select a user to grant access");
       return;
     }
     try {
@@ -183,7 +183,7 @@ export default function DocumentCenter() {
         grantee_user_id: selectedCandidate.id,
         access_level: newGrantLevel,
       });
-      toast.success(isZh ? "授权成功" : "Access granted");
+      toast.success(isZh ? "授权成功" : isZh ? "授权成功" : "Access granted");
       setShareQuery("");
       setShareCandidates([]);
       setSelectedCandidate(null);
@@ -198,7 +198,7 @@ export default function DocumentCenter() {
     if (!shareDoc) return;
     try {
       await documentAPI.revokeShare(shareDoc.id, granteeUserId);
-      toast.success(isZh ? "权限被撤销" : "Access revoked");
+      toast.success(isZh ? "权限被撤销" : isZh ? "权限被撤销" : "Access revoked");
       await loadShares(shareDoc);
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -247,7 +247,7 @@ export default function DocumentCenter() {
   const handleCreateDocument = async () => {
     const title = newTitle.trim();
     if (!title) {
-      toast.error(isZh ? "文档标题是必须的" : "Document title is required");
+      toast.error(isZh ? "文档标题是必须的" : isZh ? "文档标题是必须的" : "Document title is required");
       return;
     }
 
@@ -259,7 +259,7 @@ export default function DocumentCenter() {
     setCreating(true);
     try {
       if (newPermission === "team" && !newProjectId.trim()) {
-        toast.error(isZh ? "团队文档需要项目ID" : "Team document requires a project ID");
+        toast.error(isZh ? "团队文档需要项目ID" : isZh ? "团队文档需要项目ID" : "Team document requires a project ID");
         return;
       }
       await documentAPI.create({
@@ -274,7 +274,7 @@ export default function DocumentCenter() {
       setNewTags("");
       setNewProjectId("");
       setNewPermission("private");
-      toast.success(isZh ? "文档创建成功" : "Document created");
+      toast.success(isZh ? "文档创建成功" : isZh ? "文档创建成功" : "Document created");
       await loadDocuments(0);
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -287,7 +287,7 @@ export default function DocumentCenter() {
   const handleDelete = async (doc: DocumentItem) => {
     try {
       await documentAPI.softDelete(doc.id);
-      toast.success(isZh ? "已移至回收站" : "Moved to recycle bin");
+      toast.success(isZh ? "已移至回收站" : isZh ? "已移至回收站" : "Moved to recycle bin");
       await loadDocuments(Math.max(0, offset));
       await loadRecycleBin();
       if (selectedDoc?.id === doc.id) {
@@ -296,26 +296,26 @@ export default function DocumentCenter() {
       }
     } catch (error) {
       console.error(error);
-      toast.error(isZh ? "删除文档失败" : "Failed to delete document");
+      toast.error(isZh ? "删除文档失败" : isZh ? "删除文档失败" : "Failed to delete document");
     }
   };
 
   const handleRestore = async (doc: DocumentItem) => {
     try {
       await documentAPI.restore(doc.id);
-      toast.success(isZh ? "文档已恢复" : "Document restored");
+      toast.success(isZh ? "文档已恢复" : isZh ? "文档已恢复" : "Document restored");
       await loadDocuments(0);
       await loadRecycleBin();
     } catch (error) {
       console.error(error);
-      toast.error(isZh ? "恢复文档失败" : "Failed to restore document");
+      toast.error(isZh ? "恢复文档失败" : isZh ? "恢复文档失败" : "Failed to restore document");
     }
   };
 
   const handleStatusChange = async (doc: DocumentItem, status: DocumentStatus) => {
     try {
       await documentAPI.changeStatus(doc.id, status);
-      toast.success(isZh ? "状态已更新" : "Status updated");
+      toast.success(isZh ? "状态已更新" : isZh ? "状态已更新" : "Status updated");
       await loadDocuments(offset);
       if (selectedDoc?.id === doc.id) {
         const refreshed = await documentAPI.search({ q: doc.title, limit: 1, offset: 0 });
@@ -348,7 +348,7 @@ export default function DocumentCenter() {
         change_note: `Uploaded via browser at ${new Date().toISOString()}`,
       });
 
-      toast.success(isZh ? "文件上传成功并追加版本" : "File uploaded and version appended");
+      toast.success(isZh ? "文件上传成功并追加版本" : isZh ? "文件上传成功并追加版本" : "File uploaded and version appended");
       if (selectedDoc?.id === doc.id) {
         await loadVersions(doc);
       }
@@ -390,7 +390,7 @@ export default function DocumentCenter() {
     try {
       const response = await documentAPI.getDocumentDownloadUrl(params.documentId, params.versionId ? { version_id: params.versionId } : undefined);
       if (!response.download_url) {
-        toast.error(isZh ? "下载链接不可用" : "Download URL is unavailable");
+        toast.error(isZh ? "下载链接不可用" : isZh ? "下载链接不可用" : "Download URL is unavailable");
         return;
       }
       triggerBrowserDownload(response.download_url, params.filename);
@@ -455,10 +455,10 @@ export default function DocumentCenter() {
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={isZh ? "标题" : "Title"} />
+              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={isZh ? "标题" : isZh ? "标题" : "Title"} />
               <Select value={newPermission} onValueChange={(v) => setNewPermission(v as DocumentPermission)}>
                 <SelectTrigger>
-                  <SelectValue placeholder={isZh ? "权限" : "Permission"} />
+                  <SelectValue placeholder={isZh ? "权限" : isZh ? "权限" : isZh ? "权限" : "Permission"} />
                 </SelectTrigger>
                 <SelectContent>
                   {permissionOptions.map((item) => (
@@ -467,9 +467,9 @@ export default function DocumentCenter() {
                 </SelectContent>
               </Select>
             </div>
-            <Input value={newProjectId} onChange={(e) => setNewProjectId(e.target.value)} placeholder={isZh ? "项目ID（团队权限需要）" : "Project ID (required for team permission)"} />
-            <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder={isZh ? "描述" : "Description"} />
-            <Input value={newTags} onChange={(e) => setNewTags(e.target.value)} placeholder={isZh ? "标签（逗号分隔）" : "Tags (comma separated)"} />
+            <Input value={newProjectId} onChange={(e) => setNewProjectId(e.target.value)} placeholder={isZh ? "项目ID（团队权限需要）" : isZh ? "项目ID（团队权限需要）" : "Project ID (required for team permission)"} />
+            <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder={isZh ? "描述" : isZh ? "描述" : "Description"} />
+            <Input value={newTags} onChange={(e) => setNewTags(e.target.value)} placeholder={isZh ? "标签（逗号分隔）" : isZh ? "标签（逗号分隔）" : "Tags (comma separated)"} />
             <Button size="sm" onClick={() => void handleCreateDocument()} disabled={creating}>
               <FilePlus2 className="w-4 h-4 mr-1" /> {creating ? "Creating..." : "Create"}
             </Button>
@@ -490,12 +490,12 @@ export default function DocumentCenter() {
                       className="pl-8"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder={isZh ? "按标题/描述搜索" : "Search by title/description"}
+                      placeholder={isZh ? "按标题/描述搜索" : isZh ? "按标题/描述搜索" : "Search by title/description"}
                     />
                   </div>
                   <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as DocumentStatus | "all") }>
                     <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder={isZh ? "状态" : "Status"} />
+                      <SelectValue placeholder={isZh ? "状态" : isZh ? "状态" : "Status"} />
                     </SelectTrigger>
                     <SelectContent>
                       {statusOptions.map((item) => (
@@ -521,7 +521,7 @@ export default function DocumentCenter() {
                     className="min-w-[180px] flex-1"
                     value={tagFilter}
                     onChange={(e) => setTagFilter(e.target.value)}
-                    placeholder={isZh ? "按标签过滤" : "Filter by tag"}
+                    placeholder={isZh ? "按标签过滤" : isZh ? "按标签过滤" : "Filter by tag"}
                   />
                   <Input
                     className="w-[180px]"
@@ -750,7 +750,7 @@ export default function DocumentCenter() {
                   <div className="flex gap-1 flex-wrap">
                     <Input
                       className="flex-1 min-w-[140px] h-7 text-xs"
-                      placeholder={isZh ? "按邮箱/姓名搜索用户" : "Search user by email/name"}
+                      placeholder={isZh ? "按邮箱/姓名搜索用户" : isZh ? "按电子邮件/姓名搜索用户" : "Search user by email/name"}
                       value={shareQuery}
                       onChange={(e) => {
                         setShareQuery(e.target.value);

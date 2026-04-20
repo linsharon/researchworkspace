@@ -200,7 +200,7 @@ export default function MyPackages() {
     );
 
     saveCreatedPackages(next);
-    toast.success(isZh ? "创建的套餐已更新" : "Created package updated");
+    toast.success(isZh ? "创建的套餐已更新" : isZh ? "创建的套餐已更新" : "Created package updated");
     setShowEditDialog(false);
     setEditingPackage(null);
   };
@@ -208,7 +208,7 @@ export default function MyPackages() {
   const handleDeleteCreated = (id: string) => {
     const next = createdPackages.filter((pkg) => pkg.id !== id);
     saveCreatedPackages(next);
-    toast.success(isZh ? "创建的产集被删除" : "Created package deleted");
+    toast.success(isZh ? "创建的产集被删除" : isZh ? "创建的产集被删除" : "Created package deleted");
   };
 
   const handleUnshareCreated = (id: string) => {
@@ -216,13 +216,13 @@ export default function MyPackages() {
       pkg.id === id ? { ...pkg, shared: false } : pkg
     );
     saveCreatedPackages(next);
-    toast.success(isZh ? "产集现在是未共享状态" : "Package is now unshared");
+    toast.success(isZh ? "产集现在是未共享状态" : isZh ? "产集现在是未共享状态" : "Package is now unshared");
   };
 
   const handleRemoveDownloaded = (id: string) => {
     const next = downloadedPackages.filter((pkg) => pkg.id !== id);
     saveDownloadedPackages(next);
-    toast.success(isZh ? "已从下载的产集中移除" : "Removed from downloaded packages");
+    toast.success(isZh ? "已从下载的产集中移除" : isZh ? "已从下载的产集中移除" : "Removed from downloaded packages");
   };
 
   const buildArtifactFingerprint = (artifact: Artifact) => {
@@ -281,7 +281,7 @@ export default function MyPackages() {
         toast.success(`Imported ${importedCount} artifacts and replaced ${replacedCount} duplicates`);
       }
     } catch {
-      toast.error(isZh ? "无法解压产集" : isZh ? "无法解压产集" : "Failed to unpack package");
+      toast.error(isZh ? "无法解压产集" : isZh ? "无法解压产集" : isZh ? "无法解压产集" : isZh ? "无法解压产集" : "Failed to unpack package");
     }
   };
 
@@ -406,7 +406,7 @@ export default function MyPackages() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={isZh ? "搜索产集..." : "Search packages..."}
+            placeholder={isZh ? "搜索产集..." : isZh ? "搜索产集..." : "Search packages..."}
             className="pl-9 text-sm"
           />
         </div>
@@ -510,7 +510,7 @@ export default function MyPackages() {
                 <Input
                   value={editForm.name}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder={isZh ? "产集名" : "Package name"}
+                  placeholder={isZh ? "产集名" : isZh ? "产集名" : "Package name"}
                   className="text-sm"
                 />
               </div>
@@ -519,7 +519,7 @@ export default function MyPackages() {
                 <Input
                   value={editForm.description}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder={isZh ? "产集描述" : "Package description"}
+                  placeholder={isZh ? "产集描述" : isZh ? "产集描述" : "Package description"}
                   className="text-sm"
                 />
               </div>

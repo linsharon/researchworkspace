@@ -1,0 +1,1486 @@
+﻿english,desired_chinese
+"Hello, I am Sisyphus, your AI Assistant here. How can I help you today",你好，我是你的AI助手 西西弗斯。今天我能帮助你什么？
+No Project,无项目
+Create a project to start the workflow.,创建项目以启动工作流程。
+Project created,项目创建成功
+Failed to create project,创建项目失败
+Project deleted,项目已删除
+Failed to delete project,删除项目失败
+"You are LitFlow's literature review assistant. Provide accurate, concise, actionable guidance grounded in the current project context. Current project title: ${activeProject.title}. Current project goal: ${activeProject.goal}.",你是本站的AI助手。请根据当前项目上下文提供准确、简洁、可操作的指导。当前项目标题：${activeProject.title}。当前项目目标：${activeProject.goal}。
+AI service error: ${lastError},AI服务错误：${lastError}
+"Sorry, the AI service is temporarily unavailable. Please try again later.",抱歉，AI服务暂时不可用。请稍后再试。
+Research Workspace logo,研究工作区标志
+Select project,选择项目
+Premium Active,高级版已激活
+Creating multiple projects requires Premium,创建多个项目需要高级版功能
+Delete current project,删除当前项目
+My Artifacts,我的产件
+My Packages,我的产集
+Community Packages,社区产集
+Team,团队
+Project Members,项目成员
+Research Workspace logo,研究工作区商标
+Register,注册
+Login,登录
+Logout,登出
+English,英文
+border-slate-700/40,border-slate-700/40
+Copyright,版权所有
+Sisyphus Lynn,西西弗斯林
+Donate,捐赠
+Upgrade to Premium,升级为高级版
+Free users can create only 1 project and cannot delete projects. Upgrade to Premium for multi-project creation and deletion.,免费版只能创建一个项目且不能删除项目。升级为高级版以创建和删除多个项目。
+Maybe later,稍后再说
+View Premium details,查看高级版详情
+Confirm project deletion,确认项目删除
+You are about to delete project "${activeProject.title}". This action cannot be undone.,您即将删除项目“${activeProject.title}”。此操作无法撤销。
+Cancel,取消
+Deleting...,正在删除...
+Delete,删除
+AI Assistant: Sisyphus,AI助手：西西弗斯
+Type your question...,输入你的问题...
+PDF Viewer,PDF阅读器
+Highlight saved,高亮保存
+Save failed,保存失败
+Keyword saved,关键词已保存
+Loading PDF...,加载PDF...
+Add New Keyword,添加新关键词
+Save highlighted text as a keyword,将高亮文本保存为关键词
+Selected text,选中的文本
+Enter keyword name...,输入关键词名称...
+Description,描述
+"What does this keyword mean in your research context? Add details, definitions, or notes...",在您的研究语境中，这个关键词是什么意思？添加细节、定义或注释...
+Category,类别
+Concept,概念
+Construct,构念
+Theory,理论
+Framework,框架
+Method,方法
+Variable,变量
+Other,其他
+Color,颜色
+Source Paper,来源论文
+Preview,预览
+Verifying permissions...,正在验证权限...
+Checking login status...,检查登录状态...
+Login Required,需要登录
+Title is required (Author-Year).,标题是必须的（作者-年份）。
+Literature Note,文献笔记
+Auto-quoted selection,自动引用选中内容
+Title (Author-Year),标题（作者-年份）
+"e.g., Smith-2021",例如，Smith-2021
+Page Number,页码
+"e.g., 42",例如，42
+Keywords,关键词
+Type keyword and press Enter,输入关键词并按回车
+Content Gist,内容摘要
+Summarize why this passage matters in your own words.,用自己的话总结这段文字为何重要。
+Original Quote,原始引用
+Paste exact quotation from the source.,粘贴来自源的准确引用。
+Source Metadata,元数据
+Failed to copy the upload error log. You can still select and copy it manually.,无法复制上传错误日志。您仍然可以手动选择并复制。
+Failed to copy the preview error log. You can still select and copy it manually.,无法复制预览错误日志。您仍然可以手动选择并复制。
+Delete current PDF file from this paper?,从这篇论文中删除当前PDF文件？
+Failed to delete PDF. Please try again.,删除PDF失败。请再试一次。
+Show paper details,显示论文详情
+PDF upload failed,PDF上传失败
+PDF file was lost after backend update,PDF文件在后端更新后丢失
+PDF preview resolve failed,PDF预览解析失败
+Download PDF,下载PDF
+Download failed. Please try again.,下载失败。请重试。
+Replace PDF,替换PDF
+Delete PDF,删除PDF
+Zoom out,缩小
+Zoom in,放大
+No PDF Available,没有可用的PDF
+Loading paper...,加载论文...
+Paper not found,未找到论文
+Status:,状态:
+Reading,阅读中
+Completed,已完成
+To Read,待阅读
+Exit Reading,退出阅读
+AI Assistant: Sisyphus,AI助手: 西西弗斯
+Ask about this paper...,询问关于这篇论文...
+Search notes for this paper,搜索这篇论文的阅读笔记
+Search highlights for this paper,搜索这篇论文的高亮内容
+Read Note,阅读笔记
+Structured Content,结构化内容
+Content,内容
+Read Highlight,阅读高亮内容
+Highlighted Text,高亮文本
+Attached Note,附加笔记
+Add Literature Note,添加文献笔记
+Add Permanent Note,添加永久笔记
+Edit Note,编辑笔记
+Note title,笔记标题
+Note description / quote,笔记描述/引用
+Content / Comment,内容/评论
+Your analysis or thoughts,您的分析或想法
+Page,页面
+Comma separated,逗号分隔
+Note Type,笔记类型
+Permanent Note,永久笔记
+Machine Learning in Natural Language Processing,自然语言处理中的机器学习
+Abstract,摘要
+This paper presents a comprehensive study on machine learning in NLP and educational research contexts.,本文在自然语言处理和教育研究的背景下，对机器学习进行了全面研究。
+"Recent transformer-based architectures demonstrate strong performance improvements in semantic understanding, contextual retrieval, and reasoning-heavy tasks.",最近基于变换器的架构在语义理解、上下文检索和推理密集型任务中显示出强大的性能提升。
+Self-regulated learning in technology-enhanced environments remains a promising area for integrating AI support with pedagogical frameworks.,在技术增强的环境中自我调节学习仍然是整合AI支持与教学框架的有前景的领域。
+Experiments were conducted on a benchmark dataset with cross-validation and ablation analysis to quantify model behavior.,在基准数据集上进行了实验，使用交叉验证和消融分析来量化模型行为。
+"Results indicate better generalization, stronger retrieval precision, and improved explanatory consistency compared with baselines.",结果表明与基线相比，泛化能力更好，检索精度更高，解释一致性有所提高。
+Future work should focus on explainability and practical integration in educational workflows.,未来的工作应集中在可解释性和在教育工作流中的实际集成。
+Add Note,添加笔记
+Translate,翻译
+Explain,解释
+Concept title,概念标题
+Definition or description,定义或描述
+Save as Concept,保存为概念
+Close,关闭
+Translation,翻译
+Atomic Title (Declarative Statement),原子标题（陈述句）
+"e.g., Knowledge workers retain ideas better with atomic note granularity.",例如，知识工作者以原子笔记的粒度更好地保留想法。
+Main Argument,主要论点
+Markdown editor placeholder: replace with rich editor later if needed.,Markdown编辑器占位符：如有需要，稍后用富编辑器替换。
+Retrieval Trigger,检索触发器
+"What query, context, or problem should surface this note?",什么查询、上下文或问题应该显示这条笔记？
+Type keyword and press Enter,输入关键词后按回车键
+Bidirectional Links,双向链接
+No links yet. Add at least one to position this note in your graph.,还没有链接。至少添加一个以在您的图中定位此笔记。
+Search note ID...,搜索笔记ID...
+Relation,关系
+Supports,支持
+Contradicts,互相矛盾
+Refines,细化
+Evidence Link,证据链接
+Attach one Literature Note as evidence,附加一个文献笔记作为证据
+Reading status updated to ${nextStatus},阅读状态更新为 ${nextStatus}
+Failed to update reading status,更新阅读状态失败
+Remove ${targets.length} selected paper(s) from Entry?,从入口文献中移除选中的${targets.length}篇论文？
+Remove ${targets.length} selected paper(s) from Expanded?,从扩展文献中移除选中的${targets.length}篇论文？
+Remove ${targets.length} selected paper(s) from the Step 3 reading list?,从第三步中移除选中的${targets.length}篇论文？
+Selected papers removed successfully,选中的论文已成功移除
+Failed to remove selected papers,移除选中的论文失败
+Unable to find a valid DOI. Please check input or fill manually.,找不到有效的DOI。请检查输入或手动填写。
+Failed to fetch by DOI. Please fill the fields manually.,通过DOI获取失败。请手动填写字段。
+Entry paper added,入口文献已添加
+Failed to add entry paper,添加入口文献失败
+Added from DOI in Step 3: Read,在第三步通过DOI添加
+Added ${imported} entry paper(s),已添加${imported}篇入口文献
+${failed} DOI row(s) failed,${failed}行DOI添加失败
+Loading papers...,加载论文中...
+No papers marked as entry or expanded. Go back to Step 2 to mark papers.,没有标记为入口文献或扩展文献。前往步骤2或步骤4标记文献。
+All,全部
+Entry,入口文献
+Expanded,扩展文献
+Add Paper,添加论文
+Add One,添加一篇
+Add Multiple,添加多篇
+Sort by,排序方式
+Sort: Title,按标题排序
+Sort: Year,按年份排序
+Sort: Status,按状态排序
+Sort: Type,按类型排序
+Toggle sort order,切换排序顺序
+Asc,升序
+Desc,降序
+Select all,全选
+${selectedPaperIds.length} selected,${selectedPaperIds.length} 已选
+Remove Selected,移除选中的
+Clear,清除
+Search on Google Scholar,在谷歌学术中搜索
+Previously processed,之前已处理
+Note,备注
+Relevance,相关性
+High (Core),高（核心）
+Medium (Useful),中（有用）
+Low (Peripheral),低（外围）
+No papers in this category,此分类中没有论文
+Add Entry Paper,添加入口文献
+DOI or URL (optional),DOI或URL（可选）
+https://doi.org/...,https://doi.org/...
+Fetching...,获取中...
+Auto-fill,自动填充
+Title,标题
+Paper title...,论文标题...
+Authors (comma-separated),作者（逗号分隔）
+"Author 1, Author 2...","作者1, 作者2..."
+Year,年份
+Journal,期刊
+Journal name...,期刊名称...
+Discovery Path,发现路径
+Discovery Note,发现笔记
+How did you find this paper?,你是如何找到这篇论文的？
+Add Multiple Entry Papers,添加多篇入口文献
+DOI links (one per line),DOI 链接（每行一个）
+Importing...,正在导入...
+Import by DOI,通过DOI导入
+Promise,承诺
+Research Workspace,研究工作区
+Current Project,当前项目
+Switch Project,切换项目
+Premium,高级版
+New Project,新项目
+Create,创建
+Project title...,项目标题...
+Research goal (optional)...,研究目标（可选）...
+Step,步骤
+of,的
+Language,语言
+Menu,菜单
+Hide,隐藏
+Assistant,AI助手
+Expand sidebar,展开侧边栏
+Collapse sidebar,折叠侧边栏
+Expand assistant,展开AI助手
+Collapse assistant,折叠AI助手
+Workflow,工作流
+Dashboard,仪表板
+1. Purpose,1. 明确目的
+2. Discover,2. 发现文献
+3. Read,3. 阅读文献
+4. Expand,4. 扩展阅读
+5. Visualize,5. 内容可视化
+6. Draft,6. 撰写草稿
+Artifacts,产件
+All Artifacts,所有产件
+Purpose Cards,目的卡片
+Search Logs,检索日志
+Notes,笔记
+Drafts,草稿
+Visualizations,可视化
+Current Goal,当前目标
+Progress,进度
+Next Suggested Move,下一个建议的步骤
+Complete keyword search,完成关键词搜索
+Add 2 more search records to strengthen your search log,添加两个更多搜索记录以加强你的检索日志
+Go,去
+AI assistant coming soon,AI助手即将推出
+"Get suggestions, summaries, and writing help",获取建议、摘要和写作帮助
+Quick Actions,快速行动
+Import Papers,导入论文
+View All Artifacts,查看所有产件
+Continue Current Step,继续当前步骤
+Workflow Progress,工作流程进度
+Complete,完成
+This is an iterative workflow  you can always go back to earlier steps to refine your research.,这是一个迭代工作流程 —— 你总是可以回到早期步骤来完善你的研究。
+Today's Target,今日目标
+Define initial keywords,定义初始关键词
+Search Web of Science with refined query,用改进的查询搜索Web of Science
+Select 1-2 entry papers from results,从结果中选择1-2篇入口论文
+Start Today's Task,开始今日任务
+Next Suggested Move,下一个建议的行动
+Refine your search strategy,改进你的搜索策略
+You have 3 search records. Consider adding searches in Scopus and ERIC databases to broaden your coverage. Then select your entry paper.,你有3条搜索记录。考虑在Scopus和ERIC数据库中添加搜索以扩大覆盖范围。然后选择你的入口论文。
+Ready for entry paper selection,准备选择入口论文
+Chen et al. (2024) looks like a strong entry paper  it's a comprehensive review that maps the field well.,Chen等（2024）看起来是一篇很强的入口论文 —— 它是一篇全面的综述，很好地映射了该领域。
+Go to Entry Paper Selection,进入论文选择
+View Artifacts,查看产件
+Latest Artifacts,最新产件
+View All,查看全部
+"Your Research, Your Workflow",你的研究，你的工作流程
+Not just managing files  driving your research forward with structured artifacts and clear next steps.,不仅仅是管理文件 —— 通过结构化的产件和明确的下一步推动你的研究。
+Clarify Purpose,阐明目的
+Purpose,目的
+Define your reading and research goals,定义你的阅读和研究目标
+Discover Entry Paper,发现入口论文
+Discover,发现
+Find keywords and entry papers,寻找关键词和入口论文
+Read Found Paper,阅读发现的论文
+Read,阅读
+Deep read and annotate papers,深入阅读并注释论文
+Expand,扩展
+Expand your literature base,扩展你的文献基础
+Visualize,可视化
+Map and synthesize your findings,映射和综合你的发现
+Draft,草稿
+Write and structure your output,撰写和构建你的输出
+Purpose Card,目的卡片
+Keyword Set,关键词集
+Search Log,检索日志
+Entry Paper Card,入口论文卡
+Visualization Board,可视化板
+RQ Draft,研究问题草稿
+Writing Block,写作板块
+Writing Draft,写作草稿
+Save and Continue,保存并继续
+Back,返回
+Next,前进
+Save,保存
+Add Manually,手动添加
+Auto-Identify,自动识别
+Quick Check,快速检查
+Add to Queue,添加到队列
+Generate Comparison Table,生成比较表
+Clarify Your Reading Purpose,明确你的阅读目的
+Define what you want to achieve from your literature exploration,定义你希望通过文献探索实现的目标
+Select Your Reading Goals,选择你的阅读目标
+Custom Goal,自定义目标
+Add custom goal...,添加自定义目标...
+Add,添加
+Research Context,研究背景
+Topic / Research Area,主题/研究领域
+"e.g., AI in Education, Climate Policy, Remote Work...",例如，教育中的AI，气候政策，远程工作...
+Specific Focus,具体关注点
+"e.g., How AI tutoring affects self-regulated learning...",例如，AI辅导如何影响自我调节学习...
+Prior Knowledge Level,先验知识水平
+Beginner,初学者
+Intermediate,中级
+Advanced,高级
+Purpose Card Preview,目的卡片预览
+Save Purpose Card,保存目的卡片
+Go to Discover,前往发现
+Keyword Management,关键词管理
+Add keyword...,添加关键词...
+Search Records,搜索记录
+Add Search Record,添加搜索记录
+Database,数据库
+Search Query,搜索查询
+Results,结果
+Relevant,相关
+Date,日期
+Entry Paper Selection,入口论文选择
+Paper Title,论文标题
+Authors,作者
+Why is this your entry paper?,为什么这是你的入口论文？
+Save as Entry Paper,保存为入口论文
+Save and Go to Read,保存并去阅读
+Annotations & Highlights,批注与高亮
+Add Highlight,添加高亮
+Highlighted text...,高亮文本...
+Your note...,你的笔记...
+Paper Information,论文信息
+Research Question,研究问题
+Theory/Framework,理论/框架
+Key Findings,关键发现
+"Write your literature note  summarize key arguments, methods, and findings in your own words...",撰写你的文献笔记 —— 用你自己的话总结关键论点、方法和发现...
+Save Literature Note,保存文献笔记
+Save and Go to Expand,保存和扩展
+Expand Literature Base,扩展文献基础
+Expansion Paths from Entry Paper,从入口论文的扩展路径
+References,参考文献
+Cited By,被引用
+Same Author,同一作者
+Similar Topic,相似主题
+Similar Method,相似方法
+Reading Queue,阅读队列
+Save and Go to Visualization,保存并去可视化
+Visualize Workspace,可视化工作区
+Workspace Analytics,工作区分析
+Research Content,研究内容
+Visualization Tools,可视化工具
+Projects,项目
+Total Artifacts,总产件
+Online Hours,在线小时
+Total Words,总字数
+Artifact Breakdown by Type,按类型划分的产件
+Annotations/Highlights,注释/高亮
+Literature Notes,文献笔记
+Permanent Notes,永久笔记
+Total Papers,总论文
+Papers Read,已读论文
+Unread,未读
+Papers Overview,论文概览
+External Files,外部文件
+AI Summarize Notes (Premium),AI总结笔记（高级版）
+Synthesis Tables,数据综合表
+By Year,按年份
+By Access,按访问
+Highlights,高亮
+Upload File,上传文件
+"Drag & drop files here, or click to browse",拖放文件至此，或点击浏览
+Simulate Upload,模拟上传
+No external files uploaded yet.,尚未上传外部文件。
+Add to Visual Artifacts,添加为视觉产件
+Added to Visual,已添加到视觉产件
+"Automatically summarize your literature notes, highlights, and permanent notes. Generate insight notes from patterns found across your materials.",自动总结您的文献笔记、高亮和永久笔记。从您的材料中发现的模式生成洞察笔记。
+Generate AI Summary & Insights,生成AI总结与洞察
+Summarizing...,正在总结...
+AI Result,AI结果
+Note title...,笔记标题...
+Write your permanent note — synthesize across sources...,编写您的永久笔记 —— 跨来源综合洞察……
+No permanent notes added from this page yet.,此页面尚未添加永久笔记。
+Export CSV,导出CSV
+New Table,新建表格
+Select Papers (Rows):,选择论文（行）：
+Columns (Attributes):,列（属性）：
+"Add column (e.g., Sample Size, Theory)...",添加列（例如，样本大小，理论）……
+AI Auto-fill Data (Premium),AI自动填充数据（高级版）
+AI Searching...,AI搜索……
+Enter data...,输入数据……
+Paper,论文
+Visualization Tools Directory,可视化工具目录
+"Common software and apps for research visualization, bibliometrics, and data presentation.",研究可视化、文献计量和数据呈现的常用软件和应用程序。
+Add Tool,添加工具
+Add a New Visualization Tool,添加新的可视化工具
+Name,名称
+URL,网址
+What does this tool do? What is it best for?,这个工具是做什么的？它最擅长什么？
+Pricing,定价
+Price Details,价格详情
+"e.g., $10/month, Free tier available...",例如，每月10美元，提供免费等级……
+Free,免费
+Freemium,免费增值
+Paid,付费
+Custom,自定义
+Visit Website,访问网站
+Remove,移除
+Generate Visualization Board,生成可视化板
+Synthesize into Permanent Note,综合到永久笔记
+Push to Research Question Draft,推送到研究问题草稿
+Draft Workspace,草稿工作区
+Pre-Writing Strategies,预写作策略
+Collapse,折叠
+Expand,展开
+Brainstorming,头脑风暴
+Listing,列表
+Clustering,聚类
+Free Writing,自由写作
+Recommended Tools,推荐工具
+New Note,新建笔记
+Save Note,保存笔记
+ Add as Artifact,添加为产件
+Reporting Style:,报告风格：
+Writing Block,写作障碍
+Save as Draft,保存为草稿
+Load Draft,加载草稿
+Writing Drafts,写作草稿
+No writing drafts saved yet. Use "Save as Draft" to create one.,尚未保存任何写作草稿。使用“保存为草稿”创建一个。
+Active,活动
+Insert,插入
+Browse All,浏览全部
+Structure Check,结构检查
+Macro,宏观
+Meso,中观
+Micro,微观
+Macro Level — Overall Structure,宏观层面 — 整体结构
+Meso Level — Toulmin Argumentation,中观层面 — 图尔敏论证模型
+Claim → Data → Warrant → Backing → Qualifier → Rebuttal,主张 → 数据 → 保证 → 支撑 → 限定 → 反驳
+Micro Level — Language & Details,微观层面 — 语言与细节
+Eliminate Basic Errors,消除基本错误
+Improve Readability,提高可读性
+Establish Credibility,建立可信度
+AI Check (Premium),AI检查 （高级版）
+AI Toulmin Check (Premium),AI Toulmin检查 （高级版）
+AI Grammar Check (Premium),AI语法检查 (高级版)
+Checking...,检查中...
+Open Grammarly (Grammar AI Check),打开Grammarly (AI语法检查)
+AI Analysis Result,AI分析结果
+Full Preview,完整预览
+No content written yet. Start writing in the component tabs above.,尚未编写内容。请在上方的组件标签页开始写作。
+Export Markdown,导出Markdown
+Export Word,导出Word
+Back to Reading (Iterate),返回阅读 (迭代)
+Insert into,插入到
+Select an artifact from the left panel to insert here.,从左侧面板选择一个项目在此插入。
+Saved,已保存
+Tool Used (optional):,使用的工具 (可选):
+Upload Result / Document (optional):,上传结果 / 文档 (可选):
+Understand the field,理解领域
+Find key concepts,找到关键概念
+Find theories,找到理论
+Find methods,找到方法
+Find research questions,找到研究问题
+Prepare for literature review,准备文献综述
+Prepare for introduction,准备引言
+Academic Database,学术数据库
+AI Academic Search Engine,AI学术搜索引擎
+Search Engine,搜索引擎
+Manual Search,手动搜索
+Social Platform,社交平台
+RSS Subscription,RSS订阅
+Expert Consultation,专家咨询
+Papers cited by this paper,本论文引用的论文
+Papers that cite this paper,引用本文的论文
+Other works by the same authors,同一作者的其他作品
+Papers on similar topics,主题相似的论文
+Papers using similar methods,使用类似方法的论文
+Search,搜索
+Visual,视觉
+Search artifacts...,搜索产件...
+No artifacts found.,未找到产件。
+highlight,高亮显示
+Auto-identified,自动识别
+Manually added,手动添加
+Reading,阅读
+Queued,排队中
+papers,论文
+version,版本
+versions,版本
+Created,创建
+Step {0} of 6,步骤 {0} 之 6
+Current Step,当前步骤
+Suggested Moves,建议的移动
+Go to Step {0},前往步骤 {0}
+Save and Go to,保存并前往
+Link to Original,链接到原始内容
+Quote to Draft,引用到草稿
+Quoted ?,已引用？
+Reading Goals,阅读目标
+selected,选定
+Topic / Research Area,主题 / 研究领域
+Specific Focus,具体焦点
+Prior Knowledge Level,先前的知识水平
+Goals,目标
+Topic,主题
+Focus,焦点
+Knowledge,知识
+Save and Go to Discover,保存—>发现文献
+Keyword Builder,关键词构建器
+Query,查询
+Relevant,相关性
+Save Record,保存记录
+Candidate Papers,候选论文
+Add Candidate Paper,添加候选论文
+Authors...,作者...
+Journal...,期刊...
+"e.g., Comprehensive review that maps the field...",例如，全面的综述，为领域绘制地图...
+Save and Go to Read,保存并转到阅读
+No candidate papers yet. Add papers from your search results.,还没有候选论文。添加您搜索结果中的论文。
+Select Entry Paper,选择入口论文
+No search records yet. Start by adding your first search.,还没有搜索记录。开始添加您的第一个搜索。
+Citation,引用
+Annotations & Highlights,注释与亮点
+New Annotation,新注释
+Your note about this highlight...,您对此高亮的笔记...
+Add tags...,添加标签...
+Save Annotation,保存注释
+No annotations yet. Start highlighting key passages.,还没有注释。开始高亮显示关键段落。
+New Lit Note,新建文献笔记
+New Perm Note,新建永久笔记
+"Note title (e.g., 'Key finding about SRL gap')",笔记标题（例如：'关于SRL差距的关键发现'）
+Write your literature note here...,在这里写你的文献笔记...
+Auto-citation,自动引用
+Literature Note saved,文献笔记已保存
+"Permanent note title (e.g., 'Core insight: SRL gap')",永久笔记标题（例如：'核心见解：SRL差距'）
+Write your permanent note — synthesize across sources...,在这里写你的永久笔记 —— 跨来源综合分析...
+"Add citation (e.g., Author (Year))...",添加引用（例如：作者（年份））...
+Citations (add multiple sources),引用（添加多个来源）
+Save Permanent Note,保存永久笔记
+No permanent notes yet. Synthesize your literature notes into permanent insights.,还没有永久笔记。将你的文献笔记综合成永久的见解。
+No literature notes yet.,还没有文献笔记。
+Relevance & Value Assessment,相关性与价值评估
+High  Core to my research,高（核心）
+Medium  Useful context,中等（周围）
+Low  Peripheral,低（边缘）
+Add to Compare Queue,加入比较队列
+Expansion Paths from Entry Paper,从入口论文扩展的路径
+Same Author,相同作者
+No papers found. Use "Auto-Identify" or add manually.,未找到论文。使用“自动识别”或手动添加。
+Generate Comparison Table,生成比较表格
+Save and Go to Visualization,保存并转到可视化
+Total Artifacts,总产件数
+Online Hours,在线小时数
+Total Papers,总论文数
+Papers Read,已阅读论文
+Unread,未阅读
+AI Summarize Notes (Premium),AI 摘要笔记（高级版）
+Highlights,高亮文本
+Lit Notes,文献笔记
+Perm Notes,永久笔记
+Add to Visual Artifacts,添加到视觉产件
+Added to Visual,已添加为视觉产件
+"Automatically summarize your literature notes, highlights, and permanent notes. Generate insight notes from patterns found across your materials.",自动总结你的文献笔记、高亮文本和永久笔记。根据你材料中发现的模式生成洞察笔记。
+Generate AI Summary & Insights,生成AI摘要与洞察
+Write your permanent note — synthesize across sources...,编写你的永久笔记 —— 跨来源综合洞察...
+"Add column (e.g., Sample Size, Theory)...",添加列（例如，样本大小，理论）...
+AI Searching...,AI搜索中...
+Enter data...,输入数据...
+"Common software and apps for research visualization, bibliometrics, and data presentation.",用于研究可视化、文献计量和数据展示的常用软件和应用程序。
+What does this tool do? What is it best for?,这个工具是用来做什么的？它最适合什么用途？
+"e.g., $10/month, Free tier available...",例如，每月10美元，提供免费等级...
+Pre-Writing Strategies,写作前策略
+Active,活跃
+Browse All,浏览所有
+Macro,宏
+Macro Level  Overall Structure,宏观层面  总体结构
+Meso Level  Toulmin Argumentation,中观层面  Toulmin论证
+Claim ? Data ? Warrant ? Backing ? Qualifier ? Rebuttal,主张 ? 数据 ? 论证 ? 支撑 ? 限定词 ? 反驳
+Micro Level  Language & Details,微观层面  语言与细节
+Eliminate Basic Errors,消除基础错误
+AI Check (Premium),AI检查（高级版）
+AI Toulmin Check (Premium),AI Toulmin检查（高级版）
+AI Grammar Check (Premium),AI语法检查（高级版）
+Open Grammarly (Grammar AI Check),打开Grammarly（语法AI检查）
+No content written yet. Start writing in the component tabs above.,尚未撰写内容。请在上方组件标签页开始写作。
+Back to Reading (Iterate),返回阅读（迭代）
+Select an artifact from the left panel to insert here.,从左侧面板选择一个产件插入此处。
+New version saved,新版本已保存
+Writing draft saved,草稿写作已保存
+Tool Used (optional):,使用的工具（可选）：
+Other tool...,其他工具...
+Upload Result / Document (optional):,上传结果 / 文档（可选）：
+Generate ideas freely without judgment. Write down every thought related to your research topic. Quantity over quality at this stage.,自由发挥想法，不受评判。记录与你的研究主题相关的每一个想法。在这个阶段，数量比质量更重要。
+Set a timer (10-15 min),设置计时器（10-15分钟）
+No idea is too wild,没有想法是太离谱的
+Build on previous ideas,在之前的想法上进行扩展
+Don't edit or filter yet,现在不要编辑或过滤
+"Create organized lists of key concepts, arguments, evidence, and questions. Group related items together.",创建有序的关键概念、论点、证据和问题列表。将相关项目组合在一起。
+List main arguments,列出主要论点
+List supporting evidence for each,为每个列出支持证据
+List counter-arguments,列出反对论点
+List unanswered questions,列出未解决的问题
+Start with a central concept and branch out to related ideas. Draw connections between clusters to find unexpected relationships.,从中心概念开始，扩展到相关的想法。在集群之间绘制连接，以发现意想不到的关系。
+Put main topic in center,将主要话题放在中心
+Branch to sub-topics,分支到子话题
+Connect related branches,连接相关分支
+Identify gaps between clusters,识别集群之间的空白
+"Write continuously for a set period without stopping. Don't worry about grammar, spelling, or structure. Let your thoughts flow.",连续写作一段设定的时间，不停止。不要担心语法、拼写或结构。让思想流动。
+Write for 10-20 minutes non-stop,连续写作10-20分钟
+Don't delete anything,不要删除任何内容
+Follow tangents freely,自由地跟随偏离主题的想法
+Highlight key insights after,之后突出关键见解
+Dump all your ideas here...,把所有想法都倾倒在这里...
+"- Item 1
+- Item 2
+- Item 3..."," -条目1
+ -条目2
+ -条目3..."
+"Central concept: ...
+  → Branch 1: ...
+  → Branch 2: ...","核心概念：...
+  → 分支1：...
+  → 分支2：..."
+Start writing freely without stopping...,开始自由写作，不要停...
+Admin Activity Audit,管理活动审计
+Total Requests,总请求次数
+Filter by user ID,按用户ID过滤
+Filter by event type,按事件类型过滤
+Filter by action,按操作过滤
+Filter by path (e.g. /api/v1/manuscripts),按路径过滤（例如：/api/v1手稿）
+Filter by resource type,按资源类型过滤
+Cards per page,每页卡片数
+No keywords in this category for current search.,当前搜索中此类别下没有关键词。
+Select for package,选择并打包
+Browse,浏览
+Edit,编辑
+View,查看
+Open in Paper Read,在PDF阅读器中打开
+Create Artifact Package,创建产集
+Package Name,产集名
+e.g. RL Draft Starter Kit,例如 RL 起始套件
+What does this package contain and when should others use it?,这个产集包含什么内容，其他人何时应该使用它？
+DOI or URL (optional),DOI 或 URL（可选）
+"Author 1, Author 2...","作者 1, 作者 2..."
+Add Multiple Entry Papers,添加多个入口文献
+Keyword Name,关键词名称
+Category,分类
+Processing authentication...,处理认证...
+Already in your downloaded packages,已在你的已下载产集中
+Added to My Packages,已添加到我的产集
+Failed to add package,添加产集失败
+Shared packages from the community.,社区共享的产集。
+packages,产集
+Free accounts can add up to 2 community packages to My Packages.,免费账户可以最多添加2个社区产集到我的产集中。
+Upgrade to Premium to unlock Team access and higher package limits.,升级为高级版以解锁团队访问权限和更高的产集限制。
+"Search packages, artifacts, categories...",搜索产集、产件、类别...
+Showing all ${filteredPackages.length} packages,显示所有${filteredPackages.length}个产集
+Page ${currentCardPage}/${totalCardPages} · ${filteredPackages.length} packages,第${currentCardPage}/${totalCardPages}页 · ${filteredPackages.length}个产集
+downloads,下载次数
+Add to My Packages,添加到我的产集中
+No shared packages found.,未找到共享产集。
+Free accounts can add at most 2 packages from Community Packages to My Packages. Upgrade to Premium to add more packages and unlock Team features.,免费账户最多可以将2个社区产集添加到我的产集中。升级为高级版可以添加更多产集并解锁团队功能。
+Maybe later,稍后再试
+Failed to load documents,加载文档失败
+Failed to load recycle bin,加载回收站失败
+Failed to load versions,加载版本失败
+Failed to load shares,加载共享失败
+Please select a user to grant access,请选择要授权的用户
+Access granted,授权成功
+Access revoked,权限被撤销
+Document title is required,文档标题是必须的
+Team document requires a project ID,团队文档需要项目ID
+Document created,文档创建成功
+Moved to recycle bin,已移至回收站
+Failed to delete document,删除文档失败
+Document restored,文档已恢复
+Failed to restore document,恢复文档失败
+Status updated,状态已更新
+File uploaded and version appended,文件上传成功并追加版本
+Download URL is unavailable,下载链接不可用
+Document Center,文档中心
+Create Document,创建文档
+Permission,权限
+Project ID (required for team permission),项目ID（团队权限需要）
+Tags (comma separated),标签（逗号分隔）
+Search Documents,搜索文档
+Search by title/description,按标题/描述搜索
+Status,状态
+All Permissions,所有权限
+Filter by tag,按标签过滤
+Loading documents...,加载文档中...
+Loading recycle bin...,加载回收站中...
+Recycle bin is empty.,回收站为空。
+Version History,版本历史
+Loading versions...,加载版本中...
+No versions yet.,暂无版本。
+Access Sharing,访问共享
+Search user by email/name,按邮箱/姓名搜索用户
+No users matched your query.,没有匹配您查询的用户。
+No active shares.,没有激活的共享。
+Materials Library,材料库
+No notes/concepts found for this project.,未找到此项目的笔记/概念。
+Draft Studio,草稿工作室
+Project-backed writing workspace (no dummy content),项目支持的写作工作区（无虚拟内容）
+Existing Draft Documents,现有草稿文件
+Start writing your draft. Insert notes or concepts from the left panel...,开始撰写您的草稿。从左侧面板插入笔记或概念...
+Define research intent and generate purpose cards that drive your reading decisions.,定义研究意图并生成推动您阅读决策的目的卡片片。
+"Track search logs, keywords, and candidate papers with reusable search strategies.",跟踪检索日志、关键词和候选论文，使用可重用的搜索策略。
+Read & Notes,阅读与笔记
+"Build knowledge assets with PDF reading, highlights, literature notes, and permanent notes.",通过PDF阅读、高亮、文献笔记和永久笔记构建知识资产。
+Expand your pool through citation trails and thematic relations for systematic coverage.,通过引用线索和主题关系扩展您的资源库，以实现系统性覆盖。
+Visualize concept maps and evidence structures to spot meaningful research gaps.,通过概念图和证据结构可视化，以发现有意义的研究空白。
+Convert notes and artifacts into structured writing blocks and paper drafts.,将笔记和产件转换为结构化的写作块和论文草稿。
+"Keep purpose cards, search logs, notes, concepts, and drafts in one place so research artifacts stay connected instead of scattered.",将目的卡片片、检索日志、笔记、概念和草稿放在一个地方，以便研究产件保持连接而不是分散。
+"Bundle high-value artifacts into reusable packages for personal libraries, cross-project reuse, and faster knowledge transfer.",将高价值的产件打产集成可重复使用的产集，用于个人图书馆、跨项目重用和加快知识转移。
+"Explore community-shared packages, learn from other researchers' structured outputs, and import the ones worth building on.",探索社区共享的产集，从其他研究人员的结构化输出中学习，并导入值得构建的产集。
+Invite project members into the same research space instead of splitting evidence across chat threads and documents.,邀请项目成员进入同一个研究空间，而不是将证据分散在聊天线程和文档中。
+"Work from the same papers, artifacts, and workflow context so handoffs are lighter and decisions stay visible.",使用相同的论文、产件和工作流上下文进行工作，以便交接更轻松，决策保持可见。
+"Premium unlocks Team access and higher collaboration limits for advisors, research groups, and co-writing workflows.",高级功能解锁团队访问权限和更高的协作限制，适用于顾问、研究小组和共同写作工作流。
+Up to 1,最多1个
+Multiple projects,多个项目
+Project deletion,项目删除
+Not available,不可用
+Available,可用
+Included,已包含
+Community Packages imports,社区产集导入
+Up to 2 packages,最多2个产集
+Higher limits,更高限额
+Team collaboration,团队协作
+Research Workspace logo,研究工作空间商标
+Research Workspace,研究工作空间
+Structured Academic Reading & Writing,结构化的学术阅读与写作
+bg-slate-900 text-slate-300,bg-slate-900 text-slate-300
+Research Workflow Platform,研究工作流平台
+"From Literature Discovery to First Draft,",从文献发现到初稿
+in One Continuous Workflow,在一个连续的工作流中
+"Built for academic reading and writing: define purpose, discover papers, read deeply, expand evidence, visualize insights, and draft with structure inside each project.",专为学术阅读和写作设计：定义目的，发现论文，深入阅读，扩展证据，可视化洞察，以及在每个项目中用结构化的方式草拟。
+Start Free,免费注册
+Sign In,登录
+Research Artifacts,研究产物
+"Make research artifacts persistent, packageable, and shareable",使研究产件持久化，可打包，可分享
+"Beyond the workflow itself, Research Workspace includes an artifacts layer that turns working outputs into reusable research assets.",除了工作流本身，研究工作空间还包括一个成果层，将工作过程中的产件转变为可重复使用的研究资产。
+"When research is not a solo activity, Team keeps members, papers, artifacts, and writing context inside one shared project space.",当研究不再是单打独斗时，团队将成员、论文、产件和写作上下文都保留在一个共享的项目空间内。
+Free vs Premium,免费版与高级版
+Capability,功能
+Free,免费版
+"Free is enough to experience the workflow and artifacts system. Premium is designed for ongoing research that needs multi-project organization, broader package access, and team collaboration.",免费版足以体验工作流程和产件系统。高级版设计用于需要多项目组织、更广泛产集访问权限和团队协作的持续研究。
+Copyright,版权
+Sisyphus Lynn,西西弗斯·林恩
+Please enter a project title,请输入项目标题
+Project Management,项目管理
+Start Your Workflow with a New Project,用新项目启动你的工作流程
+"Create a project first, then move through Purpose ? Discover ? Read ? Expand ? Visualize ? Draft. All papers, artifacts, notes, and drafts remain project-scoped.",首先创建一个项目，然后按顺序进行目的？发现？阅读？扩展？可视化？草稿。所有的论文、产件、笔记和草稿都将保持在项目范围内。
+Create Project,创建项目
+Project title (required),项目标题（必填）
+Research goal (optional),研究目标（可选）
+Creating...,创建中...
+Create and Enter Step 1,创建并进入步骤1
+Free plan allows only 1 project. Upgrade to Premium.,免费计划仅限1个项目。升级为高级版。
+My Projects,我的项目
+${totalProjects} projects,${totalProjects}个项目
+Loading projects...,加载项目中...
+No projects yet. Create your first research project to begin.,还没有项目。创建你的第一个研究项目开始吧。
+No project goal description,项目目标描述未提供
+Open Workflow,打开工作流
+Members,成员
+Free users can only create 1 project and cannot delete projects. Upgrade to Premium for multi-project creation and deletion.,免费用户只能创建1个项目且不能删除项目。升级为高级版可以创建和删除多个项目。
+Confirm project deletion,确认删除项目
+You are about to delete project "${pendingDeleteProject?.title || ""}". This action cannot be undone.,你即将删除项目
+Loading...,加载中...
+Redirecting to home page...,重定向到主页...
+Created package updated,创建的套餐已更新
+Created package deleted,创建的产集被删除
+Package is now unshared,产集现在是未共享状态
+Removed from downloaded packages,已从下载的产集中移除
+Failed to unpack package,无法解压产集
+Manage your created and downloaded packages,管理您创建和下载的产集
+Search packages...,搜索产集...
+Edit Created Package,编辑创建的产集
+Package Name,产集名称
+Package description,产集描述
+Included Artifacts,包含的产件
+Duplicate Artifacts Detected,检测到重复的产件
+Page not found,页面未找到
+Add tag...,添加标签...
+Loading paper...,加载文献...
+Paper not found,文献未找到
+This page only shows real paper records from your project data.,此页面仅显示来自您项目数据的真实文献记录。
+Paste or type the highlighted text...,粘贴或输入高亮显示的文本...
+Your note about this highlight...,关于此高亮的笔记...
+Color:,颜色:
+"Add tags (e.g., gap, method, key-finding)...",添加标签（例如，差距、方法、关键发现）...
+Connection:,连接:
+"Note title (e.g., 'Key finding about SRL gap')",笔记标题（例如，'关于SRL差距的关键发现'）
+Write your literature note here...,在这里写您的文献笔记...
+"Add tags (e.g., gap, theory, method)...",添加标签（例如，差距，理论，方法）...
+"Permanent note title (e.g., 'Core insight: SRL gap')",永久笔记标题（例如，'核心洞察：SRL差距'）
+Write your permanent note — synthesize across sources...,编写你的永久笔记 —— 跨来源综合信息...
+"Add tags (e.g., synthesis, core-insight)...",添加标签（例如，综合，核心洞察）...
+Failed to load PDF list. Make sure the backend is running.,无法加载PDF列表。请确保后端正在运行。
+Please select a valid PDF file.,请选择有效的PDF文件。
+Failed to delete file.,删除文件失败。
+Download,下载
+Select a file from the list to view it here,从列表中选择一个文件以在此处查看
+This page only shows real paper records from your project data.,此页面仅显示您项目数据中的真实论文记录。
+Select or type highlighted text...,选择或输入高亮显示的文本...
+Color:,颜色：
+Writing note for:,正在为：
+"Write your literature note here. Key takeaways, arguments, evidence...",在此处编写你的文献笔记。关键要点，论点，证据...
+Permanent note title...,永久笔记标题...
+Synthesize your insight across multiple sources...,在多个来源中综合你的见解...
+Subscription approved: ${subscriptionId},订阅已批准: ${subscriptionId}
+Subscription Plans,订阅计划
+"Upgrade to Premium for Team Access, Multi-project Work, and Higher Limits",升级为高级版以获得团队访问权限、多项目工作以及更高的限额
+"Free users can create up to 1 project, cannot delete projects, cannot use Team, and can add at most 2 packages from Community Packages into My Packages. Premium users get Team access, multi-project creation, project deletion, and higher collaboration limits.",免费用户最多可以创建1个项目，不能删除项目，不能使用团队功能，最多可以从社区产集中添加2个产集到我的产集中。高级用户可获得团队访问权限、多项目创建、项目删除以及更高的协作限额。
+Feature Comparison,功能对比
+Capability,能力
+Premium,高级
+Project creation limit,项目创建限制
+Unlimited,无限
+Delete project,删除项目
+Available with confirmation,需要确认后可用
+Team / Project member management,团队/项目成员管理
+Community Packages added to My Packages,添加到我的产集的社区产集
+Higher limit,更高限额
+Priority support,优先支持
+Standard,标准
+Priority,优先级
+PayPal,PayPal
+Subscribe to Premium using PayPal:,使用PayPal订阅高级版：
+Fallback direct subscription link,备用直接订阅链接
+WeChat Pay,微信支付
+Please add wenrenws as a WeChat friend and mention "Premium upgrade".,请添加wenrenws为微信好友，并提及“高级版升级”。
+WeChat contact: wenrenws,微信联系：wenrenws
+Profile Not Found,未找到个人资料
+This profile is private or does not exist.,此个人资料是私有的或者不存在。
+Failed to load projects,项目加载失败
+Failed to load project members,项目成员加载失败
+Please select a project first,请先选择一个项目
+Please select a user,请选择一个用户
+Project member updated,项目成员更新
+Member role updated,成员角色更新
+Member removed,成员已移除
+Premium Only,仅限高级版
+Team is available for Premium users only,团队仅限高级用户使用
+Project Team Management,项目团队管理
+Manage viewer/editor collaboration for manuscript and team-scoped documents.,管理稿件和团队范围内文档的查看者/编辑者协作。
+Add / Update Member,添加/更新成员
+Search user by email/name,按电子邮件/姓名搜索用户
+No users found.,未找到用户。
+viewer,查看者
+editor,编辑者
+"viewer: read-only, editor: can modify manuscript data and team documents.","查看者: 只读, 编辑者: 可以修改手稿数据和团队文档。"
+No explicit members. Project owner always has full access.,没有明确的成员。项目所有者总是拥有完全访问权限。
+Display name is required,显示名称是必需的
+Profile updated,个人资料已更新
+Failed to save profile,保存个人资料失败
+Password must be at least 6 characters,密码至少需要6个字符
+Passwords do not match,密码不匹配
+Password updated,密码已更新
+Failed to update password,更新密码失败
+Type DELETE to confirm,输入DELETE以确认
+Account deletion request processed,账户删除请求已处理
+Failed to delete account,删除账户失败
+Loading profile...,加载个人资料...
+Profile not available.,个人资料不可用。
+Display Name,显示名称
+Email,邮箱
+Bio,个人简介
+Change Password,更改密码
+New password,新密码
+Confirm new password,确认新密码
+Delete Account,删除账户
+Type "DELETE" to confirm,输入
+Visualization Board,可视化看板
+Project-level live analytics (no dummy data),项目级别的实时分析（无虚拟数据）
+Loading project analytics...,加载项目分析...
+No project available. Create a project first.,没有可用的项目。请先创建一个项目。
+Artifacts Snapshot,产件快照
+No reading papers in this project.,此项目中没有论文。
+Draft Page Failed to Load,草稿页面加载失败
+Please copy the error details and logs below so I can keep debugging.,请复制下面的错误详情和日志，以便我可以继续调试。
+Error Message,错误信息
+Log / Stack,日志/栈
+No stack available,没有可用的堆栈
+Workflow auxiliary cache cleared,工作流辅助缓存已清除
+Decision history and local artifact cache have been cleared.,决策历史和本地产件缓存已清除。
+Step ${currentStep}: ${stepMeta.label},步骤 ${currentStep}: ${stepMeta.label}
+Clear Cache,清除缓存
+Next Step,下一步
+Workflow Complete,工作流完成
+Step ${nextStep}: ${nextStepMeta.label},步骤 ${nextStep}: ${nextStepMeta.label}
+You are at the final step.,您已到达最后一步。
+Last Step: Step ${prevStep} ${prevStepMeta.label},最后一步：步骤 ${prevStep} ${prevStepMeta.label}
+Go to Step ${prevStep},前往步骤 ${prevStep}
+Go to Step ${nextStep},前往步骤 ${nextStep}
+Back to Dashboard,返回仪表板
+Research Purpose,研究目的
+Reading purpose,阅读目的
+Purpose Card generated,目的卡片已生成
+Saved to Artifact Center > Purposes,已保存至我的产件 > 目的
+What is your reading purpose?,你的阅读目的是什么？
+Predefined Purposes,预定义的目的
+Add Custom Purpose,添加自定义目的
+Enter a custom reading purpose...,输入一个自定义阅读目的...
+Add Purpose,添加目的
+Added custom purposes will appear in the predefined list on the left.,添加的自定义目的将会出现在左侧的预定义列表中。
+Additional Notes,附加说明
+Describe your specific research interest...,描述你的具体研究兴趣...
+Generate Purpose Card,生成目的卡片
+请先在 Step 1 创建至少一个 Purpose Card,请先在步骤1创建至少一个目的卡片
+请先选择要关联的 Purpose Card,请先选择要关联的目的卡片
+Search string 为空，无法拉取参考文献,搜索字符串为空，无法拉取参考文献
+本次结果全部是重复文献，未新增 candidate papers,本次结果全部是重复文献，未新增候选文献
+更新 Search Log 统计失败,更新检索日志统计失败
+请为该 Search Log 选择关联的 Purpose Card,请为该检索日志选择关联的目的卡片
+请先构建 Boolean Search String,请先构建布尔搜索字符串
+无法删除该 Search Record,无法删除该检索结果
+删除 Search Log 失败,删除检索日志失败
+Search Record 已删除,检索结果已删除
+创建 Search Log 失败,创建检索日志失败
+请先在 Search Log 中创建记录,请先在检索日志中创建记录
+没有可用的 Search Log,没有可用的检索日志
+请选择一个 Search Log,请选择一个检索日志
+保存 Search Log 失败,保存检索日志失败
+未能导入论文，请检查 DOI 链接格式,未能导入论文，请检查 DOI 链接格式
+已从 Artifact Center 移除,已从我的产件移除
+已添加到 Artifact Center,已添加到我的产件
+该论文已在 Entry Papers 中，可在后续环节删除,该论文已在入口文献中，可在后续环节删除
+移动到 Entry Papers 失败,移动到入口文献失败
+Add a keyword...,添加一个关键词...
+Read all others in My Artifacts / Keywords,在我的产件/关键词中阅读所有其他内容
+Build Boolean Search String,构建布尔搜索字符串
+Search keywords from My Artifacts / Keywords:,从我的产件/关键词中搜索关键词:
+Search keywords...,搜索关键词...
+No keyword selected yet,尚未选择关键词
+Matched keywords:,匹配的关键词:
+Boolean connectors:,布尔连接符:
+Boolean Search String,布尔搜索字符串
+"e.g., ""AI tutoring"" AND ""self-regulated learning"" NOT ""K-12""",例如，“AI辅导” AND “自我调节学习” NOT “K-12”
+Enter database name...,输入数据库名称...
+Total Results,总结果
+Associated Purpose Card,相关目的卡片
+Select a purpose card...,选择一个目的卡片...
+Choose a search log or random pull,选择检索日志或随机抽取
+Sort: Title,排序：标题
+Sort: Year,排序：年份
+Sort: Type,排序：类型
+Sort: Relevance,排序：相关性
+via,通过
+DOI Link,DOI 链接
+Open Original Page,打开原文页面
+Mark Relevant,标记为相关
+Entry Paper,入口文献
+To Entry,加为入口文献
+Add a new keyword,添加新关键词
+Concept Name,概念名称
+Enter concept name...,输入概念名称...
+"What does this concept mean in your research context? Add details, definitions, or notes...",在你的研究背景下，这个概念是什么意思？添加细节、定义或注释...
+Associate to Purpose Card,关联到目的卡片片
+Select a purpose card...,选择一个目的卡片片...
+Select...,选择...
+Add Concept,添加概念
+Edit Candidate Paper,编辑候选论文
+Authors (comma separated),作者（逗号分隔）
+Save Changes,保存更改
+Keywords / Concepts,关键词/概念
+Selected:,已选择：
+Associated Purpose Card (optional),关联目的卡片（可选）
+"e.g., ""AI tutoring"" AND ""self-regulated learning"" AND ""higher education""",例如，“AI辅导”和“自我调节学习”和“高等教育”
+"e.g., 234",例如，234
+Relevant Results,相关结果
+"e.g., 18",例如，18
+Edit Search Record,编辑搜索记录
+No purpose cards yet,尚无目的卡片
+Mark Relevance Level,标记相关性级别
+Refresh  Candidate Papers,刷新候选论文
+Choose search log,选择检索日志
+Concept Details,概念详情
+例如：10.1145/1234567 或 https://doi.org/10.xxxx/xxxx,例如：10.1145/1234567 或 https://doi.org/10.xxxx/xxxx
+选择对应的 Search Record...,选择对应的检索记录...
+How did you find this paper? Any additional details...,你是如何找到这篇论文的？任何额外的细节...
+Add Multiple Candidate Papers,添加多个候选论文
+Select a related Search Record...,选择一个相关的搜索记录...
+Importing...,导入中...
+Import All,导入全部
+Set Discovery Path,设置发现路径
+Note,笔记
+Describe how you found this paper...,描述你是如何找到这篇论文的...
+Paste or type the highlighted text...,粘贴或输入高亮文本...
+Your note about this highlight...,你对这个高亮的笔记...
+"Add tags (e.g., gap, method, key-finding)...",添加标签（例如，间隙、方法、关键发现）...
+Link to Original,链接到原文
+Quoted ?,引用了吗？
+No annotations yet. Start highlighting key passages.,尚未有注释。开始标记关键段落。
+"Note title (e.g., 'Key finding about SRL gap')",笔记标题（例如，'关于SRL间隙的关键发现'）
+Write your literature note here...,在这里编写你的文献笔记...
+"Add tags (e.g., gap, theory, method)...",添加标签（例如，间隙、理论、方法）...
+"Permanent note title (e.g., 'Core insight: SRL gap')",永久笔记标题（例如，'核心见解：SRL间隙'）
+"Add tags (e.g., synthesis, core-insight)...",添加标签（例如，综合、核心见解）...
+"Add citation (e.g., Author (Year))...",添加引用（例如，作者（年份））...
+No permanent notes yet. Synthesize your literature notes into permanent insights.,尚未有永久笔记。将你的文献笔记综合成永久见解。
+Failed to load entry papers,加载入口文献失败
+Unable to pull references or citations from OpenAlex for this entry paper. You can still use the DOI/URL pull inside each tab or add records manually.,无法从OpenAlex获取此入口文献的参考文献或引用。您仍然可以使用每个标签内的DOI/URL拉取功能或手动添加记录。
+Please enter a DOI or URL to pull ${direction}.,请输入一个DOI或URL来拉取${direction}。
+Unable to pull ${direction} from OpenAlex with the provided DOI/URL.,无法使用提供的DOI/URL从OpenAlex拉取${direction}。
+Failed to update this paper in expanded papers,更新这篇论文在扩展论文中失败。
+Added to expanded papers,已添加到扩展论文。
+Failed to add this record to expanded papers,添加这条记录到扩展论文失败。
+DOI or URL,DOI或URL
+Provide a DOI or URL to pull references,提供一个DOI或URL来拉取参考文献。
+Provide a DOI or URL to pull citations,提供一个DOI或URL来拉取引用。
+Please choose at least one image file,请选择至少一个图片文件。
+Total Reading Papers,总阅读论文数
+Entry Papers,入口文献
+Expanded Papers,扩展论文
+)}>Title{paperOverviewSortLabel(,论文标题{paperOverviewSortLabel(
+Rows per page,每页显示条数
+Choose one or more local image files to upload into the system,选择一个或多个本地图片文件上传到系统。
+Uploading,正在上传
+No visualization files uploaded yet.,尚未上传可视化文件。
+"Add column (e.g., Sample Size, Theory)...",添加列（例如：样本大小，理论）...
+Tool name...,工具名称...
+URL,URL
+https://...,https://...
+What does this tool do? What is it best for?,这个工具是做什么的？它最适合什么？
+Failed to sync note changes to source note.,同步笔记更改到源笔记失败。
+保存到 Draft Artifact 失败,保存为草稿产件失败
+Upload Result / Document (optional):,上传结果/文档（可选）：
+Active,激活
+Also push this change to source,同时将此更改推送到源
+"Search purposes, keywords, notes, visuals",搜索目的，关键词，笔记，视觉等
+No matching artifacts found,未找到匹配的产件
+to insert first result,插入第一个结果
+Esc,Esc
+to cancel,取消
+From Search Log:,来自检索日志：
+Refresh +10,拉取新的10项
+No saved notes for this paper yet.,本论文尚无保存的笔记。
+No highlights yet. Select text in PDF and click Highlight.,暂无高亮内容。请在PDF中选择文本并点击高亮。
+Expand by Entry Paper,通过入口文献扩展
+Expand by DOI/URL,通过DOI/URL扩展
+Expand Manually,手动扩展
+"Select one entry paper, then pull both references and citations from OpenAlex.",选择一篇入口文献，随后从OpenAlex中提取其参考文献与引文。
+1. Select one entry paper to expand,1. 选择一篇入口文献开始扩展
+2. Pulled Expansion Results,2. 拉取扩展到的结果
+Citations,引文
+Selected,已选中
+Pull from OpenAlex,从OpenAlex拉取
+No records yet. Pull from OpenAlex or add manually.,尚无记录。请从 OpenAlex 获取数据，或手动添加。
+Use a DOI or URL as the seed source when you do not want to start from an existing entry paper.,当您不希望从现有入口文献开始时，请使用DOI或URL作为种子来源。
+Paper Overview,论文概览
+Upload Visualizations,上传可视化图表
+Synthesis Tables,数据合成表
+Processing Time,处理时间
+All your research outputs in one place,将所有研究产物集中于一处
+All ,全部
+Purposes,目的
+Searches,检索
+Literature,文献
+Visuals,视觉
+Keyword Set,关键词
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,
+,

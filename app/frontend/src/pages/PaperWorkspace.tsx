@@ -38,7 +38,7 @@ function TagInput({
 }) {
   const { lang } = useI18n();
   const isZh = lang === "zh";
-  const resolvedPlaceholder = placeholder || (isZh ? "添加标签..." : "Add tag...");
+  const resolvedPlaceholder = placeholder || (isZh ? "添加标签..." : isZh ? "添加标签..." : "Add tag...");
   const [input, setInput] = useState("");
 
   const addTag = () => {
@@ -421,13 +421,13 @@ export default function PaperWorkspace() {
                 <Input
                   value={newAnnText}
                   onChange={(e) => setNewAnnText(e.target.value)}
-                  placeholder={isZh ? "粘贴或输入高亮显示的文本..." : "Paste or type the highlighted text..."}
+                  placeholder={isZh ? "粘贴或输入高亮显示的文本..." : isZh ? "粘贴或输入高亮文本..." : "Paste or type the highlighted text..."}
                   className="text-xs"
                 />
                 <Textarea
                   value={newAnnNote}
                   onChange={(e) => setNewAnnNote(e.target.value)}
-                  placeholder={isZh ? "关于此高亮的笔记..." : "Your note about this highlight..."}
+                  placeholder={isZh ? "关于此高亮的笔记..." : isZh ? "你对这个高亮的笔记..." : "Your note about this highlight..."}
                   rows={2}
                   className="text-xs"
                 />
@@ -451,7 +451,7 @@ export default function PaperWorkspace() {
                 <TagInput
                   tags={newAnnTags}
                   onTagsChange={setNewAnnTags}
-                  placeholder={isZh ? "添加标签（例如，差距、方法、关键发现）..." : "Add tags (e.g., gap, method, key-finding)..."}
+                  placeholder={isZh ? "添加标签（例如，差距、方法、关键发现）..." : isZh ? "添加标签（例如，间隙、方法、关键发现）..." : "Add tags (e.g., gap, method, key-finding)..."}
                 />
                 <div className="flex gap-1.5">
                   <Button
@@ -590,20 +590,20 @@ export default function PaperWorkspace() {
                 <Input
                   value={newLitTitle}
                   onChange={(e) => setNewLitTitle(e.target.value)}
-                  placeholder={isZh ? "笔记标题（例如，'关于SRL差距的关键发现'）" : "Note title (e.g., 'Key finding about SRL gap')"}
+                  placeholder={isZh ? "笔记标题（例如，'关于SRL差距的关键发现'）" : isZh ? "笔记标题（例如，'关于SRL间隙的关键发现'）" : "Note title (e.g., 'Key finding about SRL gap')"}
                   className="text-sm"
                 />
                 <Textarea
                   value={newLitContent}
                   onChange={(e) => setNewLitContent(e.target.value)}
                   rows={5}
-                  placeholder={isZh ? "在这里写您的文献笔记..." : "Write your literature note here..."}
+                  placeholder={isZh ? "在这里写您的文献笔记..." : isZh ? "在这里编写你的文献笔记..." : "Write your literature note here..."}
                   className="text-sm font-mono"
                 />
                 <TagInput
                   tags={newLitTags}
                   onTagsChange={setNewLitTags}
-                  placeholder={isZh ? "添加标签（例如，差距，理论，方法）..." : "Add tags (e.g., gap, theory, method)..."}
+                  placeholder={isZh ? "添加标签（例如，差距，理论，方法）..." : isZh ? "添加标签（例如，间隙、理论、方法）..." : "Add tags (e.g., gap, theory, method)..."}
                 />
                 <div className="flex gap-1.5">
                   <Button
@@ -722,7 +722,7 @@ export default function PaperWorkspace() {
                 <Input
                   value={newPermTitle}
                   onChange={(e) => setNewPermTitle(e.target.value)}
-                  placeholder={isZh ? "永久笔记标题（例如，'核心洞察：SRL差距'）" : "Permanent note title (e.g., 'Core insight: SRL gap')"}
+                  placeholder={isZh ? "永久笔记标题（例如，'核心洞察：SRL差距'）" : isZh ? "永久笔记标题（例如，'核心见解：SRL间隙'）" : "Permanent note title (e.g., 'Core insight: SRL gap')"}
                   className="text-sm"
                 />
                 <Textarea
@@ -735,7 +735,7 @@ export default function PaperWorkspace() {
                 <TagInput
                   tags={newPermTags}
                   onTagsChange={setNewPermTags}
-                  placeholder={isZh ? "添加标签（例如，综合，核心洞察）..." : "Add tags (e.g., synthesis, core-insight)..."}
+                  placeholder={isZh ? "添加标签（例如，综合，核心洞察）..." : isZh ? "添加标签（例如，综合、核心见解）..." : "Add tags (e.g., synthesis, core-insight)..."}
                 />
                 <div className="flex gap-1.5">
                   <Button

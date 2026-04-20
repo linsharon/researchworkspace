@@ -69,7 +69,7 @@ function UnauthenticatedLanding() {
     },
     {
       icon: Network,
-      title: isZh ? "扩展" : "Expand",
+      title: isZh ? "展开" : "Expand",
       desc: isZh
         ? "通过引用线索和主题关系扩展您的资源库，以实现系统性覆盖。"
         : "Expand your pool through citation trails and thematic relations for systematic coverage.",
@@ -159,7 +159,7 @@ function UnauthenticatedLanding() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-cyan-500/20 border border-cyan-300/30 flex items-center justify-center">
-              <img src={BRAND_FAVICON_URL} alt={isZh ? "研究工作空间商标" : "Research Workspace logo"} className="h-5 w-5" />
+              <img src={BRAND_FAVICON_URL} alt={isZh ? "研究工作空间商标" : isZh ? "研究工作空间商标" : "Research Workspace logo"} className="h-5 w-5" />
             </div>
             <div>
               <p className="text-sm font-semibold text-slate-100">{isZh ? "研究工作空间" : "Research Workspace"}</p>
@@ -248,11 +248,11 @@ function UnauthenticatedLanding() {
               {isZh ? "研究产物" : "Research Artifacts"}
             </Badge>
             <h2 className="mt-4 text-2xl md:text-3xl font-bold text-slate-100">
-              {isZh ? "使研究成果持久化，可打包，可分享" : "Make research artifacts persistent, packageable, and shareable"}
+              {isZh ? "使研究产件持久化，可打包，可分享" : "Make research artifacts persistent, packageable, and shareable"}
             </h2>
             <p className="mt-3 text-slate-300 text-sm md:text-base max-w-2xl leading-relaxed">
               {isZh
-                ? "除了工作流本身，研究工作空间还包括一个成果层，将工作过程中的产物转变为可重复使用的研究资产。"
+                ? "除了工作流本身，研究工作空间还包括一个成果层，将工作过程中的产件转变为可重复使用的研究资产。"
                 : "Beyond the workflow itself, Research Workspace includes an artifacts layer that turns working outputs into reusable research assets."}
             </p>
           </div>
@@ -317,9 +317,9 @@ function UnauthenticatedLanding() {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="border-b border-slate-700/60 text-left">
-                      <th className="px-2 py-2 text-slate-400">{isZh ? "功能" : "Capability"}</th>
+                      <th className="px-2 py-2 text-slate-400">{isZh ? "能力" : "Capability"}</th>
                       <th className="px-2 py-2 text-slate-300">{isZh ? "免费版" : "Free"}</th>
-                      <th className="px-2 py-2 text-amber-300">{isZh ? "高级版" : "Premium"}</th>
+                      <th className="px-2 py-2 text-amber-300">{isZh ? "高级" : "Premium"}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -591,7 +591,7 @@ function AuthenticatedLanding() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="border-slate-600 text-slate-200">
-              {isZh ? "稍后再说" : "Maybe later"}
+              {isZh ? "稍后再试" : "Maybe later"}
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-cyan-500 hover:bg-cyan-400 text-slate-900"

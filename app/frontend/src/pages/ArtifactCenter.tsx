@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Archive,
+  CheckCircle2,
   Clock,
   Trash2,
   Edit,
@@ -33,6 +34,7 @@ import {
   ChevronDown,
   Plus,
   Sparkles,
+  Upload,
 } from "lucide-react";
 import {
   DUMMY_ARTIFACTS,
@@ -58,6 +60,16 @@ const STATIC_ARTIFACTS = DUMMY_ARTIFACTS.filter(
 
 function formatArtifactDate(value: string) {
   return value.includes("T") ? value.split("T")[0] : value;
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  if (bytes >= 1024) {
+    return `${Math.round(bytes / 1024)} KB`;
+  }
+  return `${bytes} B`;
 }
 
 function noteToArtifact(note: Note): Artifact {
@@ -283,6 +295,24 @@ export default function ArtifactCenter() {
   const [doiFetchError, setDoiFetchError] = useState<string | null>(null);
   const [bulkDoiInput, setBulkDoiInput] = useState("");
   const [bulkImporting, setBulkImporting] = useState(false);
+  const visualUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<
+    Array<{
+      id: string;
+      name: string;
+      size: string;
+      date: string;
+      uploading?: boolean;
+      progress?: number;
+      failed?: boolean;
+      errorMessage?: string;
+      addedToVisual?: boolean;
+      artifactId?: string;
+      bucketName?: string;
+      storageKey?: string;
+    }>
+  >([]);
+  const failedUploadFilesRef = useRef<Map<string, File>>(new Map());
 
   const DISCOVERY_PATH_OPTIONS = [
     "Academic Database",
@@ -318,6 +348,218 @@ export default function ArtifactCenter() {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(artifactsToSave));
     window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+  };
+
+  const persistVisualArtifact = (payload: {
+    fileName: string;
+    fileSize: number;
+    bucketName: string;
+    objectKey: string;
+    accessUrl?: string;
+  }) => {
+    const artifactId = `visual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const artifact: Artifact = {
+      id: artifactId,
+      title: payload.fileName,
+      type: "visualization",
+      projectId: projectIdFromUrl,
+      sourceStep: 5,
+      description: `Uploaded visualization image (${formatFileSize(payload.fileSize)})`,
+      updatedAt: new Date().toISOString().split("T")[0],
+      content: JSON.stringify({
+        kind: "visualization-upload",
+        fileName: payload.fileName,
+        bucketName: payload.bucketName,
+        objectKey: payload.objectKey,
+        accessUrl: payload.accessUrl || "",
+      }),
+    };
+
+    const localArtifacts = loadLocalArtifacts();
+    saveLocalArtifacts([...localArtifacts, artifact]);
+    setArtifacts((prev) => Array.from(new Map([...prev, artifact].map((item) => [item.id, item])).values()));
+    return artifact;
+  };
+
+  const requestUploadUrl = async (bucketName: string, objectKey: string) => {
+    const token = getAuthToken();
+    const baseURL = getAPIBaseURL() || "";
+    const response = await fetch(`${baseURL}/api/v1/storage/upload-url`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        bucket_name: bucketName,
+        object_key: objectKey,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to request upload URL");
+    }
+
+    return (await response.json()) as { upload_url?: string };
+  };
+
+  const uploadToPresignedUrlWithProgress = (
+    uploadUrl: string,
+    file: File,
+    onProgress: (percent: number) => void
+  ) =>
+    new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl, true);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+        onProgress(percent);
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress(100);
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(file);
+    });
+
+  const uploadVisualizationFile = async (rowId: string, file: File) => {
+    if (!projectIdFromUrl) {
+      throw new Error("Project ID is required to upload visuals");
+    }
+
+    const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, "-");
+    const objectKey = `visualizations/${projectIdFromUrl}/${Date.now()}-${safeName}`;
+    const bucketName = `rw-visuals-${projectIdFromUrl.replace(/[^a-z0-9]/gi, "-").toLowerCase()}`;
+    const presign = await requestUploadUrl(bucketName, objectKey);
+
+    if (!presign.upload_url) {
+      throw new Error("Upload URL missing from server response");
+    }
+
+    await uploadToPresignedUrlWithProgress(presign.upload_url, file, (percent) => {
+      setUploadedFiles((prev) =>
+        prev.map((item) =>
+          item.id === rowId ? { ...item, progress: percent, uploading: percent < 100 } : item
+        )
+      );
+    });
+
+    const artifact = persistVisualArtifact({
+      fileName: file.name,
+      fileSize: file.size,
+      bucketName,
+      objectKey,
+    });
+
+    setUploadedFiles((prev) =>
+      prev.map((item) =>
+        item.id === rowId
+          ? {
+              ...item,
+              uploading: false,
+              progress: 100,
+              failed: false,
+              errorMessage: "",
+              addedToVisual: true,
+              artifactId: artifact.id,
+              bucketName,
+              storageKey: objectKey,
+            }
+          : item
+      )
+    );
+    failedUploadFilesRef.current.delete(rowId);
+  };
+
+  const handleVisualUploadChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const fileList = event.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const images = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
+    if (images.length === 0) {
+      toast.error(isZh ? "请选择至少一个图片文件。" : "Please choose at least one image file");
+      event.target.value = "";
+      return;
+    }
+
+    let successCount = 0;
+    for (const image of images) {
+      const rowId = `upload-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      setUploadedFiles((prev) => [
+        ...prev,
+        {
+          id: rowId,
+          name: image.name,
+          size: formatFileSize(image.size),
+          date: new Date().toISOString().split("T")[0],
+          uploading: true,
+          progress: 0,
+          failed: false,
+          addedToVisual: false,
+        },
+      ]);
+
+      try {
+        await uploadVisualizationFile(rowId, image);
+        successCount += 1;
+      } catch (error) {
+        failedUploadFilesRef.current.set(rowId, image);
+        setUploadedFiles((prev) =>
+          prev.map((item) =>
+            item.id === rowId
+              ? { ...item, uploading: false, failed: true, errorMessage: "Upload failed. Please retry." }
+              : item
+          )
+        );
+        console.error("Failed to upload visualization:", error);
+        toast.error(isZh ? `上传失败：${image.name}` : `Upload failed: ${image.name}`);
+      }
+    }
+
+    if (successCount > 0) {
+      toast.success(
+        isZh
+          ? `已上传 ${successCount} 个可视化文件`
+          : `Uploaded ${successCount} visualization file${successCount > 1 ? "s" : ""}`
+      );
+    }
+    event.target.value = "";
+  };
+
+  const handleRetryVisualUpload = async (rowId: string) => {
+    const file = failedUploadFilesRef.current.get(rowId);
+    if (!file) return;
+
+    setUploadedFiles((prev) =>
+      prev.map((item) =>
+        item.id === rowId ? { ...item, uploading: true, failed: false, errorMessage: "", progress: 0 } : item
+      )
+    );
+
+    try {
+      await uploadVisualizationFile(rowId, file);
+      toast.success(isZh ? `上传成功：${file.name}` : `Upload succeeded: ${file.name}`);
+    } catch (error) {
+      setUploadedFiles((prev) =>
+        prev.map((item) =>
+          item.id === rowId
+            ? { ...item, uploading: false, failed: true, errorMessage: "Upload failed. Please retry." }
+            : item
+        )
+      );
+      console.error("Failed to retry visualization upload:", error);
+      toast.error(isZh ? `重试失败：${file.name}` : `Retry failed: ${file.name}`);
+    }
   };
 
   const loadPackages = (): ArtifactPackage[] => {
@@ -738,9 +980,9 @@ export default function ArtifactCenter() {
       });
       setShowAddPaperDialog(false);
       resetAddPaperForm();
-      toast.success(isZh ? "入口文献已添加" : "Entry paper added");
+      toast.success(isZh ? "入口文献已添加" : isZh ? "入口文献已添加" : "Entry paper added");
     } catch {
-      toast.error(isZh ? "添加入口文献失败" : "Failed to add entry paper");
+      toast.error(isZh ? "添加入口文献失败" : isZh ? "添加入口文献失败" : "Failed to add entry paper");
     }
   };
 
@@ -1068,9 +1310,6 @@ export default function ArtifactCenter() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {filter === "concepts" ? `${visibleConcepts.length} keywords` : `${filteredArtifacts.length} artifacts`}
-            </Badge>
             <Button
               size="sm"
               variant={packMode ? "default" : "outline"}
@@ -1184,31 +1423,6 @@ export default function ArtifactCenter() {
                 {opt.label} ({getFilterCount(opt.value)})
               </Button>
             ))}
-            {filter === "literature" && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs"
-                    disabled={!projectIdFromUrl}
-                    title={projectIdFromUrl ? "Add paper to current project" : "Open a specific project to add papers"}
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    Add Paper
-                    <ChevronDown className="w-3.5 h-3.5 ml-1" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuItem onClick={() => setShowAddPaperDialog(true)}>
-                    Add One
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowAddMultiplePaperDialog(true)}>
-                    Add Multiple
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
           </div>
         </div>
 
@@ -1247,6 +1461,103 @@ export default function ArtifactCenter() {
             ) : null}
           </div>
         </div>
+
+        {(filter === "literature" || filter === "visual") && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-end">
+            {filter === "literature" ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    disabled={!projectIdFromUrl}
+                    title={projectIdFromUrl ? "Add paper to current project" : "Open a specific project to add papers"}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Add Paper
+                    <ChevronDown className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuItem onClick={() => setShowAddPaperDialog(true)}>
+                    Add One
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowAddMultiplePaperDialog(true)}>
+                    Add Multiple
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <input
+                  ref={visualUploadInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleVisualUploadChange}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs"
+                  disabled={!projectIdFromUrl}
+                  title={projectIdFromUrl ? "Upload visual files to current project" : "Open a specific project to upload visuals"}
+                  onClick={() => visualUploadInputRef.current?.click()}
+                >
+                  <Upload className="w-3.5 h-3.5 mr-1" />
+                  Upload File
+                </Button>
+              </>
+            )}
+            </div>
+            {filter === "visual" && uploadedFiles.length > 0 ? (
+              <div className="space-y-2 rounded-lg border border-slate-700/50 bg-slate-800/20 p-3">
+                {uploadedFiles.map((file) => (
+                  <div key={file.id} className="flex items-center gap-3 rounded-lg bg-slate-800/40 p-2">
+                    <Archive className="h-4 w-4 shrink-0 text-slate-400" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-medium text-slate-200">{file.name}</p>
+                      <p className="text-[10px] text-slate-400">{file.size} · {file.date}</p>
+                      {file.uploading ? (
+                        <div className="mt-1">
+                          <div className="h-1.5 w-full overflow-hidden rounded bg-slate-700/60">
+                            <div className="h-full bg-cyan-500 transition-all" style={{ width: `${file.progress || 0}%` }} />
+                          </div>
+                          <p className="mt-0.5 text-[10px] text-cyan-300">{isZh ? "上传中..." : "Uploading..."} {file.progress || 0}%</p>
+                        </div>
+                      ) : null}
+                      {file.failed ? (
+                        <p className="mt-0.5 text-[10px] text-red-400">{file.errorMessage || "Upload failed"}</p>
+                      ) : null}
+                    </div>
+                    <div className="shrink-0">
+                      {file.uploading ? (
+                        <Badge className="border-cyan-200 bg-cyan-100 text-[9px] text-cyan-700">{isZh ? "正在上传" : "Uploading"}</Badge>
+                      ) : file.failed ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 border-red-300 px-2 text-[10px] text-red-600 hover:bg-red-50"
+                          onClick={() => void handleRetryVisualUpload(file.id)}
+                        >
+                          Retry
+                        </Button>
+                      ) : file.addedToVisual ? (
+                        <Badge className="border-emerald-200 bg-emerald-100 text-[9px] text-emerald-700">
+                          <CheckCircle2 className="mr-0.5 h-2.5 w-2.5" />
+                          {isZh ? "已保存到 Visuals" : "Saved to Visuals"}
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        )}
 
         {/* Artifact/Concept Grid */}
         {filter === "concepts" ? (
@@ -1339,7 +1650,7 @@ export default function ArtifactCenter() {
                                       type="button"
                                       className="text-cyan-400"
                                       onClick={() => togglePackSelect(conceptPackToken(concept.id))}
-                                      title={isZh ? "选择并打包" : "Select for package"}
+                                      title={isZh ? "选择并打包" : isZh ? "选择并打包" : "Select for package"}
                                     >
                                       {selectedForPack.has(conceptPackToken(concept.id))
                                         ? <CheckSquare className="w-4 h-4" />
@@ -1371,7 +1682,7 @@ export default function ArtifactCenter() {
                                   size="sm"
                                   variant="outline"
                                   className="h-7 w-7 p-0"
-                                  title={isZh ? "浏览" : "Browse"}
+                                  title={isZh ? "浏览" : isZh ? "浏览" : "Browse"}
                                   onClick={() => openConceptDialog(concept.id, "view")}
                                 >
                                   <Eye className="w-3 h-3" />
@@ -1380,7 +1691,7 @@ export default function ArtifactCenter() {
                                   size="sm"
                                   variant="outline"
                                   className="h-7 w-7 p-0"
-                                  title={isZh ? "编辑" : "Edit"}
+                                  title={isZh ? "编辑" : isZh ? "编辑" : isZh ? "编辑" : isZh ? "编辑" : "Edit"}
                                   onClick={() => openConceptDialog(concept.id, "edit")}
                                 >
                                   <Edit className="w-3 h-3" />
@@ -1389,7 +1700,7 @@ export default function ArtifactCenter() {
                                   size="sm"
                                   variant="outline"
                                   className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
-                                  title={isZh ? "删除" : "Delete"}
+                                  title={isZh ? "删除" : isZh ? "删除" : isZh ? "删除" : isZh ? "删除" : "Delete"}
                                   onClick={() => handleDeleteConcept(concept.id)}
                                 >
                                   <Trash2 className="w-3 h-3" />
@@ -1544,7 +1855,7 @@ export default function ArtifactCenter() {
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
-                          title={isZh ? "查看" : "View"}
+                          title={isZh ? "查看" : isZh ? "查看" : isZh ? "查看" : "View"}
                         >
                           <Eye className="w-3 h-3" />
                         </Button>
@@ -1563,7 +1874,7 @@ export default function ArtifactCenter() {
                             size="sm"
                             variant="ghost"
                             className="h-6 w-6 p-0"
-                            title={isZh ? "在PDF阅读器中打开" : "Open in Paper Read"}
+                            title={isZh ? "在PDF阅读器中打开" : isZh ? "在PDF阅读器中打开" : "Open in Paper Read"}
                             onClick={(e) => {
                               e.stopPropagation();
                               void handleOpenArtifactSource(artifact);
@@ -1687,7 +1998,7 @@ export default function ArtifactCenter() {
                 <Input
                   value={packName}
                   onChange={(e) => setPackName(e.target.value)}
-                  placeholder={isZh ? "例如 RL 起始套件" : "e.g. RL Draft Starter Kit"}
+                  placeholder={isZh ? "例如 RL 起始套件" : isZh ? "例如 RL 起始套件" : "e.g. RL Draft Starter Kit"}
                   className="text-sm"
                 />
               </div>
@@ -1696,7 +2007,7 @@ export default function ArtifactCenter() {
                 <Textarea
                   value={packDescription}
                   onChange={(e) => setPackDescription(e.target.value)}
-                  placeholder={isZh ? "这个产集包含什么内容，其他人何时应该使用它？" : "What does this package contain and when should others use it?"}
+                  placeholder={isZh ? "这个产集包含什么内容，其他人何时应该使用它？" : isZh ? "这个产集包含什么内容，其他人何时应该使用它？" : "What does this package contain and when should others use it?"}
                   className="text-sm min-h-[90px]"
                 />
               </div>
@@ -1737,7 +2048,7 @@ export default function ArtifactCenter() {
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">{isZh ? "DOI 或 URL（可选）" : "DOI or URL (optional)"}</label>
                 <div className="flex gap-2">
-                  <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder={isZh ? "https://doi.org/..." : "https://doi.org/..."} className="text-sm" />
+                  <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder={isZh ? isZh ? "https://doi.org/..." : "https://doi.org/..." : "https://doi.org/..."} className="text-sm" />
                   <Button type="button" variant="outline" className="text-xs" disabled={doiFetching || !newPaperDoiUrl.trim()} onClick={() => void handleFetchByDoiUrl()}>
                     <Sparkles className="w-3 h-3 mr-1" />
                     {doiFetching ? "Fetching..." : "Auto-fill"}
@@ -1747,11 +2058,11 @@ export default function ArtifactCenter() {
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">{isZh ? "标题" : "Title"}</label>
-                <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder={isZh ? "论文标题..." : "Paper title..."} className="text-sm" />
+                <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder={isZh ? "论文标题..." : isZh ? "论文标题..." : "Paper title..."} className="text-sm" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">{isZh ? "作者（逗号分隔）" : "Authors (comma-separated)"}</label>
-                <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={isZh ? "作者 1, 作者 2..." : "Author 1, Author 2..."} className="text-sm" />
+                <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={isZh ? "作者 1, 作者 2..." : isZh ? "作者 1, 作者 2..." : "Author 1, Author 2..."} className="text-sm" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -1760,7 +2071,7 @@ export default function ArtifactCenter() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-slate-600">{isZh ? "期刊" : "Journal"}</label>
-                  <Input value={newPaperJournal} onChange={(e) => setNewPaperJournal(e.target.value)} placeholder={isZh ? "期刊名称..." : "Journal name..."} className="text-sm" />
+                  <Input value={newPaperJournal} onChange={(e) => setNewPaperJournal(e.target.value)} placeholder={isZh ? "期刊名称..." : isZh ? "期刊名称..." : "Journal name..."} className="text-sm" />
                 </div>
               </div>
               <div className="space-y-1">
@@ -1790,7 +2101,7 @@ export default function ArtifactCenter() {
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">{isZh ? "发现笔记" : "Discovery Note"}</label>
-                <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} rows={2} placeholder={isZh ? "你是如何找到这篇论文的？" : "How did you find this paper?"} className="text-xs" />
+                <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} rows={2} placeholder={isZh ? "你是如何找到这篇论文的？" : isZh ? "你是如何找到这篇论文的？" : "How did you find this paper?"} className="text-xs" />
               </div>
               <div className="flex gap-2 pt-2">
                 <Button className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs" onClick={() => void handleAddEntryPaper()}>

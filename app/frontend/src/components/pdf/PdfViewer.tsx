@@ -177,7 +177,7 @@ export default function PdfViewer({
 }: PdfViewerProps) {
   const { lang } = useI18n();
   const isZh = lang === "zh";
-  const resolvedTitle = title || (isZh ? "PDF阅读器" : "PDF Viewer");
+  const resolvedTitle = title || (isZh ? "PDF阅读器" : isZh ? "PDF阅读器" : "PDF Viewer");
 
   const CONCEPT_COLORS = [
     { value: "#22d3ee", label: "Cyan" },
@@ -470,12 +470,12 @@ export default function PdfViewer({
         setHighlightsForBands((prev) => [...prev, savedHighlight]);
         onHighlightCreated?.(savedHighlight);
         window.dispatchEvent(new CustomEvent(HIGHLIGHTS_UPDATED_EVENT));
-        toast.success(isZh ? "高亮保存" : "Highlight saved", {
+        toast.success(isZh ? "高亮保存" : isZh ? "高亮保存" : "Highlight saved", {
           description: "Added to Highlights tab.",
         });
       } catch (error) {
         console.error("Failed to save highlight:", error);
-        toast.error(isZh ? "保存失败" : "Save failed", {
+        toast.error(isZh ? "保存失败" : isZh ? "保存失败" : "Save failed", {
           description: "Unable to save this highlight.",
         });
       }
@@ -667,7 +667,7 @@ export default function PdfViewer({
       window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify([...globalConcepts, conceptItem]));
       window.localStorage.setItem(`rw-concepts-${projectId}`, JSON.stringify([...projectConcepts, conceptItem]));
       window.dispatchEvent(new CustomEvent(CONCEPTS_UPDATED_EVENT));
-      toast.success(isZh ? "关键词已保存" : "Keyword saved", {
+      toast.success(isZh ? "关键词已保存" : isZh ? "关键词已保存" : "Keyword saved", {
         description: "Added to Artifact Center keywords.",
       });
     }
@@ -1184,7 +1184,7 @@ export default function PdfViewer({
               <Input
                 value={conceptTitle}
                 onChange={event => setConceptTitle(event.target.value)}
-                placeholder={isZh ? "输入关键词名称..." : "Enter keyword name..."}
+                placeholder={isZh ? "输入关键词名称..." : isZh ? "输入关键词名称..." : "Enter keyword name..."}
                 className="text-sm"
                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void handleSaveConcept(); } }}
               />
@@ -1195,7 +1195,7 @@ export default function PdfViewer({
               <Textarea
                 value={conceptDescription}
                 onChange={event => setConceptDescription(event.target.value)}
-                placeholder={isZh ? "在您的研究语境中，这个关键词是什么意思？添加细节、定义或注释..." : "What does this keyword mean in your research context? Add details, definitions, or notes..."}
+                placeholder={isZh ? "在您的研究语境中，这个关键词是什么意思？添加细节、定义或注释..." : isZh ? "在您的研究语境中，这个关键词是什么意思？添加细节、定义或注释..." : "What does this keyword mean in your research context? Add details, definitions, or notes..."}
                 rows={3}
                 className="text-sm resize-none"
               />

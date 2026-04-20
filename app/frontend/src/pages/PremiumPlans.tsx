@@ -96,14 +96,14 @@ export default function PremiumPlans() {
       <div className="mx-auto max-w-6xl p-6 space-y-6">
         <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-[#10243a] via-[#153149] to-[#112c3c] p-6">
           <Badge className="bg-cyan-500/20 text-cyan-100 border-cyan-300/30">
-            {isZh ? "订阅方案" : "Subscription Plans"}
+            {isZh ? "订阅计划" : "Subscription Plans"}
           </Badge>
           <h1 className="text-3xl font-bold text-slate-100 mt-3">
-            {isZh ? "升级 Premium，解锁 Team 协作、多项目与更高资源额度" : "Upgrade to Premium for Team Access, Multi-project Work, and Higher Limits"}
+            {isZh ? "升级为高级版以获得团队访问权限、多项目工作以及更高的限额" : "Upgrade to Premium for Team Access, Multi-project Work, and Higher Limits"}
           </h1>
           <p className="text-sm text-slate-300 mt-2 max-w-3xl">
             {isZh
-              ? "Free 用户最多创建 1 个项目，不能删除项目，不能使用 Team，并且从 Community Packages 最多只能添加 2 个产物集到我的产物集。Premium 用户可使用 Team、创建多个项目、删除项目，并拥有更高的协作与资源额度。"
+              ? "免费用户最多可以创建1个项目，不能删除项目，不能使用团队功能，最多可以从社区产集中添加2个产集到我的产集中。高级用户可获得团队访问权限、多项目创建、项目删除以及更高的协作限额。"
               : "Free users can create up to 1 project, cannot delete projects, cannot use Team, and can add at most 2 packages from Community Packages into My Packages. Premium users get Team access, multi-project creation, project deletion, and higher collaboration limits."}
           </p>
         </div>
@@ -118,35 +118,35 @@ export default function PremiumPlans() {
                 <thead>
                   <tr className="text-left border-b border-slate-700/60">
                     <th className="px-3 py-2 text-slate-300">{isZh ? "能力" : "Capability"}</th>
-                    <th className="px-3 py-2 text-slate-300">Free</th>
-                    <th className="px-3 py-2 text-amber-300">Premium</th>
+                    <th className="px-3 py-2 text-slate-300">{isZh ? "免费版" : "Free"}</th>
+                    <th className="px-3 py-2 text-amber-300">{isZh ? "高级" : "Premium"}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="border-b border-slate-800/80">
-                    <td className="px-3 py-2 text-slate-300">{isZh ? "可创建项目数量" : "Project creation limit"}</td>
+                    <td className="px-3 py-2 text-slate-300">{isZh ? "项目创建限制" : "Project creation limit"}</td>
                     <td className="px-3 py-2 text-slate-400">1</td>
-                    <td className="px-3 py-2 text-slate-100">{isZh ? "无限（建议按研究主题管理）" : "Unlimited"}</td>
+                    <td className="px-3 py-2 text-slate-100">{isZh ? "无限" : "Unlimited"}</td>
                   </tr>
                   <tr className="border-b border-slate-800/80">
                     <td className="px-3 py-2 text-slate-300">{isZh ? "删除项目" : "Delete project"}</td>
-                    <td className="px-3 py-2 text-rose-300">{isZh ? "不支持" : "Not available"}</td>
-                    <td className="px-3 py-2 text-emerald-300">{isZh ? "支持（需二次确认）" : "Available with confirmation"}</td>
+                    <td className="px-3 py-2 text-rose-300">{isZh ? "不可用" : "Not available"}</td>
+                    <td className="px-3 py-2 text-emerald-300">{isZh ? "需要确认后可用" : "Available with confirmation"}</td>
                   </tr>
                   <tr className="border-b border-slate-800/80">
-                    <td className="px-3 py-2 text-slate-300">{isZh ? "Team / 项目成员管理" : "Team / Project member management"}</td>
+                    <td className="px-3 py-2 text-slate-300">{isZh ? "团队/项目成员管理" : "Team / Project member management"}</td>
                     <td className="px-3 py-2 text-rose-300">{isZh ? "不支持" : "Not available"}</td>
-                    <td className="px-3 py-2 text-emerald-300">{isZh ? "支持" : "Available"}</td>
+                    <td className="px-3 py-2 text-emerald-300">{isZh ? "可用" : "Available"}</td>
                   </tr>
                   <tr className="border-b border-slate-800/80">
-                    <td className="px-3 py-2 text-slate-300">{isZh ? "社区产物集添加到我的产物集" : "Community Packages added to My Packages"}</td>
-                    <td className="px-3 py-2 text-slate-400">{isZh ? "最多 2 个产物集" : "Up to 2 packages"}</td>
-                    <td className="px-3 py-2 text-slate-100">{isZh ? "更多额度" : "Higher limit"}</td>
+                    <td className="px-3 py-2 text-slate-300">{isZh ? "添加到我的产集的社区产集" : "Community Packages added to My Packages"}</td>
+                    <td className="px-3 py-2 text-slate-400">{isZh ? "最多2个产集" : "Up to 2 packages"}</td>
+                    <td className="px-3 py-2 text-slate-100">{isZh ? "更高限额" : "Higher limit"}</td>
                   </tr>
                   <tr>
                     <td className="px-3 py-2 text-slate-300">{isZh ? "优先支持" : "Priority support"}</td>
                     <td className="px-3 py-2 text-slate-400">{isZh ? "标准" : "Standard"}</td>
-                    <td className="px-3 py-2 text-slate-100">{isZh ? "优先响应" : "Priority"}</td>
+                    <td className="px-3 py-2 text-slate-100">{isZh ? "优先级" : "Priority"}</td>
                   </tr>
                 </tbody>
               </table>
@@ -157,11 +157,11 @@ export default function PremiumPlans() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <Card className="border-slate-700/50 bg-[#0a1528]">
             <CardHeader>
-              <CardTitle className="text-slate-100">PayPal</CardTitle>
+              <CardTitle className="text-slate-100">{isZh ? "PayPal" : "PayPal"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm text-slate-300">
-                {isZh ? "点击下方按钮开通 Premium 订阅：" : "Subscribe to Premium using PayPal:"}
+                {isZh ? "使用PayPal订阅高级版：" : "Subscribe to Premium using PayPal:"}
               </p>
               <div id={PAYPAL_CONTAINER_ID} />
               <a
@@ -170,7 +170,7 @@ export default function PremiumPlans() {
                 rel="noreferrer"
                 className="text-xs text-cyan-300 hover:text-cyan-200 underline"
               >
-                {isZh ? "打不开按钮时点此支付链接" : "Fallback direct subscription link"}
+                {isZh ? "备用直接订阅链接" : "Fallback direct subscription link"}
               </a>
             </CardContent>
           </Card>
@@ -186,7 +186,7 @@ export default function PremiumPlans() {
                   : "Please add wenrenws as a WeChat friend and mention \"Premium upgrade\"."}
               </p>
               <div className="mt-4 inline-flex items-center rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-                {isZh ? "微信联系: wenrenws" : "WeChat contact: wenrenws"}
+                {isZh ? "微信联系：wenrenws" : "WeChat contact: wenrenws"}
               </div>
             </CardContent>
           </Card>

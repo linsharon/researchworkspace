@@ -132,7 +132,7 @@ export default function DraftStudio() {
             <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{isZh ? "材料库" : "Materials Library"}</h3>
             <Select value={projectId} onValueChange={setProjectId}>
               <SelectTrigger>
-                <SelectValue placeholder={isZh ? "选择项目" : "Select project"} />
+                <SelectValue placeholder={isZh ? "选择项目" : isZh ? "选择项目" : "Select project"} />
               </SelectTrigger>
               <SelectContent>
                 {projects.map((project) => (
@@ -210,7 +210,7 @@ export default function DraftStudio() {
               value={draftContent}
               onChange={(event) => setDraftContent(event.target.value)}
               className="min-h-[560px] text-sm leading-relaxed font-mono"
-              placeholder={isZh ? "开始撰写您的草稿。从左侧面板插入笔记或概念..." : "Start writing your draft. Insert notes or concepts from the left panel..."}
+              placeholder={isZh ? "开始撰写您的草稿。从左侧面板插入笔记或概念..." : isZh ? "开始撰写您的草稿。从左侧面板插入笔记或概念..." : "Start writing your draft. Insert notes or concepts from the left panel..."}
             />
           </div>
 
