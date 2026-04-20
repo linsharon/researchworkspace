@@ -5763,7 +5763,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm font-bold text-white">{isZh ? "手动扩展" : "1. Select one entry paper to expand"}</p>
+                <p className="text-sm font-bold text-white">{isZh ? "1. 选择一篇入口文献开始扩展" : "1. Select one entry paper to expand"}</p>
                 <div className="max-h-[280px] overflow-y-auto space-y-2 pr-1">
                   {entryPapers.map((paper) => {
                     const paperUrl = (paper as ApiPaper & { url?: string }).url;
@@ -5860,7 +5860,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                         disabled={!selectedPaper || loadingRecords}
                       >
                         <Sparkles className="w-3 h-3 mr-1" />
-                        {loadingRecords ? "Pulling..." : "Pull from OpenAlex"}
+                        {loadingRecords ? (isZh ? "拉取中..." : "Pulling...") : (isZh ? "从OpenAlex拉取" : "Pull from OpenAlex")}
                       </Button>
                     </div>
                     {expandError ? (
@@ -5983,7 +5983,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                       onClick={() => setShowManualReferences((prev) => !prev)}
                     >
                       <Plus className="w-3 h-3 mr-1" />
-                      {showManualReferences ? "Hide manual form" : "Add manually"}
+                      {showManualReferences ? (isZh ? "隐藏手动表单" : "Hide manual form") : (isZh ? "手动扩展" : "Add manually")}
                     </Button>
                   </div>
                   {showManualReferences ? renderManualForm("references") : null}
@@ -5998,7 +5998,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                       onClick={() => setShowManualCitations((prev) => !prev)}
                     >
                       <Plus className="w-3 h-3 mr-1" />
-                      {showManualCitations ? "Hide manual form" : "Add manually"}
+                      {showManualCitations ? (isZh ? "隐藏手动表单" : "Hide manual form") : (isZh ? "手动扩展" : "Add manually")}
                     </Button>
                   </div>
                   {showManualCitations ? renderManualForm("citations") : null}
@@ -7978,45 +7978,61 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   const preWriteStrategies = {
     brainstorming: {
       icon: "💡",
-      label: "Brainstorming",
-      description: "Generate ideas freely without judgment. Write down every thought related to your research topic. Quantity over quality at this stage.",
-      tips: ["Set a timer (10-15 min)", "No idea is too wild", "Build on previous ideas", "Don't edit or filter yet"],
+      label: isZh ? "头脑风暴" : "Brainstorming",
+      description: isZh
+        ? "自由生成想法，不做评判。写下与你研究主题相关的每一个念头。在这个阶段，数量比质量更重要。"
+        : "Generate ideas freely without judgment. Write down every thought related to your research topic. Quantity over quality at this stage.",
+      tips: isZh
+        ? ["设置一个计时器（10-15分钟）", "没有想法太离谱", "在已有想法上继续扩展", "先不要编辑或筛选"]
+        : ["Set a timer (10-15 min)", "No idea is too wild", "Build on previous ideas", "Don't edit or filter yet"],
       tools: [
-        { name: "Miro", url: "https://miro.com", desc: "Online whiteboard for visual brainstorming" },
-        { name: "MindMeister", url: "https://www.mindmeister.com", desc: "Mind mapping tool" },
-        { name: "Padlet", url: "https://padlet.com", desc: "Collaborative idea board" },
-        { name: "Google Jamboard", url: "https://jamboard.google.com", desc: "Digital whiteboard" },
+        { name: "Miro", url: "https://miro.com", desc: isZh ? "用于可视化头脑风暴的在线白板" : "Online whiteboard for visual brainstorming" },
+        { name: "MindMeister", url: "https://www.mindmeister.com", desc: isZh ? "思维导图工具" : "Mind mapping tool" },
+        { name: "Padlet", url: "https://padlet.com", desc: isZh ? "协作式灵感看板" : "Collaborative idea board" },
+        { name: "Google Jamboard", url: "https://jamboard.google.com", desc: isZh ? "数字白板" : "Digital whiteboard" },
       ],
     },
     listing: {
       icon: "📋",
-      label: "Listing",
-      description: "Create organized lists of key concepts, arguments, evidence, and questions. Group related items together.",
-      tips: ["List main arguments", "List supporting evidence for each", "List counter-arguments", "List unanswered questions"],
+      label: isZh ? "列表梳理" : "Listing",
+      description: isZh
+        ? "把关键概念、论点、证据和问题整理成有条理的列表，并将相关项目归类在一起。"
+        : "Create organized lists of key concepts, arguments, evidence, and questions. Group related items together.",
+      tips: isZh
+        ? ["列出主要论点", "为每个论点列出支持证据", "列出反方观点", "列出尚未解决的问题"]
+        : ["List main arguments", "List supporting evidence for each", "List counter-arguments", "List unanswered questions"],
       tools: [
-        { name: "Notion", url: "https://notion.so", desc: "Structured note-taking & databases" },
-        { name: "Workflowy", url: "https://workflowy.com", desc: "Infinite nested lists" },
-        { name: "Dynalist", url: "https://dynalist.io", desc: "Outliner with rich formatting" },
-        { name: "Google Docs", url: "https://docs.google.com", desc: "Collaborative document editing" },
+        { name: "Notion", url: "https://notion.so", desc: isZh ? "结构化笔记与数据库" : "Structured note-taking & databases" },
+        { name: "Workflowy", url: "https://workflowy.com", desc: isZh ? "无限层级列表" : "Infinite nested lists" },
+        { name: "Dynalist", url: "https://dynalist.io", desc: isZh ? "支持丰富格式的大纲工具" : "Outliner with rich formatting" },
+        { name: "Google Docs", url: "https://docs.google.com", desc: isZh ? "协作文档编辑" : "Collaborative document editing" },
       ],
     },
     clustering: {
       icon: "🕸️",
-      label: "Clustering",
-      description: "Start with a central concept and branch out to related ideas. Draw connections between clusters to find unexpected relationships.",
-      tips: ["Put main topic in center", "Branch to sub-topics", "Connect related branches", "Identify gaps between clusters"],
+      label: isZh ? "聚类联想" : "Clustering",
+      description: isZh
+        ? "从一个核心概念出发，向外扩展到相关想法，并在不同簇之间建立连接，发现潜在关系。"
+        : "Start with a central concept and branch out to related ideas. Draw connections between clusters to find unexpected relationships.",
+      tips: isZh
+        ? ["把主题放在中心", "向外延伸到子主题", "连接相关分支", "识别不同簇之间的空白"]
+        : ["Put main topic in center", "Branch to sub-topics", "Connect related branches", "Identify gaps between clusters"],
       tools: [
-        { name: "XMind", url: "https://xmind.app", desc: "Professional mind mapping" },
-        { name: "Coggle", url: "https://coggle.it", desc: "Collaborative mind maps" },
-        { name: "Whimsical", url: "https://whimsical.com", desc: "Flowcharts & mind maps" },
-        { name: "Scapple", url: "https://www.literatureandlatte.com/scapple", desc: "Freeform concept mapping" },
+        { name: "XMind", url: "https://xmind.app", desc: isZh ? "专业思维导图工具" : "Professional mind mapping" },
+        { name: "Coggle", url: "https://coggle.it", desc: isZh ? "协作式思维导图" : "Collaborative mind maps" },
+        { name: "Whimsical", url: "https://whimsical.com", desc: isZh ? "流程图与思维导图" : "Flowcharts & mind maps" },
+        { name: "Scapple", url: "https://www.literatureandlatte.com/scapple", desc: isZh ? "自由式概念图工具" : "Freeform concept mapping" },
       ],
     },
     freewriting: {
       icon: "✍️",
-      label: "Free Writing",
-      description: "Write continuously for a set period without stopping. Don't worry about grammar, spelling, or structure. Let your thoughts flow.",
-      tips: ["Write for 10-20 minutes non-stop", "Don't delete anything", "Follow tangents freely", "Highlight key insights after"],
+      label: isZh ? "自由写作" : "Free Writing",
+      description: isZh
+        ? "在设定时长内持续写作，不要停下来。先别管语法、拼写或结构，让想法自然流动。"
+        : "Write continuously for a set period without stopping. Don't worry about grammar, spelling, or structure. Let your thoughts flow.",
+      tips: isZh
+        ? ["连续写 10 到 20 分钟", "先不要删除任何内容", "允许思路自由发散", "完成后再高亮关键见解"]
+        : ["Write for 10-20 minutes non-stop", "Don't delete anything", "Follow tangents freely", "Highlight key insights after"],
       tools: [],
     },
   };
@@ -8695,7 +8711,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
               className="text-xs h-7"
               onClick={() => setPreWriteCollapsed(!preWriteCollapsed)}
             >
-              {preWriteCollapsed ? "Expand" : "Collapse"}
+              {preWriteCollapsed ? (isZh ? "展开" : "Expand") : (isZh ? "折叠" : "Collapse")}
             </Button>
           </div>
         </CardHeader>
@@ -8773,7 +8789,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                 <Input
                   value={newPreWriteTitle}
                   onChange={(e) => setNewPreWriteTitle(e.target.value)}
-                  placeholder={`${preWriteStrategies[preWriteTab].label} note title...`}
+                  placeholder={isZh ? `${preWriteStrategies[preWriteTab].label}笔记标题...` : `${preWriteStrategies[preWriteTab].label} note title...`}
                   className="text-xs"
                 />
                 <Textarea
@@ -8781,10 +8797,13 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   onChange={(e) => setNewPreWriteContent(e.target.value)}
                   rows={preWriteTab === "freewriting" ? 8 : 4}
                   placeholder={
-                    preWriteTab === "brainstorming" ? "Dump all your ideas here..." :
-                    preWriteTab === "listing" ? "- Item 1\n- Item 2\n- Item 3..." :
-                    preWriteTab === "clustering" ? "Central concept: ...\n  → Branch 1: ...\n  → Branch 2: ..." :
-                    "Start writing freely without stopping..."
+                    preWriteTab === "brainstorming"
+                      ? (isZh ? "把你的所有想法都先写在这里..." : "Dump all your ideas here...")
+                      : preWriteTab === "listing"
+                        ? (isZh ? "- 条目 1\n- 条目 2\n- 条目 3..." : "- Item 1\n- Item 2\n- Item 3...")
+                        : preWriteTab === "clustering"
+                          ? (isZh ? "核心概念：...\n  → 分支 1：...\n  → 分支 2：..." : "Central concept: ...\n  → Branch 1: ...\n  → Branch 2: ...")
+                          : (isZh ? "开始自由书写，不要停下来..." : "Start writing freely without stopping...")
                   }
                   className="text-xs font-mono"
                 />

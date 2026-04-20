@@ -415,11 +415,11 @@ export default function MyPackages() {
           <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="created" className="flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
-              Created Packages ({filteredCreatedPackages.length})
+              {isZh ? "创建的产集" : "Created Packages"} ({filteredCreatedPackages.length})
             </TabsTrigger>
             <TabsTrigger value="downloaded" className="flex items-center gap-2">
               <DownloadIcon className="w-4 h-4" />
-              Downloaded Packages ({filteredDownloadedPackages.length})
+              {isZh ? "下载的产集" : "Downloaded Packages"} ({filteredDownloadedPackages.length})
             </TabsTrigger>
           </TabsList>
 

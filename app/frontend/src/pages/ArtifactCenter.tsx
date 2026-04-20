@@ -219,15 +219,15 @@ function parseVisualizationContent(content?: string): { bucketName?: string; obj
   }
 }
 
-const FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "purpose", label: "Purposes" },
-  { value: "concepts", label: "Keywords" },
-  { value: "search", label: "Searches" },
-  { value: "literature", label: "Literature" },
-  { value: "notes", label: "Notes" },
-  { value: "visual", label: "Visuals" },
-  { value: "drafts", label: "Drafts" },
+const FILTER_OPTIONS: { value: string; label: string; zhLabel: string }[] = [
+  { value: "all", label: "All", zhLabel: "全部" },
+  { value: "purpose", label: "Purposes", zhLabel: "目的" },
+  { value: "concepts", label: "Keywords", zhLabel: "关键词" },
+  { value: "search", label: "Searches", zhLabel: "检索" },
+  { value: "literature", label: "Literature", zhLabel: "文献" },
+  { value: "notes", label: "Notes", zhLabel: "笔记" },
+  { value: "visual", label: "Visuals", zhLabel: "视觉" },
+  { value: "drafts", label: "Drafts", zhLabel: "草稿" },
 ];
 
 const FILTER_MAP: Record<string, ArtifactType[]> = {
@@ -1415,7 +1415,7 @@ export default function ArtifactCenter() {
                 )}
                 onClick={() => setFilter(opt.value)}
               >
-                {opt.label} ({getFilterCount(opt.value)})
+                {(isZh ? opt.zhLabel : opt.label)} ({getFilterCount(opt.value)})
               </Button>
             ))}
           </div>
