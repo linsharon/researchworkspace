@@ -575,7 +575,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 )}
               >
                 <Archive className="w-4 h-4 shrink-0" />
-                <span className="truncate record-item-title">{lang === "zh" ? "我的产物件" : "My Artifacts"}</span>
+                <span className="truncate record-item-title">{lang === "zh" ? "我的产件" : "My Artifacts"}</span>
               </div>
             </Link>
             {/* My Packages */}
@@ -590,7 +590,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 )}
               >
                 <Archive className="w-4 h-4 shrink-0" />
-                <span className="truncate record-item-title">{lang === "zh" ? "我的产物集" : "My Packages"}</span>
+                <span className="truncate record-item-title">{lang === "zh" ? "我的产集" : "My Packages"}</span>
               </div>
             </Link>
             {/* Community Packages */}
@@ -605,7 +605,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 )}
               >
                 <Globe className="w-4 h-4 shrink-0" />
-                <span className="truncate record-item-title">{lang === "zh" ? "社区产物集" : "Community Packages"}</span>
+                <span className="truncate record-item-title">{lang === "zh" ? "社区产集" : "Community Packages"}</span>
               </div>
             </Link>
 

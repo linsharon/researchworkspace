@@ -48,6 +48,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAPIBaseURL } from "@/lib/config";
 import { getAuthToken } from "@/lib/session";
+import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 
 const STATIC_ARTIFACTS = DUMMY_ARTIFACTS.filter(
@@ -228,6 +229,8 @@ const FILTER_MAP: Record<string, ArtifactType[]> = {
 };
 
 export default function ArtifactCenter() {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const { user } = useAuth();
   const NOTES_UPDATED_EVENT = "notes-updated";
   const ARTIFACTS_STORAGE_KEY = "rw-artifacts";
@@ -1057,7 +1060,7 @@ export default function ArtifactCenter() {
             <Archive className="w-7 h-7 text-cyan-400" />
             <div>
               <h1 className="text-xl font-bold text-slate-100">
-                Artifact Center
+                {isZh ? "我的产件" : "My Artifacts"}
               </h1>
               <p className="text-sm text-slate-500">
                 All your research outputs in one place

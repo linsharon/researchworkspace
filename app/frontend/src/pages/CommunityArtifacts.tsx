@@ -166,7 +166,7 @@ export default function CommunityArtifacts() {
           <div className="flex items-center gap-3">
             <Globe className="w-7 h-7 text-cyan-400" />
             <div>
-              <h1 className="text-xl font-bold text-slate-100">{isZh ? "社区产物集" : "Community Packages"}</h1>
+              <h1 className="text-xl font-bold text-slate-100">{isZh ? "社区产集" : "Community Packages"}</h1>
               <p className="text-sm text-slate-500">{isZh ? "来自社区共享的产物集。" : "Shared packages from the community."}</p>
             </div>
           </div>

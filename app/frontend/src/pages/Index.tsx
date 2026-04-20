@@ -19,15 +19,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Archive,
   ArrowRight,
   BarChart3,
   BookOpen,
   Compass,
+  Crown,
   FileText,
   FolderPlus,
+  Globe,
   Layers,
   Network,
   PenTool,
+  Package,
   Search,
   Trash2,
   Users,
@@ -83,6 +87,69 @@ function UnauthenticatedLanding() {
       desc: isZh
         ? "把卡片与笔记回填到写作，完成从阅读到论文草稿的闭环。"
         : "Convert notes and artifacts into structured writing blocks and paper drafts.",
+    },
+  ];
+
+  const artifactModules = [
+    {
+      icon: Archive,
+      title: isZh ? "My Artifacts" : "My Artifacts",
+      desc: isZh
+        ? "集中管理项目里的目的卡片、检索日志、笔记、概念和草稿，让研究产件不再散落在不同步骤里。"
+        : "Keep purpose cards, search logs, notes, concepts, and drafts in one place so research artifacts stay connected instead of scattered.",
+    },
+    {
+      icon: Package,
+      title: isZh ? "My Packages" : "My Packages",
+      desc: isZh
+        ? "把一组高价值产件打包成可复用的研究包，用于个人沉淀、跨项目复用和知识迁移。"
+        : "Bundle high-value artifacts into reusable packages for personal libraries, cross-project reuse, and faster knowledge transfer.",
+    },
+    {
+      icon: Globe,
+      title: isZh ? "Community Packages" : "Community Packages",
+      desc: isZh
+        ? "浏览社区共享的研究包，吸收他人的结构化产出，并将合适内容纳入自己的研究工作台。"
+        : "Explore community-shared packages, learn from other researchers' structured outputs, and import the ones worth building on.",
+    },
+  ];
+
+  const teamFeatures = [
+    isZh ? "邀请项目成员围绕同一研究主题协作，避免资料和判断分散在聊天工具里。" : "Invite project members into the same research space instead of splitting evidence across chat threads and documents.",
+    isZh ? "围绕共享项目查看相同的文献、产件与工作流上下文，减少交接成本。" : "Work from the same papers, artifacts, and workflow context so handoffs are lighter and decisions stay visible.",
+    isZh ? "Premium 解锁 Team 与更高协作额度，适合导师-学生、小组和联合写作场景。" : "Premium unlocks Team access and higher collaboration limits for advisors, research groups, and co-writing workflows.",
+  ];
+
+  const planRows = [
+    {
+      label: isZh ? "项目数量" : "Projects",
+      free: isZh ? "最多 1 个" : "Up to 1",
+      premium: isZh ? "多个项目" : "Multiple projects",
+    },
+    {
+      label: isZh ? "删除项目" : "Project deletion",
+      free: isZh ? "不支持" : "Not available",
+      premium: isZh ? "支持" : "Available",
+    },
+    {
+      label: isZh ? "My Artifacts" : "My Artifacts",
+      free: isZh ? "支持" : "Included",
+      premium: isZh ? "支持" : "Included",
+    },
+    {
+      label: isZh ? "My Packages" : "My Packages",
+      free: isZh ? "支持" : "Included",
+      premium: isZh ? "支持" : "Included",
+    },
+    {
+      label: isZh ? "Community Packages 导入" : "Community Packages imports",
+      free: isZh ? "最多 2 个产集" : "Up to 2 packages",
+      premium: isZh ? "更高额度" : "Higher limits",
+    },
+    {
+      label: isZh ? "Team 协作" : "Team collaboration",
+      free: isZh ? "不支持" : "Not available",
+      premium: isZh ? "支持" : "Included",
     },
   ];
 
@@ -174,6 +241,106 @@ function UnauthenticatedLanding() {
             );
           })}
         </div>
+
+        <section className="mt-12">
+          <div className="max-w-3xl">
+            <Badge className="bg-amber-500/15 text-amber-200 border-amber-300/20">
+              {isZh ? "Research Artifacts" : "Research Artifacts"}
+            </Badge>
+            <h2 className="mt-4 text-2xl md:text-3xl font-bold text-slate-100">
+              {isZh ? "让研究产件可沉淀、可打包、可共享" : "Make research artifacts persistent, packageable, and shareable"}
+            </h2>
+            <p className="mt-3 text-slate-300 text-sm md:text-base max-w-2xl leading-relaxed">
+              {isZh
+                ? "除了工作流步骤本身，Research Workspace 还提供一层面向成果沉淀的 artifacts 体系，帮助你把过程产出变成可复用资产。"
+                : "Beyond the workflow itself, Research Workspace includes an artifacts layer that turns working outputs into reusable research assets."}
+            </p>
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {artifactModules.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Card key={item.title} className="border-slate-700/60 bg-[#0a1a2b]">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-slate-100 flex items-center gap-2">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-amber-400/15 text-amber-300">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      {item.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-slate-300 leading-relaxed">{item.desc}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <Card className="border-slate-700/60 bg-[#0a1a2b]">
+            <CardHeader>
+              <CardTitle className="text-slate-100 flex items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-cyan-400/15 text-cyan-300">
+                  <Users className="h-4 w-4" />
+                </span>
+                {isZh ? "Team 协作" : "Team Collaboration"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-slate-300 leading-relaxed">
+                {isZh
+                  ? "当研究不再是一个人的任务，Team 能把成员、文献、产件与写作上下文维持在同一个项目空间。"
+                  : "When research is not a solo activity, Team keeps members, papers, artifacts, and writing context inside one shared project space."}
+              </p>
+              {teamFeatures.map((item) => (
+                <div key={item} className="rounded-lg border border-slate-700/60 bg-slate-900/30 px-3 py-3 text-sm text-slate-300 leading-relaxed">
+                  {item}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-700/60 bg-[#0a1a2b]">
+            <CardHeader>
+              <CardTitle className="text-slate-100 flex items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-amber-400/15 text-amber-300">
+                  <Crown className="h-4 w-4" />
+                </span>
+                {isZh ? "免费版与付费版" : "Free vs Premium"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-700/60 text-left">
+                      <th className="px-2 py-2 text-slate-400">{isZh ? "能力" : "Capability"}</th>
+                      <th className="px-2 py-2 text-slate-300">Free</th>
+                      <th className="px-2 py-2 text-amber-300">Premium</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {planRows.map((row) => (
+                      <tr key={row.label} className="border-b border-slate-800/80 last:border-b-0">
+                        <td className="px-2 py-2 text-slate-300">{row.label}</td>
+                        <td className="px-2 py-2 text-slate-400">{row.free}</td>
+                        <td className="px-2 py-2 text-slate-100">{row.premium}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-4 text-xs text-slate-400 leading-relaxed">
+                {isZh
+                  ? "Free 适合先体验完整工作流与 artifacts 体系。Premium 面向需要多项目管理、社区资源扩展和 Team 协作的持续研究场景。"
+                  : "Free is enough to experience the workflow and artifacts system. Premium is designed for ongoing research that needs multi-project organization, broader package access, and team collaboration."}
+              </p>
+            </CardContent>
+          </Card>
+        </section>
       </div>
 
       <footer className="h-10 border-t border-slate-700/40 bg-[#061423] px-4 flex items-center justify-center">

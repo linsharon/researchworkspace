@@ -12,6 +12,7 @@ import { Package, Edit2, Trash2, Search, Sparkles, Download as DownloadIcon, Arr
 import { type Artifact, type ArtifactPackage, ARTIFACT_TYPE_META } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
 import { type UserProfileSummary, userProfileApi } from "@/lib/user-profile-api";
+import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,6 +38,8 @@ type UnpackConflictState = {
 
 export default function MyPackages() {
   const { user } = useAuth();
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const [query, setQuery] = useState("");
   const [createdPackages, setCreatedPackages] = useState<ArtifactPackage[]>([]);
   const [downloadedPackages, setDownloadedPackages] = useState<ArtifactPackage[]>([]);
@@ -389,7 +392,7 @@ export default function MyPackages() {
           <div className="flex items-center gap-3">
             <Package className="w-7 h-7 text-cyan-400" />
             <div>
-              <h1 className="text-xl font-bold text-slate-100">My Packages</h1>
+              <h1 className="text-xl font-bold text-slate-100">{isZh ? "我的产集" : "My Packages"}</h1>
               <p className="text-sm text-slate-500">Manage your created and downloaded packages</p>
             </div>
           </div>

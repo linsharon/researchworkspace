@@ -345,7 +345,7 @@ const en: TranslationDict = {
   "expandPath.similarMethod": "Papers using similar methods",
 
   // Artifact center
-  "ac.title": "Artifact Center",
+  "ac.title": "My Artifacts",
   "ac.all": "All",
   "ac.purpose": "Purpose",
   "ac.search": "Search",
@@ -659,7 +659,7 @@ const zh: TranslationDict = {
   "nav.expand": "4. 扩展文献",
   "nav.visualize": "5. 可视化",
   "nav.draft": "6. 撰写初稿",
-  "nav.artifacts": "研究产物件",
+  "nav.artifacts": "研究产物",
   "nav.allArtifacts": "全部产物件",
   "nav.purposeCards": "目的卡片",
   "nav.searchLogs": "检索日志",
@@ -967,7 +967,7 @@ const zh: TranslationDict = {
   "expandPath.similarMethod": "使用相似方法的文献",
 
   // Artifact center
-  "ac.title": "产物件中心",
+  "ac.title": "我的产件",
   "ac.all": "全部",
   "ac.purpose": "目的",
   "ac.search": "检索",
