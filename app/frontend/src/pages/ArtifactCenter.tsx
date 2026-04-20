@@ -381,56 +381,28 @@ export default function ArtifactCenter() {
     return artifact;
   };
 
-  const requestUploadUrl = async (bucketName: string, objectKey: string) => {
+  const uploadVisualizationBytes = async (bucketName: string, objectKey: string, file: File) => {
     const token = getAuthToken();
     const baseURL = getAPIBaseURL() || "";
-    const response = await fetch(`${baseURL}/api/v1/storage/upload-url`, {
+    const formData = new FormData();
+    formData.append("bucket_name", bucketName);
+    formData.append("object_key", objectKey);
+    formData.append("file", file);
+
+    const response = await fetch(`${baseURL}/api/v1/storage/upload-bytes`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({
-        bucket_name: bucketName,
-        object_key: objectKey,
-      }),
+      body: formData,
     });
 
     if (!response.ok) {
-      throw new Error("Failed to request upload URL");
+      throw new Error("Failed to upload visualization file");
     }
 
-    return (await response.json()) as { upload_url?: string };
+    return (await response.json()) as { bucket_name: string; object_key: string };
   };
-
-  const uploadToPresignedUrlWithProgress = (
-    uploadUrl: string,
-    file: File,
-    onProgress: (percent: number) => void
-  ) =>
-    new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("PUT", uploadUrl, true);
-      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-
-      xhr.upload.onprogress = (event) => {
-        if (!event.lengthComputable) return;
-        const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
-        onProgress(percent);
-      };
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          onProgress(100);
-          resolve();
-        } else {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
-        }
-      };
-
-      xhr.onerror = () => reject(new Error("Network error during upload"));
-      xhr.send(file);
-    });
 
   const uploadVisualizationFile = async (rowId: string, file: File) => {
     if (!projectIdFromUrl) {
@@ -439,26 +411,21 @@ export default function ArtifactCenter() {
 
     const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, "-");
     const objectKey = `visualizations/${projectIdFromUrl}/${Date.now()}-${safeName}`;
-    const bucketName = `rw-visuals-${projectIdFromUrl.replace(/[^a-z0-9]/gi, "-").toLowerCase()}`;
-    const presign = await requestUploadUrl(bucketName, objectKey);
+    const bucketName = "visualizations";
 
-    if (!presign.upload_url) {
-      throw new Error("Upload URL missing from server response");
-    }
+    setUploadedFiles((prev) =>
+      prev.map((item) =>
+        item.id === rowId ? { ...item, progress: 20, uploading: true } : item
+      )
+    );
 
-    await uploadToPresignedUrlWithProgress(presign.upload_url, file, (percent) => {
-      setUploadedFiles((prev) =>
-        prev.map((item) =>
-          item.id === rowId ? { ...item, progress: percent, uploading: percent < 100 } : item
-        )
-      );
-    });
+    const uploadResult = await uploadVisualizationBytes(bucketName, objectKey, file);
 
     const artifact = persistVisualArtifact({
       fileName: file.name,
       fileSize: file.size,
-      bucketName,
-      objectKey,
+      bucketName: uploadResult.bucket_name,
+      objectKey: uploadResult.object_key,
     });
 
     setUploadedFiles((prev) =>
@@ -472,8 +439,8 @@ export default function ArtifactCenter() {
               errorMessage: "",
               addedToVisual: true,
               artifactId: artifact.id,
-              bucketName,
-              storageKey: objectKey,
+              bucketName: uploadResult.bucket_name,
+              storageKey: uploadResult.object_key,
             }
           : item
       )

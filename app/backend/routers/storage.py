@@ -1,13 +1,14 @@
 import logging
 
 from dependencies.auth import get_admin_user, get_current_user
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from schemas.auth import UserResponse
 from schemas.storage import (
     BucketListResponse,
     BucketRequest,
     BucketResponse,
     DeleteResponse,
+    DirectUploadResponse,
     FileUpDownRequest,
     FileUpDownResponse,
     ObjectInfo,
@@ -117,6 +118,38 @@ async def delete_object(request: ObjectRequest, _current_user: UserResponse = De
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Failed to delete object: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"{e}")
+
+
+@router.post("/upload-bytes", response_model=DirectUploadResponse)
+async def upload_bytes(
+    bucket_name: str = Form(...),
+    object_key: str = Form(...),
+    file: UploadFile = File(...),
+    _current_user: UserResponse = Depends(get_current_user),
+):
+    """Upload object bytes through the backend to avoid browser-side presigned URL issues."""
+    try:
+        validated = FileUpDownRequest(bucket_name=bucket_name, object_key=object_key)
+        content = await file.read()
+        service = StorageService()
+        await service.upload_bytes(
+            bucket_name=validated.bucket_name,
+            object_key=validated.object_key,
+            content=content,
+            content_type=file.content_type or "application/octet-stream",
+        )
+        return DirectUploadResponse(
+            bucket_name=validated.bucket_name,
+            object_key=validated.object_key,
+            size_bytes=len(content),
+            content_type=file.content_type or "application/octet-stream",
+        )
+    except ValueError as e:
+        logger.error(f"Invalid upload-bytes request: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to upload bytes: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"{e}")
 
 

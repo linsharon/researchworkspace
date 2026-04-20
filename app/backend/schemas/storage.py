@@ -89,6 +89,15 @@ class FileUpDownResponse(BaseModel):
     expires_at: str = Field(..., description="Upload URL expiration time")
 
 
+class DirectUploadResponse(BaseModel):
+    """Response for backend-proxied object uploads."""
+
+    bucket_name: str
+    object_key: str
+    size_bytes: int = 0
+    content_type: str = "application/octet-stream"
+
+
 class RenameRequest(OSSBaseModel):
     source_key: str = ""
     target_key: str = ""
