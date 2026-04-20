@@ -38,7 +38,7 @@ import {
 } from "lucide-react";
 import { projectAPI, type Project } from "@/lib/manuscript-api";
 
-const BRAND_FAVICON_URL = "https://public-frontend-cos.metadl.com/mgx/img/favicon_atoms.ico";
+const BRAND_LOGO_URL = "/logo-tran.png";
 
 function UnauthenticatedLanding() {
   const { lang, setLang } = useI18n();
@@ -159,7 +159,7 @@ function UnauthenticatedLanding() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-cyan-500/20 border border-cyan-300/30 flex items-center justify-center">
-              <img src={BRAND_FAVICON_URL} alt="Research Workspace logo" className="h-5 w-5" />
+              <img src={BRAND_LOGO_URL} alt="Research Workspace logo" className="h-5 w-5 object-contain" />
             </div>
             <div>
               <p className="text-sm font-semibold text-slate-100">{isZh ? "研究工作流" : "Research Workspace"}</p>
