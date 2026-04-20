@@ -384,8 +384,16 @@ async def exchange_platform_token(payload: PlatformTokenExchangeRequest, db: Asy
     if not admin_name:
         admin_name = derive_name_from_email(admin_email)
 
-    user = User(id=platform_user_id, email=admin_email, name=admin_name, role="admin", is_premium=True)
+    user = await auth_service.get_or_create_user(
+        platform_sub=platform_user_id,
+        email=admin_email,
+        name=admin_name,
+    )
+    user.role = "admin"
+    user.is_premium = True
     apply_system_user_flags(user)
+    await db.commit()
+    await db.refresh(user)
     app_token, _expires_at, _ = await auth_service.issue_app_token(user=user)
 
     return TokenExchangeResponse(token=app_token)

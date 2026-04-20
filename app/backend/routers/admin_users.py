@@ -7,6 +7,7 @@ from core.database import get_db
 from dependencies.auth import get_admin_user, get_current_user
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from models.auth import User
+from schemas.auth import UserResponse
 from schemas.user import (
     AdminResetPasswordRequest,
     AdminUpdateUserRequest,
@@ -94,13 +95,49 @@ async def _build_summary(user: User, stats: UserActivityStats, payment_tag: str)
     )
 
 
+async def _ensure_current_admin_row(db: AsyncSession, current_user: UserResponse) -> None:
+    existing = await UserService.get_user_profile(db, current_user.id)
+    if existing:
+        changed = False
+        normalized_email = (current_user.email or "").strip().lower()
+        if normalized_email and (existing.email or "").strip().lower() != normalized_email:
+            existing.email = normalized_email
+            changed = True
+        if current_user.name and existing.name != current_user.name:
+            existing.name = current_user.name
+            changed = True
+        if existing.role != "admin":
+            existing.role = "admin"
+            changed = True
+        if not bool(existing.is_premium):
+            existing.is_premium = True
+            changed = True
+        apply_system_user_flags(existing)
+        if changed:
+            await db.commit()
+            await db.refresh(existing)
+        return
+
+    user = User(
+        id=current_user.id,
+        email=(current_user.email or "").strip().lower(),
+        name=current_user.name,
+        role="admin",
+        is_premium=True,
+    )
+    apply_system_user_flags(user)
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+
 @admin_router.get("", response_model=AdminUserListResponse)
 async def list_admin_users(
     q: str = Query(default="", max_length=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_admin_user),
+    current_user: UserResponse = Depends(get_admin_user),
 ):
-    del current_user
+    await _ensure_current_admin_row(db, current_user)
     users = await UserService.list_all_users(db)
     keyword = q.strip().lower()
     if keyword:
