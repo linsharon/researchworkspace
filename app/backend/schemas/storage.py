@@ -96,6 +96,7 @@ class DirectUploadResponse(BaseModel):
     object_key: str
     size_bytes: int = 0
     content_type: str = "application/octet-stream"
+    access_url: str = ""
 
 
 class RenameRequest(OSSBaseModel):

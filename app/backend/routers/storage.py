@@ -1,7 +1,9 @@
 import logging
+from pathlib import Path
 
 from dependencies.auth import get_admin_user, get_current_user
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi.responses import FileResponse
 from schemas.auth import UserResponse
 from schemas.storage import (
     BucketListResponse,
@@ -23,6 +25,25 @@ from services.storage import StorageService
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/storage", tags=["storage"])
+LOCAL_VISUAL_UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "uploads" / "visualizations"
+
+
+def _get_local_visual_uploads_dir() -> Path:
+    try:
+        LOCAL_VISUAL_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+        return LOCAL_VISUAL_UPLOADS_DIR
+    except Exception:
+        fallback = Path("/tmp/researchworkspace-visualizations")
+        fallback.mkdir(parents=True, exist_ok=True)
+        return fallback
+
+
+def _resolve_local_visual_path(object_key: str) -> Path:
+    base_dir = _get_local_visual_uploads_dir().resolve()
+    target = (base_dir / object_key).resolve()
+    if not str(target).startswith(str(base_dir)):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid local visualization path")
+    return target
 
 
 @router.post("/create-bucket", response_model=BucketResponse)
@@ -123,6 +144,7 @@ async def delete_object(request: ObjectRequest, _current_user: UserResponse = De
 
 @router.post("/upload-bytes", response_model=DirectUploadResponse)
 async def upload_bytes(
+    request: Request,
     bucket_name: str = Form(...),
     object_key: str = Form(...),
     file: UploadFile = File(...),
@@ -132,18 +154,27 @@ async def upload_bytes(
     try:
         validated = FileUpDownRequest(bucket_name=bucket_name, object_key=object_key)
         content = await file.read()
-        service = StorageService()
-        await service.upload_bytes(
-            bucket_name=validated.bucket_name,
-            object_key=validated.object_key,
-            content=content,
-            content_type=file.content_type or "application/octet-stream",
-        )
+        access_url = ""
+        try:
+            service = StorageService()
+            await service.upload_bytes(
+                bucket_name=validated.bucket_name,
+                object_key=validated.object_key,
+                content=content,
+                content_type=file.content_type or "application/octet-stream",
+            )
+        except Exception as exc:
+            logger.warning("Storage upload-bytes failed for %s/%s, falling back to local file: %s", validated.bucket_name, validated.object_key, exc)
+            local_path = _resolve_local_visual_path(validated.object_key)
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            local_path.write_bytes(content)
+            access_url = f"{str(request.base_url).rstrip('/')}/api/v1/storage/local-visual/{validated.object_key}"
         return DirectUploadResponse(
             bucket_name=validated.bucket_name,
             object_key=validated.object_key,
             size_bytes=len(content),
             content_type=file.content_type or "application/octet-stream",
+            access_url=access_url,
         )
     except ValueError as e:
         logger.error(f"Invalid upload-bytes request: {e}")
@@ -151,6 +182,15 @@ async def upload_bytes(
     except Exception as e:
         logger.error(f"Failed to upload bytes: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"{e}")
+
+
+@router.get("/local-visual/{object_key:path}")
+async def get_local_visual(object_key: str):
+    """Serve locally-fallback visualization files for in-app previews."""
+    path = _resolve_local_visual_path(object_key)
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visualization file not found")
+    return FileResponse(path)
 
 
 @router.post("/upload-url", response_model=FileUpDownResponse)

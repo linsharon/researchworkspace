@@ -6469,9 +6469,16 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to upload visualization file");
+      let detail = "Failed to upload visualization file";
+      try {
+        const payload = (await response.json()) as { detail?: string };
+        if (payload?.detail) detail = payload.detail;
+      } catch {
+        // Ignore JSON parsing issues and keep the generic message.
+      }
+      throw new Error(detail);
     }
-    return (await response.json()) as { bucket_name: string; object_key: string };
+    return (await response.json()) as { bucket_name: string; object_key: string; access_url?: string };
   };
 
   const uploadVisualizationFile = async (rowId: string, file: File) => {
@@ -6490,6 +6497,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
       fileSize: file.size,
       bucketName: uploadResult.bucket_name,
       objectKey: uploadResult.object_key,
+      accessUrl: uploadResult.access_url,
     });
 
     setUploadedFiles((prev) =>
@@ -6540,16 +6548,17 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
       ]);
       try {
         await uploadVisualizationFile(rowId, image);
-      } catch {
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Upload failed. Please retry.";
         failedUploadFilesRef.current.set(rowId, image);
         setUploadedFiles((prev) =>
           prev.map((item) =>
             item.id === rowId
-              ? { ...item, uploading: false, failed: true, errorMessage: "Upload failed. Please retry." }
+              ? { ...item, uploading: false, failed: true, errorMessage: message }
               : item
           )
         );
-        toast.error(`Upload failed: ${image.name}`);
+        toast.error(isZh ? `上传失败：${image.name}（${message}）` : `Upload failed: ${image.name} (${message})`);
       }
     }
 
@@ -6571,13 +6580,14 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
     try {
       await uploadVisualizationFile(rowId, file);
       toast.success(`Upload succeeded: ${file.name}`);
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Upload failed. Please retry.";
       setUploadedFiles((prev) =>
         prev.map((item) =>
-          item.id === rowId ? { ...item, uploading: false, failed: true, errorMessage: "Upload failed. Please retry." } : item
+          item.id === rowId ? { ...item, uploading: false, failed: true, errorMessage: message } : item
         )
       );
-      toast.error(`Retry failed: ${file.name}`);
+      toast.error(isZh ? `重试失败：${file.name}（${message}）` : `Retry failed: ${file.name} (${message})`);
     }
   };
 

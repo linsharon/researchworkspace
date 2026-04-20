@@ -21,6 +21,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import AdminActivity from './pages/AdminActivity';
+import AdminUsers from './pages/AdminUsers';
 import DocumentCenter from './pages/DocumentCenter';
 import ProjectMembers from './pages/ProjectMembers';
 import PremiumPlans from './pages/PremiumPlans';
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/visualization" element={<ProtectedRoute><VisualizationBoard /></ProtectedRoute>} />
               <Route path="/draft" element={<ProtectedRoute><DraftStudio /></ProtectedRoute>} />
               <Route path="/admin/activity" element={<ProtectedAdminRoute><AdminActivity /></ProtectedAdminRoute>} />
+              <Route path="/admin/users" element={<ProtectedAdminRoute><AdminUsers /></ProtectedAdminRoute>} />
               <Route path="/documents" element={<ProtectedRoute><DocumentCenter /></ProtectedRoute>} />
               <Route path="/projects/members" element={<ProtectedRoute><ProjectMembers /></ProtectedRoute>} />
               <Route path="/premium" element={<ProtectedRoute><PremiumPlans /></ProtectedRoute>} />

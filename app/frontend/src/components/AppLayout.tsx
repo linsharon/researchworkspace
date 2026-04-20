@@ -45,6 +45,7 @@ import {
   Send,
   Minimize2,
   Atom,
+  ShieldCheck,
 } from "lucide-react";
 import { type WorkflowStep, type ProjectItem } from "@/lib/data";
 import { projectAPI } from "@/lib/manuscript-api";
@@ -77,6 +78,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [deleting, setDeleting] = useState(false);
 
   const isPremiumUser = Boolean(user?.is_premium) || user?.role === "admin";
+  const showDesignatedAdminEntry = (user?.email || "").trim().toLowerCase() === "pandalinjingjing@gmail.com";
   const hasReachedFreeProjectLimit = !isPremiumUser && projects.length >= 1;
 
   useEffect(() => {
@@ -645,6 +647,42 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 )}
               </div>
             </button>
+
+            {showDesignatedAdminEntry && (
+              <>
+                <p className="text-[10px] uppercase tracking-wider text-slate-500 px-2 pt-4 pb-1">
+                  Admin
+                </p>
+                <Link to="/admin/users">
+                  <div
+                    data-selected={location.pathname === "/admin/users"}
+                    className={cn(
+                      "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
+                      location.pathname === "/admin/users"
+                        ? "text-cyan-200 border-cyan-500/30"
+                        : "text-slate-400 border-slate-700/40"
+                    )}
+                  >
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
+                    <span className="truncate record-item-title">{lang === "zh" ? "用户管理" : "User Management"}</span>
+                  </div>
+                </Link>
+                <Link to="/admin/activity">
+                  <div
+                    data-selected={location.pathname === "/admin/activity"}
+                    className={cn(
+                      "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
+                      location.pathname === "/admin/activity"
+                        ? "text-cyan-200 border-cyan-500/30"
+                        : "text-slate-400 border-slate-700/40"
+                    )}
+                  >
+                    <FileText className="w-4 h-4 shrink-0" />
+                    <span className="truncate record-item-title">{lang === "zh" ? "活动审计" : "Activity Audit"}</span>
+                  </div>
+                </Link>
+              </>
+            )}
           </nav>
         </ScrollArea>
       </aside>
