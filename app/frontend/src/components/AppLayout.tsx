@@ -305,7 +305,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="flex items-center gap-2 min-w-0">
             <img
               src={BRAND_FAVICON_URL}
-              alt={isZh ? "研究工作区标志" : isZh ? "研究工作空间商标" : isZh ? "研究工作空间商标" : "Research Workspace logo"}
+              alt={isZh ? "研究工作区标志" : isZh ? "研究工作空间商标" : isZh ? "研究工作空间商标" : isZh ? "研究工作区商标" : isZh ? "研究工作区商标" : "Research Workspace logo"}
               className="w-5 h-5 shrink-0"
               style={{ filter: 'brightness(0) saturate(100%) invert(72%) sepia(98%) saturate(400%) hue-rotate(152deg) brightness(103%)' }}
             />
@@ -790,14 +790,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
         <footer className="h-10 border-t border-slate-700/30 bg-[#061423] px-4 flex items-center justify-center">
           <p className="text-[11px] text-slate-400">
-            {lang === "zh" ? "版权" : "Copyright"} © {new Date().getFullYear()} ·
+            {lang === "zh" ? "版权所有" : "Copyright"} © {new Date().getFullYear()} ·
             <a
               href="https://researchic.com"
               target="_blank"
               rel="noreferrer"
               className="ml-1 text-cyan-300 hover:text-cyan-200"
             >
-              {lang === "zh" ? "西西弗斯·林恩" : "Sisyphus Lynn"}
+              {lang === "zh" ? "西西弗斯林" : "Sisyphus Lynn"}
             </a>
             <span className="mx-2 text-slate-500">·</span>
             <a
@@ -857,7 +857,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               }}
               disabled={deleting}
             >
-              {deleting ? (lang === "zh" ? "删除中..." : "Deleting...") : (lang === "zh" ? "删除" : "Delete")}
+              {deleting ? (lang === "zh" ? "正在删除..." : "Deleting...") : (lang === "zh" ? "删除" : "Delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -875,7 +875,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </div>
               <div>
                 <p className="text-sm font-semibold">
-                  {lang === "zh" ? "AI助手: 西西弗斯" : "AI Assistant: Sisyphus"}
+                  {lang === "zh" ? "AI助手：西西弗斯" : "AI Assistant: Sisyphus"}
                 </p>
               </div>
             </div>

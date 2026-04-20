@@ -117,7 +117,7 @@ export default function PremiumPlans() {
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="text-left border-b border-slate-700/60">
-                    <th className="px-3 py-2 text-slate-300">{isZh ? "能力" : "Capability"}</th>
+                    <th className="px-3 py-2 text-slate-300">{isZh ? "功能" : "Capability"}</th>
                     <th className="px-3 py-2 text-slate-300">{isZh ? "免费版" : "Free"}</th>
                     <th className="px-3 py-2 text-amber-300">{isZh ? "高级" : "Premium"}</th>
                   </tr>

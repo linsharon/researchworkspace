@@ -72,7 +72,7 @@ export default function UserProfilePage() {
   const handleSaveProfile = async () => {
     if (!user) return;
     if (!username.trim()) {
-      toast.error(isZh ? "显示名称是必需的" : isZh ? "显示名称是必需的" : "Display name is required");
+      toast.error(isZh ? "显示名称是必需的" : isZh ? "显示名称是必需的" : isZh ? "显示名称是必需的" : "Display name is required");
       return;
     }
 
@@ -89,20 +89,20 @@ export default function UserProfilePage() {
       setIsPublic(nextProfile.isPublic);
       setAvatarUrl(nextProfile.avatarUrl);
       updateUser({ name: nextProfile.username });
-      toast.success(isZh ? "个人资料已更新" : isZh ? "个人资料已更新" : "Profile updated");
+      toast.success(isZh ? "个人资料已更新" : isZh ? "个人资料已更新" : isZh ? "个人资料已更新" : "Profile updated");
     } catch {
-      toast.error(isZh ? "保存个人资料失败" : isZh ? "保存个人资料失败" : "Failed to save profile");
+      toast.error(isZh ? "保存个人资料失败" : isZh ? "保存个人资料失败" : isZh ? "保存个人资料失败" : "Failed to save profile");
     }
   };
 
   const handleChangePassword = () => {
     if (!user || !isOwnProfile) return;
     if (!newPassword || newPassword.length < 6) {
-      toast.error(isZh ? "密码至少需要6个字符" : isZh ? "密码至少需要6个字符" : "Password must be at least 6 characters");
+      toast.error(isZh ? "密码至少需要6个字符" : isZh ? "密码至少需要6个字符" : isZh ? "密码至少需要6个字符" : "Password must be at least 6 characters");
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error(isZh ? "密码不匹配" : isZh ? "密码不匹配" : "Passwords do not match");
+      toast.error(isZh ? "密码不匹配" : isZh ? "密码不匹配" : isZh ? "密码不匹配" : "Passwords do not match");
       return;
     }
     try {
@@ -112,16 +112,16 @@ export default function UserProfilePage() {
       window.localStorage.setItem(PASSWORD_OVERRIDES_KEY, JSON.stringify(map));
       setNewPassword("");
       setConfirmPassword("");
-      toast.success(isZh ? "密码已更新" : isZh ? "密码已更新" : "Password updated");
+      toast.success(isZh ? "密码已更新" : isZh ? "密码已更新" : isZh ? "密码已更新" : "Password updated");
     } catch {
-      toast.error(isZh ? "更新密码失败" : isZh ? "更新密码失败" : "Failed to update password");
+      toast.error(isZh ? "更新密码失败" : isZh ? "更新密码失败" : isZh ? "更新密码失败" : "Failed to update password");
     }
   };
 
   const handleDeleteAccount = async () => {
     if (!user || !isOwnProfile) return;
     if (deleteConfirmText.trim().toUpperCase() !== "DELETE") {
-      toast.error(isZh ? "输入DELETE以确认" : isZh ? "输入" : isZh ? "输入" : "Type DELETE to confirm");
+      toast.error(isZh ? "输入DELETE以确认" : isZh ? "输入" : isZh ? "输入" : isZh ? "输入DELETE以确认" : isZh ? "输入DELETE以确认" : "Type DELETE to confirm");
       return;
     }
 
@@ -138,10 +138,10 @@ export default function UserProfilePage() {
         : [];
       window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(filtered));
 
-      toast.success(isZh ? "账户删除请求已处理" : isZh ? "账户删除请求已处理" : "Account deletion request processed");
+      toast.success(isZh ? "账户删除请求已处理" : isZh ? "账户删除请求已处理" : isZh ? "账户删除请求已处理" : "Account deletion request processed");
       await logout();
     } catch {
-      toast.error(isZh ? "删除账户失败" : isZh ? "删除账户失败" : "Failed to delete account");
+      toast.error(isZh ? "删除账户失败" : isZh ? "删除账户失败" : isZh ? "删除账户失败" : "Failed to delete account");
     }
   };
 
@@ -244,14 +244,14 @@ export default function UserProfilePage() {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder={isZh ? "新密码" : isZh ? "新密码" : "New password"}
+                placeholder={isZh ? "新密码" : isZh ? "新密码" : isZh ? "新密码" : "New password"}
                 className="text-sm"
               />
               <Input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder={isZh ? "确认新密码" : isZh ? "确认新密码" : "Confirm new password"}
+                placeholder={isZh ? "确认新密码" : isZh ? "确认新密码" : isZh ? "确认新密码" : "Confirm new password"}
                 className="text-sm"
               />
               <Button size="sm" variant="outline" className="text-xs" onClick={handleChangePassword}>

@@ -537,7 +537,7 @@ export default function PaperToolsArea({
                 <Input
                   className="pl-9 text-sm"
                   onChange={(e) => setNoteSearch(e.target.value)}
-                  placeholder={isZh ? "搜索这篇论文的阅读笔记" : isZh ? "搜索这篇论文的阅读笔记" : "Search notes for this paper"}
+                  placeholder={isZh ? "搜索这篇论文的阅读笔记" : isZh ? "搜索这篇论文的阅读笔记" : isZh ? "搜索这篇论文的阅读笔记" : "Search notes for this paper"}
                   value={noteSearch}
                 />
               </div>
@@ -604,7 +604,7 @@ export default function PaperToolsArea({
               <Input
                 className="pl-9 text-sm"
                 onChange={(e) => setHighlightSearch(e.target.value)}
-                placeholder={isZh ? "搜索这篇论文的高亮内容" : isZh ? "搜索这篇论文的高亮内容" : "Search highlights for this paper"}
+                placeholder={isZh ? "搜索这篇论文的高亮内容" : isZh ? "搜索这篇论文的高亮内容" : isZh ? "搜索这篇论文的高亮内容" : "Search highlights for this paper"}
                 value={highlightSearch}
               />
             </div>
@@ -834,7 +834,7 @@ export default function PaperToolsArea({
             <div>
               <label className="text-sm font-semibold">Title *</label>
               <Input
-                placeholder={isZh ? "笔记标题" : isZh ? "笔记标题" : "Note title"}
+                placeholder={isZh ? "笔记标题" : isZh ? "笔记标题" : isZh ? "笔记标题" : "Note title"}
                 value={editForm.title}
                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                 className="mt-1"
@@ -843,7 +843,7 @@ export default function PaperToolsArea({
             <div>
               <label className="text-sm font-semibold">{isZh ? "描述" : "Description"}</label>
               <Textarea
-                placeholder={isZh ? "笔记描述/引用" : isZh ? "笔记描述/引用" : "Note description / quote"}
+                placeholder={isZh ? "笔记描述/引用" : isZh ? "笔记描述/引用" : isZh ? "笔记描述/引用" : "Note description / quote"}
                 value={editForm.description}
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                 className="mt-1 h-16 text-xs"
@@ -852,7 +852,7 @@ export default function PaperToolsArea({
             <div>
               <label className="text-sm font-semibold">{isZh ? "内容/评论" : "Content / Comment"}</label>
               <Textarea
-                placeholder={isZh ? "您的分析或想法" : isZh ? "您的分析或想法" : "Your analysis or thoughts"}
+                placeholder={isZh ? "您的分析或想法" : isZh ? "您的分析或想法" : isZh ? "您的分析或想法" : "Your analysis or thoughts"}
                 value={editForm.content}
                 onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
                 className="mt-1 h-16 text-xs"
@@ -863,7 +863,7 @@ export default function PaperToolsArea({
                 <label className="text-sm font-semibold">{isZh ? "页面" : "Page"}</label>
                 <Input
                   type="number"
-                  placeholder={isZh ? "页码" : isZh ? "页码" : "Page number"}
+                  placeholder={isZh ? "页码" : isZh ? "页码" : isZh ? "页码" : "Page number"}
                   value={editForm.page}
                   onChange={(e) => setEditForm({ ...editForm, page: e.target.value })}
                   className="mt-1 text-sm"
@@ -872,7 +872,7 @@ export default function PaperToolsArea({
               <div>
                 <label className="text-sm font-semibold">{isZh ? "关键词" : "Keywords"}</label>
                 <Input
-                  placeholder={isZh ? "逗号分隔" : isZh ? "逗号分隔" : "Comma separated"}
+                  placeholder={isZh ? "逗号分隔" : isZh ? "逗号分隔" : isZh ? "逗号分隔" : "Comma separated"}
                   value={editForm.keywords}
                   onChange={(e) => setEditForm({ ...editForm, keywords: e.target.value })}
                   className="mt-1 text-sm"

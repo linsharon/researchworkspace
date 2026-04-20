@@ -19,7 +19,7 @@ export default function NoteTagInput({
 }: NoteTagInputProps) {
   const { lang } = useI18n();
   const isZh = lang === "zh";
-  const resolvedPlaceholder = placeholder || (isZh ? "输入关键词并按回车" : isZh ? "输入关键词后按回车键" : "Type keyword and press Enter");
+  const resolvedPlaceholder = placeholder || (isZh ? "输入关键词并按回车" : isZh ? "输入关键词后按回车键" : isZh ? "输入关键词后按回车键" : "Type keyword and press Enter");
   const [value, setValue] = useState("");
 
   const addTag = () => {

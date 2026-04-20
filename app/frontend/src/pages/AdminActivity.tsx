@@ -120,27 +120,27 @@ export default function AdminActivity() {
               <Input
                 value={userIdFilter}
                 onChange={(e) => setUserIdFilter(e.target.value)}
-                placeholder={isZh ? "按用户ID过滤" : isZh ? "按用户ID过滤" : "Filter by user ID"}
+                placeholder={isZh ? "按用户ID过滤" : isZh ? "按用户ID过滤" : isZh ? "按用户ID过滤" : "Filter by user ID"}
               />
               <Input
                 value={eventTypeFilter}
                 onChange={(e) => setEventTypeFilter(e.target.value)}
-                placeholder={isZh ? "按事件类型过滤" : isZh ? "按事件类型过滤" : "Filter by event type"}
+                placeholder={isZh ? "按事件类型过滤" : isZh ? "按事件类型过滤" : isZh ? "按事件类型过滤" : "Filter by event type"}
               />
               <Input
                 value={actionFilter}
                 onChange={(e) => setActionFilter(e.target.value)}
-                placeholder={isZh ? "按操作过滤" : isZh ? "按操作过滤" : "Filter by action"}
+                placeholder={isZh ? "按操作过滤" : isZh ? "按操作过滤" : isZh ? "按操作过滤" : "Filter by action"}
               />
               <Input
                 value={pathFilter}
                 onChange={(e) => setPathFilter(e.target.value)}
-                placeholder={isZh ? "按路径过滤（例如：/api/v1手稿）" : isZh ? "按路径过滤（例如：/api/v1手稿）" : "Filter by path (e.g. /api/v1/manuscripts)"}
+                placeholder={isZh ? "按路径过滤（例如：/api/v1手稿）" : isZh ? "按路径过滤（例如：/api/v1手稿）" : isZh ? "按路径过滤（例如：/api/v1手稿）" : "Filter by path (e.g. /api/v1/manuscripts)"}
               />
               <Input
                 value={resourceTypeFilter}
                 onChange={(e) => setResourceTypeFilter(e.target.value)}
-                placeholder={isZh ? "按资源类型过滤" : isZh ? "按资源类型过滤" : "Filter by resource type"}
+                placeholder={isZh ? "按资源类型过滤" : isZh ? "按资源类型过滤" : isZh ? "按资源类型过滤" : "Filter by resource type"}
               />
             </div>
             <div className="flex items-center gap-2 pt-2">

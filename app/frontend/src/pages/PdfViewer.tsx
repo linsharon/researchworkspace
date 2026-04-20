@@ -38,7 +38,7 @@ function TagInput({
 }) {
   const { lang } = useI18n();
   const isZh = lang === "zh";
-  const resolvedPlaceholder = placeholder || (isZh ? "添加标签..." : isZh ? "添加标签..." : "Add tag...");
+  const resolvedPlaceholder = placeholder || (isZh ? "添加标签..." : isZh ? "添加标签..." : isZh ? "添加标签..." : "Add tag...");
   const [input, setInput] = useState("");
 
   const addTag = () => {
@@ -330,13 +330,13 @@ export default function PdfViewer() {
                           <Input
                             value={newHText}
                             onChange={(e) => setNewHText(e.target.value)}
-                            placeholder={isZh ? "选择或输入高亮显示的文本..." : isZh ? "选择或输入高亮显示的文本..." : "Select or type highlighted text..."}
+                            placeholder={isZh ? "选择或输入高亮显示的文本..." : isZh ? "选择或输入高亮显示的文本..." : isZh ? "选择或输入高亮显示的文本..." : "Select or type highlighted text..."}
                             className="text-xs"
                           />
                           <Textarea
                             value={newHNote}
                             onChange={(e) => setNewHNote(e.target.value)}
-                            placeholder={isZh ? "你的笔记..." : isZh ? "你的笔记..." : "Your note..."}
+                            placeholder={isZh ? "你的笔记..." : isZh ? "你的笔记..." : isZh ? "你的笔记..." : "Your note..."}
                             rows={2}
                             className="text-xs"
                           />
@@ -360,7 +360,7 @@ export default function PdfViewer() {
                           <TagInput
                             tags={newHTags}
                             onTagsChange={setNewHTags}
-                            placeholder={isZh ? "添加标签..." : isZh ? "添加标签..." : isZh ? "添加标签..." : isZh ? "添加标签..." : "Add tags..."}
+                            placeholder={isZh ? "添加标签..." : isZh ? "添加标签..." : isZh ? "添加标签..." : isZh ? "添加标签..." : isZh ? "添加标签..." : isZh ? "添加标签..." : isZh ? "添加标签..." : "Add tags..."}
                           />
                           <div className="p-1.5 bg-slate-800/40 rounded text-[10px] text-slate-500">
                             📎 Auto-citation: {citation}
@@ -461,7 +461,7 @@ export default function PdfViewer() {
                       <Input
                         value={litNoteTitle}
                         onChange={(e) => setLitNoteTitle(e.target.value)}
-                        placeholder={isZh ? "笔记标题..." : isZh ? "笔记标题..." : "Note title..."}
+                        placeholder={isZh ? "笔记标题..." : isZh ? "笔记标题..." : isZh ? "笔记标题..." : "Note title..."}
                         className="text-sm"
                       />
                       <Textarea
@@ -471,7 +471,7 @@ export default function PdfViewer() {
                           setLitNoteSaved(false);
                         }}
                         rows={10}
-                        placeholder={isZh ? "在此处编写你的文献笔记。关键要点，论点，证据..." : isZh ? "在此处编写你的文献笔记。关键要点，论点，证据..." : "Write your literature note here. Key takeaways, arguments, evidence..."}
+                        placeholder={isZh ? "在此处编写你的文献笔记。关键要点，论点，证据..." : isZh ? "在此处编写你的文献笔记。关键要点，论点，证据..." : isZh ? "在此处编写你的文献笔记。关键要点，论点，证据..." : "Write your literature note here. Key takeaways, arguments, evidence..."}
                         className="text-sm font-mono"
                       />
                       <TagInput
@@ -519,7 +519,7 @@ export default function PdfViewer() {
                       <Input
                         value={permNoteTitle}
                         onChange={(e) => setPermNoteTitle(e.target.value)}
-                        placeholder={isZh ? "永久笔记标题..." : isZh ? "永久笔记标题..." : "Permanent note title..."}
+                        placeholder={isZh ? "永久笔记标题..." : isZh ? "永久笔记标题..." : isZh ? "永久笔记标题..." : "Permanent note title..."}
                         className="text-sm"
                       />
                       <Textarea
@@ -529,7 +529,7 @@ export default function PdfViewer() {
                           setPermNoteSaved(false);
                         }}
                         rows={10}
-                        placeholder={isZh ? "在多个来源中综合你的见解..." : isZh ? "在多个来源中综合你的见解..." : "Synthesize your insight across multiple sources..."}
+                        placeholder={isZh ? "在多个来源中综合你的见解..." : isZh ? "在多个来源中综合你的见解..." : isZh ? "在多个来源中综合你的见解..." : "Synthesize your insight across multiple sources..."}
                         className="text-sm font-mono"
                       />
                       <TagInput

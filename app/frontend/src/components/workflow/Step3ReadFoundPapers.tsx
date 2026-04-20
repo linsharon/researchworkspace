@@ -603,10 +603,10 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                   <SelectValue placeholder={tr("Sort by", "排序方式")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="title">{tr("Sort: Title", "排序：标题")}</SelectItem>
-                  <SelectItem value="year">{tr("Sort: Year", "排序：年份")}</SelectItem>
+                  <SelectItem value="title">{tr("Sort: Title", "按标题排序")}</SelectItem>
+                  <SelectItem value="year">{tr("Sort: Year", "按年份排序")}</SelectItem>
                   <SelectItem value="status">{tr("Sort: Status", "按状态排序")}</SelectItem>
-                  <SelectItem value="type">{tr("Sort: Type", "排序：类型")}</SelectItem>
+                  <SelectItem value="type">{tr("Sort: Type", "按类型排序")}</SelectItem>
                 </SelectContent>
               </Select>
               <button
@@ -865,7 +865,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-600">{tr("DOI or URL (optional)", "DOI 或 URL（可选）")}</label>
               <div className="flex gap-2">
-                <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder={isZh ? isZh ? "https://doi.org/..." : "https://doi.org/..." : "https://doi.org/..."} className="text-sm" />
+                <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder={isZh ? isZh ? isZh ? "https://doi.org/..." : "https://doi.org/..." : "https://doi.org/..." : "https://doi.org/..."} className="text-sm" />
                 <Button type="button" variant="outline" className="text-xs" disabled={doiFetching || !newPaperDoiUrl.trim()} onClick={() => void handleFetchByDoiUrl()}>
                   <Sparkles className="w-3 h-3 mr-1" />
                   {doiFetching ? tr("Fetching...", "获取中...") : tr("Auto-fill", "自动填充")}
@@ -879,7 +879,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-600">{tr("Authors (comma-separated)", "作者（逗号分隔）")}</label>
-              <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={tr("Author 1, Author 2...", "作者 1, 作者 2...")} className="text-sm" />
+              <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={tr("Author 1, Author 2...", "作者1, 作者2...")} className="text-sm" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -944,7 +944,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
       >
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>{tr("Add Multiple Entry Papers", "添加多个入口文献")}</DialogTitle>
+            <DialogTitle>{tr("Add Multiple Entry Papers", "添加多篇入口文献")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">

@@ -165,7 +165,7 @@ export function PermanentNoteForm({
             <Label htmlFor="perm-title">{isZh ? "原子标题（陈述句）" : "Atomic Title (Declarative Statement)"}</Label>
             <Input
               id="perm-title"
-              placeholder={isZh ? "例如，知识工作者以原子笔记的粒度更好地保留想法。" : isZh ? "例如，知识工作者以原子笔记的粒度更好地保留想法。" : "e.g., Knowledge workers retain ideas better with atomic note granularity."}
+              placeholder={isZh ? "例如，知识工作者以原子笔记的粒度更好地保留想法。" : isZh ? "例如，知识工作者以原子笔记的粒度更好地保留想法。" : isZh ? "例如，知识工作者以原子笔记的粒度更好地保留想法。" : "e.g., Knowledge workers retain ideas better with atomic note granularity."}
               value={form.atomicTitle}
               onChange={event => {
                 setForm(prev => ({ ...prev, atomicTitle: event.target.value }));
@@ -191,7 +191,7 @@ export function PermanentNoteForm({
             <Label htmlFor="perm-trigger">{isZh ? "检索触发器" : "Retrieval Trigger"}</Label>
             <Input
               id="perm-trigger"
-              placeholder={isZh ? "什么查询、上下文或问题应该显示这条笔记？" : isZh ? "什么查询、上下文或问题应该显示这条笔记？" : "What query, context, or problem should surface this note?"}
+              placeholder={isZh ? "什么查询、上下文或问题应该显示这条笔记？" : isZh ? "什么查询、上下文或问题应该显示这条笔记？" : isZh ? "什么查询、上下文或问题应该显示这条笔记？" : "What query, context, or problem should surface this note?"}
               value={form.retrievalTrigger}
               onChange={event => setForm(prev => ({ ...prev, retrievalTrigger: event.target.value }))}
             />
@@ -201,7 +201,7 @@ export function PermanentNoteForm({
             <Label htmlFor="perm-keywords">{isZh ? "关键词" : "Keywords"}</Label>
             <NoteTagInput
               onChange={keywords => setForm(prev => ({ ...prev, keywords }))}
-              placeholder={isZh ? "输入关键词后按回车键" : isZh ? "输入关键词后按回车键" : "Type keyword and press Enter"}
+              placeholder={isZh ? "输入关键词后按回车键" : isZh ? "输入关键词后按回车键" : isZh ? "输入关键词后按回车键" : "Type keyword and press Enter"}
               tags={form.keywords}
             />
           </div>
@@ -223,7 +223,7 @@ export function PermanentNoteForm({
                 <div className="grid gap-2 rounded-md border border-slate-700/50 p-3 md:grid-cols-[1fr_180px_auto]" key={`${index}-${link.targetNoteId}`}>
                   <Combobox
                     options={noteIdOptions}
-                    placeholder={isZh ? "搜索笔记ID..." : isZh ? "搜索笔记ID..." : "Search note ID..."}
+                    placeholder={isZh ? "搜索笔记ID..." : isZh ? "搜索笔记ID..." : isZh ? "搜索笔记ID..." : "Search note ID..."}
                     searchPlaceholder="Search notes by ID/title"
                     emptyText="No matching notes"
                     value={link.targetNoteId}
@@ -237,7 +237,7 @@ export function PermanentNoteForm({
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={isZh ? "关系" : isZh ? "关系" : "Relation"} />
+                      <SelectValue placeholder={isZh ? "关系" : isZh ? "关系" : isZh ? "关系" : "Relation"} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Supports">{isZh ? "支持" : "Supports"}</SelectItem>
@@ -268,7 +268,7 @@ export function PermanentNoteForm({
 
             <Combobox
               options={evidenceOptions}
-              placeholder={isZh ? "附加一个文献笔记作为证据" : isZh ? "附加一个文献笔记作为证据" : "Attach one Literature Note as evidence"}
+              placeholder={isZh ? "附加一个文献笔记作为证据" : isZh ? "附加一个文献笔记作为证据" : isZh ? "附加一个文献笔记作为证据" : "Attach one Literature Note as evidence"}
               searchPlaceholder="Search literature notes"
               emptyText="No literature notes found"
               value={form.evidenceLiteratureNoteId}

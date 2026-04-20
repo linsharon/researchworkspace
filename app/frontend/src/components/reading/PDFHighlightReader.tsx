@@ -239,7 +239,7 @@ export default function PDFHighlightReader({
                     </DialogHeader>
                     <div className="space-y-3">
                       <div className="p-3 bg-cyan-50 border border-cyan-200 rounded text-sm italic text-cyan-900">"{selectedText}"</div>
-                      <Input value={conceptTitle} onChange={(e) => setConceptTitle(e.target.value)} placeholder={isZh ? "概念标题" : isZh ? "概念标题" : "Concept title"} />
+                      <Input value={conceptTitle} onChange={(e) => setConceptTitle(e.target.value)} placeholder={isZh ? "概念标题" : isZh ? "概念标题" : isZh ? "概念标题" : "Concept title"} />
                       <Select value={conceptCategory} onValueChange={setConceptCategory}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -255,7 +255,7 @@ export default function PDFHighlightReader({
                       <Textarea
                         value={conceptDescription}
                         onChange={(e) => setConceptDescription(e.target.value)}
-                        placeholder={isZh ? "定义或描述" : isZh ? "定义或描述" : "Definition or description"}
+                        placeholder={isZh ? "定义或描述" : isZh ? "定义或描述" : isZh ? "定义或描述" : "Definition or description"}
                         className="h-24"
                       />
                       <div className="flex justify-end gap-2">

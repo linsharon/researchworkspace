@@ -295,7 +295,7 @@ export default function PaperReadingArea({
       window.setTimeout(() => setCopiedUploadLog(false), 2000);
     } catch (error) {
       console.error("Failed to copy upload error log:", error);
-      alert(isZh ? "无法复制上传错误日志。您仍然可以手动选择并复制。" : isZh ? "无法复制上传错误日志。您仍然可以手动选择并复制。" : "Failed to copy the upload error log. You can still select and copy it manually.");
+      alert(isZh ? "无法复制上传错误日志。您仍然可以手动选择并复制。" : isZh ? "无法复制上传错误日志。您仍然可以手动选择并复制。" : isZh ? "无法复制上传错误日志。您仍然可以手动选择并复制。" : "Failed to copy the upload error log. You can still select and copy it manually.");
     }
   };
 
@@ -308,7 +308,7 @@ export default function PaperReadingArea({
       window.setTimeout(() => setCopiedPreviewLog(false), 2000);
     } catch (error) {
       console.error("Failed to copy preview error log:", error);
-      alert(isZh ? "无法复制预览错误日志。您仍然可以手动选择并复制。" : isZh ? "无法复制预览错误日志。您仍然可以手动选择并复制。" : "Failed to copy the preview error log. You can still select and copy it manually.");
+      alert(isZh ? "无法复制预览错误日志。您仍然可以手动选择并复制。" : isZh ? "无法复制预览错误日志。您仍然可以手动选择并复制。" : isZh ? "无法复制预览错误日志。您仍然可以手动选择并复制。" : "Failed to copy the preview error log. You can still select and copy it manually.");
     }
   };
 
@@ -318,7 +318,7 @@ export default function PaperReadingArea({
 
   const handleDeletePDF = async () => {
     if (!paper.pdf_path) return;
-    const confirmed = window.confirm(isZh ? "从这篇论文中删除当前PDF文件？" : isZh ? "从这篇论文中删除当前PDF文件？" : "Delete current PDF file from this paper?");
+    const confirmed = window.confirm(isZh ? "从这篇论文中删除当前PDF文件？" : isZh ? "从这篇论文中删除当前PDF文件？" : isZh ? "从这篇论文中删除当前PDF文件？" : "Delete current PDF file from this paper?");
     if (!confirmed) return;
 
     try {
@@ -326,7 +326,7 @@ export default function PaperReadingArea({
       onChanged("pdf-file-updated");
     } catch (error) {
       console.error("Failed to delete PDF:", error);
-      alert(isZh ? "删除PDF失败。请再试一次。" : isZh ? "删除PDF失败。请再试一次。" : "Failed to delete PDF. Please try again.");
+      alert(isZh ? "删除PDF失败。请再试一次。" : isZh ? "删除PDF失败。请再试一次。" : isZh ? "删除PDF失败。请再试一次。" : "Failed to delete PDF. Please try again.");
     }
   };
 
@@ -504,7 +504,7 @@ export default function PaperReadingArea({
                 size="sm"
                 variant="ghost"
                 className="h-7 px-2 text-[11px] text-slate-300 hover:text-white"
-                title={isZh ? "下载PDF" : isZh ? "下载PDF" : "Download PDF"}
+                title={isZh ? "下载PDF" : isZh ? "下载PDF" : isZh ? "下载PDF" : "Download PDF"}
                 onClick={async () => {
                   try {
                     const { url, filename } = await paperAPI.downloadPdf(paper.id);
@@ -514,7 +514,7 @@ export default function PaperReadingArea({
                     a.click();
                     window.setTimeout(() => URL.revokeObjectURL(url), 5000);
                   } catch {
-                    alert(isZh ? "下载失败。请重试。" : isZh ? "下载失败。请重试。" : "Download failed. Please try again.");
+                    alert(isZh ? "下载失败。请重试。" : isZh ? "下载失败。请重试。" : isZh ? "下载失败。请重试。" : "Download failed. Please try again.");
                   }
                 }}
               >
@@ -526,7 +526,7 @@ export default function PaperReadingArea({
                 size="sm"
                 variant="ghost"
                 className="h-7 px-2 text-[11px] text-slate-300 hover:text-white"
-                title={isZh ? "替换PDF" : isZh ? "替换PDF" : "Replace PDF"}
+                title={isZh ? "替换PDF" : isZh ? "替换PDF" : isZh ? "替换PDF" : "Replace PDF"}
                 disabled={isBusyUploading}
                 onClick={handleReplacePDF}
               >
@@ -538,7 +538,7 @@ export default function PaperReadingArea({
                 size="sm"
                 variant="ghost"
                 className="h-7 px-2 text-[11px] text-rose-400 hover:text-rose-300"
-                title={isZh ? "删除PDF" : isZh ? "删除PDF" : "Delete PDF"}
+                title={isZh ? "删除PDF" : isZh ? "删除PDF" : isZh ? "删除PDF" : "Delete PDF"}
                 disabled={isBusyUploading}
                 onClick={handleDeletePDF}
               >
@@ -553,7 +553,7 @@ export default function PaperReadingArea({
                 size="sm"
                 variant="ghost"
                 className="h-7 w-7 p-0 text-slate-300 hover:text-white"
-                title={isZh ? "缩小" : isZh ? "缩小" : "Zoom out"}
+                title={isZh ? "缩小" : isZh ? "缩小" : isZh ? "缩小" : "Zoom out"}
                 onClick={() => setZoomLevel(prev => Math.max(30, prev - 10))}
               >
                 <ZoomOut className="h-3.5 w-3.5" />
@@ -563,7 +563,7 @@ export default function PaperReadingArea({
                 size="sm"
                 variant="ghost"
                 className="h-7 w-7 p-0 text-slate-300 hover:text-white"
-                title={isZh ? "放大" : isZh ? "放大" : "Zoom in"}
+                title={isZh ? "放大" : isZh ? "放大" : isZh ? "放大" : "Zoom in"}
                 onClick={() => setZoomLevel(prev => Math.min(300, prev + 10))}
               >
                 <ZoomIn className="h-3.5 w-3.5" />

@@ -980,9 +980,9 @@ export default function ArtifactCenter() {
       });
       setShowAddPaperDialog(false);
       resetAddPaperForm();
-      toast.success(isZh ? "入口文献已添加" : isZh ? "入口文献已添加" : "Entry paper added");
+      toast.success(isZh ? "入口文献已添加" : "Entry paper added");
     } catch {
-      toast.error(isZh ? "添加入口文献失败" : isZh ? "添加入口文献失败" : "Failed to add entry paper");
+      toast.error(isZh ? "添加入口文献失败" : "Failed to add entry paper");
     }
   };
 
@@ -1305,8 +1305,7 @@ export default function ArtifactCenter() {
                 {isZh ? "我的产件" : "My Artifacts"}
               </h1>
               <p className="text-sm text-slate-500">
-                All your research outputs in one place
-              </p>
+                {isZh ? "将所有研究产物集中于一处" : "All your research outputs in one place"}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1325,8 +1324,7 @@ export default function ArtifactCenter() {
             <Link to="/community-artifacts">
               <Button size="sm" variant="outline" className="text-xs">
                 <Globe className="w-3.5 h-3.5 mr-1.5" />
-                Community
-              </Button>
+                {isZh ? "社区" : "Community"}</Button>
             </Link>
           </div>
         </div>
@@ -1337,20 +1335,18 @@ export default function ArtifactCenter() {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-sm text-cyan-200">
                 <PackageCheck className="w-4 h-4" />
-                <span>{totalPackSelectionCount} item{totalPackSelectionCount !== 1 ? "s" : ""} selected</span>
+                <span>{totalPackSelectionCount} {isZh ? "项" : "item"}{totalPackSelectionCount !== 1 ? "s" : ""} {isZh ? "已选" : "selected"}</span>
                 {totalPackSelectionCount > 0 && (
                   <button
                     className="text-xs text-cyan-400 hover:underline ml-1"
                     onClick={() => setSelectedForPack(new Set())}
                   >
-                    Clear
-                  </button>
+                    {isZh ? "清除" : "Clear"}</button>
                 )}
               </div>
               <div className="flex items-center gap-1.5">
                 <Button size="sm" variant="outline" className="text-xs h-7" onClick={selectAllVisibleForPack}>
-                  Select Visible
-                </Button>
+                  {isZh ? "选择当前可见项" : "Select Visible"}</Button>
                 <Button
                   size="sm"
                   disabled={totalPackSelectionCount === 0}
@@ -1358,8 +1354,7 @@ export default function ArtifactCenter() {
                   onClick={() => setShowPackDialog(true)}
                 >
                   <Share2 className="w-3.5 h-3.5 mr-1.5" />
-                  Create Package
-                </Button>
+                  {isZh ? "创建产集" : "Create Package"}</Button>
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -1452,11 +1447,9 @@ export default function ArtifactCenter() {
             {cardPageSize !== "all" && totalCardPages > 1 ? (
               <>
                 <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentCardPage <= 1} onClick={() => setCardPage((prev) => Math.max(1, prev - 1))}>
-                  Prev
-                </Button>
+                  {isZh ? "上一页" : "Prev"}</Button>
                 <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentCardPage >= totalCardPages} onClick={() => setCardPage((prev) => Math.min(totalCardPages, prev + 1))}>
-                  Next
-                </Button>
+                  {isZh ? "前进" : "Next"}</Button>
               </>
             ) : null}
           </div>
@@ -1476,17 +1469,14 @@ export default function ArtifactCenter() {
                     title={projectIdFromUrl ? "Add paper to current project" : "Open a specific project to add papers"}
                   >
                     <Plus className="w-3.5 h-3.5 mr-1" />
-                    Add Paper
-                    <ChevronDown className="w-3.5 h-3.5 ml-1" />
+                    {isZh ? "添加论文" : "Add Paper"}<ChevronDown className="w-3.5 h-3.5 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
                   <DropdownMenuItem onClick={() => setShowAddPaperDialog(true)}>
-                    Add One
-                  </DropdownMenuItem>
+                    {isZh ? "添加一篇" : "Add One"}</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowAddMultiplePaperDialog(true)}>
-                    Add Multiple
-                  </DropdownMenuItem>
+                    {isZh ? "添加多篇" : "Add Multiple"}</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -1508,8 +1498,7 @@ export default function ArtifactCenter() {
                   onClick={() => visualUploadInputRef.current?.click()}
                 >
                   <Upload className="w-3.5 h-3.5 mr-1" />
-                  Upload File
-                </Button>
+                  {isZh ? "上传文件" : "Upload File"}</Button>
               </>
             )}
             </div>
@@ -1543,8 +1532,7 @@ export default function ArtifactCenter() {
                           className="h-6 border-red-300 px-2 text-[10px] text-red-600 hover:bg-red-50"
                           onClick={() => void handleRetryVisualUpload(file.id)}
                         >
-                          Retry
-                        </Button>
+                          {isZh ? "重试" : "Retry"}</Button>
                       ) : file.addedToVisual ? (
                         <Badge className="border-emerald-200 bg-emerald-100 text-[9px] text-emerald-700">
                           <CheckCircle2 className="mr-0.5 h-2.5 w-2.5" />
@@ -1572,7 +1560,7 @@ export default function ArtifactCenter() {
                       className="bg-cyan-600 hover:bg-cyan-700 text-white"
                       onClick={() => setSelectedKeywordCategory("all")}
                     >
-                      All ({filteredConcepts.length})
+                      {isZh ? "全部（" : "All ("}{filteredConcepts.length})
                     </Button>
                     {keywordCategories.map((category) => (
                       <Button
@@ -1607,7 +1595,7 @@ export default function ArtifactCenter() {
                     className={cn("text-xs", selectedKeywordCategory === "all" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
                     onClick={() => setSelectedKeywordCategory("all")}
                   >
-                    All ({filteredConcepts.length})
+                    {isZh ? "全部（" : "All ("}{filteredConcepts.length})
                   </Button>
                   {keywordCategories.map((category) => (
                     <Button
@@ -1624,7 +1612,7 @@ export default function ArtifactCenter() {
                     </Button>
                   ))}
                   <span className="ml-auto text-xs text-slate-500 px-2">
-                    Showing {visibleConcepts.length} of {filteredConcepts.length}
+                    {isZh ? "显示" : "Showing"}{visibleConcepts.length} {isZh ? "的" : "of"}{filteredConcepts.length}
                   </span>
                 </div>
 
@@ -1650,7 +1638,7 @@ export default function ArtifactCenter() {
                                       type="button"
                                       className="text-cyan-400"
                                       onClick={() => togglePackSelect(conceptPackToken(concept.id))}
-                                      title={isZh ? "选择并打包" : isZh ? "选择并打包" : "Select for package"}
+                                      title={isZh ? "选择并打包" : "Select for package"}
                                     >
                                       {selectedForPack.has(conceptPackToken(concept.id))
                                         ? <CheckSquare className="w-4 h-4" />
@@ -1682,7 +1670,7 @@ export default function ArtifactCenter() {
                                   size="sm"
                                   variant="outline"
                                   className="h-7 w-7 p-0"
-                                  title={isZh ? "浏览" : isZh ? "浏览" : "Browse"}
+                                  title={isZh ? "浏览" : "Browse"}
                                   onClick={() => openConceptDialog(concept.id, "view")}
                                 >
                                   <Eye className="w-3 h-3" />
@@ -1691,7 +1679,7 @@ export default function ArtifactCenter() {
                                   size="sm"
                                   variant="outline"
                                   className="h-7 w-7 p-0"
-                                  title={isZh ? "编辑" : isZh ? "编辑" : isZh ? "编辑" : isZh ? "编辑" : "Edit"}
+                                  title={isZh ? "编辑" : "Edit"}
                                   onClick={() => openConceptDialog(concept.id, "edit")}
                                 >
                                   <Edit className="w-3 h-3" />
@@ -1700,7 +1688,7 @@ export default function ArtifactCenter() {
                                   size="sm"
                                   variant="outline"
                                   className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
-                                  title={isZh ? "删除" : isZh ? "删除" : isZh ? "删除" : isZh ? "删除" : "Delete"}
+                                  title={isZh ? "删除" : "Delete"}
                                   onClick={() => handleDeleteConcept(concept.id)}
                                 >
                                   <Trash2 className="w-3 h-3" />
@@ -1723,7 +1711,7 @@ export default function ArtifactCenter() {
                               }))
                             }
                           >
-                            Show {hiddenCount} more in {category}
+                            {isZh ? "显示" : "Show"}{hiddenCount} {isZh ? "个更多于" : "more in"}{category}
                           </Button>
                         </div>
                       ) : isExpanded && items.length > 6 ? (
@@ -1739,7 +1727,7 @@ export default function ArtifactCenter() {
                               }))
                             }
                           >
-                            Collapse {category}
+                            {isZh ? "折叠" : "Collapse"}{category}
                           </Button>
                         </div>
                       ) : null}
@@ -1796,7 +1784,7 @@ export default function ArtifactCenter() {
                         {artifact.sourceStep === 4 && <Network className="w-3 h-3 inline mr-0.5" />}
                         {artifact.sourceStep === 5 && <MapIcon className="w-3 h-3 inline mr-0.5" />}
                         {artifact.sourceStep === 6 && <PenLine className="w-3 h-3 inline mr-0.5" />}
-                        Step {artifact.sourceStep}
+                        {isZh ? "步骤" : "Step"}{artifact.sourceStep}
                       </span>
                     </div>
                     <h4 className="text-sm font-medium text-slate-200 mb-1 group-hover:text-cyan-300 transition-colors line-clamp-2">
@@ -1816,13 +1804,11 @@ export default function ArtifactCenter() {
                       <div className="mb-2 flex flex-wrap gap-1.5">
                         {literatureTags.isEntry ? (
                           <Badge variant="outline" className="text-[10px] border-emerald-500/60 text-emerald-300">
-                            Entry
-                          </Badge>
+                            {isZh ? "入口文献" : "Entry"}</Badge>
                         ) : null}
                         {literatureTags.isExpanded ? (
                           <Badge variant="outline" className="text-[10px] border-cyan-500/60 text-cyan-300">
-                            Expanded
-                          </Badge>
+                            {isZh ? "扩展文献" : "Expanded"}</Badge>
                         ) : null}
                       </div>
                     )}
@@ -1855,7 +1841,7 @@ export default function ArtifactCenter() {
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
-                          title={isZh ? "查看" : isZh ? "查看" : isZh ? "查看" : "View"}
+                          title={isZh ? "查看" : "View"}
                         >
                           <Eye className="w-3 h-3" />
                         </Button>
@@ -1874,7 +1860,7 @@ export default function ArtifactCenter() {
                             size="sm"
                             variant="ghost"
                             className="h-6 w-6 p-0"
-                            title={isZh ? "在PDF阅读器中打开" : isZh ? "在PDF阅读器中打开" : "Open in Paper Read"}
+                            title={isZh ? "在PDF阅读器中打开" : "Open in Paper Read"}
                             onClick={(e) => {
                               e.stopPropagation();
                               void handleOpenArtifactSource(artifact);
@@ -1918,7 +1904,7 @@ export default function ArtifactCenter() {
                         {typeMeta.label}
                       </Badge>
                       <span className="text-xs text-slate-500">
-                        Step {artifact.sourceStep}: {stepMeta.label}
+                        {isZh ? "步骤" : "Step"}{artifact.sourceStep}: {stepMeta.label}
                       </span>
                     </div>
                     <p className="text-sm text-slate-600">
@@ -1933,7 +1919,7 @@ export default function ArtifactCenter() {
                     )}
                     <div className="flex items-center gap-1 text-xs text-slate-400">
                       <Clock className="w-3.5 h-3.5" />
-                      Last edited: {artifact.updatedAt}
+                      {isZh ? "最后编辑：" : "Last edited:"}{artifact.updatedAt}
                     </div>
                     <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-700/50">
                       {(artifact.type === "entry-paper" ||
@@ -1994,25 +1980,25 @@ export default function ArtifactCenter() {
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">{isZh ? "产集名" : "Package Name"}</label>
+                <label className="text-xs font-medium text-slate-700">{isZh ? "产集名称" : "Package Name"}</label>
                 <Input
                   value={packName}
                   onChange={(e) => setPackName(e.target.value)}
-                  placeholder={isZh ? "例如 RL 起始套件" : isZh ? "例如 RL 起始套件" : "e.g. RL Draft Starter Kit"}
+                  placeholder={isZh ? "例如 RL 起始套件" : "e.g. RL Draft Starter Kit"}
                   className="text-sm"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">{isZh ? "描述" : "Description"}</label>
+                <label className="text-xs font-medium text-slate-700">{isZh ? "例如 RL 起始套件" : "Description"}</label>
                 <Textarea
                   value={packDescription}
                   onChange={(e) => setPackDescription(e.target.value)}
-                  placeholder={isZh ? "这个产集包含什么内容，其他人何时应该使用它？" : isZh ? "这个产集包含什么内容，其他人何时应该使用它？" : "What does this package contain and when should others use it?"}
+                  placeholder={isZh ? "这个产集包含什么内容，其他人何时应该使用它？" : "What does this package contain and when should others use it?"}
                   className="text-sm min-h-[90px]"
                 />
               </div>
               <div className="p-2 rounded border border-slate-700/50 bg-slate-900/40 text-xs text-slate-400">
-                Selected items: {totalPackSelectionCount}
+                {isZh ? "例如 RL 起始套件" : "Selected items:"}{totalPackSelectionCount}
               </div>
               <div className="flex items-center gap-2 pt-1">
                 <Button
@@ -2022,12 +2008,10 @@ export default function ArtifactCenter() {
                   onClick={handleCreatePackage}
                 >
                   <Share2 className="w-3 h-3 mr-1" />
-                  Share Package
-                </Button>
+                  {isZh ? "分享产集" : "Share Package"}</Button>
                 <Button size="sm" variant="ghost" className="text-xs" onClick={() => setShowPackDialog(false)}>
-                  Cancel
-                </Button>
-                {packSaved && <span className="text-xs text-emerald-500">Package shared.</span>}
+                  {isZh ? "取消" : "Cancel"}</Button>
+                {packSaved && <span className="text-xs text-emerald-500">{isZh ? "产集已分享。" : "Package shared."}</span>}
               </div>
             </div>
           </DialogContent>
@@ -2048,7 +2032,7 @@ export default function ArtifactCenter() {
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">{isZh ? "DOI 或 URL（可选）" : "DOI or URL (optional)"}</label>
                 <div className="flex gap-2">
-                  <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder={isZh ? isZh ? "https://doi.org/..." : "https://doi.org/..." : "https://doi.org/..."} className="text-sm" />
+                  <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder={isZh ? isZh ? isZh ? "https://doi.org/..." : "https://doi.org/..." : "https://doi.org/..." : "https://doi.org/..."} className="text-sm" />
                   <Button type="button" variant="outline" className="text-xs" disabled={doiFetching || !newPaperDoiUrl.trim()} onClick={() => void handleFetchByDoiUrl()}>
                     <Sparkles className="w-3 h-3 mr-1" />
                     {doiFetching ? "Fetching..." : "Auto-fill"}
@@ -2058,11 +2042,11 @@ export default function ArtifactCenter() {
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">{isZh ? "标题" : "Title"}</label>
-                <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder={isZh ? "论文标题..." : isZh ? "论文标题..." : "Paper title..."} className="text-sm" />
+                <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder={isZh ? "论文标题..." : "Paper title..."} className="text-sm" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">{isZh ? "作者（逗号分隔）" : "Authors (comma-separated)"}</label>
-                <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={isZh ? "作者 1, 作者 2..." : isZh ? "作者 1, 作者 2..." : "Author 1, Author 2..."} className="text-sm" />
+                <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={isZh ? "作者1, 作者2..." : "Author 1, Author 2..."} className="text-sm" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -2071,7 +2055,7 @@ export default function ArtifactCenter() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-slate-600">{isZh ? "期刊" : "Journal"}</label>
-                  <Input value={newPaperJournal} onChange={(e) => setNewPaperJournal(e.target.value)} placeholder={isZh ? "期刊名称..." : isZh ? "期刊名称..." : "Journal name..."} className="text-sm" />
+                  <Input value={newPaperJournal} onChange={(e) => setNewPaperJournal(e.target.value)} placeholder={isZh ? "期刊名称..." : "Journal name..."} className="text-sm" />
                 </div>
               </div>
               <div className="space-y-1">
@@ -2101,16 +2085,14 @@ export default function ArtifactCenter() {
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">{isZh ? "发现笔记" : "Discovery Note"}</label>
-                <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} rows={2} placeholder={isZh ? "你是如何找到这篇论文的？" : isZh ? "你是如何找到这篇论文的？" : "How did you find this paper?"} className="text-xs" />
+                <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} rows={2} placeholder={isZh ? "你是如何找到这篇论文的？" : "How did you find this paper?"} className="text-xs" />
               </div>
               <div className="flex gap-2 pt-2">
                 <Button className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs" onClick={() => void handleAddEntryPaper()}>
                   <Plus className="w-3 h-3 mr-1" />
-                  Add Paper
-                </Button>
+                  {isZh ? "发现笔记" : "Add Paper"}</Button>
                 <Button variant="ghost" className="text-xs" onClick={() => setShowAddPaperDialog(false)}>
-                  Cancel
-                </Button>
+                  {isZh ? "取消" : "Cancel"}</Button>
               </div>
             </div>
           </DialogContent>
@@ -2125,7 +2107,7 @@ export default function ArtifactCenter() {
         >
           <DialogContent className="max-w-xl">
             <DialogHeader>
-              <DialogTitle>{isZh ? "添加多个入口文献" : "Add Multiple Entry Papers"}</DialogTitle>
+              <DialogTitle>{isZh ? "添加多篇入口文献" : "Add Multiple Entry Papers"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1">
@@ -2148,8 +2130,7 @@ export default function ArtifactCenter() {
                   {bulkImporting ? "Importing..." : "Import by DOI"}
                 </Button>
                 <Button variant="ghost" className="text-xs" onClick={() => setShowAddMultiplePaperDialog(false)}>
-                  Cancel
-                </Button>
+                  {isZh ? "取消" : "Cancel"}</Button>
               </div>
             </div>
           </DialogContent>
@@ -2184,7 +2165,7 @@ export default function ArtifactCenter() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-700">{isZh ? "分类" : "Category"}</label>
+                    <label className="text-xs font-medium text-slate-700">{isZh ? "类别" : "Category"}</label>
                     <Input
                       value={conceptForm.category}
                       onChange={(e) => setConceptForm((prev) => ({ ...prev, category: e.target.value }))}
@@ -2209,8 +2190,7 @@ export default function ArtifactCenter() {
                       className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
                       onClick={handleSaveConcept}
                     >
-                      Save
-                    </Button>
+                      {isZh ? "保存" : "Save"}</Button>
                   ) : null}
                   <Button
                     variant="ghost"
