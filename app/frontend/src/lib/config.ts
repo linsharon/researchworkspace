@@ -3,6 +3,9 @@ let runtimeConfig: {
   API_BASE_URL: string;
 } | null = null;
 
+const PRODUCTION_BACKEND_ORIGIN = 'https://researchworkspace.onrender.com';
+const PRODUCTION_BACKEND_HOST = 'researchworkspace.onrender.com';
+
 // Configuration loading state
 let configLoading = true;
 
@@ -11,12 +14,20 @@ const resolveDefaultApiBaseUrl = (): string => {
   if (typeof window === 'undefined') return '';
   const host = window.location.hostname.toLowerCase();
 
-  // Production Vercel frontend is static-only; send API calls to backend service.
-  if (host === 'researchworkspace.vercel.app') {
-    return 'https://researchworkspace.onrender.com';
+  const isLocalHost =
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '0.0.0.0' ||
+    host.endsWith('.local');
+
+  const isCodespacesHost = host.includes('.app.github.dev') || host.endsWith('.github.dev');
+
+  if (isLocalHost || isCodespacesHost || host === PRODUCTION_BACKEND_HOST) {
+    return '';
   }
 
-  return '';
+  // Static production frontends and custom domains need an explicit backend origin.
+  return PRODUCTION_BACKEND_ORIGIN;
 };
 
 const defaultConfig = {
