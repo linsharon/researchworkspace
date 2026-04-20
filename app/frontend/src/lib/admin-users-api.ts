@@ -40,6 +40,18 @@ export type AdminUser = {
   paymentTag: string;
 };
 
+export class AdminUsersApiError extends Error {
+  statusCode?: number;
+  detail?: string;
+
+  constructor(message: string, options?: { statusCode?: number; detail?: string }) {
+    super(message);
+    this.name = 'AdminUsersApiError';
+    this.statusCode = options?.statusCode;
+    this.detail = options?.detail;
+  }
+}
+
 const client = axios.create({
   headers: {
     'Content-Type': 'application/json',
@@ -88,23 +100,33 @@ const mapAdminUser = (raw: RawAdminUser): AdminUser => ({
   paymentTag: raw.payment_tag || '',
 });
 
-const extractErrorMessage = (error: unknown, fallback: string) => {
+const toAdminUsersApiError = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
     const detail = (error.response?.data as { detail?: string } | undefined)?.detail;
-    return detail || error.message || fallback;
+    return new AdminUsersApiError(detail || error.message || fallback, {
+      statusCode: error.response?.status,
+      detail,
+    });
   }
-  return error instanceof Error ? error.message : fallback;
+  if (error instanceof Error) {
+    return new AdminUsersApiError(error.message || fallback);
+  }
+  return new AdminUsersApiError(fallback);
 };
 
 export const adminUsersApi = {
   async list(query?: string) {
-    const response = await client.get<RawAdminUserList>('/api/v1/admin/users', {
-      params: query?.trim() ? { q: query.trim() } : undefined,
-    });
-    return {
-      total: response.data.total,
-      items: response.data.items.map(mapAdminUser),
-    };
+    try {
+      const response = await client.get<RawAdminUserList>('/api/v1/admin/users', {
+        params: query?.trim() ? { q: query.trim() } : undefined,
+      });
+      return {
+        total: response.data.total,
+        items: response.data.items.map(mapAdminUser),
+      };
+    } catch (error) {
+      throw toAdminUsersApiError(error, 'Failed to load users');
+    }
   },
 
   async update(
@@ -131,7 +153,7 @@ export const adminUsersApi = {
       });
       return mapAdminUser(response.data);
     } catch (error) {
-      throw new Error(extractErrorMessage(error, 'Failed to update user'));
+      throw toAdminUsersApiError(error, 'Failed to update user');
     }
   },
 
@@ -142,7 +164,7 @@ export const adminUsersApi = {
       });
       return mapAdminUser(response.data);
     } catch (error) {
-      throw new Error(extractErrorMessage(error, 'Failed to reset password'));
+      throw toAdminUsersApiError(error, 'Failed to reset password');
     }
   },
 
@@ -150,7 +172,7 @@ export const adminUsersApi = {
     try {
       await client.delete(`/api/v1/admin/users/${encodeURIComponent(userId)}`);
     } catch (error) {
-      throw new Error(extractErrorMessage(error, 'Failed to delete user'));
+      throw toAdminUsersApiError(error, 'Failed to delete user');
     }
   },
 };

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { KeyRound, Pencil, RefreshCw, Search, Shield, Trash2 } from 'lucide-react';
+import { AlertTriangle, KeyRound, Pencil, RefreshCw, Search, Shield, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import AppLayout from '@/components/AppLayout';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,7 @@ import {
 } from '@/components/ui/table';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/lib/i18n';
-import { AdminUser, adminUsersApi } from '@/lib/admin-users-api';
+import { AdminUser, AdminUsersApiError, adminUsersApi } from '@/lib/admin-users-api';
 
 type EditFormState = {
   email: string;
@@ -42,6 +43,12 @@ type EditFormState = {
   role: string;
   premiumPlan: 'premium' | 'free';
   paymentTag: 'paypal' | 'wechat' | 'none';
+};
+
+type LoadDiagnostic = {
+  statusCode?: number;
+  title: string;
+  message: string;
 };
 
 const ADMIN_ENTRY_EMAIL = 'pandalinjingjing@gmail.com';
@@ -103,6 +110,7 @@ export default function AdminUsers() {
   const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
   const [resetPassword, setResetPassword] = useState('');
   const [resetting, setResetting] = useState(false);
+  const [loadDiagnostic, setLoadDiagnostic] = useState<LoadDiagnostic | null>(null);
 
   const isDesignatedAdmin = (user?.email || '').trim().toLowerCase() === ADMIN_ENTRY_EMAIL;
 
@@ -126,8 +134,20 @@ export default function AdminUsers() {
       const response = await adminUsersApi.list(nextQuery);
       setUsers(response.items);
       setTotal(response.total);
+      setLoadDiagnostic(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : isZh ? '加载用户失败' : 'Failed to load users');
+      const apiError = error instanceof AdminUsersApiError ? error : new AdminUsersApiError(error instanceof Error ? error.message : 'Failed to load users');
+      const fallbackMessage = isZh ? '加载用户失败' : 'Failed to load users';
+      const title = apiError.statusCode
+        ? (isZh ? `用户列表请求失败（${apiError.statusCode}）` : `User list request failed (${apiError.statusCode})`)
+        : fallbackMessage;
+      const message = apiError.detail || apiError.message || fallbackMessage;
+      setLoadDiagnostic({
+        statusCode: apiError.statusCode,
+        title,
+        message,
+      });
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -259,6 +279,23 @@ export default function AdminUsers() {
             <CardContent><div className="text-3xl font-semibold text-cyan-300">{adminCount}</div></CardContent>
           </Card>
         </div>
+
+        {loadDiagnostic && (
+          <Alert variant="destructive" className="border-rose-500/40 bg-rose-950/30 text-rose-100">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>{loadDiagnostic.title}</AlertTitle>
+            <AlertDescription>
+              <p>{loadDiagnostic.message}</p>
+              {loadDiagnostic.statusCode === 401 && (
+                <p className="mt-2 text-xs text-rose-200/90">
+                  {isZh
+                    ? '这通常表示页面请求没有带上应用登录态 token。请重新登录，或强制刷新页面后重试。'
+                    : 'This usually means the page request did not include the app auth token. Please sign in again, or hard-refresh the page and retry.'}
+                </p>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Card className="border-slate-700/50 bg-slate-950/40">
           <CardContent className="pt-6">
