@@ -117,9 +117,9 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
 
   const readingStatusLabel = (value: Paper["reading_status"]) => {
     if (!isZh) return value;
-    if (value === "To Read") return "待读";
-    if (value === "Reading") return "阅读中";
-    return "已完成";
+    if (value === "To Read") return "要读";
+    if (value === "Reading") return "在读";
+    return "已读";
   };
 
   useEffect(() => {
@@ -745,13 +745,13 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                           })()}
                         </div>
                         {paper.is_entry_paper && (
-                          <span className="inline-flex h-6 items-center rounded-full border border-cyan-400/70 px-2 text-[11px] font-medium text-cyan-200 pointer-events-none">
-                            {isZh ? "条目" : "entry"}
+                          <span className="inline-flex h-6 items-center whitespace-nowrap rounded-full border border-cyan-400/70 px-2.5 text-[11px] font-medium text-cyan-200 pointer-events-none">
+                            {isZh ? "入口" : "entry"}
                           </span>
                         )}
                         {paper.is_expanded_paper && (
-                          <span className="inline-flex h-6 items-center rounded-full border border-blue-500/70 px-2 text-[11px] font-medium text-blue-300 pointer-events-none">
-                            {isZh ? "展开" : "expanded"}
+                          <span className="inline-flex h-6 items-center whitespace-nowrap rounded-full border border-blue-500/70 px-2.5 text-[11px] font-medium text-blue-300 pointer-events-none">
+                            {isZh ? "扩展" : "expanded"}
                           </span>
                         )}
                       </div>
@@ -784,7 +784,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                           <SelectContent>
                             {READING_STATUSES.map((status) => (
                               <SelectItem key={status} value={status}>
-                                {status}
+                                {readingStatusLabel(status)}
                               </SelectItem>
                             ))}
                           </SelectContent>

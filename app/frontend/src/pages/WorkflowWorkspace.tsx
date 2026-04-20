@@ -2763,7 +2763,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                         onClick={handleGenerateBooleanString}
                       >
                         <Sparkles className="w-3 h-3 mr-1" />
-                        {isZh ? "生成查询" : "Build Query"}</Button>
+                        {isZh ? "生成字符串" : "Build Query"}</Button>
                     </div>
                   </div>
 
@@ -3022,9 +3022,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="title">{isZh ? "按标题排序" : "Sort: Title"}</SelectItem>
-                      <SelectItem value="year">{isZh ? "拉取新的10项" : "Sort: Year"}</SelectItem>
+                      <SelectItem value="year">{isZh ? "按年份排序" : "Sort: Year"}</SelectItem>
                       <SelectItem value="type">{isZh ? "按类型排序" : "Sort: Type"}</SelectItem>
-                      <SelectItem value="relevance">{isZh ? "排序：相关性" : "Sort: Relevance"}</SelectItem>
+                      <SelectItem value="relevance">{isZh ? "按相关性排序" : "Sort: Relevance"}</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
@@ -3032,10 +3032,10 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     variant="outline"
                     className="text-xs h-7"
                     onClick={() => setCandidateSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
-                    title={isZh ? "按年份排序" : "Toggle sort order"}
+                    title={isZh ? "切换排序顺序" : "Toggle sort order"}
                   >
                     <ArrowUpDown className="w-3 h-3 mr-1" />
-                    {candidateSortOrder === "asc" ? "Asc" : "Desc"}
+                    {candidateSortOrder === "asc" ? (isZh ? "升序" : "Asc") : (isZh ? "降序" : "Desc")}
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -7344,6 +7344,132 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
   // Reporting style
   const [selectedStyle, setSelectedStyle] = useState("apa");
   const activeStyle = REPORTING_STYLES.find((s) => s.id === selectedStyle) || REPORTING_STYLES[0];
+  const reportingStyleTranslations: Record<string, {
+    name: string;
+    description: string;
+    components: Record<string, { label: string; description: string }>;
+  }> = {
+    apa: {
+      name: "APA 格式（第 7 版）",
+      description: "美国心理学会格式，常用于社会科学、教育学和心理学。",
+      components: {
+        "title-page": { label: "标题页", description: "包含页眉、标题、作者姓名、机构信息、作者说明和页码。" },
+        abstract: { label: "摘要", description: "用 150 到 250 字概述研究内容，并在下方附上关键词。" },
+        introduction: { label: "引言", description: "介绍问题、回顾相关文献，说明研究目的与理由，按漏斗结构展开。" },
+        "literature-review": { label: "文献综述", description: "批判性综合既有研究，可按主题或时间组织，并指出研究空白。" },
+        method: { label: "研究方法", description: "描述参与者、材料或工具以及研究程序，详细到足以复现。" },
+        results: { label: "结果", description: "呈现研究发现而不做解释，可配合表格、图像、统计检验和效应量。" },
+        discussion: { label: "讨论", description: "结合假设和既有研究解释结果，并讨论意义、局限与未来方向。" },
+        references: { label: "参考文献", description: "按 APA 格式列出所有引用来源，使用悬挂缩进并按作者姓氏排序。" },
+      },
+    },
+    ieee: {
+      name: "IEEE 格式",
+      description: "电气与电子工程师协会格式，常用于工程、计算机科学和技术领域。",
+      components: {
+        "title-authors": { label: "标题与作者", description: "包含论文标题，以及作者姓名、单位和邮箱。" },
+        abstract: { label: "摘要", description: "用 100 到 200 字简明概述研究目的、方法、结果和结论。" },
+        "index-terms": { label: "索引词", description: "按字母顺序列出 4 到 6 个关键词，以逗号分隔。" },
+        introduction: { label: "I. 引言", description: "提出问题、研究动机和贡献，并简要说明论文结构。" },
+        "related-work": { label: "II. 相关工作", description: "回顾并比较已有方法，清晰说明你的工作与现有研究的差异。" },
+        methodology: { label: "III. 方法", description: "详细描述提出的方法、系统架构、算法或实验设计。" },
+        results: { label: "IV. 结果与讨论", description: "呈现实验结果并与基线比较，同时解释其意义。" },
+        conclusion: { label: "V. 结论", description: "总结主要贡献、局限性，并提出未来研究方向。" },
+        references: { label: "参考文献", description: "按引用顺序编号列出参考文献，使用 IEEE 引用格式。" },
+      },
+    },
+    harvard: {
+      name: "Harvard 格式",
+      description: "作者-年份引用体系，广泛用于人文、商科及英澳高校的社会科学写作。",
+      components: {
+        "title-page": { label: "标题页", description: "包含标题、作者、机构、日期和字数，有些变体还会加入课程信息。" },
+        abstract: { label: "摘要 / 执行摘要", description: "用 150 到 300 字概述研究目标、方法、主要发现和结论。" },
+        introduction: { label: "引言", description: "介绍主题、背景、研究目标或问题，并说明全文结构。" },
+        "literature-review": { label: "文献综述", description: "批判性评估和综合现有研究，使用作者-年份引用并指出主题与空白。" },
+        methodology: { label: "方法论", description: "说明并论证研究路径、数据收集方式和分析方法。" },
+        findings: { label: "研究发现 / 结果", description: "使用标题、表格或图表清晰展示研究发现。" },
+        discussion: { label: "讨论", description: "结合文献解释结果，讨论其意义、局限性和建议。" },
+        conclusion: { label: "结论", description: "总结关键观点，重申研究意义，并提出后续研究方向。" },
+        "reference-list": { label: "参考文献列表", description: "按作者字母顺序列出所有引用文献，遵循 Harvard 格式。" },
+      },
+    },
+  };
+  const getStyleName = (style: (typeof REPORTING_STYLES)[number]) =>
+    isZh ? (reportingStyleTranslations[style.id]?.name || style.name) : style.name;
+  const getStyleDescription = (style: (typeof REPORTING_STYLES)[number]) =>
+    isZh ? (reportingStyleTranslations[style.id]?.description || style.description) : style.description;
+  const getComponentLabel = (styleId: string, componentId: string, fallback: string) =>
+    isZh ? (reportingStyleTranslations[styleId]?.components[componentId]?.label || fallback) : fallback;
+  const getComponentDescription = (styleId: string, componentId: string, fallback: string) =>
+    isZh ? (reportingStyleTranslations[styleId]?.components[componentId]?.description || fallback) : fallback;
+  const getMacroLabel = (label: string) => {
+    if (!isZh) return label;
+    const map: Record<string, string> = {
+      "Title is clear and informative": "标题清晰且信息充分",
+      "Abstract covers purpose, method, findings, conclusion": "摘要覆盖研究目的、方法、发现和结论",
+      "Introduction present with clear research question": "引言完整且研究问题明确",
+      "Literature review synthesizes (not just summarizes)": "文献综述体现综合分析，而非仅罗列总结",
+      "Method section is replicable": "方法部分足以支持他人复现",
+      "Results are presented before interpretation": "结果先于解释呈现",
+      "Discussion addresses implications and limitations": "讨论部分涵盖研究意义和局限",
+      "Conclusion does not introduce new information": "结论不引入新的信息",
+      "References are complete and consistent": "参考文献完整且格式一致",
+    };
+    return map[label] || label;
+  };
+  const getMesoLabel = (label: string) => {
+    if (!isZh) return label;
+    const map: Record<string, string> = {
+      "Claim — Main argument/thesis is clearly stated": "主张：核心论点或论题表达清晰",
+      "Data/Grounds — Evidence supports each claim": "数据/根据：每个主张都有证据支持",
+      "Warrant — Logical connection between data and claim is explicit": "保证：数据与主张之间的逻辑关系表达明确",
+      "Backing — Warrants are supported by additional evidence or theory": "支撑：保证部分有额外证据或理论支持",
+      "Qualifier — Degree of certainty is appropriate (e.g., 'may', 'likely')": "限定：确定性程度使用得当（如“可能”“大概率”）",
+      "Rebuttal — Counter-arguments are acknowledged and addressed": "反驳：反对观点得到承认并回应",
+      "Each paragraph has a clear topic sentence (claim)": "每一段都有清晰的主题句（主张）",
+      "Paragraphs follow claim → evidence → analysis structure": "段落遵循“主张 → 证据 → 分析”结构",
+      "Transitions between paragraphs maintain argument flow": "段落之间的过渡维持了论证流动",
+      "Overall argument builds progressively toward conclusion": "整体论证逐步推进到结论",
+    };
+    return map[label] || label;
+  };
+  const getMesoCategory = (category: string) => {
+    if (!isZh) return category;
+    const map: Record<string, string> = {
+      Claim: "主张",
+      Data: "数据",
+      Warrant: "保证",
+      Backing: "支撑",
+      Qualifier: "限定",
+      Rebuttal: "反驳",
+      Paragraph: "段落",
+      Flow: "衔接",
+    };
+    return map[category] || category;
+  };
+  const getMicroLabel = (label: string) => {
+    if (!isZh) return label;
+    const map: Record<string, string> = {
+      "Spelling errors checked": "已检查拼写错误",
+      "Grammar errors checked": "已检查语法错误",
+      "Formatting is consistent (headings, fonts, spacing)": "格式保持一致（标题、字体、间距）",
+      "Visual elements are consistent (tables, figures, captions)": "图表元素保持一致（表格、图片、图注）",
+      "No broken links or missing references": "没有失效链接或缺失引用",
+      "All abbreviations are defined on first use": "所有缩写首次出现时已解释",
+      "Each paragraph has a clear topic sentence": "每段都有明确的主题句",
+      "Paragraphs are appropriate length (5–8 sentences)": "段落长度适中（5 到 8 句）",
+      "Signposting words guide the reader (however, therefore, moreover)": "使用引导词帮助读者理解（如 however、therefore、moreover）",
+      "Subject and verb are close together in sentences": "句子中的主语和谓语距离适中",
+      "Sentence complexity is varied but not excessive": "句式复杂度有变化但不过度",
+      "Information density is manageable per paragraph": "每段的信息密度适中",
+      "Facts and data are accurate and verifiable": "事实和数据准确且可验证",
+      "Limitations are explicitly acknowledged": "局限性被明确说明",
+      "Academic tone is maintained throughout": "全文保持学术语气",
+      "Cited references include seminal/classic works": "引用文献包含奠基性或经典研究",
+      "Cited references are recent and relevant (within 5 years for most)": "引用文献较新且相关（大多数在 5 年内）",
+    };
+    return map[label] || label;
+  };
 
   // Component contents keyed by style-component id
   const [componentContents, setComponentContents] = useState<Record<string, string>>(() => {
@@ -8912,12 +9038,12 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     );
                   }}
                 >
-                  {style.name}
+                  {getStyleName(style)}
                 </Button>
               ))}
             </div>
           </div>
-          <p className="text-[10px] text-white/80 mt-1.5">{activeStyle.description}</p>
+          <p className="text-[10px] text-white/80 mt-1.5">{getStyleDescription(activeStyle)}</p>
         </CardContent>
       </Card>
 
@@ -8928,7 +9054,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold">
-                  {isZh ? "写作板块 —" : "Writing Block —"}{activeStyle.name}
+                  {isZh ? "写作板块 —" : "Writing Block —"}{getStyleName(activeStyle)}
                 </CardTitle>
               </div>
             </CardHeader>
@@ -9047,7 +9173,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                           : "bg-[#0d1b30] text-slate-500 border-slate-700/50 hover:border-slate-300"
                     )}
                   >
-                    {comp.label}
+                    {getComponentLabel(activeStyle.id, comp.id, comp.label)}
                     {componentContents[getContentKey(comp.id)] && activeComponentId !== comp.id && (
                       <CheckCircle2 className="w-2.5 h-2.5 ml-1 inline" />
                     )}
@@ -9061,8 +9187,8 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                 .map((comp) => (
                   <div key={comp.id} className="space-y-2">
                     <div className="p-2.5 bg-white/5 border border-white/10 rounded-lg">
-                      <p className="text-xs font-medium text-cyan-300 mb-0.5">{comp.label}</p>
-                      <p className="text-[10px] text-white">{comp.description}</p>
+                      <p className="text-xs font-medium text-cyan-300 mb-0.5">{getComponentLabel(activeStyle.id, comp.id, comp.label)}</p>
+                      <p className="text-[10px] text-white">{getComponentDescription(activeStyle.id, comp.id, comp.description)}</p>
                     </div>
                     {comp.id.includes("reference") && referenceJumpNumber && (
                       <div className="p-2 rounded border border-yellow-400/30 bg-yellow-400/10 text-[11px] text-yellow-200">
@@ -9168,7 +9294,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     : "text-white/80 hover:bg-slate-800"
                 )}
               >
-                {tab}
+                {isZh ? (tab === "macro" ? "宏观" : tab === "meso" ? "中观" : "微观") : tab}
               </button>
             ))}
           </div>
@@ -9196,7 +9322,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                           className="mt-0.5"
                         />
                         <span className={cn("text-xs leading-relaxed break-words", macroChecked[item.id] ? "text-emerald-400 line-through" : "text-white")}>
-                          {item.label}
+                          {getMacroLabel(item.label)}
                         </span>
                       </label>
                     ))}
@@ -9210,7 +9336,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   disabled={aiChecking}
                 >
                   <Sparkles className="w-3 h-3 mr-1" />
-                  {aiChecking ? "Checking..." : "AI Check (Premium)"}
+                  {aiChecking ? (isZh ? "检查中..." : "Checking...") : (isZh ? "AI 检查（高级版）" : "AI Check (Premium)")}
                 </Button>
               </CardContent>
             </Card>
@@ -9244,10 +9370,10 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                         />
                         <div>
                           <span className={cn("text-xs", mesoChecked[item.id] ? "text-emerald-400 line-through" : "text-white")}>
-                            {item.label}
+                            {getMesoLabel(item.label)}
                           </span>
                           <Badge variant="outline" className="text-[8px] ml-1.5 px-1 py-0">
-                            {item.category}
+                            {getMesoCategory(item.category)}
                           </Badge>
                         </div>
                       </label>
@@ -9262,7 +9388,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   disabled={aiChecking}
                 >
                   <Sparkles className="w-3 h-3 mr-1" />
-                  {aiChecking ? "Checking..." : "AI Toulmin Check (Premium)"}
+                  {aiChecking ? (isZh ? "检查中..." : "Checking...") : (isZh ? "AI 图尔敏检查（高级版）" : "AI Toulmin Check (Premium)")}
                 </Button>
               </CardContent>
             </Card>
@@ -9293,7 +9419,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                               className="mt-0.5"
                             />
                             <span className={cn("text-[11px]", microBasicChecked[item.id] ? "text-emerald-400 line-through" : "text-white")}>
-                              {item.label}
+                              {getMicroLabel(item.label)}
                             </span>
                           </label>
                         ))}
@@ -9315,7 +9441,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                               className="mt-0.5"
                             />
                             <span className={cn("text-[11px]", microReadChecked[item.id] ? "text-emerald-400 line-through" : "text-white")}>
-                              {item.label}
+                              {getMicroLabel(item.label)}
                             </span>
                           </label>
                         ))}
@@ -9337,7 +9463,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                               className="mt-0.5"
                             />
                             <span className={cn("text-[11px]", microCredChecked[item.id] ? "text-emerald-400 line-through" : "text-white")}>
-                              {item.label}
+                              {getMicroLabel(item.label)}
                             </span>
                           </label>
                         ))}
@@ -9362,7 +9488,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     disabled={aiChecking}
                   >
                     <Sparkles className="w-3 h-3 mr-1" />
-                    {aiChecking ? "Checking..." : "AI Grammar Check (Premium)"}
+                    {aiChecking ? (isZh ? "检查中..." : "Checking...") : (isZh ? "AI 语法检查（高级版）" : "AI Grammar Check (Premium)")}
                   </Button>
                 </div>
               </CardContent>

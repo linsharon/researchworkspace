@@ -1319,7 +1319,7 @@ export default function ArtifactCenter() {
               }}
             >
               <Package className="w-3.5 h-3.5 mr-1.5" />
-              {packMode ? "Cancel Pack" : "Pack & Share"}
+              {packMode ? (isZh ? "取消打包" : "Cancel Pack") : (isZh ? "打包与分享" : "Pack & Share")}
             </Button>
             <Link to="/community-artifacts">
               <Button size="sm" variant="outline" className="text-xs">
@@ -1335,7 +1335,7 @@ export default function ArtifactCenter() {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-sm text-cyan-200">
                 <PackageCheck className="w-4 h-4" />
-                <span>{totalPackSelectionCount} {isZh ? "项" : "item"}{totalPackSelectionCount !== 1 ? "s" : ""} {isZh ? "已选" : "selected"}</span>
+                <span>{isZh ? `已选 ${totalPackSelectionCount} 项` : `${totalPackSelectionCount} item${totalPackSelectionCount !== 1 ? "s" : ""} selected`}</span>
                 {totalPackSelectionCount > 0 && (
                   <button
                     className="text-xs text-cyan-400 hover:underline ml-1"
@@ -1989,7 +1989,7 @@ export default function ArtifactCenter() {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">{isZh ? "例如 RL 起始套件" : "Description"}</label>
+                <label className="text-xs font-medium text-slate-700">{isZh ? "描述" : "Description"}</label>
                 <Textarea
                   value={packDescription}
                   onChange={(e) => setPackDescription(e.target.value)}
@@ -1998,7 +1998,7 @@ export default function ArtifactCenter() {
                 />
               </div>
               <div className="p-2 rounded border border-slate-700/50 bg-slate-900/40 text-xs text-slate-400">
-                {isZh ? "例如 RL 起始套件" : "Selected items:"}{totalPackSelectionCount}
+                {isZh ? `已选项目：${totalPackSelectionCount}` : `Selected items: ${totalPackSelectionCount}`}
               </div>
               <div className="flex items-center gap-2 pt-1">
                 <Button

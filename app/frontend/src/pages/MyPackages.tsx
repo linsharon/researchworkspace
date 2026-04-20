@@ -397,7 +397,9 @@ export default function MyPackages() {
             </div>
           </div>
           <Badge variant="outline" className="text-xs">
-            {filteredCreatedPackages.length + filteredDownloadedPackages.length} packages
+            {isZh
+              ? `${filteredCreatedPackages.length + filteredDownloadedPackages.length} 个产集`
+              : `${filteredCreatedPackages.length + filteredDownloadedPackages.length} packages`}
           </Badge>
         </div>
 
