@@ -472,7 +472,7 @@ function AuthenticatedLanding() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-xs text-cyan-300 tracking-wider uppercase">{isZh ? "项目管理" : "Project Management"}</p>
             <Badge className={isPremiumUser ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/30" : "bg-slate-700/60 text-slate-200 border-slate-500/40"}>
-              {isPremiumUser ? (isZh ? "Premium 用户" : "Premium") : (isZh ? "Free 用户" : "Free")}
+              {isPremiumUser ? (isZh ? "高级版用户" : "Premium") : (isZh ? "免费版用户" : "Free")}
             </Badge>
           </div>
           <h1 className="text-3xl font-bold text-slate-100 mt-2">
@@ -480,8 +480,8 @@ function AuthenticatedLanding() {
           </h1>
           <p className="text-sm text-slate-300 mt-2 max-w-2xl">
             {isZh
-              ? "先创建项目，再进入 Purpose → Discover → Read → Expand → Visualize → Draft。所有文献、卡片、笔记和草稿都归属于项目。"
-              : "Create a project first, then move through Purpose → Discover → Read → Expand → Visualize → Draft. All papers, artifacts, notes, and drafts remain project-scoped."}
+              ? "先创建项目，再进入工作流：步骤1-6。所有产件都是基于项目的。"
+              : "Create a project first, then move through Workflow: Steps 1-6. All artifacts remain project-scoped."}
           </p>
         </div>
 
@@ -550,7 +550,7 @@ function AuthenticatedLanding() {
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => navigate(`/artifacts?tab=all&projectId=${project.id}`)}>
                             <FileText className="h-3 w-3 mr-1" />
-                            Artifacts
+                            {isZh ? "产件" : "Artifacts"}
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => navigate("/projects/members")}>
                             <Users className="h-3 w-3 mr-1" />

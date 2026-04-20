@@ -9307,7 +9307,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   {isZh ? "宏观层面 — 整体结构" : "Macro Level — Overall Structure"}</CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="max-h-[460px] pr-2">
+                <ScrollArea className="h-[460px] pr-3">
                   <div className="space-y-1.5">
                     {MACRO_CHECKLIST.map((item) => (
                       <label
@@ -9354,7 +9354,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                 </div>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="max-h-[300px]">
+                <ScrollArea className="h-[300px] pr-3">
                   <div className="space-y-1.5">
                     {MESO_TOULMIN_CHECKLIST.map((item) => (
                       <label
@@ -9402,7 +9402,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   {isZh ? "微观层面 — 语言与细节" : "Micro Level — Language & Details"}</CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="max-h-[380px]">
+                <ScrollArea className="h-[380px] pr-3">
                   <div className="space-y-3">
                     {/* Basic Errors */}
                     <div>
