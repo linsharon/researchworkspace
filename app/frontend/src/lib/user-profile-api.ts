@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosHeaders } from "axios";
 import { type UserProfile } from "@/lib/data";
 import { getAPIBaseURL } from "./config";
 import { clearAuthSession, getAuthToken } from "./session";
@@ -46,8 +46,9 @@ const client = axios.create({
 client.interceptors.request.use((config) => {
   const token = getAuthToken();
   if (token) {
-    config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${token}`;
+    const headers = AxiosHeaders.from(config.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    config.headers = headers;
   }
 
   const baseURL = getAPIBaseURL();

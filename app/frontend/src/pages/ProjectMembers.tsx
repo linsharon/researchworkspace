@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
+import { useI18n } from "@/lib/i18n";
 import {
   projectAPI,
   type Project,
@@ -17,6 +18,8 @@ import {
 } from "@/lib/manuscript-api";
 
 export default function ProjectMembers() {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const { user } = useAuth();
   const isPremiumUser = Boolean(user?.is_premium) || user?.role === "admin";
   const [projects, setProjects] = useState<Project[]>([]);
@@ -45,7 +48,7 @@ export default function ProjectMembers() {
       }
     } catch (error) {
       console.error(error);
-      toast.error("Failed to load projects");
+      toast.error(isZh ? "项目加载失败" : "Failed to load projects");
     } finally {
       setLoadingProjects(false);
     }
@@ -63,7 +66,7 @@ export default function ProjectMembers() {
       setMembers(result);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to load project members");
+      toast.error(isZh ? "项目成员加载失败" : "Failed to load project members");
       setMembers([]);
     } finally {
       setLoadingMembers(false);
@@ -72,11 +75,11 @@ export default function ProjectMembers() {
 
   const handleAddMember = async () => {
     if (!selectedProjectId) {
-      toast.error("Please select a project first");
+      toast.error(isZh ? "请先选择一个项目" : "Please select a project first");
       return;
     }
     if (!selectedCandidate) {
-      toast.error("Please select a user");
+      toast.error(isZh ? "请选择一个用户" : "Please select a user");
       return;
     }
 
@@ -85,7 +88,7 @@ export default function ProjectMembers() {
         user_id: selectedCandidate.id,
         role: grantRole,
       });
-      toast.success("Project member updated");
+      toast.success(isZh ? "项目成员更新" : "Project member updated");
       setSearchQuery("");
       setCandidates([]);
       setSelectedCandidate(null);
@@ -101,7 +104,7 @@ export default function ProjectMembers() {
     if (!selectedProjectId) return;
     try {
       await projectAPI.updateMember(selectedProjectId, member.user_id, { role });
-      toast.success("Member role updated");
+      toast.success(isZh ? "成员角色更新" : "Member role updated");
       await loadMembers(selectedProjectId);
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -113,7 +116,7 @@ export default function ProjectMembers() {
     if (!selectedProjectId) return;
     try {
       await projectAPI.removeMember(selectedProjectId, member.user_id);
-      toast.success("Member removed");
+      toast.success(isZh ? "成员已移除" : "Member removed");
       await loadMembers(selectedProjectId);
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -171,8 +174,8 @@ export default function ProjectMembers() {
           <Card className="border-cyan-500/30 bg-cyan-500/10">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Badge className="bg-cyan-900/60 text-cyan-300 border-cyan-700/40">Premium Only</Badge>
-                <CardTitle className="text-slate-100">Team is available for Premium users only</CardTitle>
+                <Badge className="bg-cyan-900/60 text-cyan-300 border-cyan-700/40">{isZh ? "仅限高级版" : "Premium Only"}</Badge>
+                <CardTitle className="text-slate-100">{isZh ? "团队仅限高级用户使用" : "Team is available for Premium users only"}</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -180,7 +183,7 @@ export default function ProjectMembers() {
                 Upgrade to Premium to manage project members, assign viewer or editor roles, and collaborate on manuscript and team-scoped documents.
               </p>
               <Link to="/premium">
-                <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">View Premium details</Button>
+                <Button className="bg-cyan-600 hover:bg-cyan-700 text-white">{isZh ? "查看高级版详情" : "View Premium details"}</Button>
               </Link>
             </CardContent>
           </Card>
@@ -189,8 +192,8 @@ export default function ProjectMembers() {
       <div className="p-6 max-w-6xl mx-auto space-y-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div>
-            <h1 className="text-xl font-semibold text-slate-100">Project Team Management</h1>
-            <p className="text-xs text-slate-400 mt-1">Manage viewer/editor collaboration for manuscript and team-scoped documents.</p>
+            <h1 className="text-xl font-semibold text-slate-100">{isZh ? "项目团队管理" : "Project Team Management"}</h1>
+            <p className="text-xs text-slate-400 mt-1">{isZh ? "管理稿件和团队范围内文档的查看者/编辑者协作。" : "Manage viewer/editor collaboration for manuscript and team-scoped documents."}</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => { void loadProjects(); if (selectedProjectId) void loadMembers(selectedProjectId); }}>
             Refresh
@@ -199,7 +202,7 @@ export default function ProjectMembers() {
 
         <Card className="border-slate-700/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Current Project</CardTitle>
+            <CardTitle className="text-sm">{isZh ? "当前项目" : "Current Project"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
@@ -225,7 +228,7 @@ export default function ProjectMembers() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="border-slate-700/50 h-fit">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Add / Update Member</CardTitle>
+              <CardTitle className="text-sm">{isZh ? "添加/更新成员" : "Add / Update Member"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <Input
@@ -234,11 +237,11 @@ export default function ProjectMembers() {
                   setSearchQuery(event.target.value);
                   setSelectedCandidate(null);
                 }}
-                placeholder="Search user by email/name"
+                placeholder={isZh ? "按电子邮件/姓名搜索用户" : "Search user by email/name"}
               />
               {searchLoading && <p className="text-xs text-slate-400">Searching users...</p>}
               {!searchLoading && searchQuery.trim().length >= 2 && candidates.length === 0 && (
-                <p className="text-xs text-slate-500">No users found.</p>
+                <p className="text-xs text-slate-500">{isZh ? "未找到用户。" : "No users found."}</p>
               )}
               {candidates.length > 0 && (
                 <div className="space-y-1 max-h-44 overflow-auto">
@@ -265,26 +268,26 @@ export default function ProjectMembers() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="viewer">viewer</SelectItem>
-                    <SelectItem value="editor">editor</SelectItem>
+                    <SelectItem value="viewer">{isZh ? "查看者" : "viewer"}</SelectItem>
+                    <SelectItem value="editor">{isZh ? "编辑者" : "editor"}</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button size="sm" onClick={() => void handleAddMember()} disabled={!selectedCandidate || !selectedProjectId}>
                   Save Member
                 </Button>
               </div>
-              <p className="text-[11px] text-slate-500">viewer: read-only, editor: can modify manuscript data and team documents.</p>
+              <p className="text-[11px] text-slate-500">{isZh ? "查看者: 只读, 编辑者: 可以修改手稿数据和团队文档。" : "viewer: read-only, editor: can modify manuscript data and team documents."}</p>
             </CardContent>
           </Card>
 
           <Card className="border-slate-700/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Members</CardTitle>
+              <CardTitle className="text-sm">{isZh ? "成员" : "Members"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {loadingMembers && <p className="text-sm text-slate-400">Loading members...</p>}
               {!loadingMembers && members.length === 0 && (
-                <p className="text-sm text-slate-500">No explicit members. Project owner always has full access.</p>
+                <p className="text-sm text-slate-500">{isZh ? "没有明确的成员。项目所有者总是拥有完全访问权限。" : "No explicit members. Project owner always has full access."}</p>
               )}
               {!loadingMembers && members.map((member) => (
                 <div key={member.id} className="rounded border border-slate-700/50 p-3">
@@ -301,8 +304,8 @@ export default function ProjectMembers() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="viewer">viewer</SelectItem>
-                        <SelectItem value="editor">editor</SelectItem>
+                        <SelectItem value="viewer">{isZh ? "查看者" : "viewer"}</SelectItem>
+                        <SelectItem value="editor">{isZh ? "编辑者" : "editor"}</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button variant="destructive" size="sm" onClick={() => void handleRemoveMember(member)}>

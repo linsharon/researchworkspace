@@ -11,6 +11,7 @@ import { ArrowLeft, CheckCircle2, Download, FileText, PenTool, Sparkles } from "
 import { conceptAPI, noteAPI, paperAPI, projectAPI } from "@/lib/manuscript-api";
 import { documentAPI } from "@/lib/document-api";
 import type { Project } from "@/lib/manuscript-api";
+import { useI18n } from "@/lib/i18n";
 
 interface DraftMaterial {
   id: string;
@@ -20,6 +21,8 @@ interface DraftMaterial {
 }
 
 export default function DraftStudio() {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -126,10 +129,10 @@ export default function DraftStudio() {
       <div className="flex h-[calc(100vh-0px)]">
         <div className="w-72 border-r border-slate-700/50 bg-slate-800/30 shrink-0 flex flex-col">
           <div className="p-4 border-b border-slate-700/50 space-y-2">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Materials Library</h3>
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{isZh ? "材料库" : "Materials Library"}</h3>
             <Select value={projectId} onValueChange={setProjectId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select project" />
+                <SelectValue placeholder={isZh ? "选择项目" : "Select project"} />
               </SelectTrigger>
               <SelectContent>
                 {projects.map((project) => (
@@ -143,7 +146,7 @@ export default function DraftStudio() {
             <div className="p-3 space-y-2">
               {loading ? <p className="text-xs text-slate-400">Loading materials...</p> : null}
               {!loading && materials.length === 0 ? (
-                <p className="text-xs text-slate-400">No notes/concepts found for this project.</p>
+                <p className="text-xs text-slate-400">{isZh ? "未找到此项目的笔记/概念。" : "No notes/concepts found for this project."}</p>
               ) : null}
               {materials.map((material) => {
                 const inserted = insertedMaterialIds.includes(material.id);
@@ -175,8 +178,8 @@ export default function DraftStudio() {
                 <PenTool className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold text-slate-200">Draft Studio</h2>
-                <p className="text-[10px] text-slate-400">Project-backed writing workspace (no dummy content)</p>
+                <h2 className="text-sm font-semibold text-slate-200">{isZh ? "草稿工作室" : "Draft Studio"}</h2>
+                <p className="text-[10px] text-slate-400">{isZh ? "项目支持的写作工作区（无虚拟内容）" : "Project-backed writing workspace (no dummy content)"}</p>
               </div>
             </div>
             <div className="flex gap-1.5">
@@ -194,7 +197,7 @@ export default function DraftStudio() {
           <div className="flex-1 p-6 overflow-auto space-y-4">
             {remoteDraftTitles.length > 0 ? (
               <Card className="border-slate-700/50">
-                <CardHeader className="pb-2"><CardTitle className="text-xs">Existing Draft Documents</CardTitle></CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-xs">{isZh ? "现有草稿文件" : "Existing Draft Documents"}</CardTitle></CardHeader>
                 <CardContent className="space-y-1">
                   {remoteDraftTitles.map((title) => (
                     <div key={title} className="text-xs text-slate-300">• {title}</div>
@@ -207,7 +210,7 @@ export default function DraftStudio() {
               value={draftContent}
               onChange={(event) => setDraftContent(event.target.value)}
               className="min-h-[560px] text-sm leading-relaxed font-mono"
-              placeholder="Start writing your draft. Insert notes or concepts from the left panel..."
+              placeholder={isZh ? "开始撰写您的草稿。从左侧面板插入笔记或概念..." : "Start writing your draft. Insert notes or concepts from the left panel..."}
             />
           </div>
 

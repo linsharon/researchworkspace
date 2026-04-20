@@ -11,13 +11,17 @@ import { type UserProfile } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
 import { userProfileApi } from "@/lib/user-profile-api";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 
 const PASSWORD_OVERRIDES_KEY = "rw-user-password-overrides";
 const MY_DOWNLOADED_PACKAGES_KEY = "rw-my-downloaded-packages";
 const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
 
 export default function UserProfilePage() {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const { user, logout, updateUser } = useAuth();
+  const isOwnProfile = Boolean(user);
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +72,7 @@ export default function UserProfilePage() {
   const handleSaveProfile = async () => {
     if (!user) return;
     if (!username.trim()) {
-      toast.error("Display name is required");
+      toast.error(isZh ? "显示名称是必需的" : "Display name is required");
       return;
     }
 
@@ -85,20 +89,20 @@ export default function UserProfilePage() {
       setIsPublic(nextProfile.isPublic);
       setAvatarUrl(nextProfile.avatarUrl);
       updateUser({ name: nextProfile.username });
-      toast.success("Profile updated");
+      toast.success(isZh ? "个人资料已更新" : "Profile updated");
     } catch {
-      toast.error("Failed to save profile");
+      toast.error(isZh ? "保存个人资料失败" : "Failed to save profile");
     }
   };
 
   const handleChangePassword = () => {
     if (!user || !isOwnProfile) return;
     if (!newPassword || newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error(isZh ? "密码至少需要6个字符" : "Password must be at least 6 characters");
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match");
+      toast.error(isZh ? "密码不匹配" : "Passwords do not match");
       return;
     }
     try {
@@ -108,16 +112,16 @@ export default function UserProfilePage() {
       window.localStorage.setItem(PASSWORD_OVERRIDES_KEY, JSON.stringify(map));
       setNewPassword("");
       setConfirmPassword("");
-      toast.success("Password updated");
+      toast.success(isZh ? "密码已更新" : "Password updated");
     } catch {
-      toast.error("Failed to update password");
+      toast.error(isZh ? "更新密码失败" : "Failed to update password");
     }
   };
 
   const handleDeleteAccount = async () => {
     if (!user || !isOwnProfile) return;
     if (deleteConfirmText.trim().toUpperCase() !== "DELETE") {
-      toast.error("Type DELETE to confirm");
+      toast.error(isZh ? "输入DELETE以确认" : "Type DELETE to confirm");
       return;
     }
 
@@ -134,17 +138,17 @@ export default function UserProfilePage() {
         : [];
       window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(filtered));
 
-      toast.success("Account deletion request processed");
+      toast.success(isZh ? "账户删除请求已处理" : "Account deletion request processed");
       await logout();
     } catch {
-      toast.error("Failed to delete account");
+      toast.error(isZh ? "删除账户失败" : "Failed to delete account");
     }
   };
 
   if (loading) {
     return (
       <AppLayout>
-        <div className="p-6 text-slate-400">Loading profile...</div>
+        <div className="p-6 text-slate-400">{isZh ? "加载个人资料..." : "Loading profile..."}</div>
       </AppLayout>
     );
   }
@@ -152,7 +156,7 @@ export default function UserProfilePage() {
   if (!profile) {
     return (
       <AppLayout>
-        <div className="p-6 text-slate-400">Profile not available.</div>
+        <div className="p-6 text-slate-400">{isZh ? "个人资料不可用。" : "Profile not available."}</div>
       </AppLayout>
     );
   }
@@ -190,7 +194,7 @@ export default function UserProfilePage() {
               </div>
               <div className="flex-1 space-y-3">
                 <div>
-                  <label className="text-xs text-slate-400">Display Name</label>
+                  <label className="text-xs text-slate-400">{isZh ? "显示名称" : "Display Name"}</label>
                   <Input
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -198,11 +202,11 @@ export default function UserProfilePage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400">Email</label>
+                  <label className="text-xs text-slate-400">{isZh ? "邮箱" : "Email"}</label>
                   <Input value={profile.email} disabled className="mt-1 text-sm" />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400">Bio</label>
+                  <label className="text-xs text-slate-400">{isZh ? "个人简介" : "Bio"}</label>
                   <Textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
@@ -233,21 +237,21 @@ export default function UserProfilePage() {
         {user && (
           <Card className="border-slate-700/50 bg-[#0d1b30]">
             <CardHeader>
-              <CardTitle className="text-sm text-slate-100">Change Password</CardTitle>
+              <CardTitle className="text-sm text-slate-100">{isZh ? "更改密码" : "Change Password"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <Input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="New password"
+                placeholder={isZh ? "新密码" : "New password"}
                 className="text-sm"
               />
               <Input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
+                placeholder={isZh ? "确认新密码" : "Confirm new password"}
                 className="text-sm"
               />
               <Button size="sm" variant="outline" className="text-xs" onClick={handleChangePassword}>
@@ -260,7 +264,7 @@ export default function UserProfilePage() {
         {user && (
           <Card className="border-red-500/30 bg-red-950/10">
             <CardHeader>
-              <CardTitle className="text-sm text-red-300">Delete Account</CardTitle>
+              <CardTitle className="text-sm text-red-300">{isZh ? "删除账户" : "Delete Account"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-xs text-slate-400">

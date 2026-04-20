@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { MessageCircle, Globe, Lightbulb, Sparkles, X } from "lucide-react";
 import { highlightAPI, conceptAPI } from "@/lib/manuscript-api";
 import type { Highlight } from "@/lib/manuscript-api";
+import { useI18n } from "@/lib/i18n";
 
 interface PDFHighlightReaderProps {
   content: string;
@@ -31,20 +32,20 @@ interface FloatingToolbarPosition {
   left: number;
 }
 
-const mockPdfContent = `
+const buildMockPdfContent = (isZh: boolean) => `
   <div class="space-y-4 p-8 text-base leading-relaxed">
-    <h1 class="text-3xl font-bold mb-6">Machine Learning in Natural Language Processing</h1>
-    <h2 class="text-2xl font-bold mt-8 mb-4">Abstract</h2>
-    <p class="text-gray-700 leading-7">This paper presents a comprehensive study on machine learning in NLP and educational research contexts.</p>
+    <h1 class="text-3xl font-bold mb-6">{isZh ? "自然语言处理中的机器学习" : "Machine Learning in Natural Language Processing"}</h1>
+    <h2 class="text-2xl font-bold mt-8 mb-4">{isZh ? "摘要" : "Abstract"}</h2>
+    <p class="text-gray-700 leading-7">{isZh ? "本文在自然语言处理和教育研究的背景下，对机器学习进行了全面研究。" : "This paper presents a comprehensive study on machine learning in NLP and educational research contexts."}</p>
     <h2 class="text-2xl font-bold mt-8 mb-4">1. Introduction</h2>
-    <p class="text-gray-700 leading-7">Recent transformer-based architectures demonstrate strong performance improvements in semantic understanding, contextual retrieval, and reasoning-heavy tasks.</p>
-    <p class="text-gray-700 leading-7 mt-4">Self-regulated learning in technology-enhanced environments remains a promising area for integrating AI support with pedagogical frameworks.</p>
+    <p class="text-gray-700 leading-7">{isZh ? "最近基于变换器的架构在语义理解、上下文检索和推理密集型任务中显示出强大的性能提升。" : "Recent transformer-based architectures demonstrate strong performance improvements in semantic understanding, contextual retrieval, and reasoning-heavy tasks."}</p>
+    <p class="text-gray-700 leading-7 mt-4">{isZh ? "在技术增强的环境中自我调节学习仍然是整合AI支持与教学框架的有前景的领域。" : "Self-regulated learning in technology-enhanced environments remains a promising area for integrating AI support with pedagogical frameworks."}</p>
     <h2 class="text-2xl font-bold mt-8 mb-4">2. Methodology</h2>
-    <p class="text-gray-700 leading-7">Experiments were conducted on a benchmark dataset with cross-validation and ablation analysis to quantify model behavior.</p>
+    <p class="text-gray-700 leading-7">{isZh ? "在基准数据集上进行了实验，使用交叉验证和消融分析来量化模型行为。" : "Experiments were conducted on a benchmark dataset with cross-validation and ablation analysis to quantify model behavior."}</p>
     <h2 class="text-2xl font-bold mt-8 mb-4">3. Results</h2>
-    <p class="text-gray-700 leading-7">Results indicate better generalization, stronger retrieval precision, and improved explanatory consistency compared with baselines.</p>
+    <p class="text-gray-700 leading-7">{isZh ? "结果表明与基线相比，泛化能力更好，检索精度更高，解释一致性有所提高。" : "Results indicate better generalization, stronger retrieval precision, and improved explanatory consistency compared with baselines."}</p>
     <h2 class="text-2xl font-bold mt-8 mb-4">4. Conclusion</h2>
-    <p class="text-gray-700 leading-7">Future work should focus on explainability and practical integration in educational workflows.</p>
+    <p class="text-gray-700 leading-7">{isZh ? "未来的工作应集中在可解释性和在教育工作流中的实际集成。" : "Future work should focus on explainability and practical integration in educational workflows."}</p>
   </div>
 `;
 
@@ -58,6 +59,8 @@ export default function PDFHighlightReader({
   onAskAI,
   onTranslate,
 }: PDFHighlightReaderProps) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const contentRef = useRef<HTMLDivElement>(null);
   const [selectedText, setSelectedText] = useState("");
   const [toolbarPosition, setToolbarPosition] = useState<FloatingToolbarPosition | null>(null);
@@ -67,7 +70,7 @@ export default function PDFHighlightReader({
   const [conceptCategory, setConceptCategory] = useState("Concept");
   const [translation, setTranslation] = useState<string | null>(null);
 
-  const displayContent = externalContent || mockPdfContent;
+  const displayContent = externalContent || buildMockPdfContent(isZh);
 
   const handleTextSelection = () => {
     const selection = window.getSelection();
@@ -203,7 +206,7 @@ export default function PDFHighlightReader({
                   <MessageCircle className="h-4 w-4 text-blue-600" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Add Note</TooltipContent>
+              <TooltipContent>{isZh ? "添加笔记" : "Add Note"}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -212,7 +215,7 @@ export default function PDFHighlightReader({
                   <Globe className="h-4 w-4 text-green-600" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Translate</TooltipContent>
+              <TooltipContent>{isZh ? "翻译" : "Translate"}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -221,7 +224,7 @@ export default function PDFHighlightReader({
                   <Lightbulb className="h-4 w-4 text-amber-600" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Explain</TooltipContent>
+              <TooltipContent>{isZh ? "解释" : "Explain"}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -232,27 +235,27 @@ export default function PDFHighlightReader({
                   </button>
                   <DialogContent className="max-w-lg">
                     <DialogHeader>
-                      <DialogTitle>Add New Keyword</DialogTitle>
+                      <DialogTitle>{isZh ? "添加新关键词" : "Add New Keyword"}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-3">
                       <div className="p-3 bg-cyan-50 border border-cyan-200 rounded text-sm italic text-cyan-900">"{selectedText}"</div>
-                      <Input value={conceptTitle} onChange={(e) => setConceptTitle(e.target.value)} placeholder="Concept title" />
+                      <Input value={conceptTitle} onChange={(e) => setConceptTitle(e.target.value)} placeholder={isZh ? "概念标题" : "Concept title"} />
                       <Select value={conceptCategory} onValueChange={setConceptCategory}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Concept">Concept</SelectItem>
-                          <SelectItem value="Construct">Construct</SelectItem>
-                          <SelectItem value="Theory">Theory</SelectItem>
-                          <SelectItem value="Framework">Framework</SelectItem>
-                          <SelectItem value="Method">Method</SelectItem>
-                          <SelectItem value="Variable">Variable</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
+                          <SelectItem value="Concept">{isZh ? "概念" : "Concept"}</SelectItem>
+                          <SelectItem value="Construct">{isZh ? "构念" : "Construct"}</SelectItem>
+                          <SelectItem value="Theory">{isZh ? "理论" : "Theory"}</SelectItem>
+                          <SelectItem value="Framework">{isZh ? "框架" : "Framework"}</SelectItem>
+                          <SelectItem value="Method">{isZh ? "方法" : "Method"}</SelectItem>
+                          <SelectItem value="Variable">{isZh ? "变量" : "Variable"}</SelectItem>
+                          <SelectItem value="Other">{isZh ? "其他" : "Other"}</SelectItem>
                         </SelectContent>
                       </Select>
                       <Textarea
                         value={conceptDescription}
                         onChange={(e) => setConceptDescription(e.target.value)}
-                        placeholder="Definition or description"
+                        placeholder={isZh ? "定义或描述" : "Definition or description"}
                         className="h-24"
                       />
                       <div className="flex justify-end gap-2">
@@ -263,7 +266,7 @@ export default function PDFHighlightReader({
                   </DialogContent>
                 </Dialog>
               </TooltipTrigger>
-              <TooltipContent>Save as Concept</TooltipContent>
+              <TooltipContent>{isZh ? "保存为概念" : "Save as Concept"}</TooltipContent>
             </Tooltip>
 
             <div className="w-px bg-gray-200" />
@@ -273,7 +276,7 @@ export default function PDFHighlightReader({
                   <X className="h-4 w-4 text-gray-500" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Close</TooltipContent>
+              <TooltipContent>{isZh ? "关闭" : "Close"}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
@@ -282,7 +285,7 @@ export default function PDFHighlightReader({
       {translation && (
         <div className="fixed bottom-4 right-4 bg-[#0d1b30] rounded-lg shadow-lg border border-gray-200 p-4 max-w-sm z-40">
           <div className="flex justify-between items-start mb-2">
-            <h3 className="font-semibold text-sm">Translation</h3>
+            <h3 className="font-semibold text-sm">{isZh ? "翻译" : "Translation"}</h3>
             <button onClick={() => setTranslation(null)} className="text-gray-400 hover:text-gray-600">
               <X className="h-4 w-4" />
             </button>

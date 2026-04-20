@@ -24,8 +24,11 @@ import {
 
 import PaperReadingArea from "./PaperReadingArea";
 import PaperToolsArea from "./PaperToolsArea";
+import { useI18n } from "@/lib/i18n";
 
 export default function PaperReadPage() {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const { projectId = "proj-1", paperId } = useParams<{ projectId: string; paperId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -235,7 +238,7 @@ export default function PaperReadPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-600">Loading paper...</p>
+        <p className="text-gray-600">{isZh ? "加载论文..." : "Loading paper..."}</p>
       </div>
     );
   }
@@ -243,7 +246,7 @@ export default function PaperReadPage() {
   if (!paper) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-600">Paper not found</p>
+        <p className="text-gray-600">{isZh ? "未找到论文" : "Paper not found"}</p>
       </div>
     );
   }
@@ -285,7 +288,7 @@ export default function PaperReadPage() {
 
           {/* Status Dropdown */}
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">Status:</span>
+            <span className="text-sm text-gray-600">{isZh ? "状态:" : "Status:"}</span>
             <Select value={selectedStatus} onValueChange={(value) => 
               handleStatusChange(value as "Reading" | "Completed" | "To Read")
             }>
@@ -293,9 +296,9 @@ export default function PaperReadPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Reading">Reading</SelectItem>
-                <SelectItem value="Completed">Completed</SelectItem>
-                <SelectItem value="To Read">To Read</SelectItem>
+                <SelectItem value="Reading">{isZh ? "阅读中" : "Reading"}</SelectItem>
+                <SelectItem value="Completed">{isZh ? "已完成" : "Completed"}</SelectItem>
+                <SelectItem value="To Read">{isZh ? "待阅读" : "To Read"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -363,7 +366,7 @@ export default function PaperReadPage() {
       <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Exit Reading</AlertDialogTitle>
+            <AlertDialogTitle>{isZh ? "退出阅读" : "Exit Reading"}</AlertDialogTitle>
             <AlertDialogDescription>
               What's your reading status for this paper?
             </AlertDialogDescription>
@@ -380,7 +383,7 @@ export default function PaperReadPage() {
             ))}
           </div>
           <div className="flex gap-3 justify-end">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{isZh ? "取消" : "Cancel"}</AlertDialogCancel>
             <AlertDialogAction onClick={handleExitConfirm}>
               Save & Exit
             </AlertDialogAction>
@@ -398,7 +401,7 @@ export default function PaperReadPage() {
                 <Bot className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold">AI Assistant: Sisyphus</p>
+                <p className="text-sm font-semibold">{isZh ? "AI助手: 西西弗斯" : "AI Assistant: Sisyphus"}</p>
               </div>
             </div>
             <button
@@ -439,7 +442,7 @@ export default function PaperReadPage() {
               <Input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Ask about this paper..."
+                placeholder={isZh ? "询问关于这篇论文..." : "Ask about this paper..."}
                 className="text-sm h-9 rounded-full px-4 border-slate-700/50 focus-visible:ring-[#1E3A5F]"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSendMessage(); } }}
               />
@@ -465,7 +468,7 @@ export default function PaperReadPage() {
           "fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200",
           showChat ? "bg-slate-600 hover:bg-slate-700" : "bg-cyan-600 hover:bg-cyan-700 hover:scale-105"
         )}
-        title="AI Assistant: Sisyphus"
+        title={isZh ? "AI助手: 西西弗斯" : "AI Assistant: Sisyphus"}
       >
         {showChat ? (
           <X className="w-6 h-6 text-white" />

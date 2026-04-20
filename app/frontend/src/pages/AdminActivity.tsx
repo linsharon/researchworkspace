@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { getAPIBaseURL } from '@/lib/config';
 import { getAuthToken } from '@/lib/session';
+import { useI18n } from "@/lib/i18n";
 
 interface ActivitySummary {
   total: number;
@@ -35,6 +36,8 @@ interface ActivityListResponse {
 }
 
 export default function AdminActivity() {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const [summary, setSummary] = useState<ActivitySummary | null>(null);
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [total, setTotal] = useState(0);
@@ -90,7 +93,7 @@ export default function AdminActivity() {
     <AppLayout>
       <div className="p-6 max-w-7xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-slate-100">Admin Activity Audit</h1>
+          <h1 className="text-xl font-bold text-slate-100">{isZh ? "管理活动审计" : "Admin Activity Audit"}</h1>
           <Button onClick={() => { void fetchSummary(); void fetchEvents(0); }} size="sm">
             Refresh
           </Button>
@@ -98,7 +101,7 @@ export default function AdminActivity() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Card className="border-slate-700/50">
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Total Requests</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">{isZh ? "总请求次数" : "Total Requests"}</CardTitle></CardHeader>
             <CardContent><p className="text-2xl font-semibold">{summary?.total ?? '--'}</p></CardContent>
           </Card>
           <Card className="border-slate-700/50">
@@ -117,27 +120,27 @@ export default function AdminActivity() {
               <Input
                 value={userIdFilter}
                 onChange={(e) => setUserIdFilter(e.target.value)}
-                placeholder="Filter by user ID"
+                placeholder={isZh ? "按用户ID过滤" : "Filter by user ID"}
               />
               <Input
                 value={eventTypeFilter}
                 onChange={(e) => setEventTypeFilter(e.target.value)}
-                placeholder="Filter by event type"
+                placeholder={isZh ? "按事件类型过滤" : "Filter by event type"}
               />
               <Input
                 value={actionFilter}
                 onChange={(e) => setActionFilter(e.target.value)}
-                placeholder="Filter by action"
+                placeholder={isZh ? "按操作过滤" : "Filter by action"}
               />
               <Input
                 value={pathFilter}
                 onChange={(e) => setPathFilter(e.target.value)}
-                placeholder="Filter by path (e.g. /api/v1/manuscripts)"
+                placeholder={isZh ? "按路径过滤（例如：/api/v1手稿）" : "Filter by path (e.g. /api/v1/manuscripts)"}
               />
               <Input
                 value={resourceTypeFilter}
                 onChange={(e) => setResourceTypeFilter(e.target.value)}
-                placeholder="Filter by resource type"
+                placeholder={isZh ? "按资源类型过滤" : "Filter by resource type"}
               />
             </div>
             <div className="flex items-center gap-2 pt-2">

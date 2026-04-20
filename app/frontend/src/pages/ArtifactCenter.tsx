@@ -738,9 +738,9 @@ export default function ArtifactCenter() {
       });
       setShowAddPaperDialog(false);
       resetAddPaperForm();
-      toast.success("Entry paper added");
+      toast.success(isZh ? "入口文献已添加" : "Entry paper added");
     } catch {
-      toast.error("Failed to add entry paper");
+      toast.error(isZh ? "添加入口文献失败" : "Failed to add entry paper");
     }
   };
 
@@ -1214,7 +1214,7 @@ export default function ArtifactCenter() {
 
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-700/50 bg-slate-800/20 px-3 py-2">
           <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span>Cards per page</span>
+            <span>{isZh ? "每页卡片数" : "Cards per page"}</span>
             <Select
               value={String(cardPageSize)}
               onValueChange={(value) => setCardPageSize(value === "all" ? "all" : (Number(value) as 30 | 60))}
@@ -1225,7 +1225,7 @@ export default function ArtifactCenter() {
               <SelectContent>
                 <SelectItem value="30">30</SelectItem>
                 <SelectItem value="60">60</SelectItem>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">{isZh ? "全部" : "All"}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1279,7 +1279,7 @@ export default function ArtifactCenter() {
                     ))}
                   </div>
                   <div className="text-center py-12 border border-slate-700/50 rounded-lg bg-slate-800/30">
-                    <p className="text-sm text-slate-400">No keywords in this category for current search.</p>
+                    <p className="text-sm text-slate-400">{isZh ? "当前搜索中此类别下没有关键词。" : "No keywords in this category for current search."}</p>
                   </div>
                 </div>
               );
@@ -1339,7 +1339,7 @@ export default function ArtifactCenter() {
                                       type="button"
                                       className="text-cyan-400"
                                       onClick={() => togglePackSelect(conceptPackToken(concept.id))}
-                                      title="Select for package"
+                                      title={isZh ? "选择并打包" : "Select for package"}
                                     >
                                       {selectedForPack.has(conceptPackToken(concept.id))
                                         ? <CheckSquare className="w-4 h-4" />
@@ -1371,7 +1371,7 @@ export default function ArtifactCenter() {
                                   size="sm"
                                   variant="outline"
                                   className="h-7 w-7 p-0"
-                                  title="Browse"
+                                  title={isZh ? "浏览" : "Browse"}
                                   onClick={() => openConceptDialog(concept.id, "view")}
                                 >
                                   <Eye className="w-3 h-3" />
@@ -1380,7 +1380,7 @@ export default function ArtifactCenter() {
                                   size="sm"
                                   variant="outline"
                                   className="h-7 w-7 p-0"
-                                  title="Edit"
+                                  title={isZh ? "编辑" : "Edit"}
                                   onClick={() => openConceptDialog(concept.id, "edit")}
                                 >
                                   <Edit className="w-3 h-3" />
@@ -1389,7 +1389,7 @@ export default function ArtifactCenter() {
                                   size="sm"
                                   variant="outline"
                                   className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
-                                  title="Delete"
+                                  title={isZh ? "删除" : "Delete"}
                                   onClick={() => handleDeleteConcept(concept.id)}
                                 >
                                   <Trash2 className="w-3 h-3" />
@@ -1544,7 +1544,7 @@ export default function ArtifactCenter() {
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
-                          title="View"
+                          title={isZh ? "查看" : "View"}
                         >
                           <Eye className="w-3 h-3" />
                         </Button>
@@ -1552,7 +1552,7 @@ export default function ArtifactCenter() {
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0"
-                          title="Edit"
+                          title={isZh ? "编辑" : "Edit"}
                         >
                           <Edit className="w-3 h-3" />
                         </Button>
@@ -1563,7 +1563,7 @@ export default function ArtifactCenter() {
                             size="sm"
                             variant="ghost"
                             className="h-6 w-6 p-0"
-                            title="Open in Paper Read"
+                            title={isZh ? "在PDF阅读器中打开" : "Open in Paper Read"}
                             onClick={(e) => {
                               e.stopPropagation();
                               void handleOpenArtifactSource(artifact);
@@ -1576,7 +1576,7 @@ export default function ArtifactCenter() {
                           size="sm"
                           variant="ghost"
                           className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                          title="Delete"
+                          title={isZh ? "删除" : "Delete"}
                           onClick={(e) => {
                             e.stopPropagation();
                             void handleDeleteArtifact(artifact.id);
@@ -1640,17 +1640,17 @@ export default function ArtifactCenter() {
                             : "Open Corresponding Note"}
                         </Button>
                       )}
-                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="View">
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" title={isZh ? "查看" : "View"}>
                         <Eye className="w-3 h-3" />
                       </Button>
-                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Edit">
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" title={isZh ? "编辑" : "Edit"}>
                         <Edit className="w-3 h-3" />
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
-                        title="Delete"
+                        title={isZh ? "删除" : "Delete"}
                         onClick={() => void handleDeleteArtifact(artifact.id)}
                       >
                         <Trash2 className="w-3 h-3" />
@@ -1679,24 +1679,24 @@ export default function ArtifactCenter() {
         <Dialog open={showPackDialog} onOpenChange={setShowPackDialog}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle className="text-base">Create Artifact Package</DialogTitle>
+              <DialogTitle className="text-base">{isZh ? "创建产集" : "Create Artifact Package"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">Package Name</label>
+                <label className="text-xs font-medium text-slate-700">{isZh ? "产集名" : "Package Name"}</label>
                 <Input
                   value={packName}
                   onChange={(e) => setPackName(e.target.value)}
-                  placeholder="e.g. RL Draft Starter Kit"
+                  placeholder={isZh ? "例如 RL 起始套件" : "e.g. RL Draft Starter Kit"}
                   className="text-sm"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">Description</label>
+                <label className="text-xs font-medium text-slate-700">{isZh ? "描述" : "Description"}</label>
                 <Textarea
                   value={packDescription}
                   onChange={(e) => setPackDescription(e.target.value)}
-                  placeholder="What does this package contain and when should others use it?"
+                  placeholder={isZh ? "这个产集包含什么内容，其他人何时应该使用它？" : "What does this package contain and when should others use it?"}
                   className="text-sm min-h-[90px]"
                 />
               </div>
@@ -1731,13 +1731,13 @@ export default function ArtifactCenter() {
         >
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Add Entry Paper</DialogTitle>
+              <DialogTitle>{isZh ? "添加入口文献" : "Add Entry Paper"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">DOI or URL (optional)</label>
+                <label className="text-xs font-medium text-slate-600">{isZh ? "DOI 或 URL（可选）" : "DOI or URL (optional)"}</label>
                 <div className="flex gap-2">
-                  <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder="https://doi.org/..." className="text-sm" />
+                  <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder={isZh ? "https://doi.org/..." : "https://doi.org/..."} className="text-sm" />
                   <Button type="button" variant="outline" className="text-xs" disabled={doiFetching || !newPaperDoiUrl.trim()} onClick={() => void handleFetchByDoiUrl()}>
                     <Sparkles className="w-3 h-3 mr-1" />
                     {doiFetching ? "Fetching..." : "Auto-fill"}
@@ -1746,25 +1746,25 @@ export default function ArtifactCenter() {
                 {doiFetchError ? <p className="text-[11px] text-rose-500">{doiFetchError}</p> : null}
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Title</label>
-                <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder="Paper title..." className="text-sm" />
+                <label className="text-xs font-medium text-slate-600">{isZh ? "标题" : "Title"}</label>
+                <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder={isZh ? "论文标题..." : "Paper title..."} className="text-sm" />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Authors (comma-separated)</label>
-                <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder="Author 1, Author 2..." className="text-sm" />
+                <label className="text-xs font-medium text-slate-600">{isZh ? "作者（逗号分隔）" : "Authors (comma-separated)"}</label>
+                <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={isZh ? "作者 1, 作者 2..." : "Author 1, Author 2..."} className="text-sm" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-600">Year</label>
+                  <label className="text-xs font-medium text-slate-600">{isZh ? "年份" : "Year"}</label>
                   <Input type="number" value={newPaperYear} onChange={(e) => setNewPaperYear(e.target.value)} placeholder="2024" className="text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-600">Journal</label>
-                  <Input value={newPaperJournal} onChange={(e) => setNewPaperJournal(e.target.value)} placeholder="Journal name..." className="text-sm" />
+                  <label className="text-xs font-medium text-slate-600">{isZh ? "期刊" : "Journal"}</label>
+                  <Input value={newPaperJournal} onChange={(e) => setNewPaperJournal(e.target.value)} placeholder={isZh ? "期刊名称..." : "Journal name..."} className="text-sm" />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Discovery Path</label>
+                <label className="text-xs font-medium text-slate-600">{isZh ? "发现路径" : "Discovery Path"}</label>
                 <div className="grid grid-cols-2 gap-1.5">
                   {DISCOVERY_PATH_OPTIONS.map((path) => (
                     <label
@@ -1789,8 +1789,8 @@ export default function ArtifactCenter() {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Discovery Note</label>
-                <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} rows={2} placeholder="How did you find this paper?" className="text-xs" />
+                <label className="text-xs font-medium text-slate-600">{isZh ? "发现笔记" : "Discovery Note"}</label>
+                <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} rows={2} placeholder={isZh ? "你是如何找到这篇论文的？" : "How did you find this paper?"} className="text-xs" />
               </div>
               <div className="flex gap-2 pt-2">
                 <Button className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs" onClick={() => void handleAddEntryPaper()}>
@@ -1814,11 +1814,11 @@ export default function ArtifactCenter() {
         >
           <DialogContent className="max-w-xl">
             <DialogHeader>
-              <DialogTitle>Add Multiple Entry Papers</DialogTitle>
+              <DialogTitle>{isZh ? "添加多个入口文献" : "Add Multiple Entry Papers"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">DOI links (one per line)</label>
+                <label className="text-xs font-medium text-slate-600">{isZh ? "DOI 链接（每行一个）" : "DOI links (one per line)"}</label>
                 <Textarea
                   value={bulkDoiInput}
                   onChange={(e) => setBulkDoiInput(e.target.value)}
@@ -1854,7 +1854,7 @@ export default function ArtifactCenter() {
             {selectedConcept ? (
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-700">Keyword Name</label>
+                  <label className="text-xs font-medium text-slate-700">{isZh ? "关键词名称" : "Keyword Name"}</label>
                   <Input
                     value={conceptForm.name}
                     onChange={(e) => setConceptForm((prev) => ({ ...prev, name: e.target.value }))}
@@ -1863,7 +1863,7 @@ export default function ArtifactCenter() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-700">Description</label>
+                  <label className="text-xs font-medium text-slate-700">{isZh ? "描述" : "Description"}</label>
                   <Input
                     value={conceptForm.description}
                     onChange={(e) => setConceptForm((prev) => ({ ...prev, description: e.target.value }))}
@@ -1873,7 +1873,7 @@ export default function ArtifactCenter() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-700">Category</label>
+                    <label className="text-xs font-medium text-slate-700">{isZh ? "分类" : "Category"}</label>
                     <Input
                       value={conceptForm.category}
                       onChange={(e) => setConceptForm((prev) => ({ ...prev, category: e.target.value }))}
@@ -1882,7 +1882,7 @@ export default function ArtifactCenter() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-700">Color</label>
+                    <label className="text-xs font-medium text-slate-700">{isZh ? "颜色" : "Color"}</label>
                     <input
                       type="color"
                       value={conceptForm.color}

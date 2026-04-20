@@ -200,7 +200,7 @@ export default function MyPackages() {
     );
 
     saveCreatedPackages(next);
-    toast.success("Created package updated");
+    toast.success(isZh ? "创建的套餐已更新" : "Created package updated");
     setShowEditDialog(false);
     setEditingPackage(null);
   };
@@ -208,7 +208,7 @@ export default function MyPackages() {
   const handleDeleteCreated = (id: string) => {
     const next = createdPackages.filter((pkg) => pkg.id !== id);
     saveCreatedPackages(next);
-    toast.success("Created package deleted");
+    toast.success(isZh ? "创建的产集被删除" : "Created package deleted");
   };
 
   const handleUnshareCreated = (id: string) => {
@@ -216,13 +216,13 @@ export default function MyPackages() {
       pkg.id === id ? { ...pkg, shared: false } : pkg
     );
     saveCreatedPackages(next);
-    toast.success("Package is now unshared");
+    toast.success(isZh ? "产集现在是未共享状态" : "Package is now unshared");
   };
 
   const handleRemoveDownloaded = (id: string) => {
     const next = downloadedPackages.filter((pkg) => pkg.id !== id);
     saveDownloadedPackages(next);
-    toast.success("Removed from downloaded packages");
+    toast.success(isZh ? "已从下载的产集中移除" : "Removed from downloaded packages");
   };
 
   const buildArtifactFingerprint = (artifact: Artifact) => {
@@ -281,7 +281,7 @@ export default function MyPackages() {
         toast.success(`Imported ${importedCount} artifacts and replaced ${replacedCount} duplicates`);
       }
     } catch {
-      toast.error("Failed to unpack package");
+      toast.error(isZh ? "无法解压产集" : isZh ? "无法解压产集" : "Failed to unpack package");
     }
   };
 
@@ -393,7 +393,7 @@ export default function MyPackages() {
             <Package className="w-7 h-7 text-cyan-400" />
             <div>
               <h1 className="text-xl font-bold text-slate-100">{isZh ? "我的产集" : "My Packages"}</h1>
-              <p className="text-sm text-slate-500">Manage your created and downloaded packages</p>
+              <p className="text-sm text-slate-500">{isZh ? "管理您创建和下载的产集" : "Manage your created and downloaded packages"}</p>
             </div>
           </div>
           <Badge variant="outline" className="text-xs">
@@ -406,7 +406,7 @@ export default function MyPackages() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search packages..."
+            placeholder={isZh ? "搜索产集..." : "Search packages..."}
             className="pl-9 text-sm"
           />
         </div>
@@ -425,7 +425,7 @@ export default function MyPackages() {
 
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-700/50 bg-slate-800/20 px-3 py-2">
             <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span>Cards per page</span>
+              <span>{isZh ? "每页卡片数" : "Cards per page"}</span>
               <Select value={String(cardPageSize)} onValueChange={(value) => setCardPageSize(value === "all" ? "all" : (Number(value) as 30 | 60))}>
                 <SelectTrigger className="h-7 w-[90px] text-xs">
                   <SelectValue />
@@ -433,7 +433,7 @@ export default function MyPackages() {
                 <SelectContent>
                   <SelectItem value="30">30</SelectItem>
                   <SelectItem value="60">60</SelectItem>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">{isZh ? "全部" : "All"}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -502,30 +502,30 @@ export default function MyPackages() {
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Edit Created Package</DialogTitle>
+              <DialogTitle>{isZh ? "编辑创建的产集" : "Edit Created Package"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300">Package Name</label>
+                <label className="text-sm font-medium text-slate-300">{isZh ? "产集名称" : "Package Name"}</label>
                 <Input
                   value={editForm.name}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="Package name"
+                  placeholder={isZh ? "产集名" : "Package name"}
                   className="text-sm"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300">Description</label>
+                <label className="text-sm font-medium text-slate-300">{isZh ? "描述" : "Description"}</label>
                 <Input
                   value={editForm.description}
                   onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder="Package description"
+                  placeholder={isZh ? "产集描述" : "Package description"}
                   className="text-sm"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-300">Included Artifacts</label>
+                <label className="text-sm font-medium text-slate-300">{isZh ? "包含的产件" : "Included Artifacts"}</label>
                 <ScrollArea className="h-52 rounded border border-slate-700/50 bg-slate-900/30 p-2">
                   <div className="space-y-1.5">
                     {(editingPackage?.artifacts || []).map((artifact) => {
@@ -569,7 +569,7 @@ export default function MyPackages() {
         <Dialog open={showUnpackConflictDialog} onOpenChange={setShowUnpackConflictDialog}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Duplicate Artifacts Detected</DialogTitle>
+              <DialogTitle>{isZh ? "检测到重复的产件" : "Duplicate Artifacts Detected"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <p className="text-sm text-slate-300">

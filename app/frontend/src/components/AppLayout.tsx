@@ -60,6 +60,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t, lang, setLang } = useI18n();
+  const isZh = lang === "zh";
   const { user, logout } = useAuth();
   const [headerDisplayName, setHeaderDisplayName] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -136,7 +137,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       id: "welcome",
       role: "assistant",
       content: lang === "zh"
-        ? "你好！我是你的AI助手西西，请问有什么可以帮你的？"
+        ? "你好，我是你的AI助手 西西弗斯。今天我能帮助你什么？"
         : "Hello, I am Sisyphus, your AI Assistant here. How can I help you today",
     },
   ]);
@@ -151,8 +152,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0] || {
     id: "",
-    title: lang === "zh" ? "暂无项目" : "No Project",
-    goal: lang === "zh" ? "请先创建项目以开始工作流。" : "Create a project to start the workflow.",
+    title: lang === "zh" ? "无项目" : "No Project",
+    goal: lang === "zh" ? "创建项目以启动工作流程。" : "Create a project to start the workflow.",
     currentStep: 1 as WorkflowStep,
     updatedAt: new Date().toISOString().split("T")[0],
   };
@@ -176,7 +177,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       setNewProjectGoal("");
       setShowNewProject(false);
       setShowProjectSwitcher(false);
-      toast.success(lang === "zh" ? "项目已创建" : "Project created");
+      toast.success(lang === "zh" ? "项目创建成功" : "Project created");
     } catch (error) {
       const maybeMessage = error instanceof Error ? error.message : "";
       if (maybeMessage.toLowerCase().includes("premium")) {
@@ -267,7 +268,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     if (!reply) {
       reply = lastError
         ? (lang === "zh" ? `AI 服务错误：${lastError}` : `AI service error: ${lastError}`)
-        : (lang === "zh" ? "AI 服务暂时不可用，请稍后重试。" : "Sorry, the AI service is temporarily unavailable. Please try again later.");
+        : (lang === "zh" ? "抱歉，AI服务暂时不可用。请稍后再试。" : "Sorry, the AI service is temporarily unavailable. Please try again later.");
     }
 
     setChatMessages((prev) => prev.map((message) => (message.id === thinkingId ? { ...message, content: reply } : message)));
@@ -304,7 +305,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="flex items-center gap-2 min-w-0">
             <img
               src={BRAND_FAVICON_URL}
-              alt="Research Workspace logo"
+              alt={isZh ? "研究工作区标志" : "Research Workspace logo"}
               className="w-5 h-5 shrink-0"
               style={{ filter: 'brightness(0) saturate(100%) invert(72%) sepia(98%) saturate(400%) hue-rotate(152deg) brightness(103%)' }}
             />
@@ -365,7 +366,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 <div className="p-4 space-y-4">
                   {/* Project dropdown */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-400">Select project</label>
+                    <label className="text-xs font-medium text-slate-400">{isZh ? "选择项目" : "Select project"}</label>
                     <select
                       value={activeProjectId}
                       onChange={(e) => setActiveProjectId(e.target.value)}
@@ -425,11 +426,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
                           }}
                         >
                           <Crown className="w-2.5 h-2.5 mr-0.5" />
-                          {isPremiumUser ? (lang === "zh" ? "Premium 已开通" : "Premium Active") : "Premium"}
+                          {isPremiumUser ? (lang === "zh" ? "高级版已激活" : "Premium Active") : "Premium"}
                         </Badge>
                         {!isPremiumUser && (
                           <span className="text-[10px] text-slate-400">
-                            {lang === "zh" ? "创建多个项目需要 Premium" : "Creating multiple projects requires Premium"}
+                            {lang === "zh" ? "创建多个项目需要高级版功能" : "Creating multiple projects requires Premium"}
                           </span>
                         )}
                       </div>
@@ -677,7 +678,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <div className="flex items-center gap-2">
                 <img
                   src={BRAND_FAVICON_URL}
-                  alt="Research Workspace logo"
+                  alt={isZh ? "研究工作区商标" : "Research Workspace logo"}
                   className="w-5 h-5"
                   style={{ filter: 'brightness(0) saturate(100%) invert(72%) sepia(98%) saturate(400%) hue-rotate(152deg) brightness(103%)' }}
                 />
@@ -718,7 +719,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     void logout();
                   }}
                 >
-                  {lang === "zh" ? "退出" : "Logout"}
+                  {lang === "zh" ? "登出" : "Logout"}
                 </Button>
               </>
             )}
@@ -756,7 +757,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                       >
                         <span className="flex items-center gap-2">
                           <span className="text-base">🇺🇸</span>
-                          <span className="text-slate-300 record-item-title">English</span>
+                          <span className="text-slate-300 record-item-title">{isZh ? "英文" : "English"}</span>
                         </span>
                         {lang === "en" && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-300" />}
                       </button>
@@ -766,7 +767,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         className={cn(
                           "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between border record-item",
                           lang === "zh"
-                            ? "border-cyan-500/30 font-medium"
+                            ? "border-slate-700/40"
                             : "border-slate-700/40"
                         )}
                       >
@@ -805,7 +806,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               rel="noreferrer"
               className="text-amber-300 hover:text-amber-200"
             >
-              {lang === "zh" ? "打赏" : "Donate"}
+              {lang === "zh" ? "捐赠" : "Donate"}
             </a>
           </p>
         </footer>
@@ -814,10 +815,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <AlertDialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
         <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
           <AlertDialogHeader>
-            <AlertDialogTitle>{lang === "zh" ? "升级到 Premium" : "Upgrade to Premium"}</AlertDialogTitle>
+            <AlertDialogTitle>{lang === "zh" ? "升级为高级版" : "Upgrade to Premium"}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300">
               {lang === "zh"
-                ? "Free 用户仅可创建 1 个项目，且不能删除项目。升级 Premium 后可创建多个项目并删除现有项目。"
+                ? "免费版只能创建一个项目且不能删除项目。升级为高级版以创建和删除多个项目。"
                 : "Free users can create only 1 project and cannot delete projects. Upgrade to Premium for multi-project creation and deletion."}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -829,7 +830,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               className="bg-cyan-500 hover:bg-cyan-400 text-slate-900"
               onClick={() => navigate("/premium")}
             >
-              {lang === "zh" ? "查看 Premium 详情" : "View Premium details"}
+              {lang === "zh" ? "查看高级版详情" : "View Premium details"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -838,7 +839,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
           <AlertDialogHeader>
-            <AlertDialogTitle>{lang === "zh" ? "确认删除项目" : "Confirm project deletion"}</AlertDialogTitle>
+            <AlertDialogTitle>{lang === "zh" ? "确认项目删除" : "Confirm project deletion"}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300">
               {lang === "zh"
                 ? `你将删除项目“${activeProject.title}”。该操作不可撤销，请确认。`
@@ -856,7 +857,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               }}
               disabled={deleting}
             >
-              {deleting ? (lang === "zh" ? "删除中..." : "Deleting...") : (lang === "zh" ? "确认删除" : "Delete")}
+              {deleting ? (lang === "zh" ? "删除中..." : "Deleting...") : (lang === "zh" ? "删除" : "Delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -874,7 +875,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </div>
               <div>
                 <p className="text-sm font-semibold">
-                  {lang === "zh" ? "AI助手：西西" : "AI Assistant: Sisyphus"}
+                  {lang === "zh" ? "AI助手：西西弗斯" : "AI Assistant: Sisyphus"}
                 </p>
               </div>
             </div>

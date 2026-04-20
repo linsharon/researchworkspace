@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { pdfAPI, PDFFileInfo } from "@/lib/pdf-api";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -27,6 +28,8 @@ function formatDate(iso: string): string {
 }
 
 export default function PdfManager() {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const [files, setFiles] = useState<PDFFileInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -43,7 +46,7 @@ export default function PdfManager() {
       const res = await pdfAPI.list();
       setFiles(res.files);
     } catch {
-      setError("Failed to load PDF list. Make sure the backend is running.");
+      setError(isZh ? "无法加载PDF列表。请确保后端正在运行。" : "Failed to load PDF list. Make sure the backend is running.");
     } finally {
       setLoading(false);
     }
@@ -62,7 +65,7 @@ export default function PdfManager() {
     if (!fileList || fileList.length === 0) return;
     const file = fileList[0];
     if (!file.name.toLowerCase().endsWith(".pdf")) {
-      setError("Please select a valid PDF file.");
+      setError(isZh ? "请选择有效的PDF文件。" : "Please select a valid PDF file.");
       return;
     }
     setUploading(true);
@@ -90,7 +93,7 @@ export default function PdfManager() {
       if (viewingFile === filename) setViewingFile(null);
       await fetchFiles();
     } catch {
-      setError("Failed to delete file.");
+      setError(isZh ? "删除文件失败。" : "Failed to delete file.");
     }
   };
 
@@ -229,7 +232,7 @@ export default function PdfManager() {
                             <div className="flex gap-1 shrink-0">
                               <button
                                 className="p-1 rounded hover:bg-blue-100 text-slate-400 hover:text-blue-600"
-                                title="View"
+                                title={isZh ? "查看" : "View"}
                                 onClick={() =>
                                   setViewingFile(
                                     viewingFile === f.filename ? null : f.filename
@@ -240,14 +243,14 @@ export default function PdfManager() {
                               </button>
                               <button
                                 className="p-1 rounded hover:bg-green-100 text-slate-400 hover:text-green-600"
-                                title="Download"
+                                title={isZh ? "下载" : "Download"}
                                 onClick={() => handleDownload(f.filename)}
                               >
                                 <Download className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 className="p-1 rounded hover:bg-red-100 text-slate-400 hover:text-red-500"
-                                title="Delete"
+                                title={isZh ? "删除" : "Delete"}
                                 onClick={() => handleDelete(f.filename)}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -319,7 +322,7 @@ export default function PdfManager() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-slate-400 py-20">
                     <FileText className="w-16 h-16 mb-4 opacity-20" />
-                    <p className="text-sm">Select a file from the list to view it here</p>
+                    <p className="text-sm">{isZh ? "从列表中选择一个文件以在此处查看" : "Select a file from the list to view it here"}</p>
                   </div>
                 )}
               </CardContent>

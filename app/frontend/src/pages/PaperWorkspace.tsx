@@ -24,17 +24,21 @@ import {
 } from "lucide-react";
 import { paperAPI, projectAPI, type Paper as ApiPaper, type Project } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 // Tag Input Component
 function TagInput({
   tags,
   onTagsChange,
-  placeholder = "Add tag...",
+  placeholder,
 }: {
   tags: string[];
   onTagsChange: (tags: string[]) => void;
   placeholder?: string;
 }) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
+  const resolvedPlaceholder = placeholder || (isZh ? "添加标签..." : "Add tag...");
   const [input, setInput] = useState("");
 
   const addTag = () => {
@@ -75,7 +79,7 @@ function TagInput({
               addTag();
             }
           }}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           className="text-xs h-7"
         />
         <Button
@@ -92,6 +96,8 @@ function TagInput({
 }
 
 export default function PaperWorkspace() {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const { paperId } = useParams<{ paperId: string }>();
   const [paper, setPaper] = useState<ApiPaper | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -216,7 +222,7 @@ export default function PaperWorkspace() {
   if (loadingPaper) {
     return (
       <AppLayout>
-        <div className="p-6 text-sm text-slate-400">Loading paper...</div>
+        <div className="p-6 text-sm text-slate-400">{isZh ? "加载文献..." : "Loading paper..."}</div>
       </AppLayout>
     );
   }
@@ -226,8 +232,8 @@ export default function PaperWorkspace() {
       <AppLayout>
         <div className="p-6">
           <div className="rounded-lg border border-slate-700/50 p-6 text-center">
-            <h2 className="text-lg font-semibold text-slate-100">Paper not found</h2>
-            <p className="text-sm text-slate-400 mt-2">This page only shows real paper records from your project data.</p>
+            <h2 className="text-lg font-semibold text-slate-100">{isZh ? "文献未找到" : "Paper not found"}</h2>
+            <p className="text-sm text-slate-400 mt-2">{isZh ? "此页面仅显示来自您项目数据的真实文献记录。" : "This page only shows real paper records from your project data."}</p>
           </div>
         </div>
       </AppLayout>
@@ -415,18 +421,18 @@ export default function PaperWorkspace() {
                 <Input
                   value={newAnnText}
                   onChange={(e) => setNewAnnText(e.target.value)}
-                  placeholder="Paste or type the highlighted text..."
+                  placeholder={isZh ? "粘贴或输入高亮显示的文本..." : "Paste or type the highlighted text..."}
                   className="text-xs"
                 />
                 <Textarea
                   value={newAnnNote}
                   onChange={(e) => setNewAnnNote(e.target.value)}
-                  placeholder="Your note about this highlight..."
+                  placeholder={isZh ? "关于此高亮的笔记..." : "Your note about this highlight..."}
                   rows={2}
                   className="text-xs"
                 />
                 <div className="flex gap-2 items-center">
-                  <span className="text-xs text-slate-500">Color:</span>
+                  <span className="text-xs text-slate-500">{isZh ? "颜色:" : "Color:"}</span>
                   <button
                     onClick={() => setNewAnnColor("yellow")}
                     className={cn(
@@ -445,7 +451,7 @@ export default function PaperWorkspace() {
                 <TagInput
                   tags={newAnnTags}
                   onTagsChange={setNewAnnTags}
-                  placeholder="Add tags (e.g., gap, method, key-finding)..."
+                  placeholder={isZh ? "添加标签（例如，差距、方法、关键发现）..." : "Add tags (e.g., gap, method, key-finding)..."}
                 />
                 <div className="flex gap-1.5">
                   <Button
@@ -550,7 +556,7 @@ export default function PaperWorkspace() {
                 <strong>Project:</strong> {project?.title || ""}
               </p>
               <p className="text-xs text-slate-600 mt-1">
-                <strong>Connection:</strong> This paper provides a comprehensive
+                <strong>{isZh ? "连接:" : "Connection:"}</strong> This paper provides a comprehensive
                 overview of AI in education, identifying the SRL gap that forms
                 the basis of our research question.
               </p>
@@ -584,20 +590,20 @@ export default function PaperWorkspace() {
                 <Input
                   value={newLitTitle}
                   onChange={(e) => setNewLitTitle(e.target.value)}
-                  placeholder="Note title (e.g., 'Key finding about SRL gap')"
+                  placeholder={isZh ? "笔记标题（例如，'关于SRL差距的关键发现'）" : "Note title (e.g., 'Key finding about SRL gap')"}
                   className="text-sm"
                 />
                 <Textarea
                   value={newLitContent}
                   onChange={(e) => setNewLitContent(e.target.value)}
                   rows={5}
-                  placeholder="Write your literature note here..."
+                  placeholder={isZh ? "在这里写您的文献笔记..." : "Write your literature note here..."}
                   className="text-sm font-mono"
                 />
                 <TagInput
                   tags={newLitTags}
                   onTagsChange={setNewLitTags}
-                  placeholder="Add tags (e.g., gap, theory, method)..."
+                  placeholder={isZh ? "添加标签（例如，差距，理论，方法）..." : "Add tags (e.g., gap, theory, method)..."}
                 />
                 <div className="flex gap-1.5">
                   <Button
@@ -716,7 +722,7 @@ export default function PaperWorkspace() {
                 <Input
                   value={newPermTitle}
                   onChange={(e) => setNewPermTitle(e.target.value)}
-                  placeholder="Permanent note title (e.g., 'Core insight: SRL gap')"
+                  placeholder={isZh ? "永久笔记标题（例如，'核心洞察：SRL差距'）" : "Permanent note title (e.g., 'Core insight: SRL gap')"}
                   className="text-sm"
                 />
                 <Textarea
@@ -729,7 +735,7 @@ export default function PaperWorkspace() {
                 <TagInput
                   tags={newPermTags}
                   onTagsChange={setNewPermTags}
-                  placeholder="Add tags (e.g., synthesis, core-insight)..."
+                  placeholder={isZh ? "添加标签（例如，综合，核心洞察）..." : "Add tags (e.g., synthesis, core-insight)..."}
                 />
                 <div className="flex gap-1.5">
                   <Button

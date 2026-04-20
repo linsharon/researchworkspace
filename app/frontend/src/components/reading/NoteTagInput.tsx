@@ -4,6 +4,7 @@ import { Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useI18n } from "@/lib/i18n";
 
 interface NoteTagInputProps {
   tags: string[];
@@ -14,8 +15,11 @@ interface NoteTagInputProps {
 export default function NoteTagInput({
   tags,
   onChange,
-  placeholder = "Type keyword and press Enter",
+  placeholder,
 }: NoteTagInputProps) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
+  const resolvedPlaceholder = placeholder || (isZh ? "输入关键词并按回车" : "Type keyword and press Enter");
   const [value, setValue] = useState("");
 
   const addTag = () => {
@@ -61,7 +65,7 @@ export default function NoteTagInput({
               addTag();
             }
           }}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           value={value}
         />
         <Button onClick={addTag} size="sm" type="button" variant="outline">

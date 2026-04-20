@@ -4,12 +4,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lock, LogIn } from 'lucide-react';
+import { useI18n } from "@/lib/i18n";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const { user, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -19,7 +22,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Checking login status...</p>
+          <p className="text-gray-600">{isZh ? "检查登录状态..." : "Checking login status..."}</p>
         </div>
       </div>
     );
@@ -33,7 +36,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
             <div className="mx-auto w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mb-3">
               <Lock className="h-7 w-7 text-blue-600" />
             </div>
-            <CardTitle className="text-xl text-gray-900">Login Required</CardTitle>
+            <CardTitle className="text-xl text-gray-900">{isZh ? "需要登录" : "Login Required"}</CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-sm text-gray-600">

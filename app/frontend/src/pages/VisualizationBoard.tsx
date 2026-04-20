@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Map, ExternalLink } from "lucide-react";
 import { conceptAPI, highlightAPI, noteAPI, paperAPI, projectAPI } from "@/lib/manuscript-api";
 import type { Concept, Note, Paper, Project } from "@/lib/manuscript-api";
+import { useI18n } from "@/lib/i18n";
 
 const normalizeConceptCategory = (raw?: string) => {
   const value = (raw || "").trim().toLowerCase();
@@ -18,6 +19,8 @@ const normalizeConceptCategory = (raw?: string) => {
 };
 
 export default function VisualizationBoard() {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState("");
   const [papers, setPapers] = useState<Paper[]>([]);
@@ -138,14 +141,14 @@ export default function VisualizationBoard() {
           <div className="flex items-center gap-3">
             <Map className="w-6 h-6 text-cyan-400" />
             <div>
-              <h1 className="text-xl font-bold text-slate-100">Visualization Board</h1>
-              <p className="text-sm text-slate-500">Project-level live analytics (no dummy data)</p>
+              <h1 className="text-xl font-bold text-slate-100">{isZh ? "可视化看板" : "Visualization Board"}</h1>
+              <p className="text-sm text-slate-500">{isZh ? "项目级别的实时分析（无虚拟数据）" : "Project-level live analytics (no dummy data)"}</p>
             </div>
           </div>
           <div className="w-[280px]">
             <Select value={projectId} onValueChange={setProjectId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select project" />
+                <SelectValue placeholder={isZh ? "选择项目" : "Select project"} />
               </SelectTrigger>
               <SelectContent>
                 {projects.map((project) => (
@@ -157,11 +160,11 @@ export default function VisualizationBoard() {
         </div>
 
         {loading ? (
-          <Card className="border-slate-700/50"><CardContent className="py-6 text-sm text-slate-400">Loading project analytics...</CardContent></Card>
+          <Card className="border-slate-700/50"><CardContent className="py-6 text-sm text-slate-400">{isZh ? "加载项目分析..." : "Loading project analytics..."}</CardContent></Card>
         ) : null}
 
         {!loading && !projectId ? (
-          <Card className="border-slate-700/50"><CardContent className="py-6 text-sm text-slate-400">No project available. Create a project first.</CardContent></Card>
+          <Card className="border-slate-700/50"><CardContent className="py-6 text-sm text-slate-400">{isZh ? "没有可用的项目。请先创建一个项目。" : "No project available. Create a project first."}</CardContent></Card>
         ) : null}
 
         {!loading && projectId ? (
@@ -174,7 +177,7 @@ export default function VisualizationBoard() {
             </div>
 
             <Card className="border-slate-700/50">
-              <CardHeader><CardTitle className="text-sm">Artifacts Snapshot</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{isZh ? "产件快照" : "Artifacts Snapshot"}</CardTitle></CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                   <Badge variant="outline">Literature Notes: {literatureNotesCount}</Badge>
@@ -191,10 +194,10 @@ export default function VisualizationBoard() {
             </Card>
 
             <Card className="border-slate-700/50">
-              <CardHeader><CardTitle className="text-sm">Papers</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">{isZh ? "论文" : "Papers"}</CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 {papers.length === 0 ? (
-                  <p className="text-xs text-slate-400">No reading papers in this project.</p>
+                  <p className="text-xs text-slate-400">{isZh ? "此项目中没有论文。" : "No reading papers in this project."}</p>
                 ) : (
                   papers.map((paper) => (
                     <div key={paper.id} className="flex items-center justify-between rounded-md border border-slate-700/50 px-3 py-2">

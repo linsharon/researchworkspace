@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { User2, ArrowLeft } from "lucide-react";
 import { type UserProfile } from "@/lib/data";
 import { userProfileApi } from "@/lib/user-profile-api";
+import { useI18n } from "@/lib/i18n";
 
 export default function ProfileView() {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -39,7 +42,7 @@ export default function ProfileView() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="p-6 text-center">Loading...</div>
+        <div className="p-6 text-center">{isZh ? "加载中..." : "Loading..."}</div>
       </AppLayout>
     );
   }
@@ -55,8 +58,8 @@ export default function ProfileView() {
           <Card className="border-slate-700/50 bg-slate-800/30">
             <CardContent className="p-8 text-center">
               <User2 className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-              <h2 className="text-lg font-semibold text-slate-200 mb-1">Profile Not Found</h2>
-              <p className="text-sm text-slate-400">This profile is private or does not exist.</p>
+              <h2 className="text-lg font-semibold text-slate-200 mb-1">{isZh ? "未找到个人资料" : "Profile Not Found"}</h2>
+              <p className="text-sm text-slate-400">{isZh ? "此个人资料是私有的或者不存在。" : "This profile is private or does not exist."}</p>
             </CardContent>
           </Card>
         </div>

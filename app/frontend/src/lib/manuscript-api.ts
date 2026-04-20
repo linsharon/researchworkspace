@@ -2,7 +2,7 @@
  * Manuscript API client - papers, notes, highlights, concepts
  */
 
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError, AxiosHeaders } from "axios";
 import { getAPIBaseURL } from "./config";
 import { clearAuthSession, getAuthToken } from "./session";
 
@@ -21,8 +21,9 @@ axios.defaults.timeout = 10000;
 axios.interceptors.request.use((config) => {
   const token = getAuthToken();
   if (token) {
-    config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${token}`;
+    const headers = AxiosHeaders.from(config.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    config.headers = headers;
   }
 
   const baseURL = getAPIBaseURL();
@@ -74,6 +75,10 @@ export interface Paper {
   year?: number;
   journal?: string;
   abstract?: string;
+  researchQuestion?: string;
+  theory?: string;
+  method?: string;
+  findings?: string;
   url?: string;
   is_entry_paper: boolean;
   is_expanded_paper: boolean;

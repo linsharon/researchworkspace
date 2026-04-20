@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import NoteTagInput from "./NoteTagInput";
 import type { Paper } from "@/lib/manuscript-api";
+import { useI18n } from "@/lib/i18n";
 
 export interface LiteratureNote {
   title: string;
@@ -32,6 +33,8 @@ const defaultNote: LiteratureNote = {
 };
 
 export function LiteratureNoteForm({ initialValue, paper, onSubmit }: LiteratureNoteFormProps) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const [form, setForm] = useState<LiteratureNote>({ ...defaultNote, ...initialValue });
   const [errors, setErrors] = useState<Partial<Record<keyof LiteratureNote, string>>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -40,7 +43,7 @@ export function LiteratureNoteForm({ initialValue, paper, onSubmit }: Literature
     const nextErrors: Partial<Record<keyof LiteratureNote, string>> = {};
 
     if (!value.title.trim()) {
-      nextErrors.title = "Title is required (Author-Year).";
+      nextErrors.title = isZh ? "标题是必须的（作者-年份）。" : "Title is required (Author-Year).";
     }
     if (!value.contentGist.trim()) {
       nextErrors.contentGist = "Content Gist is required.";
@@ -85,7 +88,7 @@ export function LiteratureNoteForm({ initialValue, paper, onSubmit }: Literature
 
         <div className="flex-1">
           <CardHeader className="pb-4">
-            <CardTitle className="text-slate-100">Literature Note</CardTitle>
+            <CardTitle className="text-slate-100">{isZh ? "文献笔记" : "Literature Note"}</CardTitle>
             <CardDescription className="text-slate-600">
               Capture source-grounded observations with quote-level fidelity.
             </CardDescription>
@@ -95,17 +98,17 @@ export function LiteratureNoteForm({ initialValue, paper, onSubmit }: Literature
             <form className="space-y-4" onSubmit={handleSubmit}>
               {form.originalQuote.trim() ? (
                 <div className="rounded-md border border-slate-700/50 bg-slate-800 px-3 py-2">
-                  <p className="mb-1 text-xs font-medium text-slate-500">Auto-quoted selection</p>
+                  <p className="mb-1 text-xs font-medium text-slate-500">{isZh ? "自动引用选中内容" : "Auto-quoted selection"}</p>
                   <p className="text-sm italic text-slate-700">"{form.originalQuote}"</p>
                 </div>
               ) : null}
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="lit-title">Title (Author-Year)</Label>
+                  <Label htmlFor="lit-title">{isZh ? "标题（作者-年份）" : "Title (Author-Year)"}</Label>
                   <Input
                     id="lit-title"
-                    placeholder="e.g., Smith-2021"
+                    placeholder={isZh ? "例如，Smith-2021" : "e.g., Smith-2021"}
                     value={form.title}
                     onChange={event => updateField("title", event.target.value)}
                   />
@@ -113,31 +116,31 @@ export function LiteratureNoteForm({ initialValue, paper, onSubmit }: Literature
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="lit-page">Page Number</Label>
+                  <Label htmlFor="lit-page">{isZh ? "页码" : "Page Number"}</Label>
                   <Input
                     id="lit-page"
-                    placeholder="e.g., 42"
+                    placeholder={isZh ? "例如，42" : "e.g., 42"}
                     value={form.pageNumber}
                     onChange={event => updateField("pageNumber", event.target.value)}
                   />
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="lit-keywords">Keywords</Label>
+                  <Label htmlFor="lit-keywords">{isZh ? "关键词" : "Keywords"}</Label>
                   <NoteTagInput
                     onChange={keywords => updateField("keywords", keywords)}
-                    placeholder="Type keyword and press Enter"
+                    placeholder={isZh ? "输入关键词并按回车" : "Type keyword and press Enter"}
                     tags={form.keywords}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lit-gist">Content Gist</Label>
+                <Label htmlFor="lit-gist">{isZh ? "内容摘要" : "Content Gist"}</Label>
                 <Textarea
                   id="lit-gist"
                   rows={4}
-                  placeholder="Summarize why this passage matters in your own words."
+                  placeholder={isZh ? "用自己的话总结这段文字为何重要。" : "Summarize why this passage matters in your own words."}
                   value={form.contentGist}
                   onChange={event => updateField("contentGist", event.target.value)}
                 />
@@ -147,11 +150,11 @@ export function LiteratureNoteForm({ initialValue, paper, onSubmit }: Literature
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lit-quote">Original Quote</Label>
+                <Label htmlFor="lit-quote">{isZh ? "原始引用" : "Original Quote"}</Label>
                 <Textarea
                   id="lit-quote"
                   rows={5}
-                  placeholder="Paste exact quotation from the source."
+                  placeholder={isZh ? "粘贴来自源的准确引用。" : "Paste exact quotation from the source."}
                   value={form.originalQuote}
                   onChange={event => updateField("originalQuote", event.target.value)}
                 />
@@ -162,7 +165,7 @@ export function LiteratureNoteForm({ initialValue, paper, onSubmit }: Literature
 
               {paper ? (
                 <div className="rounded-md border border-slate-700/40 bg-slate-800/50 px-3 py-2.5 space-y-1">
-                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Source Metadata</p>
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">{isZh ? "元数据" : "Source Metadata"}</p>
                   {paper.title ? (
                     <p className="text-xs text-slate-300"><span className="text-slate-500 mr-1">Title:</span>{paper.title}</p>
                   ) : null}

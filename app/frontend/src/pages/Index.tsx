@@ -48,44 +48,44 @@ function UnauthenticatedLanding() {
   const featureBlocks = [
     {
       icon: Compass,
-      title: isZh ? "研究目的" : "Purpose",
+      title: isZh ? "目的" : "Purpose",
       desc: isZh
-        ? "明确阅读目标与研究问题方向，生成可追踪的目的卡片。"
+        ? "定义研究意图并生成推动您阅读决策的目的卡片片。"
         : "Define research intent and generate purpose cards that drive your reading decisions.",
     },
     {
       icon: Search,
-      title: isZh ? "检索" : "Discover",
+      title: isZh ? "发现" : "Discover",
       desc: isZh
-        ? "管理检索记录、关键词与候选文献，沉淀可复用检索策略。"
+        ? "跟踪检索日志、关键词和候选论文，使用可重用的搜索策略。"
         : "Track search logs, keywords, and candidate papers with reusable search strategies.",
     },
     {
       icon: BookOpen,
-      title: isZh ? "阅读和笔记" : "Read & Notes",
+      title: isZh ? "阅读与笔记" : "Read & Notes",
       desc: isZh
-        ? "围绕 PDF 阅读、标注、文献笔记与永久笔记形成知识资产。"
+        ? "通过PDF阅读、高亮、文献笔记和永久笔记构建知识资产。"
         : "Build knowledge assets with PDF reading, highlights, literature notes, and permanent notes.",
     },
     {
       icon: Network,
       title: isZh ? "扩展" : "Expand",
       desc: isZh
-        ? "沿引文网络与主题关系扩展文献池，形成系统化阅读路径。"
+        ? "通过引用线索和主题关系扩展您的资源库，以实现系统性覆盖。"
         : "Expand your pool through citation trails and thematic relations for systematic coverage.",
     },
     {
       icon: BarChart3,
       title: isZh ? "可视化" : "Visualize",
       desc: isZh
-        ? "将概念、证据与论证结构可视化，快速识别研究空白。"
+        ? "通过概念图和证据结构可视化，以发现有意义的研究空白。"
         : "Visualize concept maps and evidence structures to spot meaningful research gaps.",
     },
     {
       icon: PenTool,
       title: isZh ? "草稿" : "Draft",
       desc: isZh
-        ? "把卡片与笔记回填到写作，完成从阅读到论文草稿的闭环。"
+        ? "将笔记和产件转换为结构化的写作块和论文草稿。"
         : "Convert notes and artifacts into structured writing blocks and paper drafts.",
     },
   ];
@@ -95,45 +95,45 @@ function UnauthenticatedLanding() {
       icon: Archive,
       title: isZh ? "我的产件" : "My Artifacts",
       desc: isZh
-        ? "集中管理项目里的目的卡片、检索日志、笔记、概念和草稿，让研究产件不再散落在不同步骤里。"
+        ? "将目的卡片片、检索日志、笔记、概念和草稿放在一个地方，以便研究产件保持连接而不是分散。"
         : "Keep purpose cards, search logs, notes, concepts, and drafts in one place so research artifacts stay connected instead of scattered.",
     },
     {
       icon: Package,
       title: isZh ? "我的产集" : "My Packages",
       desc: isZh
-        ? "把一组高价值产件打包成可复用的研究包，用于个人沉淀、跨项目复用和知识迁移。"
+        ? "将高价值的产件打产集成可重复使用的产集，用于个人图书馆、跨项目重用和加快知识转移。"
         : "Bundle high-value artifacts into reusable packages for personal libraries, cross-project reuse, and faster knowledge transfer.",
     },
     {
       icon: Globe,
       title: isZh ? "社区产集" : "Community Packages",
       desc: isZh
-        ? "浏览社区共享的研究包，吸收他人的结构化产出，并将合适内容纳入自己的研究工作台。"
+        ? "探索社区共享的产集，从其他研究人员的结构化输出中学习，并导入值得构建的产集。"
         : "Explore community-shared packages, learn from other researchers' structured outputs, and import the ones worth building on.",
     },
   ];
 
   const teamFeatures = [
-    isZh ? "邀请项目成员围绕同一研究主题协作，避免资料和判断分散在聊天工具里。" : "Invite project members into the same research space instead of splitting evidence across chat threads and documents.",
-    isZh ? "围绕共享项目查看相同的文献、产件与工作流上下文，减少交接成本。" : "Work from the same papers, artifacts, and workflow context so handoffs are lighter and decisions stay visible.",
-    isZh ? "高级版解锁团队与更高协作额度，适合导师-学生、小组和联合写作场景。" : "Premium unlocks Team access and higher collaboration limits for advisors, research groups, and co-writing workflows.",
+    isZh ? "邀请项目成员进入同一个研究空间，而不是将证据分散在聊天线程和文档中。" : "Invite project members into the same research space instead of splitting evidence across chat threads and documents.",
+    isZh ? "使用相同的论文、产件和工作流上下文进行工作，以便交接更轻松，决策保持可见。" : "Work from the same papers, artifacts, and workflow context so handoffs are lighter and decisions stay visible.",
+    isZh ? "高级功能解锁团队访问权限和更高的协作限制，适用于顾问、研究小组和共同写作工作流。" : "Premium unlocks Team access and higher collaboration limits for advisors, research groups, and co-writing workflows.",
   ];
 
   const planRows = [
     {
-      label: isZh ? "项目数量" : "Projects",
-      free: isZh ? "最多 1 个" : "Up to 1",
+      label: isZh ? "项目" : "Projects",
+      free: isZh ? "最多1个" : "Up to 1",
       premium: isZh ? "多个项目" : "Multiple projects",
     },
     {
-      label: isZh ? "删除项目" : "Project deletion",
-      free: isZh ? "不支持" : "Not available",
-      premium: isZh ? "支持" : "Available",
+      label: isZh ? "项目删除" : "Project deletion",
+      free: isZh ? "不可用" : "Not available",
+      premium: isZh ? "可用" : "Available",
     },
     {
       label: isZh ? "我的产件" : "My Artifacts",
-      free: isZh ? "支持" : "Included",
+      free: isZh ? "已包含" : "Included",
       premium: isZh ? "支持" : "Included",
     },
     {
@@ -143,8 +143,8 @@ function UnauthenticatedLanding() {
     },
     {
       label: isZh ? "社区产集导入" : "Community Packages imports",
-      free: isZh ? "最多 2 个产集" : "Up to 2 packages",
-      premium: isZh ? "更高额度" : "Higher limits",
+      free: isZh ? "最多2个产集" : "Up to 2 packages",
+      premium: isZh ? "更高限额" : "Higher limits",
     },
     {
       label: isZh ? "团队协作" : "Team collaboration",
@@ -159,12 +159,12 @@ function UnauthenticatedLanding() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-cyan-500/20 border border-cyan-300/30 flex items-center justify-center">
-              <img src={BRAND_FAVICON_URL} alt="Research Workspace logo" className="h-5 w-5" />
+              <img src={BRAND_FAVICON_URL} alt={isZh ? "研究工作空间商标" : "Research Workspace logo"} className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-100">{isZh ? "研究工作流" : "Research Workspace"}</p>
+              <p className="text-sm font-semibold text-slate-100">{isZh ? "研究工作空间" : "Research Workspace"}</p>
               <p className="text-[11px] text-slate-400">
-                {isZh ? "结构化学术阅读与写作" : "Structured Academic Reading & Writing"}
+                {isZh ? "结构化的学术阅读与写作" : "Structured Academic Reading & Writing"}
               </p>
             </div>
           </div>
@@ -177,7 +177,7 @@ function UnauthenticatedLanding() {
             </button>
             <button
               onClick={() => setLang("zh")}
-              className={`px-3 py-1.5 text-xs ${lang === "zh" ? "bg-cyan-500 text-slate-900" : "bg-slate-900 text-slate-300"}`}
+              className={`px-3 py-1.5 text-xs ${lang === "zh" ? "bg-slate-900 text-slate-300" : "bg-slate-900 text-slate-300"}`}
             >
               中文
             </button>
@@ -193,12 +193,12 @@ function UnauthenticatedLanding() {
             {isZh ? "研究工作流平台" : "Research Workflow Platform"}
           </Badge>
           <h1 className="mt-4 text-3xl md:text-5xl font-bold tracking-tight leading-tight">
-            {isZh ? "从文献检索到论文草稿，" : "From Literature Discovery to First Draft,"}
-            <span className="text-cyan-300">{isZh ? "一条工作流完成" : "in One Continuous Workflow"}</span>
+            {isZh ? "从文献发现到初稿" : "From Literature Discovery to First Draft,"}
+            <span className="text-cyan-300">{isZh ? "在一个连续的工作流中" : "in One Continuous Workflow"}</span>
           </h1>
           <p className="mt-4 max-w-2xl text-slate-300 text-base md:text-lg">
             {isZh
-              ? "这个系统围绕学术阅读和写作设计：目标定义、文献发现、深度阅读、知识扩展、证据可视化、结构化写作，全部在一个项目里沉淀。"
+              ? "专为学术阅读和写作设计：定义目的，发现论文，深入阅读，扩展证据，可视化洞察，以及在每个项目中用结构化的方式草拟。"
               : "Built for academic reading and writing: define purpose, discover papers, read deeply, expand evidence, visualize insights, and draft with structure inside each project."}
           </p>
 
@@ -207,7 +207,7 @@ function UnauthenticatedLanding() {
               className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-semibold"
               onClick={() => navigate("/auth/register")}
             >
-              {isZh ? "免费开始" : "Start Free"}
+              {isZh ? "免费注册" : "Start Free"}
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>
             <Button
@@ -215,7 +215,7 @@ function UnauthenticatedLanding() {
               className="border-slate-500/40 text-slate-100 hover:bg-slate-800/60"
               onClick={() => navigate("/auth/login")}
             >
-              {isZh ? "登录已有账号" : "Sign In"}
+              {isZh ? "登录" : "Sign In"}
             </Button>
           </div>
           </div>
@@ -248,11 +248,11 @@ function UnauthenticatedLanding() {
               {isZh ? "研究产物" : "Research Artifacts"}
             </Badge>
             <h2 className="mt-4 text-2xl md:text-3xl font-bold text-slate-100">
-              {isZh ? "让研究产件可沉淀、可打包、可共享" : "Make research artifacts persistent, packageable, and shareable"}
+              {isZh ? "使研究成果持久化，可打包，可分享" : "Make research artifacts persistent, packageable, and shareable"}
             </h2>
             <p className="mt-3 text-slate-300 text-sm md:text-base max-w-2xl leading-relaxed">
               {isZh
-                ? "除了工作流步骤本身，研究工作流还提供一层面向成果沉淀的研究产物体系，帮助你把过程产出变成可复用资产。"
+                ? "除了工作流本身，研究工作空间还包括一个成果层，将工作过程中的产物转变为可重复使用的研究资产。"
                 : "Beyond the workflow itself, Research Workspace includes an artifacts layer that turns working outputs into reusable research assets."}
             </p>
           </div>
@@ -292,7 +292,7 @@ function UnauthenticatedLanding() {
             <CardContent className="space-y-3">
               <p className="text-sm text-slate-300 leading-relaxed">
                 {isZh
-                  ? "当研究不再是一个人的任务，团队能把成员、文献、产件与写作上下文维持在同一个项目空间。"
+                  ? "当研究不再是单打独斗时，团队将成员、论文、产件和写作上下文都保留在一个共享的项目空间内。"
                   : "When research is not a solo activity, Team keeps members, papers, artifacts, and writing context inside one shared project space."}
               </p>
               {teamFeatures.map((item) => (
@@ -317,7 +317,7 @@ function UnauthenticatedLanding() {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="border-b border-slate-700/60 text-left">
-                      <th className="px-2 py-2 text-slate-400">{isZh ? "能力" : "Capability"}</th>
+                      <th className="px-2 py-2 text-slate-400">{isZh ? "功能" : "Capability"}</th>
                       <th className="px-2 py-2 text-slate-300">{isZh ? "免费版" : "Free"}</th>
                       <th className="px-2 py-2 text-amber-300">{isZh ? "高级版" : "Premium"}</th>
                     </tr>
@@ -335,7 +335,7 @@ function UnauthenticatedLanding() {
               </div>
               <p className="mt-4 text-xs text-slate-400 leading-relaxed">
                 {isZh
-                  ? "免费版适合先体验完整工作流与研究产物体系。高级版面向需要多项目管理、社区资源扩展和团队协作的持续研究场景。"
+                  ? "免费版足以体验工作流程和产件系统。高级版设计用于需要多项目组织、更广泛产集访问权限和团队协作的持续研究。"
                   : "Free is enough to experience the workflow and artifacts system. Premium is designed for ongoing research that needs multi-project organization, broader package access, and team collaboration."}
               </p>
             </CardContent>
@@ -345,14 +345,14 @@ function UnauthenticatedLanding() {
 
       <footer className="h-10 border-t border-slate-700/40 bg-[#061423] px-4 flex items-center justify-center">
         <p className="text-[11px] text-slate-400">
-          {isZh ? "版权所有" : "Copyright"} © {new Date().getFullYear()} ·
+          {isZh ? "版权" : "Copyright"} © {new Date().getFullYear()} ·
           <a
             href="https://researchic.com"
             target="_blank"
             rel="noreferrer"
             className="ml-1 text-cyan-300 hover:text-cyan-200"
           >
-            {isZh ? "西西弗斯林" : "Sisyphus Lynn"}
+            {isZh ? "西西弗斯·林恩" : "Sisyphus Lynn"}
           </a>
           <span className="mx-2 text-slate-500">·</span>
           <a
@@ -361,7 +361,7 @@ function UnauthenticatedLanding() {
             rel="noreferrer"
             className="text-amber-300 hover:text-amber-200"
           >
-            {isZh ? "打赏" : "Donate"}
+            {isZh ? "捐赠" : "Donate"}
           </a>
         </p>
       </footer>
@@ -411,7 +411,7 @@ function AuthenticatedLanding() {
 
     const nextTitle = title.trim();
     if (!nextTitle) {
-      toast.error(isZh ? "请输入项目名称" : "Please enter a project title");
+      toast.error(isZh ? "请输入项目标题" : "Please enter a project title");
       return;
     }
 
@@ -419,7 +419,7 @@ function AuthenticatedLanding() {
     setCreating(true);
     try {
       await projectAPI.ensure({ id, title: nextTitle, description: description.trim() || undefined });
-      toast.success(isZh ? "项目已创建" : "Project created");
+      toast.success(isZh ? "项目创建成功" : "Project created");
       setTitle("");
       setDescription("");
       await loadProjects();
@@ -429,7 +429,7 @@ function AuthenticatedLanding() {
       if (maybeMessage.includes("premium")) {
         setShowUpgradeDialog(true);
       } else {
-        toast.error(isZh ? "创建项目失败，请稍后重试" : "Failed to create project");
+        toast.error(isZh ? "创建项目失败" : "Failed to create project");
       }
     } finally {
       setCreating(false);
@@ -458,7 +458,7 @@ function AuthenticatedLanding() {
         setPendingDeleteProject(null);
         setShowUpgradeDialog(true);
       } else {
-        toast.error(isZh ? "删除项目失败，请稍后重试" : "Failed to delete project");
+        toast.error(isZh ? "删除项目失败" : "Failed to delete project");
       }
     } finally {
       setDeletingId(null);
@@ -470,13 +470,13 @@ function AuthenticatedLanding() {
       <div className="p-6 max-w-6xl mx-auto space-y-6">
         <div className="rounded-2xl border border-slate-700/50 bg-gradient-to-r from-[#10243a] via-[#102b3f] to-[#172b34] p-6">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-xs text-cyan-300 tracking-wider uppercase">Project Management</p>
+            <p className="text-xs text-cyan-300 tracking-wider uppercase">{isZh ? "项目管理" : "Project Management"}</p>
             <Badge className={isPremiumUser ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/30" : "bg-slate-700/60 text-slate-200 border-slate-500/40"}>
               {isPremiumUser ? (isZh ? "Premium 用户" : "Premium") : (isZh ? "Free 用户" : "Free")}
             </Badge>
           </div>
           <h1 className="text-3xl font-bold text-slate-100 mt-2">
-            {isZh ? "从新项目开始你的研究工作流" : "Start Your Workflow with a New Project"}
+            {isZh ? "用新项目启动你的工作流程" : "Start Your Workflow with a New Project"}
           </h1>
           <p className="text-sm text-slate-300 mt-2 max-w-2xl">
             {isZh
@@ -490,12 +490,12 @@ function AuthenticatedLanding() {
             <CardHeader>
               <CardTitle className="text-slate-100 flex items-center gap-2">
                 <FolderPlus className="h-4 w-4 text-cyan-300" />
-                {isZh ? "新建项目" : "Create Project"}
+                {isZh ? "创建项目" : "Create Project"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <Input
-                placeholder={isZh ? "项目名称（必填）" : "Project title (required)"}
+                placeholder={isZh ? "项目标题（必填）" : "Project title (required)"}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
               />
@@ -505,11 +505,11 @@ function AuthenticatedLanding() {
                 onChange={(event) => setDescription(event.target.value)}
               />
               <Button className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900" onClick={() => void handleCreateProject()} disabled={creating}>
-                {creating ? (isZh ? "创建中..." : "Creating...") : (isZh ? "创建并进入 Step 1" : "Create and Enter Step 1")}
+                {creating ? (isZh ? "创建中..." : "Creating...") : (isZh ? "创建并进入步骤1" : "Create and Enter Step 1")}
               </Button>
               {hasReachedFreeProjectLimit && (
                 <p className="text-xs text-amber-300">
-                  {isZh ? "Free 用户仅可创建 1 个项目，请升级 Premium。" : "Free plan allows only 1 project. Upgrade to Premium."}
+                  {isZh ? "免费计划仅限1个项目。升级为高级版。" : "Free plan allows only 1 project. Upgrade to Premium."}
                 </p>
               )}
             </CardContent>
@@ -531,7 +531,7 @@ function AuthenticatedLanding() {
               ) : projects.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-slate-600 p-6 text-center">
                   <p className="text-sm text-slate-300">
-                    {isZh ? "还没有项目，先创建你的第一个研究项目。" : "No projects yet. Create your first research project to begin."}
+                    {isZh ? "还没有项目。创建你的第一个研究项目开始吧。" : "No projects yet. Create your first research project to begin."}
                   </p>
                 </div>
               ) : (
@@ -541,12 +541,12 @@ function AuthenticatedLanding() {
                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <div>
                           <h3 className="text-sm font-semibold text-slate-100">{project.title}</h3>
-                          <p className="text-xs text-slate-400 mt-1">{project.description || (isZh ? "暂无研究目标描述" : "No project goal description")}</p>
+                          <p className="text-xs text-slate-400 mt-1">{project.description || (isZh ? "项目目标描述未提供" : "No project goal description")}</p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Button size="sm" onClick={() => navigate(`/workflow/${project.id}/1`)}>
                             <ArrowRight className="h-3 w-3 mr-1" />
-                            {isZh ? "进入工作流" : "Open Workflow"}
+                            {isZh ? "打开工作流" : "Open Workflow"}
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => navigate(`/artifacts?tab=all&projectId=${project.id}`)}>
                             <FileText className="h-3 w-3 mr-1" />
@@ -554,7 +554,7 @@ function AuthenticatedLanding() {
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => navigate("/projects/members")}>
                             <Users className="h-3 w-3 mr-1" />
-                            {isZh ? "成员管理" : "Members"}
+                            {isZh ? "成员" : "Members"}
                           </Button>
                           <Button
                             size="sm"
@@ -565,7 +565,7 @@ function AuthenticatedLanding() {
                           >
                             <Trash2 className="h-3 w-3 mr-1" />
                             {deletingId === project.id
-                              ? (isZh ? "删除中..." : "Deleting...")
+                              ? (isZh ? "正在删除..." : "Deleting...")
                               : (isZh ? "删除" : "Delete")}
                           </Button>
                         </div>
@@ -582,10 +582,10 @@ function AuthenticatedLanding() {
       <AlertDialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
         <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
           <AlertDialogHeader>
-            <AlertDialogTitle>{isZh ? "升级到 Premium" : "Upgrade to Premium"}</AlertDialogTitle>
+            <AlertDialogTitle>{isZh ? "升级为高级版" : "Upgrade to Premium"}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300">
               {isZh
-                ? "Free 用户只能创建 1 个项目，且不支持删除项目。升级 Premium 后可创建多个项目并删除项目。"
+                ? "免费用户只能创建1个项目且不能删除项目。升级为高级版可以创建和删除多个项目。"
                 : "Free users can only create 1 project and cannot delete projects. Upgrade to Premium for multi-project creation and deletion."}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -597,7 +597,7 @@ function AuthenticatedLanding() {
               className="bg-cyan-500 hover:bg-cyan-400 text-slate-900"
               onClick={() => navigate("/premium")}
             >
-              {isZh ? "查看 Premium 详情" : "View Premium details"}
+              {isZh ? "查看高级版详情" : "View Premium details"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -640,7 +640,7 @@ export default function IndexPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#061423] text-slate-100 flex items-center justify-center">
-        <p className="text-sm text-slate-300">{lang === "zh" ? "正在加载..." : "Loading..."}</p>
+        <p className="text-sm text-slate-300">{lang === "zh" ? "加载中..." : "Loading..."}</p>
       </div>
     );
   }

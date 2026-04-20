@@ -154,7 +154,7 @@ type SlashInsertItem = {
 type InsertedSegment = {
   text: string;
   sourceId: string;
-  kind: "purpose" | "keyword" | "note" | "visual";
+  kind: "purpose" | "keyword" | "note" | "visual" | "highlight";
   subtype:
     | "purpose"
     | "keyword-concept"
@@ -167,7 +167,8 @@ type InsertedSegment = {
     | "literature-note"
     | "permanent-note"
     | "pre-writing-note"
-    | "visualization";
+    | "visualization"
+    | "highlight";
   paperId: string;
   citationNumber?: number;
 };
@@ -219,11 +220,11 @@ class DraftErrorBoundary extends React.Component<React.PropsWithChildren, DraftE
       <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-5 space-y-3">
         <div>
           <h2 className="text-sm font-semibold text-rose-300">
-            {isZh ? "Draft 页面加载失败" : "Draft Page Failed to Load"}
+            {isZh ? "草稿页面加载失败" : "Draft Page Failed to Load"}
           </h2>
           <p className="text-xs text-rose-100/90 mt-1">
             {isZh
-              ? "请把下面的错误信息和日志直接复制给我，我可以继续定位。"
+              ? "请复制下面的错误详情和日志，以便我可以继续调试。"
               : "Please copy the error details and logs below so I can keep debugging."}
           </p>
         </div>
@@ -234,9 +235,9 @@ class DraftErrorBoundary extends React.Component<React.PropsWithChildren, DraftE
           <pre className="text-xs whitespace-pre-wrap text-white">{this.state.message}</pre>
         </div>
         <div className="rounded-lg border border-rose-400/20 bg-black/20 p-3">
-          <p className="text-xs font-semibold text-rose-200 mb-1">Log / Stack</p>
+          <p className="text-xs font-semibold text-rose-200 mb-1">{isZh ? "日志/栈" : "Log / Stack"}</p>
           <pre className="text-xs whitespace-pre-wrap text-white max-h-72 overflow-auto">
-            {this.state.stack || (isZh ? "暂无堆栈信息" : "No stack available")}
+            {this.state.stack || (isZh ? "没有可用的堆栈" : "No stack available")}
           </pre>
         </div>
       </div>
@@ -403,12 +404,9 @@ export default function WorkflowWorkspace() {
   const handleClearWorkflowCaches = () => {
     clearWorkflowAuxCaches("manual-clear");
     toast.success(
-      tr("Workflow auxiliary cache cleared", "Workflow 辅助缓存已清理"),
+      tr("Workflow auxiliary cache cleared", "工作流辅助缓存已清除"),
       {
-        description: tr(
-          "Decision history and local artifact cache have been cleared.",
-          "已清除决策历史和 Artifact 本地缓存。"
-        ),
+        description: tr("Decision history and local artifact cache have been cleared.", "决策历史和本地产件缓存已清除。"),
       }
     );
   };
@@ -441,7 +439,7 @@ export default function WorkflowWorkspace() {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleClearWorkflowCaches}>
               <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-              {tr("Clear Cache", "清理缓存")}
+              {tr("Clear Cache", "清除缓存")}
             </Button>
           </div>
         </div>
@@ -461,14 +459,14 @@ export default function WorkflowWorkspace() {
         <div className="border border-slate-700/50 rounded-xl bg-[#0d1b30] p-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-xs text-slate-400">
-              {nextStep ? tr("Next Step", "下一步") : tr("Workflow Complete", "工作流已完成")}
+              {nextStep ? tr("Next Step", "下一步") : tr("Workflow Complete", "工作流完成")}
             </p>
             <p className="text-sm text-slate-200 font-medium">
               {nextStepMeta
                 ? isZh
                   ? `步骤 ${nextStep}：${nextStepMeta.label}`
                   : `Step ${nextStep}: ${nextStepMeta.label}`
-                : tr("You are at the final step.", "你已经在最后一步。")}
+                : tr("You are at the final step.", "您已到达最后一步。")}
             </p>
             {prevStepMeta ? (
               <p className="text-xs text-slate-500 mt-1">
@@ -496,7 +494,7 @@ export default function WorkflowWorkspace() {
               </Link>
             ) : (
               <Link to="/">
-                <Button variant="outline">{tr("Back to Dashboard", "返回仪表盘")}</Button>
+                <Button variant="outline">{tr("Back to Dashboard", "返回仪表板")}</Button>
               </Link>
             )}
           </div>
@@ -588,7 +586,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
       sourceStep: 1,
       description: notes.trim() || selectedDisplay.join(", ") || tr("Reading purpose", "阅读目的"),
       updatedAt: new Date().toISOString().split("T")[0],
-      content: `${tr("Goals", "目标")}: ${selectedDisplay.join(", ")}${notes.trim() ? `\n\n${tr("Focus", "关注点")}: ${notes.trim()}` : ""}`,
+      content: `${tr("Goals", "目标")}: ${selectedDisplay.join(", ")}${notes.trim() ? `\n\n${tr("Focus", "焦点")}: ${notes.trim()}` : ""}`,
     };
     try {
       const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
@@ -601,8 +599,8 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
     } catch {
       // ignore storage errors
     }
-    toast.success(tr("Purpose Card generated", "Purpose Card 已生成"), {
-      description: tr("Saved to Artifact Center > Purposes", "已保存到 Artifact Center > Purposes"),
+    toast.success(tr("Purpose Card generated", "目的卡片已生成"), {
+      description: tr("Saved to Artifact Center > Purposes", "已保存至我的产件 > 目的"),
       duration: 3000,
     });
     // Reset page
@@ -624,7 +622,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="space-y-2">
-              <p className="text-xs font-medium text-slate-500">{tr("Predefined Purposes", "预设目的")}</p>
+              <p className="text-xs font-medium text-slate-500">{tr("Predefined Purposes", "预定义的目的")}</p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {allPurposes.map((option) => (
                   <label
@@ -661,7 +659,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
                 <Input
                   value={newCustomPurpose}
                   onChange={(e) => setNewCustomPurpose(e.target.value)}
-                  placeholder={tr("Enter a custom reading purpose...", "输入自定义阅读目的...")}
+                  placeholder={tr("Enter a custom reading purpose...", "输入一个自定义阅读目的...")}
                   className="text-sm"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -680,7 +678,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
                 </Button>
               </div>
               <p className="text-xs text-slate-500">
-                {tr("Added custom purposes will appear in the predefined list on the left.", "新增的自定义目的会出现在左侧预设列表中。")}
+                {tr("Added custom purposes will appear in the predefined list on the left.", "添加的自定义目的将会出现在左侧的预定义列表中。")}
               </p>
             </div>
           </div>
@@ -688,7 +686,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
           <Separator />
 
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-slate-100">{tr("Additional Notes", "补充说明")}</p>
+            <p className="text-sm font-semibold text-slate-100">{tr("Additional Notes", "附加说明")}</p>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -705,7 +703,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold text-emerald-800 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4" />
-              {tr("Purpose Card Generated", "Purpose Card 已生成")}
+              {tr("Purpose Card Generated", "目的卡片已生成")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -731,7 +729,7 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
           className="bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50"
         >
           <Sparkles className="w-4 h-4 mr-2" />
-          {tr("Generate Purpose Card", "生成 Purpose Card")}
+          {tr("Generate Purpose Card", "生成目的卡片")}
         </Button>
       </div>
     </div>
@@ -867,11 +865,11 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
   const handleAddConcept = async () => {
     if (purposeCards.length === 0) {
-      toast.error("请先在 Step 1 创建至少一个 Purpose Card");
+      toast.error(isZh ? "请先在步骤1创建至少一个目的卡片" : isZh ? "请先在步骤1创建至少一个目的卡片" : isZh ? "请先在步骤1创建至少一个目的卡片" : isZh ? "请先在步骤1创建至少一个目的卡片" : "请先在 Step 1 创建至少一个 Purpose Card");
       return;
     }
     if (!conceptPurposeCardId) {
-      toast.error("请先选择要关联的 Purpose Card");
+      toast.error(isZh ? "请先选择要关联的目的卡片" : "请先选择要关联的 Purpose Card");
       return;
     }
     if (!conceptName.trim()) return;
@@ -1603,7 +1601,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   ) => {
     const normalizedQuery = (record.query || "").trim();
     if (!normalizedQuery) {
-      toast.error("Search string 为空，无法拉取参考文献");
+      toast.error(isZh ? "搜索字符串为空，无法拉取参考文献" : "Search string 为空，无法拉取参考文献");
       return false;
     }
 
@@ -1655,6 +1653,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
       const imported: CandidatePaper[] = [];
       let duplicateCount = 0;
+      let failedCount = 0;
 
       for (const item of items) {
         const title = item.title?.[0]?.trim();
@@ -1712,7 +1711,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             description: `${failedCount} 篇写入后端失败`,
           });
         } else {
-          toast.info("本次结果全部是重复文献，未新增 candidate papers");
+          toast.info(isZh ? "本次结果全部是重复文献，未新增候选文献" : "本次结果全部是重复文献，未新增 candidate papers");
         }
         return true;
       }
@@ -1739,7 +1738,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           relevant: nextRelevant,
         });
       } catch {
-        toast.error("更新 Search Log 统计失败");
+        toast.error(isZh ? "更新检索日志统计失败" : "更新 Search Log 统计失败");
       }
 
       toast.success(`已导入 ${imported.length} 篇候选文献`, {
@@ -1765,14 +1764,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       return null;
     }
     if (!srPurposeCardId) {
-      toast.error("请为该 Search Log 选择关联的 Purpose Card");
+      toast.error(isZh ? "请为该检索日志选择关联的目的卡片" : "请为该 Search Log 选择关联的 Purpose Card");
       return null;
     }
     const db = srDatabase === "Other" ? srCustomDb || "Other" : srDatabase;
     const query = srBooleanString.trim() || buildBooleanStringFromSelected(srKeywords, srConnector).trim();
 
     if (!query) {
-      toast.error("请先构建 Boolean Search String");
+      toast.error(isZh ? "请先构建布尔搜索字符串" : "请先构建 Boolean Search String");
       return null;
     }
 
@@ -1792,7 +1791,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const handleDeleteSearchRecord = async (searchRecordId: string) => {
     const linkedCount = linkedCandidateCount(searchRecordId);
     if (linkedCount > 0) {
-      toast.error("无法删除该 Search Record", {
+      toast.error(isZh ? "无法删除该检索结果" : "无法删除该 Search Record", {
         description: `已关联 ${linkedCount} 篇 candidate paper，请先解除关联。`,
       });
       return;
@@ -1809,9 +1808,9 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     try {
       await searchRecordAPI.delete(searchRecordId);
     } catch {
-      toast.error("删除 Search Log 失败");
+      toast.error(isZh ? "删除检索日志失败" : "删除 Search Log 失败");
     }
-    toast.success("Search Record 已删除");
+    toast.success(isZh ? "检索结果已删除" : "Search Record 已删除");
   };
 
   const handleAddSearchRecord = async () => {
@@ -1863,7 +1862,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       setSearchRecords((prev) => [...prev, localRecord]);
       setSearchRecordOffsets((prev) => ({ ...prev, [localRecord.id]: 0 }));
     } catch {
-      toast.error("创建 Search Log 失败");
+      toast.error(isZh ? "创建检索日志失败" : isZh ? "创建检索日志失败" : "创建 Search Log 失败");
       return;
     }
     setShowSearchDialog(false);
@@ -1932,7 +1931,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
   const handleOpenCandidateRefreshDialog = () => {
     if (!searchRecords.length) {
-      toast.info("请先在 Search Log 中创建记录");
+      toast.info(isZh ? "请先在检索日志中创建记录" : "请先在 Search Log 中创建记录");
       return;
     }
     setCandidateRefreshMode("select");
@@ -1943,7 +1942,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const handleCandidateRefreshPull = async () => {
     if (!searchRecords.length) {
       setShowCandidateRefreshDialog(false);
-      toast.info("没有可用的 Search Log");
+      toast.info(isZh ? "没有可用的检索日志" : "没有可用的 Search Log");
       return;
     }
 
@@ -1954,7 +1953,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
     } else {
       targetRecord = searchRecords.find((record) => record.id === candidateRefreshRecordId);
       if (!targetRecord) {
-        toast.error("请选择一个 Search Log");
+        toast.error(isZh ? "请选择一个检索日志" : "请选择一个 Search Log");
         return;
       }
     }
@@ -2002,7 +2001,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       }
       saveSearchRecordPurposeLinks(nextPurposeMap);
     } catch {
-      toast.error("保存 Search Log 失败");
+      toast.error(isZh ? "保存检索日志失败" : "保存 Search Log 失败");
       return;
     }
     setShowEditSearchDialog(false);
@@ -2184,7 +2183,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       setBulkDoiInput("");
       setBulkSearchRecordId("");
     } else {
-      toast.error("未能导入论文，请检查 DOI 链接格式");
+      toast.error(isZh ? "未能导入论文，请检查 DOI 链接格式" : "未能导入论文，请检查 DOI 链接格式");
     }
   };
 
@@ -2274,7 +2273,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         next.delete(paper.id);
         return next;
       });
-      toast.success("已从 Artifact Center 移除", { description: paper.title, duration: 2000 });
+      toast.success(isZh ? "已从我的产件移除" : "已从 Artifact Center 移除", { description: paper.title, duration: 2000 });
     } else {
       const artifact = candidatePaperToArtifact(paper);
       persistArtifacts((prev) => {
@@ -2282,14 +2281,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         return [...filtered, artifact];
       });
       setAddedToCenterIds((prev) => new Set([...prev, paper.id]));
-      toast.success("已添加到 Artifact Center", { description: paper.title, duration: 2500 });
+      toast.success(isZh ? "已添加到我的产件" : "已添加到 Artifact Center", { description: paper.title, duration: 2500 });
     }
   };
 
   const handleToggleEntryPaper = async (paperId: string) => {
     const isEntry = entryPapers.includes(paperId);
     if (isEntry) {
-      toast.info("该论文已在 Entry Papers 中，可在后续环节删除");
+      toast.info(isZh ? "该论文已在入口文献中，可在后续环节删除" : "该论文已在 Entry Papers 中，可在后续环节删除");
       return;
     }
     const targetPaper = candidatePapers.find((paper) => paper.id === paperId);
@@ -2303,7 +2302,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       });
       recordPaperDecision(targetPaper.title, "Moved to Entry Papers (Step 2: Discover)", projectId);
     } catch (error) {
-      toast.error("移动到 Entry Papers 失败", {
+      toast.error(isZh ? "移动到入口文献失败" : isZh ? "移动到入口文献失败" : "移动到 Entry Papers 失败", {
         description: formatApiErrorDetail(error),
       });
     }
@@ -2508,7 +2507,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               value="candidates"
               className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
             >
-              {tr("Candidate Papers", "候选文献")}
+              {tr("Candidate Papers", "候选论文")}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -2530,7 +2529,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 <Input
                   value={newKeyword}
                   onChange={(e) => setNewKeyword(e.target.value)}
-                  placeholder={tr("Add a keyword...", "添加关键词...")}
+                  placeholder={tr("Add a keyword...", "添加一个关键词...")}
                   className="text-sm"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -2596,7 +2595,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     to={`/artifacts?tab=concepts&projectId=${projectId}`}
                     className="text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
                   >
-                    {tr("Read all others in My Artifacts / Keywords", "在 My Artifacts / Keywords 中查看其余内容")}
+                    {tr("Read all others in My Artifacts / Keywords", "在我的资料/关键词中阅读所有其他内容")}
                   </Link>
                 </div>
               )}
@@ -2632,13 +2631,13 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             <CardContent>
               <div className="space-y-4">
                 <div className="rounded-lg border border-slate-700/50 p-3 bg-slate-800/40/70 space-y-3">
-                  <p className="text-xs font-semibold text-slate-700">Build Boolean Search String</p>
+                  <p className="text-xs font-semibold text-slate-700">{isZh ? "构建布尔搜索字符串" : "Build Boolean Search String"}</p>
                   <div className="space-y-2">
-                    <p className="text-[11px] text-slate-500">Search keywords from My Artifacts / Keywords:</p>
+                    <p className="text-[11px] text-slate-500">{isZh ? "从我的资料/关键词中搜索关键词:" : "Search keywords from My Artifacts / Keywords:"}</p>
                     <Input
                       value={keywordPickerQuery}
                       onChange={(e) => setKeywordPickerQuery(e.target.value)}
-                      placeholder="Search keywords..."
+                      placeholder={isZh ? "搜索关键词..." : "Search keywords..."}
                       className="h-8 text-xs"
                     />
                     <div className="flex flex-wrap gap-1.5 rounded border border-slate-700/50 p-2 min-h-[42px] bg-slate-900/30">
@@ -2660,7 +2659,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           </Badge>
                         ))
                       ) : (
-                        <span className="text-[10px] text-slate-500">No keyword selected yet</span>
+                        <span className="text-[10px] text-slate-500">{isZh ? "尚未选择关键词" : "No keyword selected yet"}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mb-1">
@@ -2681,7 +2680,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                       </button>
                     </div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] text-slate-500">Matched keywords:</span>
+                      <span className="text-[10px] text-slate-500">{isZh ? "匹配的关键词:" : "Matched keywords:"}</span>
                       {keywordPickerQuery.trim() && (
                         <span className="text-[10px] text-slate-400">{filteredKeywordOptions.length} shown</span>
                       )}
@@ -2717,7 +2716,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   </div>
 
                   <div className="space-y-1.5">
-                    <p className="text-[11px] text-slate-500">Boolean connectors:</p>
+                    <p className="text-[11px] text-slate-500">{isZh ? "布尔连接符:" : "Boolean connectors:"}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {BOOLEAN_CONNECTORS.map((connector) => (
                         <Button
@@ -2746,12 +2745,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] text-slate-500">Boolean Search String</label>
+                    <label className="text-[11px] text-slate-500">{isZh ? "布尔搜索字符串" : "Boolean Search String"}</label>
                     <Textarea
                       value={srBooleanString}
                       onChange={(e) => setSrBooleanString(e.target.value)}
                       rows={3}
-                      placeholder='e.g., "AI tutoring" AND "self-regulated learning" NOT "K-12"'
+                      placeholder={isZh ? "例如，“AI辅导” AND “自我调节学习” NOT “K-12”" : "e.g., \"AI tutoring\" AND \"self-regulated learning\" NOT \"K-12\""}
                       className="text-xs font-mono"
                     />
                     <div className="flex gap-1.5">
@@ -2771,7 +2770,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[11px] text-slate-500">Academic Database</label>
+                      <label className="text-[11px] text-slate-500">{isZh ? "学术数据库" : "Academic Database"}</label>
                       <Select value={srDatabase} onValueChange={setSrDatabase}>
                         <SelectTrigger className="h-8 text-xs">
                           <SelectValue />
@@ -2786,14 +2785,14 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                         <Input
                           value={srCustomDb}
                           onChange={(e) => setSrCustomDb(e.target.value)}
-                          placeholder="Enter database name..."
+                          placeholder={isZh ? "输入数据库名称..." : "Enter database name..."}
                           className="h-8 text-xs"
                         />
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <label className="text-[11px] text-slate-500">Total Results</label>
+                        <label className="text-[11px] text-slate-500">{isZh ? "总结果" : "Total Results"}</label>
                         <Input
                           type="number"
                           value={srTotalResults}
@@ -2802,7 +2801,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[11px] text-slate-500">Relevant</label>
+                        <label className="text-[11px] text-slate-500">{isZh ? "相关" : "Relevant"}</label>
                         <Input
                           type="number"
                           value={srRelevantResults}
@@ -2814,13 +2813,13 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] text-slate-500">Associated Purpose Card</label>
+                    <label className="text-[11px] text-slate-500">{isZh ? "相关目的卡片" : "Associated Purpose Card"}</label>
                     <Select
                       value={srPurposeCardId || PURPOSE_CARD_NONE}
                       onValueChange={(value) => setSrPurposeCardId(value === PURPOSE_CARD_NONE ? "" : value)}
                     >
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Select a purpose card..." />
+                        <SelectValue placeholder={isZh ? "选择一个目的卡片..." : "Select a purpose card..."} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={PURPOSE_CARD_NONE}>Select...</SelectItem>
@@ -2992,7 +2991,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     className="text-xs h-7"
                     onClick={handleOpenCandidateRefreshDialog}
                     disabled={Boolean(pullingSearchRecordId)}
-                    title="Choose a search log or random pull"
+                    title={isZh ? "选择检索日志或随机抽取" : "Choose a search log or random pull"}
                   >
                     <RefreshCw className="w-3 h-3 mr-1" />
                     Refresh +10
@@ -3002,13 +3001,13 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     onValueChange={(value) => setCandidateSortKey(value as "title" | "year" | "type" | "relevance")}
                   >
                     <SelectTrigger className="h-7 text-xs w-[140px]">
-                      <SelectValue placeholder="Sort by" />
+                      <SelectValue placeholder={isZh ? "排序方式" : "Sort by"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="title">Sort: Title</SelectItem>
-                      <SelectItem value="year">Sort: Year</SelectItem>
-                      <SelectItem value="type">Sort: Type</SelectItem>
-                      <SelectItem value="relevance">Sort: Relevance</SelectItem>
+                      <SelectItem value="title">{isZh ? "排序：标题" : "Sort: Title"}</SelectItem>
+                      <SelectItem value="year">{isZh ? "排序：年份" : "Sort: Year"}</SelectItem>
+                      <SelectItem value="type">{isZh ? "排序：类型" : "Sort: Type"}</SelectItem>
+                      <SelectItem value="relevance">{isZh ? "排序：相关性" : "Sort: Relevance"}</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
@@ -3016,7 +3015,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     variant="outline"
                     className="text-xs h-7"
                     onClick={() => setCandidateSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
-                    title="Toggle sort order"
+                    title={isZh ? "切换排序顺序" : "Toggle sort order"}
                   >
                     <ArrowUpDown className="w-3 h-3 mr-1" />
                     {candidateSortOrder === "asc" ? "Asc" : "Desc"}
@@ -3161,7 +3160,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                                 variant="outline"
                                 className="text-[10px] border-cyan-300 text-cyan-600"
                               >
-                                {tr("via", "来源")} {paper.discoveryPath}
+                                {tr("via", "通过")} {paper.discoveryPath}
                               </Badge>
                             )}
                           </div>
@@ -3190,7 +3189,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                                 <a href={paper.doiUrl} target="_blank" rel="noreferrer" className="inline-flex">
                                   <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" type="button">
                                     <ExternalLink className="w-2.5 h-2.5 mr-1" />
-                                    {tr("DOI Link", "DOI 链接")}
+                                    {tr("DOI Link", "DOI链接")}
                                   </Button>
                                 </a>
                               )}
@@ -3246,7 +3245,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           }}
                         >
                           <Star className="w-3 h-3 mr-1" />
-                          {tr("Mark Relevant", "标记相关性")}
+                          {tr("Mark Relevant", "标记为相关")}
                         </Button>
                         <Button
                           size="sm"
@@ -3262,12 +3261,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                           {entryPapers.includes(paper.id) ? (
                             <>
                               <Check className="w-3 h-3 mr-1" />
-                              {tr("Entry Paper", "Entry 文献")}
+                              {tr("Entry Paper", "入口文献")}
                             </>
                           ) : (
                             <>
                               <Target className="w-3 h-3 mr-1" />
-                              {tr("To Entry", "加入 Entry")}
+                              {tr("To Entry", "进入条目")}
                             </>
                           )}
                         </Button>
@@ -3318,10 +3317,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             <Textarea
               value={conceptDescription}
               onChange={(e) => setConceptDescription(e.target.value)}
-              placeholder={tr(
-                "What does this concept mean in your research context? Add details, definitions, or notes...",
-                "这个概念在你的研究语境中是什么意思？可补充定义、细节或备注..."
-              )}
+              placeholder={tr("What does this concept mean in your research context? Add details, definitions, or notes...", "在你的研究背景下，这个概念是什么意思？添加细节、定义或注释...")}
               rows={4}
               className="text-sm resize-none"
             />
@@ -3368,16 +3364,16 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-700">{tr("Associate to Purpose Card", "关联到 Purpose Card")}</label>
+            <label className="text-xs font-medium text-slate-700">{tr("Associate to Purpose Card", "关联到目的卡片片")}</label>
             <Select
               value={conceptPurposeCardId || PURPOSE_CARD_NONE}
               onValueChange={(value) => setConceptPurposeCardId(value === PURPOSE_CARD_NONE ? "" : value)}
             >
               <SelectTrigger className="text-sm h-9">
-                <SelectValue placeholder={tr("Select a purpose card...", "选择一个 Purpose Card...")} />
+                <SelectValue placeholder={tr("Select a purpose card...", "选择一个目的卡片片...")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={PURPOSE_CARD_NONE}>{tr("Select...", "请选择...")}</SelectItem>
+                <SelectItem value={PURPOSE_CARD_NONE}>{tr("Select...", "选择...")}</SelectItem>
                 {purposeCards.map((card) => (
                   <SelectItem key={card.id} value={card.id}>{card.title}</SelectItem>
                 ))}
@@ -3432,11 +3428,11 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setShowEditPaperDialog(false);
           setEditingPaperId(null);
         }}
-        title={tr("Edit Candidate Paper", "编辑候选文献")}
+        title={tr("Edit Candidate Paper", "编辑候选论文")}
       >
         <div className="space-y-3">
-          <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder={tr("Paper title", "文献标题")} />
-          <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={tr("Authors (comma separated)", "作者（用逗号分隔）")} />
+          <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder={tr("Paper title", "论文标题")} />
+          <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={tr("Authors (comma separated)", "作者（逗号分隔）")} />
           <div className="grid grid-cols-2 gap-3">
             <Input value={newPaperYear} onChange={(e) => setNewPaperYear(e.target.value)} placeholder={tr("Year", "年份")} />
             <Input value={newPaperJournal} onChange={(e) => setNewPaperJournal(e.target.value)} placeholder={tr("Journal", "期刊")} />
@@ -3451,10 +3447,10 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               ))}
             </SelectContent>
           </Select>
-          <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} placeholder={tr("Discovery note", "发现备注")} rows={3} />
+          <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} placeholder={tr("Discovery note", "发现笔记")} rows={3} />
           <div className="flex justify-end gap-2">
             <Button onClick={() => setShowEditPaperDialog(false)} type="button" variant="outline">{tr("Cancel", "取消")}</Button>
-            <Button onClick={handleSaveEditedPaper} type="button">{tr("Save Changes", "保存修改")}</Button>
+            <Button onClick={handleSaveEditedPaper} type="button">{tr("Save Changes", "保存更改")}</Button>
           </div>
         </div>
       </ModalOverlay>
@@ -3463,12 +3459,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
       <ModalOverlay
         open={showSearchDialog}
         onClose={() => setShowSearchDialog(false)}
-        title={tr("Add Search Record", "新增检索记录")}
+        title={tr("Add Search Record", "添加搜索记录")}
       >
         <div className="space-y-4">
           {/* Keywords & Concepts selection */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-600">{tr("Keywords / Concepts", "关键词 / 概念")}</label>
+            <label className="text-xs font-medium text-slate-600">{tr("Keywords / Concepts", "关键词/概念")}</label>
             <div className="flex items-center gap-2 mb-1">
               <button
                 type="button"
@@ -3539,7 +3535,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             </div>
             {srKeywords.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
-                <span className="text-[10px] text-slate-400">Selected:</span>
+                <span className="text-[10px] text-slate-400">{isZh ? "已选择：" : "Selected:"}</span>
                 {srKeywords.map((kw) => (
                   <Badge
                     key={kw}
@@ -3559,13 +3555,13 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           {/* Purpose Card Association */}
           {purposeCards.length > 0 && (
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-600">Associated Purpose Card (optional)</label>
+              <label className="text-xs font-medium text-slate-600">{isZh ? "关联目的卡片（可选）" : "Associated Purpose Card (optional)"}</label>
               <Select
                 value={srPurposeCardId || PURPOSE_CARD_NONE}
                 onValueChange={(value) => setSrPurposeCardId(value === PURPOSE_CARD_NONE ? "" : value)}
               >
                 <SelectTrigger className="text-xs h-8">
-                  <SelectValue placeholder="Select a purpose card..." />
+                  <SelectValue placeholder={isZh ? "选择一个目的卡片..." : "Select a purpose card..."} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={PURPOSE_CARD_NONE}>None</SelectItem>
@@ -3579,7 +3575,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           {/* Database selection */}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-600">Academic Database</label>
+            <label className="text-xs font-medium text-slate-600">{isZh ? "学术数据库" : "Academic Database"}</label>
             <div className="grid grid-cols-2 gap-1.5">
               {[...DATABASE_OPTIONS, "Other" as const].map((db) => (
                 <label
@@ -3606,7 +3602,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               <Input
                 value={srCustomDb}
                 onChange={(e) => setSrCustomDb(e.target.value)}
-                placeholder="Enter database name..."
+                placeholder={isZh ? "输入数据库名称..." : "Enter database name..."}
                 className="text-xs h-7 mt-1"
               />
             )}
@@ -3615,13 +3611,13 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           {/* Boolean Search String */}
           <div className="space-y-2">
             <label className="text-xs font-medium text-slate-600">
-              Boolean Search String
+              {isZh ? "布尔搜索字符串" : "Boolean Search String"}
             </label>
             <Textarea
               value={srBooleanString}
               onChange={(e) => setSrBooleanString(e.target.value)}
               rows={3}
-              placeholder='e.g., "AI tutoring" AND "self-regulated learning" AND "higher education"'
+              placeholder={isZh ? "例如，“AI辅导”和“自我调节学习”和“高等教育”" : "e.g., \"AI tutoring\" AND \"self-regulated learning\" AND \"higher education\""}
               className="text-xs font-mono"
             />
           </div>
@@ -3629,22 +3625,22 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           {/* Search Results */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">Total Results</label>
+              <label className="text-xs font-medium text-slate-600">{isZh ? "总结果" : "Total Results"}</label>
               <Input
                 type="number"
                 value={srTotalResults}
                 onChange={(e) => setSrTotalResults(e.target.value)}
-                placeholder="e.g., 234"
+                placeholder={isZh ? "例如，234" : "e.g., 234"}
                 className="text-xs h-8"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">Relevant Results</label>
+              <label className="text-xs font-medium text-slate-600">{isZh ? "相关结果" : "Relevant Results"}</label>
               <Input
                 type="number"
                 value={srRelevantResults}
                 onChange={(e) => setSrRelevantResults(e.target.value)}
-                placeholder="e.g., 18"
+                placeholder={isZh ? "例如，18" : "e.g., 18"}
                 className="text-xs h-8"
               />
             </div>
@@ -3675,11 +3671,11 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setShowEditSearchDialog(false);
           setEditingSearchRecordId(null);
         }}
-        title="Edit Search Record"
+        title={isZh ? "编辑搜索记录" : "Edit Search Record"}
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-600">Academic Database</label>
+            <label className="text-xs font-medium text-slate-600">{isZh ? "学术数据库" : "Academic Database"}</label>
             <div className="grid grid-cols-2 gap-1.5">
               {[...DATABASE_OPTIONS, "Other" as const].map((db) => (
                 <label
@@ -3706,7 +3702,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               <Input
                 value={srCustomDb}
                 onChange={(e) => setSrCustomDb(e.target.value)}
-                placeholder="Enter database name..."
+                placeholder={isZh ? "输入数据库名称..." : "Enter database name..."}
                 className="text-xs h-7 mt-1"
               />
             )}
@@ -3724,7 +3720,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">Total Results</label>
+              <label className="text-xs font-medium text-slate-600">{isZh ? "总结果" : "Total Results"}</label>
               <Input
                 type="number"
                 value={srTotalResults}
@@ -3733,7 +3729,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">Relevant Results</label>
+              <label className="text-xs font-medium text-slate-600">{isZh ? "相关结果" : "Relevant Results"}</label>
               <Input
                 type="number"
                 value={srRelevantResults}
@@ -3744,13 +3740,13 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-600">Associated Purpose Card (optional)</label>
+            <label className="text-xs font-medium text-slate-600">{isZh ? "关联目的卡片（可选）" : "Associated Purpose Card (optional)"}</label>
             <Select
               value={srPurposeCardId || PURPOSE_CARD_NONE}
               onValueChange={(value) => setSrPurposeCardId(value === PURPOSE_CARD_NONE ? "" : value)}
             >
               <SelectTrigger className="text-xs h-8">
-                <SelectValue placeholder="Select a purpose card..." />
+                <SelectValue placeholder={isZh ? "选择一个目的卡片..." : "Select a purpose card..."} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={PURPOSE_CARD_NONE}>None</SelectItem>
@@ -3759,7 +3755,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     <SelectItem key={card.id} value={card.id}>{card.title}</SelectItem>
                   ))
                 ) : (
-                  <SelectItem value="__empty__" disabled>No purpose cards yet</SelectItem>
+                  <SelectItem value="__empty__" disabled>{isZh ? "尚无目的卡片" : "No purpose cards yet"}</SelectItem>
                 )}
               </SelectContent>
             </Select>
@@ -3794,7 +3790,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setShowRelevanceDialog(false);
           setRelevancePaperId(null);
         }}
-        title="Mark Relevance Level"
+        title={isZh ? "标记相关性级别" : "Mark Relevance Level"}
       >
         <div className="space-y-3">
           <p className="text-xs text-slate-500">
@@ -3868,10 +3864,10 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           {candidateRefreshMode === "select" && (
             <div className="space-y-1.5">
-              <label className="text-xs text-slate-400">Search Log</label>
+              <label className="text-xs text-slate-400">{isZh ? "检索日志" : "Search Log"}</label>
               <Select value={candidateRefreshRecordId} onValueChange={setCandidateRefreshRecordId}>
                 <SelectTrigger className="h-9 text-xs">
-                  <SelectValue placeholder="Choose search log" />
+                  <SelectValue placeholder={isZh ? "选择检索日志" : "Choose search log"} />
                 </SelectTrigger>
                 <SelectContent>
                   {searchRecords.map((record) => (
@@ -3912,12 +3908,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setShowConceptDetailDialog(false);
           setEditingConceptId(null);
         }}
-        title="Concept Details"
+        title={isZh ? "概念详情" : "Concept Details"}
       >
         {currentEditingConcept ? (
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-700">Concept Name</label>
+              <label className="text-xs font-medium text-slate-700">{isZh ? "概念名称" : "Concept Name"}</label>
               <Input
                 value={currentEditingConcept.name}
                 onChange={(e) => updateEditingConcept({ name: e.target.value })}
@@ -3925,7 +3921,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-700">Description</label>
+              <label className="text-xs font-medium text-slate-700">{isZh ? "描述" : "Description"}</label>
               <Textarea
                 value={currentEditingConcept.description}
                 onChange={(e) => updateEditingConcept({ description: e.target.value })}
@@ -3935,7 +3931,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">Category</label>
+                <label className="text-xs font-medium text-slate-700">{isZh ? "分类" : "Category"}</label>
                 <Select
                   value={currentEditingConcept.category}
                   onValueChange={(value) => updateEditingConcept({ category: value })}
@@ -3944,18 +3940,18 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Concept">Concept</SelectItem>
-                    <SelectItem value="Construct">Construct</SelectItem>
-                    <SelectItem value="Theory">Theory</SelectItem>
-                    <SelectItem value="Framework">Framework</SelectItem>
-                    <SelectItem value="Method">Method</SelectItem>
-                    <SelectItem value="Variable">Variable</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
+                    <SelectItem value="Concept">{isZh ? "概念" : "Concept"}</SelectItem>
+                    <SelectItem value="Construct">{isZh ? "构念" : "Construct"}</SelectItem>
+                    <SelectItem value="Theory">{isZh ? "理论" : "Theory"}</SelectItem>
+                    <SelectItem value="Framework">{isZh ? "框架" : "Framework"}</SelectItem>
+                    <SelectItem value="Method">{isZh ? "方法" : "Method"}</SelectItem>
+                    <SelectItem value="Variable">{isZh ? "变量" : "Variable"}</SelectItem>
+                    <SelectItem value="Other">{isZh ? "其他" : "Other"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">Color</label>
+                <label className="text-xs font-medium text-slate-700">{isZh ? "颜色" : "Color"}</label>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {CONCEPT_COLORS.map((c) => (
                     <button
@@ -4006,7 +4002,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setDoiFetchError(null);
           setNewPaperSearchRecordId("");
         }}
-        title="Add Candidate Paper"
+        title={isZh ? "添加候选论文" : "Add Candidate Paper"}
       >
         <div className="space-y-3">
           {/* DOI / URL Auto-extract */}
@@ -4016,7 +4012,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               <Input
                 value={newPaperDoiUrl}
                 onChange={(e) => { setNewPaperDoiUrl(e.target.value); setDoiFetchError(null); }}
-                placeholder="例如：10.1145/1234567 或 https://doi.org/10.xxxx/xxxx"
+                placeholder={isZh ? "例如：10.1145/1234567 或 https://doi.org/10.xxxx/xxxx" : "例如：10.1145/1234567 或 https://doi.org/10.xxxx/xxxx"}
                 className="text-xs h-8 flex-1"
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleFetchByDoiUrl(); } }}
               />
@@ -4054,7 +4050,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
                 }}
               >
                 <SelectTrigger className="text-xs h-8">
-                  <SelectValue placeholder="选择对应的 Search Record..." />
+                  <SelectValue placeholder={isZh ? "选择对应的检索记录..." : "选择对应的 Search Record..."} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">— 不关联 Search Record —</SelectItem>
@@ -4082,22 +4078,22 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             <Input
               value={newPaperTitle}
               onChange={(e) => setNewPaperTitle(e.target.value)}
-              placeholder="Paper title..."
+              placeholder={isZh ? "论文标题..." : "Paper title..."}
               className="text-sm"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-600">Authors (comma-separated)</label>
+            <label className="text-xs font-medium text-slate-600">{isZh ? "作者（逗号分隔）" : "Authors (comma-separated)"}</label>
             <Input
               value={newPaperAuthors}
               onChange={(e) => setNewPaperAuthors(e.target.value)}
-              placeholder="Author 1, Author 2..."
+              placeholder={isZh ? "作者 1, 作者 2..." : "Author 1, Author 2..."}
               className="text-sm"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">Year</label>
+              <label className="text-xs font-medium text-slate-600">{isZh ? "年份" : "Year"}</label>
               <Input
                 type="number"
                 value={newPaperYear}
@@ -4107,11 +4103,11 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">Journal</label>
+              <label className="text-xs font-medium text-slate-600">{isZh ? "期刊" : "Journal"}</label>
               <Input
                 value={newPaperJournal}
                 onChange={(e) => setNewPaperJournal(e.target.value)}
-                placeholder="Journal name..."
+                placeholder={isZh ? "期刊名称..." : "Journal name..."}
                 className="text-sm"
               />
             </div>
@@ -4142,12 +4138,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             </div>
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-600">{tr("Discovery Note", "发现备注")}</label>
+            <label className="text-xs font-medium text-slate-600">{tr("Discovery Note", "发现笔记")}</label>
             <Textarea
               value={newPaperDiscoveryNote}
               onChange={(e) => setNewPaperDiscoveryNote(e.target.value)}
               rows={2}
-              placeholder={tr("How did you find this paper? Any additional details...", "你是如何发现这篇文献的？可补充更多细节...")}
+              placeholder={tr("How did you find this paper? Any additional details...", "你是如何找到这篇论文的？任何额外的细节...")}
               className="text-xs"
             />
           </div>
@@ -4157,7 +4153,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               onClick={handleAddCandidatePaper}
             >
               <Plus className="w-3 h-3 mr-1" />
-              {tr("Add Paper", "添加文献")}
+              {tr("Add Paper", "添加论文")}
             </Button>
             <Button
               variant="ghost"
@@ -4177,7 +4173,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           setBulkDoiInput("");
           setBulkSearchRecordId("");
         }}
-        title={tr("Add Multiple Candidate Papers", "批量添加候选文献")}
+        title={tr("Add Multiple Candidate Papers", "添加多个候选论文")}
       >
         <div className="space-y-3">
           {searchRecords.length > 0 && (
@@ -4185,7 +4181,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               <label className="text-xs font-medium text-slate-600">关联 Search Record（可选）</label>
               <Select value={bulkSearchRecordId || "__none__"} onValueChange={(v) => setBulkSearchRecordId(v === "__none__" ? "" : v)}>
                 <SelectTrigger className="text-xs h-8">
-                  <SelectValue placeholder={tr("Select a related Search Record...", "选择关联的 Search Record...")} />
+                  <SelectValue placeholder={tr("Select a related Search Record...", "选择一个相关的搜索记录...")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">— 不关联 Search Record —</SelectItem>
@@ -4200,7 +4196,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
           )}
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-600">{tr("DOI links (one per line)", "DOI 链接（每行一个）")}</label>
+            <label className="text-xs font-medium text-slate-600">{tr("DOI links (one per line)", "DOI链接（每行一个）")}</label>
             <Textarea
               value={bulkDoiInput}
               onChange={(e) => setBulkDoiInput(e.target.value)}
@@ -4217,7 +4213,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
               disabled={bulkImporting || !bulkDoiInput.trim()}
             >
               <Sparkles className="w-3 h-3 mr-1" />
-              {bulkImporting ? tr("Importing...", "导入中...") : tr("Import All", "全部导入")}
+              {bulkImporting ? tr("Importing...", "导入中...") : tr("Import All", "导入全部")}
             </Button>
             <Button
               variant="ghost"
@@ -4263,12 +4259,12 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             ))}
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-600">{tr("Note", "备注")}</label>
+            <label className="text-xs font-medium text-slate-600">{tr("Note", "笔记")}</label>
             <Textarea
               value={discoveryNoteValue}
               onChange={(e) => setDiscoveryNoteValue(e.target.value)}
               rows={2}
-              placeholder={tr("Describe how you found this paper...", "描述你是如何发现这篇文献的...")}
+              placeholder={tr("Describe how you found this paper...", "描述你是如何找到这篇论文的...")}
               className="text-xs"
             />
           </div>
@@ -4304,12 +4300,15 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 function TagInput({
   tags,
   onTagsChange,
-  placeholder = "Add tag...",
+  placeholder,
 }: {
   tags: string[];
   onTagsChange: (tags: string[]) => void;
   placeholder?: string;
 }) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
+  const resolvedPlaceholder = placeholder || (isZh ? "添加标签..." : "Add tag...");
   const [input, setInput] = useState("");
 
   const addTag = () => {
@@ -4350,7 +4349,7 @@ function TagInput({
               addTag();
             }
           }}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           className="text-xs h-7"
         />
         <Button
@@ -4370,11 +4369,36 @@ function TagInput({
 // Step 3: Read Workspace
 // ============================================================
 function ReadWorkspace() {
-  const paper = {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
+  const tr = (en: string, zh: string) => (isZh ? zh : en);
+  const paper: Paper = {
     id: "local-paper",
     title: "Current Paper",
     authors: ["Unknown Author"],
     year: new Date().getFullYear(),
+    journal: "Unknown Journal",
+    abstract: "",
+    researchQuestion: "",
+    theory: "",
+    method: "",
+    findings: "",
+    relevance: "medium",
+    isEntryPaper: true,
+    annotations: [
+      {
+        id: "ann-1",
+        text: "AI tutoring improves test scores in many contexts.",
+        note: "Performance outcomes are well covered in the literature.",
+        color: "yellow",
+      },
+      {
+        id: "ann-2",
+        text: "Self-regulated learning outcomes remain underexplored.",
+        note: "This is the likely research gap for the project.",
+        color: "green",
+      },
+    ],
   };
 
   const [litNotes, setLitNotes] = useState([
@@ -4610,20 +4634,20 @@ function ReadWorkspace() {
                 <Input
                   value={newAnnText}
                   onChange={(e) => setNewAnnText(e.target.value)}
-                  placeholder="Paste or type the highlighted text..."
+                  placeholder={isZh ? "粘贴或输入高亮文本..." : "Paste or type the highlighted text..."}
                   className="text-xs"
                 />
                 <Textarea
                   value={newAnnNote}
                   onChange={(e) => setNewAnnNote(e.target.value)}
-                  placeholder="Your note about this highlight..."
+                  placeholder={isZh ? "你对这个高亮的笔记..." : "Your note about this highlight..."}
                   rows={2}
                   className="text-xs"
                 />
                 <TagInput
                   tags={newAnnTags}
                   onTagsChange={setNewAnnTags}
-                  placeholder="Add tags (e.g., gap, method, key-finding)..."
+                  placeholder={isZh ? "添加标签（例如，间隙、方法、关键发现）..." : "Add tags (e.g., gap, method, key-finding)..."}
                 />
                 <div className="p-1.5 bg-slate-800/40 rounded text-[10px] text-slate-500">
                   📎 Auto-citation: {citation}
@@ -4711,14 +4735,14 @@ function ReadWorkspace() {
                         <PenTool className="w-3 h-3 mr-1" />
                         {quotedToDraft === ann.id
                           ? tr("Quoted ✓", "已引用 ✓")
-                          : tr("Quote to Draft", "引用到 Draft")}
+                          : tr("Quote to Draft", "引用到草稿")}
                       </Button>
                     </div>
                   </div>
                 ))}
                 {annotations.length === 0 && (
                   <div className="text-center py-6 text-slate-400 text-xs">
-                    {tr("No annotations yet. Start highlighting key passages.", "暂无批注，开始高亮关键段落吧。")}
+                    {tr("No annotations yet. Start highlighting key passages.", "尚未有注释。开始标记关键段落。")}
                   </div>
                 )}
               </div>
@@ -4814,20 +4838,20 @@ function ReadWorkspace() {
                     <Input
                       value={newNoteTitle}
                       onChange={(e) => setNewNoteTitle(e.target.value)}
-                      placeholder="Note title (e.g., 'Key finding about SRL gap')"
+                      placeholder={isZh ? "笔记标题（例如，'关于SRL间隙的关键发现'）" : "Note title (e.g., 'Key finding about SRL gap')"}
                       className="text-sm"
                     />
                     <Textarea
                       value={newNoteContent}
                       onChange={(e) => setNewNoteContent(e.target.value)}
                       rows={5}
-                      placeholder="Write your literature note here..."
+                      placeholder={isZh ? "在这里编写你的文献笔记..." : "Write your literature note here..."}
                       className="text-sm font-mono"
                     />
                     <TagInput
                       tags={newNoteTags}
                       onTagsChange={setNewNoteTags}
-                      placeholder="Add tags (e.g., gap, theory, method)..."
+                      placeholder={isZh ? "添加标签（例如，间隙、理论、方法）..." : "Add tags (e.g., gap, theory, method)..."}
                     />
                     <div className="p-1.5 bg-slate-800/40 rounded text-[10px] text-slate-500">
                       📎 Auto-citation: {citation}
@@ -4941,7 +4965,7 @@ function ReadWorkspace() {
                     <Input
                       value={newPermTitle}
                       onChange={(e) => setNewPermTitle(e.target.value)}
-                      placeholder={tr("Permanent note title (e.g., 'Core insight: SRL gap')", "永久笔记标题（例如：核心洞见：SRL 缺口）")}
+                      placeholder={tr("Permanent note title (e.g., 'Core insight: SRL gap')", "永久笔记标题（例如，'核心见解：SRL间隙'）")}
                       className="text-sm"
                     />
                     <Textarea
@@ -4954,7 +4978,7 @@ function ReadWorkspace() {
                     <TagInput
                       tags={newPermTags}
                       onTagsChange={setNewPermTags}
-                      placeholder="Add tags (e.g., synthesis, core-insight)..."
+                      placeholder={isZh ? "添加标签（例如，综合、核心见解）..." : "Add tags (e.g., synthesis, core-insight)..."}
                     />
                     <div className="space-y-1.5">
                       <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
@@ -4981,7 +5005,7 @@ function ReadWorkspace() {
                       </div>
                       <div className="flex gap-1.5">
                         <Input
-                          placeholder="Add citation (e.g., Author (Year))..."
+                          placeholder={isZh ? "添加引用（例如，作者（年份））..." : "Add citation (e.g., Author (Year))..."}
                           className="text-xs h-7"
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
@@ -5000,7 +5024,7 @@ function ReadWorkspace() {
                           className="text-xs h-7 shrink-0"
                           onClick={() => {
                             const input = document.querySelector<HTMLInputElement>(
-                              'input[placeholder="Add citation (e.g., Author (Year))..."]'
+                              'input[placeholder={isZh ? "添加引用（例如，作者（年份））..." : "Add citation (e.g., Author (Year))..."}]'
                             );
                             if (input) {
                               const val = input.value.trim();
@@ -5106,7 +5130,7 @@ function ReadWorkspace() {
                       ))}
                       {permNotes.length === 0 && (
                         <div className="text-center py-6 text-slate-400 text-xs">
-                          {tr("No permanent notes yet. Synthesize your literature notes into permanent insights.", "暂无永久笔记，请将文献笔记综合为稳定洞见。")}
+                          {tr("No permanent notes yet. Synthesize your literature notes into permanent insights.", "尚未有永久笔记。将你的文献笔记综合成永久见解。")}
                         </div>
                       )}
                     </div>
@@ -5187,6 +5211,9 @@ interface ManualRecordForm {
 type ExpandMode = "entry-paper" | "doi-url" | "manual";
 
 function ExpandWorkspace({ projectId }: { projectId: string }) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
+  const tr = (en: string, zh: string) => (isZh ? zh : en);
   const [projectPapers, setProjectPapers] = useState<ApiPaper[]>([]);
   const [loadingPapers, setLoadingPapers] = useState(false);
   const [expandMode, setExpandMode] = useState<ExpandMode>("entry-paper");
@@ -5249,7 +5276,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
         }
       })
       .catch(() => {
-        toast.error("Failed to load entry papers");
+        toast.error(isZh ? "加载入口文献失败" : "Failed to load entry papers");
       })
       .finally(() => setLoadingPapers(false));
   }, [projectId]);
@@ -5451,10 +5478,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
       setRecordsForMode("entry-paper", "references", []);
       setRecordsForMode("entry-paper", "citations", []);
       setExpandError(
-        tr(
-          "Unable to pull references or citations from OpenAlex for this entry paper. You can still use the DOI/URL pull inside each tab or add records manually.",
-          "无法为该 Entry 文献从 OpenAlex 拉取 references/citations。你仍可在各标签中通过 DOI/URL 拉取，或手动添加记录。"
-        )
+        tr("Unable to pull references or citations from OpenAlex for this entry paper. You can still use the DOI/URL pull inside each tab or add records manually.", "无法从OpenAlex获取此入口文献的参考文献或引用。您仍然可以使用每个标签内的DOI/URL拉取功能或手动添加记录。")
       );
     } finally {
       setLoadingRecords(false);
@@ -5567,9 +5591,9 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
             (selectedPaper ? `Expanded from: ${selectedPaper.title}` : "Expanded from Step 4"),
         });
         setProjectPapers((prev) => prev.map((paper) => (paper.id === existing.id ? updated : paper)));
-        toast.success(nextExpandedValue ? "Added to expanded papers" : "Removed from expanded papers");
+        toast.success(nextExpandedValue ? isZh ? "已添加到扩展论文。" : "Added to expanded papers" : "Removed from expanded papers");
       } catch {
-        toast.error("Failed to update this paper in expanded papers");
+        toast.error(isZh ? "更新这篇论文在扩展论文中失败。" : "Failed to update this paper in expanded papers");
       }
       return;
     }
@@ -5594,7 +5618,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
       }
       toast.success("Added to expanded papers");
     } catch {
-      toast.error("Failed to add this record to expanded papers");
+      toast.error(isZh ? "添加这条记录到扩展论文失败。" : "Failed to add this record to expanded papers");
     }
   };
 
@@ -5607,20 +5631,20 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
         <Input
           value={form.title}
           onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-          placeholder="Paper title"
+          placeholder={isZh ? "论文标题" : "Paper title"}
           className="text-sm"
         />
         <div className="grid grid-cols-2 gap-2">
           <Input
             value={form.authors}
             onChange={(event) => setForm((prev) => ({ ...prev, authors: event.target.value }))}
-            placeholder="Authors (comma separated)"
+            placeholder={isZh ? "作者（逗号分隔）" : "Authors (comma separated)"}
             className="text-sm"
           />
           <Input
             value={form.year}
             onChange={(event) => setForm((prev) => ({ ...prev, year: event.target.value }))}
-            placeholder="Year"
+            placeholder={isZh ? "年份" : "Year"}
             type="number"
             className="text-sm"
           />
@@ -5629,13 +5653,13 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
           <Input
             value={form.journal}
             onChange={(event) => setForm((prev) => ({ ...prev, journal: event.target.value }))}
-            placeholder="Journal"
+            placeholder={isZh ? "期刊" : "Journal"}
             className="text-sm"
           />
           <Input
             value={form.url}
             onChange={(event) => setForm((prev) => ({ ...prev, url: event.target.value }))}
-            placeholder="DOI or URL"
+            placeholder={isZh ? "DOI或URL" : "DOI or URL"}
             className="text-sm"
           />
         </div>
@@ -5921,7 +5945,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                     <Input
                       value={referenceLookupInput}
                       onChange={(event) => setReferenceLookupInput(event.target.value)}
-                      placeholder="Provide a DOI or URL to pull references"
+                      placeholder={isZh ? "提供一个DOI或URL来拉取参考文献。" : "Provide a DOI or URL to pull references"}
                       className="text-sm"
                       onKeyDown={(event) => {
                         if (event.key === "Enter") {
@@ -5949,7 +5973,7 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                     <Input
                       value={citationLookupInput}
                       onChange={(event) => setCitationLookupInput(event.target.value)}
-                      placeholder="Provide a DOI or URL to pull citations"
+                      placeholder={isZh ? "提供一个DOI或URL来拉取引用。" : "Provide a DOI or URL to pull citations"}
                       className="text-sm"
                       onKeyDown={(event) => {
                         if (event.key === "Enter") {
@@ -6040,6 +6064,9 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
 // Step 5: Visualize Workspace
 // ============================================================
 function VisualizeWorkspace({ projectId }: { projectId: string }) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
+  const tr = (en: string, zh: string) => (isZh ? zh : en);
   const [vizSection, setVizSection] = useState<"paper-overview" | "upload-visualizations" | "synthesis" | "viztools">("paper-overview");
 
   const [paperAnalyticsLoading, setPaperAnalyticsLoading] = useState(true);
@@ -6570,7 +6597,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
 
     const images = Array.from(fileList).filter((file) => file.type.startsWith("image/"));
     if (images.length === 0) {
-      toast.error("Please choose at least one image file");
+      toast.error(isZh ? "请选择至少一个图片文件。" : "Please choose at least one image file");
       event.target.value = "";
       return;
     }
@@ -6766,25 +6793,25 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
             <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold text-slate-200">{paperAnalyticsRows.length}</p>
-                <p className="text-[10px] text-slate-500 uppercase">Total Reading Papers</p>
+                <p className="text-[10px] text-slate-500 uppercase">{isZh ? "总阅读论文数" : "Total Reading Papers"}</p>
               </CardContent>
             </Card>
             <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold text-emerald-600">{entryPaperRows.length}</p>
-                <p className="text-[10px] text-slate-500 uppercase">Entry Papers</p>
+                <p className="text-[10px] text-slate-500 uppercase">{isZh ? "入口文献" : "Entry Papers"}</p>
               </CardContent>
             </Card>
             <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold text-amber-600">{expandedPaperRows.length}</p>
-                <p className="text-[10px] text-slate-500 uppercase">Expanded Papers</p>
+                <p className="text-[10px] text-slate-500 uppercase">{isZh ? "扩展论文" : "Expanded Papers"}</p>
               </CardContent>
             </Card>
           </div>
           <Card className="border-slate-700/50">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">Papers Overview</CardTitle>
+              <CardTitle className="text-sm font-semibold">{isZh ? "论文概览" : "Papers Overview"}</CardTitle>
             </CardHeader>
             <CardContent>
               {paperAnalyticsLoading ? <p className="text-xs text-slate-400 mb-3">Loading paper metrics...</p> : null}
@@ -6796,7 +6823,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                     <thead>
                       <tr>
                         <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 text-left min-w-[320px]">
-                          <button type="button" className="w-full text-left" onClick={() => togglePaperOverviewSort("title")}>Title{paperOverviewSortLabel("title")}</button>
+                          <button type="button" className="w-full text-left" onClick={() => togglePaperOverviewSort("title")}>{isZh ? "论文标题" : "Title"}{paperOverviewSortLabel("title")}</button>
                         </th>
                         <th className="p-2 border border-slate-700/50 bg-slate-800/40 font-semibold text-slate-200 text-left min-w-[130px]">
                           <button type="button" className="w-full text-left" onClick={() => togglePaperOverviewSort("category")}>Category{paperOverviewSortLabel("category")}</button>
@@ -6843,7 +6870,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-xs text-slate-400">
-                  <span>Rows per page</span>
+                  <span>{isZh ? "每页显示条数" : "Rows per page"}</span>
                   <Select
                     value={String(paperOverviewPageSize)}
                     onValueChange={(value) =>
@@ -6859,7 +6886,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                       <SelectItem value="10">10</SelectItem>
                       <SelectItem value="20">20</SelectItem>
                       <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="all">{isZh ? "全部" : "All"}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -6916,7 +6943,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                 {showUploadArea && (
                   <div className="p-4 mb-3 rounded-lg border-2 border-dashed border-blue-200 bg-blue-50/30 text-center">
                     <Upload className="w-8 h-8 text-blue-300 mx-auto mb-2" />
-                    <p className="text-xs text-slate-500 mb-2">Choose one or more local image files to upload into the system</p>
+                    <p className="text-xs text-slate-500 mb-2">{isZh ? "选择一个或多个本地图片文件上传到系统。" : "Choose one or more local image files to upload into the system"}</p>
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -6960,7 +6987,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                         </div>
                         <div className="shrink-0">
                           {file.uploading ? (
-                            <Badge className="text-[9px] bg-cyan-100 text-cyan-700 border-cyan-200">Uploading</Badge>
+                            <Badge className="text-[9px] bg-cyan-100 text-cyan-700 border-cyan-200">{isZh ? "正在上传" : "Uploading"}</Badge>
                           ) : file.failed ? (
                             <Button
                               size="sm"
@@ -6996,7 +7023,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400 text-center py-3">No visualization files uploaded yet.</p>
+                  <p className="text-xs text-slate-400 text-center py-3">{isZh ? "尚未上传可视化文件。" : "No visualization files uploaded yet."}</p>
                 )}
               </CardContent>
             </Card>
@@ -7045,7 +7072,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                   )}
                   {/* Select Papers (Rows) */}
                   <div>
-                    <p className="text-xs font-medium text-slate-600 mb-2">Select Papers (Rows):</p>
+                    <p className="text-xs font-medium text-slate-600 mb-2">{isZh ? "选择论文（行）：" : "Select Papers (Rows):"}</p>
                     <div className="space-y-1 max-h-[150px] overflow-y-auto">
                       {papers.map((paper) => (
                         <label key={paper.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-800/40 cursor-pointer">
@@ -7064,7 +7091,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
 
                   {/* Custom Columns */}
                   <div>
-                    <p className="text-xs font-medium text-slate-600 mb-2">Columns (Attributes):</p>
+                    <p className="text-xs font-medium text-slate-600 mb-2">{isZh ? "列（属性）：" : "Columns (Attributes):"}</p>
                     <div className="flex flex-wrap gap-1.5 mb-2">
                       {synthColumns.map((col) => (
                         <Badge key={col} variant="secondary" className="text-[10px] px-2 py-0.5 bg-slate-800 gap-1">
@@ -7079,7 +7106,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                       <Input
                         value={newSynthCol}
                         onChange={(e) => setNewSynthCol(e.target.value)}
-                        placeholder="Add column (e.g., Sample Size, Theory)..."
+                        placeholder={isZh ? "添加列（例如：样本大小，理论）..." : "Add column (e.g., Sample Size, Theory)..."}
                         className="text-xs h-7"
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
@@ -7156,7 +7183,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                                           [pid]: { ...(synthData[pid] || {}), [col]: e.target.value },
                                         });
                                       }}
-                                      placeholder="Enter data..."
+                                      placeholder={isZh ? "输入数据..." : "Enter data..."}
                                       className="w-full text-[10px] text-slate-600 bg-transparent outline-none"
                                     />
                                   </td>
@@ -7209,33 +7236,33 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                       <Input
                         value={newVizToolName}
                         onChange={(e) => setNewVizToolName(e.target.value)}
-                        placeholder="Tool name..."
+                        placeholder={isZh ? "工具名称..." : "Tool name..."}
                         className="text-xs h-8"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-medium text-slate-600">URL</label>
+                      <label className="text-[10px] font-medium text-slate-600">{isZh ? "URL" : "URL"}</label>
                       <Input
                         value={newVizToolUrl}
                         onChange={(e) => setNewVizToolUrl(e.target.value)}
-                        placeholder="https://..."
+                        placeholder={isZh ? "https://..." : "https://..."}
                         className="text-xs h-8"
                       />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-medium text-slate-600">Description</label>
+                    <label className="text-[10px] font-medium text-slate-600">{isZh ? "描述" : "Description"}</label>
                     <Textarea
                       value={newVizToolDesc}
                       onChange={(e) => setNewVizToolDesc(e.target.value)}
                       rows={2}
-                      placeholder="What does this tool do? What is it best for?"
+                      placeholder={isZh ? "这个工具是做什么的？它最适合什么？" : "What does this tool do? What is it best for?"}
                       className="text-xs"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-medium text-slate-600">Pricing</label>
+                      <label className="text-[10px] font-medium text-slate-600">{isZh ? "定价" : "Pricing"}</label>
                       <div className="flex gap-1.5">
                         {(["free", "freemium", "paid"] as const).map((p) => (
                           <button
@@ -7256,11 +7283,11 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-medium text-slate-600">Price Details</label>
+                      <label className="text-[10px] font-medium text-slate-600">{isZh ? "价格详情" : "Price Details"}</label>
                       <Input
                         value={newVizToolPrice}
                         onChange={(e) => setNewVizToolPrice(e.target.value)}
-                        placeholder="e.g., $10/month, Free tier available..."
+                        placeholder={isZh ? "例如，每月10美元，提供免费等级..." : "e.g., $10/month, Free tier available..."}
                         className="text-xs h-8"
                       />
                     </div>
@@ -7346,6 +7373,9 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
 // Step 6: Draft Workspace (Inline version)
 // ============================================================
 function DraftWorkspaceInline({ projectId }: { projectId: string }) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
+  const tr = (en: string, zh: string) => (isZh ? zh : en);
   const { user } = useAuth();
   const isPremiumUser = Boolean(user?.is_premium) || user?.role === "admin";
   const draftStorageUserScope = user?.id || user?.email?.trim().toLowerCase() || "anonymous";
@@ -7986,7 +8016,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
           });
           window.dispatchEvent(new CustomEvent("notes-updated"));
         } catch {
-          toast.error("Failed to sync note changes to source note.");
+          toast.error(isZh ? "同步笔记更改到源笔记失败。" : "Failed to sync note changes to source note.");
         }
       } else if (segment.kind === "highlight") {
         const highlightId = segment.sourceId.replace(/^highlight-/, "");
@@ -8334,7 +8364,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
       setDraftSaveMsg(`Saved to draft artifact "${currentDraftName}" at ${timeStr}`);
       setTimeout(() => setDraftSaveMsg(null), 3000);
     } catch {
-      toast.error("保存到 Draft Artifact 失败");
+      toast.error(isZh ? "保存为草稿产件失败" : "保存到 Draft Artifact 失败");
     }
   };
 
@@ -8439,7 +8469,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
           noteAPI.listByProject(pid).catch(() => []),
           conceptAPI.list(pid).catch(() => []),
         ]);
-        const paperMap = new Map(papers.map((paper) => [paper.id, paper]));
+        const paperMap = new Map<string, ApiPaper>(papers.map((paper): [string, ApiPaper] => [paper.id, paper]));
         const localProjectArtifacts = localArtifacts.filter((artifact) => !artifact.projectId || artifact.projectId === pid);
 
         localProjectArtifacts
@@ -8833,7 +8863,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                 {/* Tool Selection */}
                 {preWriteStrategies[preWriteTab].tools.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-[10px] font-medium text-slate-500">Tool Used (optional):</p>
+                    <p className="text-[10px] font-medium text-slate-500">{isZh ? "使用的工具（可选）：" : "Tool Used (optional):"}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {preWriteStrategies[preWriteTab].tools.map((tool) => (
                         <button
@@ -8852,7 +8882,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                       <Input
                         value={newPreWriteTool && !preWriteStrategies[preWriteTab].tools.find((t) => t.name === newPreWriteTool) ? newPreWriteTool : ""}
                         onChange={(e) => setNewPreWriteTool(e.target.value)}
-                        placeholder="Other tool..."
+                        placeholder={isZh ? "其他工具..." : "Other tool..."}
                         className="text-[10px] h-6 w-28"
                       />
                     </div>
@@ -8860,7 +8890,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                 )}
                 {/* Upload Visualization / Document */}
                 <div className="space-y-1">
-                  <p className="text-[10px] font-medium text-slate-500">Upload Result / Document (optional):</p>
+                  <p className="text-[10px] font-medium text-slate-500">{isZh ? "上传结果/文档（可选）：" : "Upload Result / Document (optional):"}</p>
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" className="text-[10px] h-6" onClick={handleSimulateUpload}>
                       <Upload className="w-3 h-3 mr-1" />
@@ -9001,7 +9031,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                                   <Clock className="w-2.5 h-2.5" />
                                   {version.savedAt}
                                   {selectedDraftId === draft.id && selectedVersionId === version.id && (
-                                    <Badge className="text-[8px] px-1 py-0 bg-orange-500 text-white ml-auto">Active</Badge>
+                                    <Badge className="text-[8px] px-1 py-0 bg-orange-500 text-white ml-auto">{isZh ? "激活" : "Active"}</Badge>
                                   )}
                                 </span>
                               </button>
@@ -9528,7 +9558,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     )
                   }
                 />
-                {tr("Also push this change to source", "同时将此修改回推到来源")} {editingInserted.segment.kind}.
+                {tr("Also push this change to source", "同时将此更改推送到源")} {editingInserted.segment.kind}.
               </label>
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => setEditingInserted(null)}>{tr("Cancel", "取消")}</Button>
@@ -9660,7 +9690,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   当前筛选范围无可用内容，请关闭“仅当前项目”或切换筛选条件。
                 </p>
               ) : slashFilteredArtifacts.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-10">No matching artifacts found</p>
+                <p className="text-sm text-slate-400 text-center py-10">{isZh ? "未找到匹配的产件" : "No matching artifacts found"}</p>
               ) : (
                 slashFilteredArtifacts.map((a) => {
                   const badgeLabel =
@@ -9724,8 +9754,8 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
               )}
             </div>
             <div className="px-4 py-2 border-t border-slate-700 text-[10px] text-slate-500 flex items-center gap-3">
-              <span><kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">↵</kbd> to insert first result</span>
-              <span><kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">Esc</kbd> to cancel</span>
+              <span><kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">↵</kbd> {isZh ? "插入第一个结果" : "to insert first result"}</span>
+              <span><kbd className="px-1 py-0.5 bg-slate-700 rounded text-[9px]">{isZh ? "Esc" : "Esc"}</kbd> {isZh ? "取消" : "to cancel"}</span>
               {!isPremiumUser && <span>Free: current project only</span>}
               {isPremiumUser && <span>Premium: multi-project search</span>}
             </div>

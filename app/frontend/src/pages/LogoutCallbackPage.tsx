@@ -1,7 +1,10 @@
 import React, { useEffect } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useI18n } from "@/lib/i18n";
 
 const LogoutCallbackPage: React.FC = () => {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   useEffect(() => {
     // The OIDC provider has logged out the user and redirected here
     // We can redirect to the home page or show a logout success message
@@ -32,7 +35,7 @@ const LogoutCallbackPage: React.FC = () => {
         <p className="text-gray-600 mb-4">
           You have been successfully logged out.
         </p>
-        <p className="text-sm text-gray-500">Redirecting to home page...</p>
+        <p className="text-sm text-gray-500">{isZh ? "重定向到主页..." : "Redirecting to home page..."}</p>
       </div>
     </div>
   );

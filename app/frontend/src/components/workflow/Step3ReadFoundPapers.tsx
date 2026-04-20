@@ -338,10 +338,10 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
 
       setPapers(nextPapers);
       setSelectedPaperIds([]);
-      toast.success(tr("Selected papers removed successfully", "已成功移除所选文献"));
+      toast.success(tr("Selected papers removed successfully", "选中的论文已成功移除"));
     } catch (error) {
       console.error("Failed to remove selected papers:", error);
-      toast.error(tr("Failed to remove selected papers", "移除所选文献失败"));
+      toast.error(tr("Failed to remove selected papers", "移除选中的论文失败"));
     }
   };
 
@@ -355,7 +355,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
     if (!input) return;
     const doi = extractDoiFromText(input);
     if (!doi) {
-      setDoiFetchError(tr("Unable to find a valid DOI. Please check input or fill manually.", "未找到有效 DOI，请检查输入或手动填写。"));
+      setDoiFetchError(tr("Unable to find a valid DOI. Please check input or fill manually.", "找不到有效的DOI。请检查输入或手动填写。"));
       return;
     }
 
@@ -382,7 +382,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
       const journal = work["container-title"]?.[0] ?? work.publisher;
       if (journal) setNewPaperJournal(journal);
     } catch {
-      setDoiFetchError(tr("Failed to fetch by DOI. Please fill the fields manually.", "DOI 自动获取失败，请手动填写。"));
+      setDoiFetchError(tr("Failed to fetch by DOI. Please fill the fields manually.", "通过DOI获取失败。请手动填写字段。"));
     } finally {
       setDoiFetching(false);
     }
@@ -438,9 +438,9 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
       setNewPaperDiscoveryNote("");
       setNewPaperDoiUrl("");
       setDoiFetchError(null);
-      toast.success(tr("Entry paper added", "已添加入门文献"));
+      toast.success(tr("Entry paper added", "入口文献已添加"));
     } catch {
-      toast.error(tr("Failed to add entry paper", "添加入门文献失败"));
+      toast.error(tr("Failed to add entry paper", "添加入口文献失败"));
     }
   };
 
@@ -497,7 +497,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
           journal,
           url: `https://doi.org/${encodeURIComponent(doi)}`,
           discoveryPath: "Academic Database",
-          discoveryNote: tr("Added from DOI in Step 3: Read", "通过 Step 3 DOI 导入"),
+          discoveryNote: tr("Added from DOI in Step 3: Read", "在第三步通过DOI添加"),
         });
 
         setPapers((prev) => [...prev, nextPaper]);
@@ -523,7 +523,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
       {loading && (
         <Card>
           <CardContent className="pt-6 text-sm text-gray-600">
-            {tr("Loading papers...", "正在加载文献...")}
+            {tr("Loading papers...", "加载论文中...")}
           </CardContent>
         </Card>
       )}
@@ -534,7 +534,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
           <CardContent className="pt-6 flex items-center gap-3">
             <AlertCircle className="h-5 w-5 text-yellow-600" />
             <p className="text-yellow-800">
-              {tr("No papers marked as entry or expanded. Go back to Step 2 to mark papers.", "当前没有标记为 Entry 或 Expanded 的文献，请回到 Step 2 进行标记。")}
+              {tr("No papers marked as entry or expanded. Go back to Step 2 to mark papers.", "没有标记为条目或展开的论文。返回第二步标记论文。")}
             </p>
           </CardContent>
         </Card>
@@ -562,13 +562,13 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                   value="entry"
                   className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
-                  {tr("Entry", "入口文献")} ({papers.filter((p) => p.is_entry_paper).length})
+                  {tr("Entry", "条目")} ({papers.filter((p) => p.is_entry_paper).length})
                 </TabsTrigger>
                 <TabsTrigger
                   value="expanded"
                   className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
-                  {tr("Expanded", "扩展文献")} ({papers.filter((p) => p.is_expanded_paper).length})
+                  {tr("Expanded", "展开")} ({papers.filter((p) => p.is_expanded_paper).length})
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -579,16 +579,16 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" variant="outline" className="h-7 text-xs">
                       <Plus className="w-3 h-3 mr-1" />
-                      {tr("Add Paper", "添加文献")}
+                      {tr("Add Paper", "添加论文")}
                       <ChevronDown className="w-3 h-3 ml-1" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-44">
                     <DropdownMenuItem onClick={() => setShowAddPaperDialog(true)}>
-                      {tr("Add One", "添加单篇")}
+                      {tr("Add One", "添加一篇")}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setShowAddMultiplePaperDialog(true)}>
-                      {tr("Add Multiple", "批量添加")}
+                      {tr("Add Multiple", "添加多篇")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -603,10 +603,10 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                   <SelectValue placeholder={tr("Sort by", "排序方式")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="title">{tr("Sort: Title", "按标题")}</SelectItem>
-                  <SelectItem value="year">{tr("Sort: Year", "按年份")}</SelectItem>
-                  <SelectItem value="status">{tr("Sort: Status", "按状态")}</SelectItem>
-                  <SelectItem value="type">{tr("Sort: Type", "按类型")}</SelectItem>
+                  <SelectItem value="title">{tr("Sort: Title", "按标题排序")}</SelectItem>
+                  <SelectItem value="year">{tr("Sort: Year", "按年份排序")}</SelectItem>
+                  <SelectItem value="status">{tr("Sort: Status", "按状态排序")}</SelectItem>
+                  <SelectItem value="type">{tr("Sort: Type", "按类型排序")}</SelectItem>
                 </SelectContent>
               </Select>
               <button
@@ -660,7 +660,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                         void handleBulkRemoveSelected();
                       }}
                     >
-                      {tr("Remove Selected", "移除所选")}
+                      {tr("Remove Selected", "移除选中的")}
                     </button>
                     <button
                       type="button"
@@ -670,7 +670,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                         setSelectedPaperIds([]);
                       }}
                     >
-                      {tr("Clear", "清空")}
+                      {tr("Clear", "清除")}
                     </button>
                   </div>
                 )}
@@ -707,7 +707,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
                             className="shrink-0 text-slate-400 hover:text-blue-500 transition-colors"
-                            title={tr("Search on Google Scholar", "在 Google Scholar 中搜索")}
+                            title={tr("Search on Google Scholar", "在谷歌学术中搜索")}
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
@@ -721,7 +721,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                                     type="button"
                                     onClick={(e) => e.stopPropagation()}
                                     className="shrink-0 text-amber-500 hover:text-amber-600 transition-colors"
-                                    title={tr("Previously processed", "此前已处理")}
+                                    title={tr("Previously processed", "之前已处理")}
                                   >
                                     <Clock className="w-3.5 h-3.5" />
                                   </button>
@@ -730,7 +730,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                                   className="w-64 p-3 text-xs"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <p className="font-semibold text-slate-200 mb-1">{tr("Previously Processed", "历史处理记录")}</p>
+                                  <p className="font-semibold text-slate-200 mb-1">{tr("Previously Processed", "之前已处理")}</p>
                                   <p className="text-slate-400">{dec.decision}</p>
                                   <p className="text-[10px] text-slate-500 mt-1.5">
                                     {new Date(dec.timestamp).toLocaleDateString()}{" "}
@@ -746,12 +746,12 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                         </div>
                         {paper.is_entry_paper && (
                           <span className="inline-flex h-6 items-center rounded-full border border-cyan-400/70 px-2 text-[11px] font-medium text-cyan-200 pointer-events-none">
-                            {isZh ? "入门" : "entry"}
+                            {isZh ? "条目" : "entry"}
                           </span>
                         )}
                         {paper.is_expanded_paper && (
                           <span className="inline-flex h-6 items-center rounded-full border border-blue-500/70 px-2 text-[11px] font-medium text-blue-300 pointer-events-none">
-                            {isZh ? "扩展" : "expanded"}
+                            {isZh ? "展开" : "expanded"}
                           </span>
                         )}
                       </div>
@@ -849,7 +849,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
             {sortedFilteredPapers.length === 0 && (
               <div className="text-center py-12 text-gray-600">
                 <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                <p>{tr("No papers in this category", "该分类下暂无文献")}</p>
+                <p>{tr("No papers in this category", "此分类中没有论文")}</p>
               </div>
             )}
           </TabsContent>
@@ -859,13 +859,13 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
       <Dialog open={showAddPaperDialog} onOpenChange={setShowAddPaperDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{tr("Add Entry Paper", "添加入门文献")}</DialogTitle>
+            <DialogTitle>{tr("Add Entry Paper", "添加入口文献")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">{tr("DOI or URL (optional)", "DOI 或 URL（可选）")}</label>
+              <label className="text-xs font-medium text-slate-600">{tr("DOI or URL (optional)", "DOI或URL（可选）")}</label>
               <div className="flex gap-2">
-                <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder="https://doi.org/..." className="text-sm" />
+                <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder={isZh ? "https://doi.org/..." : "https://doi.org/..."} className="text-sm" />
                 <Button type="button" variant="outline" className="text-xs" disabled={doiFetching || !newPaperDoiUrl.trim()} onClick={() => void handleFetchByDoiUrl()}>
                   <Sparkles className="w-3 h-3 mr-1" />
                   {doiFetching ? tr("Fetching...", "获取中...") : tr("Auto-fill", "自动填充")}
@@ -875,10 +875,10 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-600">{tr("Title", "标题")}</label>
-              <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder={tr("Paper title...", "文献标题...")} className="text-sm" />
+              <Input value={newPaperTitle} onChange={(e) => setNewPaperTitle(e.target.value)} placeholder={tr("Paper title...", "论文标题...")} className="text-sm" />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">{tr("Authors (comma-separated)", "作者（用逗号分隔）")}</label>
+              <label className="text-xs font-medium text-slate-600">{tr("Authors (comma-separated)", "作者（逗号分隔）")}</label>
               <Input value={newPaperAuthors} onChange={(e) => setNewPaperAuthors(e.target.value)} placeholder={tr("Author 1, Author 2...", "作者1, 作者2...")} className="text-sm" />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -917,8 +917,8 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">{tr("Discovery Note", "发现备注")}</label>
-              <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} rows={2} placeholder={tr("How did you find this paper?", "你是如何发现这篇文献的？")} className="text-xs" />
+              <label className="text-xs font-medium text-slate-600">{tr("Discovery Note", "发现笔记")}</label>
+              <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} rows={2} placeholder={tr("How did you find this paper?", "你是如何找到这篇论文的？")} className="text-xs" />
             </div>
             <div className="flex gap-2 pt-2">
               <Button className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs" onClick={() => void handleAddEntryPaper()}>
@@ -944,11 +944,11 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
       >
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>{tr("Add Multiple Entry Papers", "批量添加入门文献")}</DialogTitle>
+            <DialogTitle>{tr("Add Multiple Entry Papers", "添加多篇入口文献")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-600">{tr("DOI links (one per line)", "DOI 链接（每行一个）")}</label>
+              <label className="text-xs font-medium text-slate-600">{tr("DOI links (one per line)", "DOI链接（每行一个）")}</label>
               <Textarea
                 value={bulkDoiInput}
                 onChange={(e) => setBulkDoiInput(e.target.value)}
@@ -964,7 +964,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                 disabled={bulkImporting || !bulkDoiInput.trim()}
               >
                 <Sparkles className="w-3 h-3 mr-1" />
-                {bulkImporting ? tr("Importing...", "导入中...") : tr("Import by DOI", "按 DOI 导入")}
+                {bulkImporting ? tr("Importing...", "正在导入...") : tr("Import by DOI", "通过DOI导入")}
               </Button>
               <Button variant="ghost" className="text-xs" onClick={() => setShowAddMultiplePaperDialog(false)}>
                 {tr("Cancel", "取消")}

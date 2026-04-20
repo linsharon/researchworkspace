@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, User, LogIn } from 'lucide-react';
+import { useI18n } from "@/lib/i18n";
 
 interface ProtectedAdminRouteProps {
   children: React.ReactNode;
@@ -12,6 +13,8 @@ interface ProtectedAdminRouteProps {
 const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({
   children,
 }) => {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const { user, loading, isAdmin, login } = useAuth();
   const location = useLocation();
 
@@ -21,7 +24,7 @@ const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Verifying permissions...</p>
+          <p className="text-gray-600">{isZh ? "正在验证权限..." : "Verifying permissions..."}</p>
         </div>
       </div>
     );

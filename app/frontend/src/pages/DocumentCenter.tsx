@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, FilePlus2, RefreshCw, RotateCcw, Search, Share2, Trash2, Upload, FolderArchive, ListChecks } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 import {
   documentAPI,
   type DocumentAccessLevel,
@@ -58,6 +59,8 @@ function renderHighlightedSnippet(value: string) {
 }
 
 export default function DocumentCenter() {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -117,7 +120,7 @@ export default function DocumentCenter() {
       setOffset(nextOffset);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to load documents");
+      toast.error(isZh ? "加载文档失败" : "Failed to load documents");
     } finally {
       setLoading(false);
     }
@@ -130,7 +133,7 @@ export default function DocumentCenter() {
       setRecycleItems(response.items);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to load recycle bin");
+      toast.error(isZh ? "加载回收站失败" : "Failed to load recycle bin");
     } finally {
       setRecycleLoading(false);
     }
@@ -144,7 +147,7 @@ export default function DocumentCenter() {
       setVersions(data);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to load versions");
+      toast.error(isZh ? "加载版本失败" : "Failed to load versions");
       setVersions([]);
     } finally {
       setVersionsLoading(false);
@@ -163,7 +166,7 @@ export default function DocumentCenter() {
       setShares(data);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to load shares");
+      toast.error(isZh ? "加载共享失败" : "Failed to load shares");
       setShares([]);
     } finally {
       setSharesLoading(false);
@@ -172,7 +175,7 @@ export default function DocumentCenter() {
 
   const handleGrantShare = async () => {
     if (!shareDoc || !selectedCandidate?.id) {
-      toast.error("Please select a user to grant access");
+      toast.error(isZh ? "请选择要授权的用户" : "Please select a user to grant access");
       return;
     }
     try {
@@ -180,7 +183,7 @@ export default function DocumentCenter() {
         grantee_user_id: selectedCandidate.id,
         access_level: newGrantLevel,
       });
-      toast.success("Access granted");
+      toast.success(isZh ? "授权成功" : "Access granted");
       setShareQuery("");
       setShareCandidates([]);
       setSelectedCandidate(null);
@@ -195,7 +198,7 @@ export default function DocumentCenter() {
     if (!shareDoc) return;
     try {
       await documentAPI.revokeShare(shareDoc.id, granteeUserId);
-      toast.success("Access revoked");
+      toast.success(isZh ? "权限被撤销" : "Access revoked");
       await loadShares(shareDoc);
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -244,7 +247,7 @@ export default function DocumentCenter() {
   const handleCreateDocument = async () => {
     const title = newTitle.trim();
     if (!title) {
-      toast.error("Document title is required");
+      toast.error(isZh ? "文档标题是必须的" : "Document title is required");
       return;
     }
 
@@ -256,7 +259,7 @@ export default function DocumentCenter() {
     setCreating(true);
     try {
       if (newPermission === "team" && !newProjectId.trim()) {
-        toast.error("Team document requires a project ID");
+        toast.error(isZh ? "团队文档需要项目ID" : "Team document requires a project ID");
         return;
       }
       await documentAPI.create({
@@ -271,7 +274,7 @@ export default function DocumentCenter() {
       setNewTags("");
       setNewProjectId("");
       setNewPermission("private");
-      toast.success("Document created");
+      toast.success(isZh ? "文档创建成功" : "Document created");
       await loadDocuments(0);
     } catch (error: unknown) {
       const detail = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
@@ -284,7 +287,7 @@ export default function DocumentCenter() {
   const handleDelete = async (doc: DocumentItem) => {
     try {
       await documentAPI.softDelete(doc.id);
-      toast.success("Moved to recycle bin");
+      toast.success(isZh ? "已移至回收站" : "Moved to recycle bin");
       await loadDocuments(Math.max(0, offset));
       await loadRecycleBin();
       if (selectedDoc?.id === doc.id) {
@@ -293,26 +296,26 @@ export default function DocumentCenter() {
       }
     } catch (error) {
       console.error(error);
-      toast.error("Failed to delete document");
+      toast.error(isZh ? "删除文档失败" : "Failed to delete document");
     }
   };
 
   const handleRestore = async (doc: DocumentItem) => {
     try {
       await documentAPI.restore(doc.id);
-      toast.success("Document restored");
+      toast.success(isZh ? "文档已恢复" : "Document restored");
       await loadDocuments(0);
       await loadRecycleBin();
     } catch (error) {
       console.error(error);
-      toast.error("Failed to restore document");
+      toast.error(isZh ? "恢复文档失败" : "Failed to restore document");
     }
   };
 
   const handleStatusChange = async (doc: DocumentItem, status: DocumentStatus) => {
     try {
       await documentAPI.changeStatus(doc.id, status);
-      toast.success("Status updated");
+      toast.success(isZh ? "状态已更新" : "Status updated");
       await loadDocuments(offset);
       if (selectedDoc?.id === doc.id) {
         const refreshed = await documentAPI.search({ q: doc.title, limit: 1, offset: 0 });
@@ -345,7 +348,7 @@ export default function DocumentCenter() {
         change_note: `Uploaded via browser at ${new Date().toISOString()}`,
       });
 
-      toast.success("File uploaded and version appended");
+      toast.success(isZh ? "文件上传成功并追加版本" : "File uploaded and version appended");
       if (selectedDoc?.id === doc.id) {
         await loadVersions(doc);
       }
@@ -387,7 +390,7 @@ export default function DocumentCenter() {
     try {
       const response = await documentAPI.getDocumentDownloadUrl(params.documentId, params.versionId ? { version_id: params.versionId } : undefined);
       if (!response.download_url) {
-        toast.error("Download URL is unavailable");
+        toast.error(isZh ? "下载链接不可用" : "Download URL is unavailable");
         return;
       }
       triggerBrowserDownload(response.download_url, params.filename);
@@ -418,7 +421,7 @@ export default function DocumentCenter() {
       <div className="p-6 max-w-7xl mx-auto space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl font-semibold text-slate-100">Document Center</h1>
+            <h1 className="text-xl font-semibold text-slate-100">{isZh ? "文档中心" : "Document Center"}</h1>
             <p className="text-xs text-slate-400 mt-1">
               Production document metadata management with search, status workflow, recycle bin and versions.
             </p>
@@ -448,14 +451,14 @@ export default function DocumentCenter() {
 
         <Card className="border-slate-700/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Create Document</CardTitle>
+            <CardTitle className="text-sm">{isZh ? "创建文档" : "Create Document"}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Title" />
+              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder={isZh ? "标题" : "Title"} />
               <Select value={newPermission} onValueChange={(v) => setNewPermission(v as DocumentPermission)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Permission" />
+                  <SelectValue placeholder={isZh ? "权限" : "Permission"} />
                 </SelectTrigger>
                 <SelectContent>
                   {permissionOptions.map((item) => (
@@ -464,9 +467,9 @@ export default function DocumentCenter() {
                 </SelectContent>
               </Select>
             </div>
-            <Input value={newProjectId} onChange={(e) => setNewProjectId(e.target.value)} placeholder="Project ID (required for team permission)" />
-            <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder="Description" />
-            <Input value={newTags} onChange={(e) => setNewTags(e.target.value)} placeholder="Tags (comma separated)" />
+            <Input value={newProjectId} onChange={(e) => setNewProjectId(e.target.value)} placeholder={isZh ? "项目ID（团队权限需要）" : "Project ID (required for team permission)"} />
+            <Input value={newDescription} onChange={(e) => setNewDescription(e.target.value)} placeholder={isZh ? "描述" : "Description"} />
+            <Input value={newTags} onChange={(e) => setNewTags(e.target.value)} placeholder={isZh ? "标签（逗号分隔）" : "Tags (comma separated)"} />
             <Button size="sm" onClick={() => void handleCreateDocument()} disabled={creating}>
               <FilePlus2 className="w-4 h-4 mr-1" /> {creating ? "Creating..." : "Create"}
             </Button>
@@ -477,7 +480,7 @@ export default function DocumentCenter() {
           <div className="xl:col-span-2 space-y-4">
             <Card className="border-slate-700/50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Search Documents</CardTitle>
+                <CardTitle className="text-sm">{isZh ? "搜索文档" : "Search Documents"}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex gap-2 flex-wrap">
@@ -487,12 +490,12 @@ export default function DocumentCenter() {
                       className="pl-8"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search by title/description"
+                      placeholder={isZh ? "按标题/描述搜索" : "Search by title/description"}
                     />
                   </div>
                   <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as DocumentStatus | "all") }>
                     <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Status" />
+                      <SelectValue placeholder={isZh ? "状态" : "Status"} />
                     </SelectTrigger>
                     <SelectContent>
                       {statusOptions.map((item) => (
@@ -502,10 +505,10 @@ export default function DocumentCenter() {
                   </Select>
                   <Select value={permissionFilter} onValueChange={(v) => setPermissionFilter(v as DocumentPermission | "all") }>
                     <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Permission" />
+                      <SelectValue placeholder={isZh ? "权限" : "Permission"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Permissions</SelectItem>
+                      <SelectItem value="all">{isZh ? "所有权限" : "All Permissions"}</SelectItem>
                       {permissionOptions.map((item) => (
                         <SelectItem key={item} value={item}>{item}</SelectItem>
                       ))}
@@ -518,7 +521,7 @@ export default function DocumentCenter() {
                     className="min-w-[180px] flex-1"
                     value={tagFilter}
                     onChange={(e) => setTagFilter(e.target.value)}
-                    placeholder="Filter by tag"
+                    placeholder={isZh ? "按标签过滤" : "Filter by tag"}
                   />
                   <Input
                     className="w-[180px]"
@@ -551,7 +554,7 @@ export default function DocumentCenter() {
                 </div>
 
                 {loading ? (
-                  <p className="text-sm text-slate-400">Loading documents...</p>
+                  <p className="text-sm text-slate-400">{isZh ? "加载文档中..." : "Loading documents..."}</p>
                 ) : (
                   <div className="space-y-2">
                     {documents.length === 0 && <p className="text-sm text-slate-500">No documents found.</p>}
@@ -657,9 +660,9 @@ export default function DocumentCenter() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {recycleLoading ? (
-                  <p className="text-sm text-slate-400">Loading recycle bin...</p>
+                  <p className="text-sm text-slate-400">{isZh ? "加载回收站中..." : "Loading recycle bin..."}</p>
                 ) : recycleItems.length === 0 ? (
-                  <p className="text-sm text-slate-500">Recycle bin is empty.</p>
+                  <p className="text-sm text-slate-500">{isZh ? "回收站为空。" : "Recycle bin is empty."}</p>
                 ) : (
                   recycleItems.map((doc) => (
                     <div key={doc.id} className="p-2 border border-slate-700/50 rounded flex items-center justify-between gap-2">
@@ -679,7 +682,7 @@ export default function DocumentCenter() {
 
           <Card className="border-slate-700/50 h-fit">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Version History</CardTitle>
+              <CardTitle className="text-sm">{isZh ? "版本历史" : "Version History"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {!selectedDoc && <p className="text-sm text-slate-500">Select a document to view versions.</p>}
@@ -687,9 +690,9 @@ export default function DocumentCenter() {
                 <>
                   <div className="text-xs text-slate-400">Document: {selectedDoc.title}</div>
                   {versionsLoading ? (
-                    <p className="text-sm text-slate-400">Loading versions...</p>
+                    <p className="text-sm text-slate-400">{isZh ? "加载版本中..." : "Loading versions..."}</p>
                   ) : versions.length === 0 ? (
-                    <p className="text-sm text-slate-500">No versions yet.</p>
+                    <p className="text-sm text-slate-500">{isZh ? "暂无版本。" : "No versions yet."}</p>
                   ) : (
                     versions.map((version) => (
                       <div key={version.id} className="p-2 rounded border border-slate-700/50 bg-slate-900/40">
@@ -736,7 +739,7 @@ export default function DocumentCenter() {
 
           <Card className="border-slate-700/50 h-fit">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Access Sharing</CardTitle>
+              <CardTitle className="text-sm">{isZh ? "访问共享" : "Access Sharing"}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {!shareDoc && <p className="text-sm text-slate-500">Select a document and click Share to manage access.</p>}
@@ -747,7 +750,7 @@ export default function DocumentCenter() {
                   <div className="flex gap-1 flex-wrap">
                     <Input
                       className="flex-1 min-w-[140px] h-7 text-xs"
-                      placeholder="Search user by email/name"
+                      placeholder={isZh ? "按邮箱/姓名搜索用户" : "Search user by email/name"}
                       value={shareQuery}
                       onChange={(e) => {
                         setShareQuery(e.target.value);
@@ -759,8 +762,8 @@ export default function DocumentCenter() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="read">Read</SelectItem>
-                        <SelectItem value="edit">Edit</SelectItem>
+                        <SelectItem value="read">{isZh ? "阅读" : "Read"}</SelectItem>
+                        <SelectItem value="edit">{isZh ? "编辑" : "Edit"}</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button size="sm" className="h-7 text-xs" onClick={() => void handleGrantShare()}>
@@ -770,7 +773,7 @@ export default function DocumentCenter() {
 
                   {shareSearchLoading && <p className="text-[11px] text-slate-400">Searching users...</p>}
                   {!shareSearchLoading && shareQuery.trim().length >= 2 && shareCandidates.length === 0 && (
-                    <p className="text-[11px] text-slate-500">No users matched your query.</p>
+                    <p className="text-[11px] text-slate-500">{isZh ? "没有匹配您查询的用户。" : "No users matched your query."}</p>
                   )}
                   {shareCandidates.length > 0 && (
                     <div className="space-y-1">
@@ -805,7 +808,7 @@ export default function DocumentCenter() {
                   {sharesLoading ? (
                     <p className="text-xs text-slate-400">Loading…</p>
                   ) : shares.length === 0 ? (
-                    <p className="text-xs text-slate-500">No active shares.</p>
+                    <p className="text-xs text-slate-500">{isZh ? "没有激活的共享。" : "No active shares."}</p>
                   ) : (
                     shares.map((s) => (
                       <div key={s.grantee_user_id} className="flex items-center justify-between p-1.5 rounded border border-slate-700/50 bg-slate-900/40">

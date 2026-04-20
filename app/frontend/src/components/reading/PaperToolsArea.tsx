@@ -36,6 +36,7 @@ import { LiteratureNoteForm } from "./LiteratureNoteForm";
 import type { LiteratureNote } from "./LiteratureNoteForm";
 import { PermanentNoteForm } from "./PermanentNoteForm";
 import type { NoteOption, PermanentNote } from "./PermanentNoteForm";
+import { useI18n } from "@/lib/i18n";
 
 interface PaperToolsAreaProps {
   paper: Paper;
@@ -90,6 +91,8 @@ export default function PaperToolsArea({
   const [notes, setNotes] = useState<Note[]>([]);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const [highlightsLoading, setHighlightsLoading] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
   const [highlightError, setHighlightError] = useState<string | null>(null);
@@ -519,10 +522,10 @@ export default function PaperToolsArea({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-56">
                   <DropdownMenuItem onClick={() => setShowAddLiteratureDialog(true)}>
-                    Literature Note
+                    {isZh ? "文献笔记" : "Literature Note"}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowAddPermanentDialog(true)}>
-                    Permanent Note
+                    {isZh ? "永久笔记" : "Permanent Note"}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -534,7 +537,7 @@ export default function PaperToolsArea({
                 <Input
                   className="pl-9 text-sm"
                   onChange={(e) => setNoteSearch(e.target.value)}
-                  placeholder="Search notes for this paper"
+                  placeholder={isZh ? "搜索这篇论文的阅读笔记" : "Search notes for this paper"}
                   value={noteSearch}
                 />
               </div>
@@ -601,7 +604,7 @@ export default function PaperToolsArea({
               <Input
                 className="pl-9 text-sm"
                 onChange={(e) => setHighlightSearch(e.target.value)}
-                placeholder="Search highlights for this paper"
+                placeholder={isZh ? "搜索这篇论文的高亮内容" : "Search highlights for this paper"}
                 value={highlightSearch}
               />
             </div>
@@ -660,7 +663,7 @@ export default function PaperToolsArea({
       <Dialog open={!!selectedNote} onOpenChange={(open) => !open && setSelectedNote(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Read Note</DialogTitle>
+            <DialogTitle>{isZh ? "阅读笔记" : "Read Note"}</DialogTitle>
           </DialogHeader>
           {selectedNote ? (
             <div className="space-y-4 max-h-[70vh] overflow-auto pr-1">
@@ -676,14 +679,14 @@ export default function PaperToolsArea({
 
               {selectedNote.description ? (
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Description</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{isZh ? "描述" : "Description"}</p>
                   <p className="whitespace-pre-wrap text-sm text-slate-700">{selectedNote.description}</p>
                 </div>
               ) : null}
 
               {selectedNote.keywords?.length ? (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Keywords</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{isZh ? "关键词" : "Keywords"}</p>
                   <div className="flex flex-wrap gap-2">
                     {selectedNote.keywords.map((keyword) => (
                       <Badge key={keyword} variant="outline">{keyword}</Badge>
@@ -694,7 +697,7 @@ export default function PaperToolsArea({
 
               {selectedNoteContent ? (
                 <div className="space-y-3 rounded-lg border bg-slate-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Structured Content</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{isZh ? "结构化内容" : "Structured Content"}</p>
                   {Object.entries(selectedNoteContent).map(([key, value]) => (
                     <div key={key} className="space-y-1">
                       <p className="text-xs font-medium text-slate-500">{key}</p>
@@ -706,7 +709,7 @@ export default function PaperToolsArea({
                 </div>
               ) : selectedNote.content ? (
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Content</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{isZh ? "内容" : "Content"}</p>
                   <div className="rounded-lg border bg-slate-50 p-4 whitespace-pre-wrap break-words text-sm text-slate-800">
                     {selectedNote.content}
                   </div>
@@ -745,7 +748,7 @@ export default function PaperToolsArea({
       <Dialog open={!!selectedHighlight} onOpenChange={(open) => !open && setSelectedHighlight(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Read Highlight</DialogTitle>
+            <DialogTitle>{isZh ? "阅读高亮内容" : "Read Highlight"}</DialogTitle>
           </DialogHeader>
           {selectedHighlight ? (
             <div className="space-y-4 max-h-[70vh] overflow-auto pr-1">
@@ -759,7 +762,7 @@ export default function PaperToolsArea({
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Highlighted Text</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{isZh ? "高亮文本" : "Highlighted Text"}</p>
                 <div className="rounded-lg border bg-amber-50 p-4 whitespace-pre-wrap break-words text-sm text-slate-800">
                   {selectedHighlight.text}
                 </div>
@@ -767,7 +770,7 @@ export default function PaperToolsArea({
 
               {selectedHighlight.note ? (
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Attached Note</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{isZh ? "附加笔记" : "Attached Note"}</p>
                   <div className="rounded-lg border bg-slate-50 p-4 whitespace-pre-wrap break-words text-sm text-slate-800">
                     {selectedHighlight.note}
                   </div>
@@ -796,7 +799,7 @@ export default function PaperToolsArea({
       <Dialog open={showAddLiteratureDialog} onOpenChange={setShowAddLiteratureDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Add Literature Note</DialogTitle>
+            <DialogTitle>{isZh ? "添加文献笔记" : "Add Literature Note"}</DialogTitle>
           </DialogHeader>
           <LiteratureNoteForm paper={paper} onSubmit={handleAddLiteratureFormNote} />
         </DialogContent>
@@ -806,7 +809,7 @@ export default function PaperToolsArea({
       <Dialog open={showAddPermanentDialog} onOpenChange={setShowAddPermanentDialog}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Add Permanent Note</DialogTitle>
+            <DialogTitle>{isZh ? "添加永久笔记" : "Add Permanent Note"}</DialogTitle>
           </DialogHeader>
           <PermanentNoteForm
             existingNoteOptions={linkableNoteOptions}
@@ -825,31 +828,31 @@ export default function PaperToolsArea({
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit Note</DialogTitle>
+            <DialogTitle>{isZh ? "编辑笔记" : "Edit Note"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
               <label className="text-sm font-semibold">Title *</label>
               <Input
-                placeholder="Note title"
+                placeholder={isZh ? "笔记标题" : "Note title"}
                 value={editForm.title}
                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                 className="mt-1"
               />
             </div>
             <div>
-              <label className="text-sm font-semibold">Description</label>
+              <label className="text-sm font-semibold">{isZh ? "描述" : "Description"}</label>
               <Textarea
-                placeholder="Note description / quote"
+                placeholder={isZh ? "笔记描述/引用" : "Note description / quote"}
                 value={editForm.description}
                 onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                 className="mt-1 h-16 text-xs"
               />
             </div>
             <div>
-              <label className="text-sm font-semibold">Content / Comment</label>
+              <label className="text-sm font-semibold">{isZh ? "内容/评论" : "Content / Comment"}</label>
               <Textarea
-                placeholder="Your analysis or thoughts"
+                placeholder={isZh ? "您的分析或想法" : "Your analysis or thoughts"}
                 value={editForm.content}
                 onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
                 className="mt-1 h-16 text-xs"
@@ -857,19 +860,19 @@ export default function PaperToolsArea({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-semibold">Page</label>
+                <label className="text-sm font-semibold">{isZh ? "页面" : "Page"}</label>
                 <Input
                   type="number"
-                  placeholder="Page number"
+                  placeholder={isZh ? "页码" : "Page number"}
                   value={editForm.page}
                   onChange={(e) => setEditForm({ ...editForm, page: e.target.value })}
                   className="mt-1 text-sm"
                 />
               </div>
               <div>
-                <label className="text-sm font-semibold">Keywords</label>
+                <label className="text-sm font-semibold">{isZh ? "关键词" : "Keywords"}</label>
                 <Input
-                  placeholder="Comma separated"
+                  placeholder={isZh ? "逗号分隔" : "Comma separated"}
                   value={editForm.keywords}
                   onChange={(e) => setEditForm({ ...editForm, keywords: e.target.value })}
                   className="mt-1 text-sm"
@@ -877,7 +880,7 @@ export default function PaperToolsArea({
               </div>
             </div>
             <div>
-              <label className="text-sm font-semibold">Note Type</label>
+              <label className="text-sm font-semibold">{isZh ? "笔记类型" : "Note Type"}</label>
               <Select
                 value={editForm.note_type}
                 onValueChange={(v: any) => setEditForm({ ...editForm, note_type: v })}

@@ -24,17 +24,21 @@ import {
 } from "lucide-react";
 import { paperAPI, type Paper as ApiPaper } from "@/lib/manuscript-api";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 // Tag Input Component
 function TagInput({
   tags,
   onTagsChange,
-  placeholder = "Add tag...",
+  placeholder,
 }: {
   tags: string[];
   onTagsChange: (tags: string[]) => void;
   placeholder?: string;
 }) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
+  const resolvedPlaceholder = placeholder || (isZh ? "添加标签..." : "Add tag...");
   const [input, setInput] = useState("");
 
   const addTag = () => {
@@ -75,7 +79,7 @@ function TagInput({
               addTag();
             }
           }}
-          placeholder={placeholder}
+          placeholder={resolvedPlaceholder}
           className="text-xs h-7"
         />
         <Button
@@ -92,6 +96,8 @@ function TagInput({
 }
 
 export default function PdfViewer() {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const { paperId } = useParams<{ paperId: string }>();
   const [paper, setPaper] = useState<ApiPaper | null>(null);
   const [loadingPaper, setLoadingPaper] = useState(true);
@@ -168,7 +174,7 @@ export default function PdfViewer() {
   if (loadingPaper) {
     return (
       <AppLayout>
-        <div className="p-6 text-sm text-slate-400">Loading paper...</div>
+        <div className="p-6 text-sm text-slate-400">{isZh ? "加载论文..." : "Loading paper..."}</div>
       </AppLayout>
     );
   }
@@ -178,8 +184,8 @@ export default function PdfViewer() {
       <AppLayout>
         <div className="p-6">
           <div className="rounded-lg border border-slate-700/50 p-6 text-center">
-            <h2 className="text-lg font-semibold text-slate-100">Paper not found</h2>
-            <p className="text-sm text-slate-400 mt-2">This page only shows real paper records from your project data.</p>
+            <h2 className="text-lg font-semibold text-slate-100">{isZh ? "未找到论文" : "Paper not found"}</h2>
+            <p className="text-sm text-slate-400 mt-2">{isZh ? "此页面仅显示您项目数据中的真实论文记录。" : "This page only shows real paper records from your project data."}</p>
           </div>
         </div>
       </AppLayout>
@@ -231,7 +237,7 @@ export default function PdfViewer() {
               <div className="flex items-center justify-between border-b border-slate-700/50 bg-slate-800 px-3 py-2">
                 <div className="flex items-center gap-2 text-slate-700">
                   <Eye className="h-4 w-4" />
-                  <span className="text-sm font-medium">PDF Viewer</span>
+                  <span className="text-sm font-medium">{isZh ? "PDF阅读器" : "PDF Viewer"}</span>
                 </div>
                 <Button
                   className="gap-2"
@@ -324,18 +330,18 @@ export default function PdfViewer() {
                           <Input
                             value={newHText}
                             onChange={(e) => setNewHText(e.target.value)}
-                            placeholder="Select or type highlighted text..."
+                            placeholder={isZh ? "选择或输入高亮显示的文本..." : "Select or type highlighted text..."}
                             className="text-xs"
                           />
                           <Textarea
                             value={newHNote}
                             onChange={(e) => setNewHNote(e.target.value)}
-                            placeholder="Your note..."
+                            placeholder={isZh ? "你的笔记..." : "Your note..."}
                             rows={2}
                             className="text-xs"
                           />
                           <div className="flex gap-2 items-center">
-                            <span className="text-xs text-slate-500">Color:</span>
+                            <span className="text-xs text-slate-500">{isZh ? "颜色：" : "Color:"}</span>
                             <button
                               onClick={() => setNewHColor("yellow")}
                               className={cn(
@@ -354,7 +360,7 @@ export default function PdfViewer() {
                           <TagInput
                             tags={newHTags}
                             onTagsChange={setNewHTags}
-                            placeholder="Add tags..."
+                            placeholder={isZh ? "添加标签..." : "Add tags..."}
                           />
                           <div className="p-1.5 bg-slate-800/40 rounded text-[10px] text-slate-500">
                             📎 Auto-citation: {citation}
@@ -444,7 +450,7 @@ export default function PdfViewer() {
                   {sidebarTab === "lit-note" && (
                     <div className="space-y-3">
                       <div className="p-2 bg-blue-50/50 rounded-lg border border-blue-100">
-                        <p className="text-[10px] text-slate-500 mb-0.5">Writing note for:</p>
+                        <p className="text-[10px] text-slate-500 mb-0.5">{isZh ? "正在为：" : "Writing note for:"}</p>
                         <p className="text-xs font-medium text-slate-700 truncate">
                           {paper.title}
                         </p>
@@ -455,7 +461,7 @@ export default function PdfViewer() {
                       <Input
                         value={litNoteTitle}
                         onChange={(e) => setLitNoteTitle(e.target.value)}
-                        placeholder="Note title..."
+                        placeholder={isZh ? "笔记标题..." : "Note title..."}
                         className="text-sm"
                       />
                       <Textarea
@@ -465,13 +471,13 @@ export default function PdfViewer() {
                           setLitNoteSaved(false);
                         }}
                         rows={10}
-                        placeholder="Write your literature note here. Key takeaways, arguments, evidence..."
+                        placeholder={isZh ? "在此处编写你的文献笔记。关键要点，论点，证据..." : "Write your literature note here. Key takeaways, arguments, evidence..."}
                         className="text-sm font-mono"
                       />
                       <TagInput
                         tags={litNoteTags}
                         onTagsChange={setLitNoteTags}
-                        placeholder="Add tags..."
+                        placeholder={isZh ? "添加标签..." : "Add tags..."}
                       />
                       {litNoteSaved && (
                         <div className="flex items-center gap-1 text-xs text-emerald-600">
@@ -513,7 +519,7 @@ export default function PdfViewer() {
                       <Input
                         value={permNoteTitle}
                         onChange={(e) => setPermNoteTitle(e.target.value)}
-                        placeholder="Permanent note title..."
+                        placeholder={isZh ? "永久笔记标题..." : "Permanent note title..."}
                         className="text-sm"
                       />
                       <Textarea
@@ -523,13 +529,13 @@ export default function PdfViewer() {
                           setPermNoteSaved(false);
                         }}
                         rows={10}
-                        placeholder="Synthesize your insight across multiple sources..."
+                        placeholder={isZh ? "在多个来源中综合你的见解..." : "Synthesize your insight across multiple sources..."}
                         className="text-sm font-mono"
                       />
                       <TagInput
                         tags={permNoteTags}
                         onTagsChange={setPermNoteTags}
-                        placeholder="Add tags..."
+                        placeholder={isZh ? "添加标签..." : "Add tags..."}
                       />
                       {permNoteSaved && (
                         <div className="flex items-center gap-1 text-xs text-emerald-600">

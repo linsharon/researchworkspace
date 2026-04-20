@@ -29,6 +29,7 @@ import {
 import FloatingAnnotationMenu from "@/components/pdf/FloatingAnnotationMenu";
 import { LiteratureNoteForm, type LiteratureNote } from "@/components/reading/LiteratureNoteForm";
 import { conceptAPI, highlightAPI, noteAPI, type Concept, type Highlight, type Note, type Paper } from "@/lib/manuscript-api";
+import { useI18n } from "@/lib/i18n";
 
 export interface PdfViewerProps {
   pdfUrl?: string;
@@ -121,7 +122,9 @@ interface LiteratureNoteContentMeta {
 
 const normalizeText = (value: string) => value.replace(/\s+/g, " ").trim().toLowerCase();
 
-const parseJsonObject = <T extends Record<string, unknown>>(value?: string): T | null => {
+const isNonNull = <T,>(value: T | null): value is T => value !== null;
+
+const parseJsonObject = <T extends object>(value?: string): T | null => {
   if (!value) return null;
   try {
     const parsed = JSON.parse(value);
@@ -147,7 +150,7 @@ const hexToRgba = (hexColor: string, alpha: number) => {
 
 export default function PdfViewer({
   pdfUrl,
-  title = "PDF Viewer",
+  title,
   totalPages,
   showTitleBar = true,
   showToolbar = false,
@@ -172,6 +175,9 @@ export default function PdfViewer({
   onSelectionChange,
   paper,
 }: PdfViewerProps) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
+  const resolvedTitle = title || (isZh ? "PDF阅读器" : "PDF Viewer");
 
   const CONCEPT_COLORS = [
     { value: "#22d3ee", label: "Cyan" },
@@ -257,7 +263,7 @@ export default function PdfViewer({
           concept,
         };
       })
-      .filter((item): item is AnnotationBandMarker => Boolean(item));
+      .filter(isNonNull);
   }, [conceptsForBands, paperId]);
 
   const noteBands = useMemo<AnnotationBandMarker[]>(() => {
@@ -280,7 +286,7 @@ export default function PdfViewer({
           note,
         };
       })
-      .filter((item): item is AnnotationBandMarker => Boolean(item));
+      .filter(isNonNull);
   }, [notesForBands]);
 
   const highlightBands = useMemo<AnnotationBandMarker[]>(() => {
@@ -302,7 +308,7 @@ export default function PdfViewer({
           highlight: item,
         };
       })
-      .filter((item): item is AnnotationBandMarker => Boolean(item));
+      .filter(isNonNull);
   }, [highlightsForBands]);
 
   const annotationBands = useMemo(() => {
@@ -464,12 +470,12 @@ export default function PdfViewer({
         setHighlightsForBands((prev) => [...prev, savedHighlight]);
         onHighlightCreated?.(savedHighlight);
         window.dispatchEvent(new CustomEvent(HIGHLIGHTS_UPDATED_EVENT));
-        toast.success("Highlight saved", {
+        toast.success(isZh ? "高亮保存" : "Highlight saved", {
           description: "Added to Highlights tab.",
         });
       } catch (error) {
         console.error("Failed to save highlight:", error);
-        toast.error("Save failed", {
+        toast.error(isZh ? "保存失败" : "Save failed", {
           description: "Unable to save this highlight.",
         });
       }
@@ -661,7 +667,7 @@ export default function PdfViewer({
       window.localStorage.setItem(CONCEPTS_STORAGE_KEY, JSON.stringify([...globalConcepts, conceptItem]));
       window.localStorage.setItem(`rw-concepts-${projectId}`, JSON.stringify([...projectConcepts, conceptItem]));
       window.dispatchEvent(new CustomEvent(CONCEPTS_UPDATED_EVENT));
-      toast.success("Keyword saved", {
+      toast.success(isZh ? "关键词已保存" : "Keyword saved", {
         description: "Added to Artifact Center keywords.",
       });
     }
@@ -979,7 +985,7 @@ export default function PdfViewer({
     >
       {showTitleBar ? (
         <div className="border-b border-slate-700/50 bg-slate-800/40 px-3 py-2 text-sm font-medium text-slate-700">
-          {title}
+          {resolvedTitle}
         </div>
       ) : null}
 
@@ -1061,7 +1067,7 @@ export default function PdfViewer({
                 renderLoader={(percentages: number) => (
                   <div className="flex h-full min-h-0 items-center justify-center bg-slate-800/40 px-6 text-center">
                     <div className="space-y-3">
-                      <div className="text-sm font-medium text-slate-700">Loading PDF...</div>
+                      <div className="text-sm font-medium text-slate-700">{isZh ? "加载PDF..." : "Loading PDF..."}</div>
                       <div className="text-xs text-slate-500">{Math.round(percentages)}%</div>
                     </div>
                   </div>
@@ -1160,14 +1166,14 @@ export default function PdfViewer({
       <Dialog open={showConceptDialog} onOpenChange={setShowConceptDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add New Keyword</DialogTitle>
-            <DialogDescription className="sr-only">Save highlighted text as a keyword</DialogDescription>
+            <DialogTitle>{isZh ? "添加新关键词" : "Add New Keyword"}</DialogTitle>
+            <DialogDescription className="sr-only">{isZh ? "将高亮文本保存为关键词" : "Save highlighted text as a keyword"}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             {/* Selected text preview */}
             <div className="rounded-lg border border-amber-200/40 bg-amber-500/10 p-3 text-sm text-amber-200">
-              <p className="text-[10px] text-amber-400/70 mb-1 font-medium uppercase tracking-wide">Selected text</p>
+              <p className="text-[10px] text-amber-400/70 mb-1 font-medium uppercase tracking-wide">{isZh ? "选中的文本" : "Selected text"}</p>
               {selectionState.text || viewerState.selectedText}
             </div>
 
@@ -1178,18 +1184,18 @@ export default function PdfViewer({
               <Input
                 value={conceptTitle}
                 onChange={event => setConceptTitle(event.target.value)}
-                placeholder="Enter keyword name..."
+                placeholder={isZh ? "输入关键词名称..." : "Enter keyword name..."}
                 className="text-sm"
                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void handleSaveConcept(); } }}
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-700">Description</label>
+              <label className="text-xs font-medium text-slate-700">{isZh ? "描述" : "Description"}</label>
               <Textarea
                 value={conceptDescription}
                 onChange={event => setConceptDescription(event.target.value)}
-                placeholder="What does this keyword mean in your research context? Add details, definitions, or notes..."
+                placeholder={isZh ? "在您的研究语境中，这个关键词是什么意思？添加细节、定义或注释..." : "What does this keyword mean in your research context? Add details, definitions, or notes..."}
                 rows={3}
                 className="text-sm resize-none"
               />
@@ -1197,24 +1203,24 @@ export default function PdfViewer({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">Category</label>
+                <label className="text-xs font-medium text-slate-700">{isZh ? "类别" : "Category"}</label>
                 <Select value={conceptCategory} onValueChange={setConceptCategory}>
                   <SelectTrigger className="text-sm h-9">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Concept">Concept</SelectItem>
-                    <SelectItem value="Construct">Construct</SelectItem>
-                    <SelectItem value="Theory">Theory</SelectItem>
-                    <SelectItem value="Framework">Framework</SelectItem>
-                    <SelectItem value="Method">Method</SelectItem>
-                    <SelectItem value="Variable">Variable</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
+                    <SelectItem value="Concept">{isZh ? "概念" : "Concept"}</SelectItem>
+                    <SelectItem value="Construct">{isZh ? "构念" : "Construct"}</SelectItem>
+                    <SelectItem value="Theory">{isZh ? "理论" : "Theory"}</SelectItem>
+                    <SelectItem value="Framework">{isZh ? "框架" : "Framework"}</SelectItem>
+                    <SelectItem value="Method">{isZh ? "方法" : "Method"}</SelectItem>
+                    <SelectItem value="Variable">{isZh ? "变量" : "Variable"}</SelectItem>
+                    <SelectItem value="Other">{isZh ? "其他" : "Other"}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-700">Color</label>
+                <label className="text-xs font-medium text-slate-700">{isZh ? "颜色" : "Color"}</label>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {CONCEPT_COLORS.map((c) => (
                     <button
@@ -1238,7 +1244,7 @@ export default function PdfViewer({
             {/* Paper metadata */}
             {paper && (
               <div className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-3 space-y-1">
-                <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">Source Paper</p>
+                <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">{isZh ? "来源论文" : "Source Paper"}</p>
                 <p className="text-xs font-medium text-slate-200 line-clamp-2">{paper.title}</p>
                 {paper.authors?.length > 0 && (
                   <p className="text-[11px] text-slate-400">{paper.authors.join(", ")}</p>
@@ -1252,7 +1258,7 @@ export default function PdfViewer({
 
             {conceptTitle.trim() && (
               <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
-                <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">Preview</p>
+                <p className="text-[10px] text-slate-400 mb-1.5 font-medium uppercase tracking-wide">{isZh ? "预览" : "Preview"}</p>
                 <Badge
                   className="text-xs px-3 py-1 gap-1 border"
                   style={{ backgroundColor: `${conceptColor}18`, borderColor: `${conceptColor}55`, color: conceptColor }}

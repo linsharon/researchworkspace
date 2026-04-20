@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosHeaders, AxiosInstance } from 'axios';
 import { getAPIBaseURL } from './config';
 import { clearAuthSession, getAuthToken } from './session';
 
@@ -16,8 +16,9 @@ class RPApi {
     this.client.interceptors.request.use((config) => {
       const token = getAuthToken();
       if (token) {
-        config.headers = config.headers || {};
-        config.headers.Authorization = `Bearer ${token}`;
+        const headers = AxiosHeaders.from(config.headers);
+        headers.set('Authorization', `Bearer ${token}`);
+        config.headers = headers;
       }
       return config;
     });

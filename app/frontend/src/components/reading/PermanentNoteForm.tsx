@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import NoteTagInput from "./NoteTagInput";
+import { useI18n } from "@/lib/i18n";
 
 export type LinkRelationType = "Supports" | "Contradicts" | "Refines";
 
@@ -59,6 +60,8 @@ export function PermanentNoteForm({
   initialValue,
   onSubmit,
 }: PermanentNoteFormProps) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const [form, setForm] = useState<PermanentNote>({
     ...defaultPermanentNote,
     ...initialValue,
@@ -145,7 +148,7 @@ export function PermanentNoteForm({
       <CardHeader>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <CardTitle className="text-cyan-400">Permanent Note</CardTitle>
+            <CardTitle className="text-cyan-400">{isZh ? "永久笔记" : "Permanent Note"}</CardTitle>
             <CardDescription className="text-cyan-600">
               Distill an atomic claim, then wire it into your note network.
             </CardDescription>
@@ -159,10 +162,10 @@ export function PermanentNoteForm({
       <CardContent>
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <Label htmlFor="perm-title">Atomic Title (Declarative Statement)</Label>
+            <Label htmlFor="perm-title">{isZh ? "原子标题（陈述句）" : "Atomic Title (Declarative Statement)"}</Label>
             <Input
               id="perm-title"
-              placeholder="e.g., Knowledge workers retain ideas better with atomic note granularity."
+              placeholder={isZh ? "例如，知识工作者以原子笔记的粒度更好地保留想法。" : "e.g., Knowledge workers retain ideas better with atomic note granularity."}
               value={form.atomicTitle}
               onChange={event => {
                 setForm(prev => ({ ...prev, atomicTitle: event.target.value }));
@@ -173,7 +176,7 @@ export function PermanentNoteForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="perm-main">Main Argument</Label>
+            <Label htmlFor="perm-main">{isZh ? "主要论点" : "Main Argument"}</Label>
             <Textarea
               id="perm-main"
               rows={7}
@@ -181,38 +184,38 @@ export function PermanentNoteForm({
               value={form.mainArgument}
               onChange={event => setForm(prev => ({ ...prev, mainArgument: event.target.value }))}
             />
-            <p className="text-xs text-slate-500">Markdown editor placeholder: replace with rich editor later if needed.</p>
+            <p className="text-xs text-slate-500">{isZh ? "Markdown编辑器占位符：如有需要，稍后用富编辑器替换。" : "Markdown editor placeholder: replace with rich editor later if needed."}</p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="perm-trigger">Retrieval Trigger</Label>
+            <Label htmlFor="perm-trigger">{isZh ? "检索触发器" : "Retrieval Trigger"}</Label>
             <Input
               id="perm-trigger"
-              placeholder="What query, context, or problem should surface this note?"
+              placeholder={isZh ? "什么查询、上下文或问题应该显示这条笔记？" : "What query, context, or problem should surface this note?"}
               value={form.retrievalTrigger}
               onChange={event => setForm(prev => ({ ...prev, retrievalTrigger: event.target.value }))}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="perm-keywords">Keywords</Label>
+            <Label htmlFor="perm-keywords">{isZh ? "关键词" : "Keywords"}</Label>
             <NoteTagInput
               onChange={keywords => setForm(prev => ({ ...prev, keywords }))}
-              placeholder="Type keyword and press Enter"
+              placeholder={isZh ? "输入关键词后按回车键" : "Type keyword and press Enter"}
               tags={form.keywords}
             />
           </div>
 
           <section className="space-y-3 rounded-lg border border-emerald-200 bg-[#0d1b30] p-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-100">Bidirectional Links</h3>
+              <h3 className="text-sm font-semibold text-slate-100">{isZh ? "双向链接" : "Bidirectional Links"}</h3>
               <Button className="gap-1" onClick={addLink} size="sm" type="button" variant="outline">
                 <Plus className="h-4 w-4" /> Add Link
               </Button>
             </div>
 
             {form.links.length === 0 ? (
-              <p className="text-sm text-slate-500">No links yet. Add at least one to position this note in your graph.</p>
+              <p className="text-sm text-slate-500">{isZh ? "还没有链接。至少添加一个以在您的图中定位此笔记。" : "No links yet. Add at least one to position this note in your graph."}</p>
             ) : null}
 
             <div className="space-y-3">
@@ -220,7 +223,7 @@ export function PermanentNoteForm({
                 <div className="grid gap-2 rounded-md border border-slate-700/50 p-3 md:grid-cols-[1fr_180px_auto]" key={`${index}-${link.targetNoteId}`}>
                   <Combobox
                     options={noteIdOptions}
-                    placeholder="Search note ID..."
+                    placeholder={isZh ? "搜索笔记ID..." : "Search note ID..."}
                     searchPlaceholder="Search notes by ID/title"
                     emptyText="No matching notes"
                     value={link.targetNoteId}
@@ -234,12 +237,12 @@ export function PermanentNoteForm({
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Relation" />
+                      <SelectValue placeholder={isZh ? "关系" : "Relation"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Supports">Supports</SelectItem>
-                      <SelectItem value="Contradicts">Contradicts</SelectItem>
-                      <SelectItem value="Refines">Refines</SelectItem>
+                      <SelectItem value="Supports">{isZh ? "支持" : "Supports"}</SelectItem>
+                      <SelectItem value="Contradicts">{isZh ? "互相矛盾" : "Contradicts"}</SelectItem>
+                      <SelectItem value="Refines">{isZh ? "细化" : "Refines"}</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -260,12 +263,12 @@ export function PermanentNoteForm({
           <section className="space-y-2 rounded-lg border border-slate-700/50 bg-[#0d1b30] p-4">
             <div className="flex items-center gap-2">
               <Link2 className="h-4 w-4 text-slate-600" />
-              <h3 className="text-sm font-semibold text-slate-100">Evidence Link</h3>
+              <h3 className="text-sm font-semibold text-slate-100">{isZh ? "证据链接" : "Evidence Link"}</h3>
             </div>
 
             <Combobox
               options={evidenceOptions}
-              placeholder="Attach one Literature Note as evidence"
+              placeholder={isZh ? "附加一个文献笔记作为证据" : "Attach one Literature Note as evidence"}
               searchPlaceholder="Search literature notes"
               emptyText="No literature notes found"
               value={form.evidenceLiteratureNoteId}

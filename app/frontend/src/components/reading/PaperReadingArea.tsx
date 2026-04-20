@@ -27,6 +27,9 @@ import type { Paper, Highlight } from "@/lib/manuscript-api";
 import { paperAPI } from "@/lib/manuscript-api";
 import { pdfAPI } from "@/lib/pdf-api";
 import PdfViewer from "@/components/pdf/PdfViewer";
+import { useI18n } from "@/lib/i18n";
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
 
 interface PaperReadingAreaProps {
   paper: Paper;
@@ -181,6 +184,8 @@ export default function PaperReadingArea({
   onConceptCreated,
   onAskAI,
 }: PaperReadingAreaProps) {
+  const { lang } = useI18n();
+  const isZh = lang === "zh";
   const [titleExpanded, setTitleExpanded] = useState(false);
   const [resolvedPdfUrl, setResolvedPdfUrl] = useState<string | null>(null);
   const [resolvingPdfUrl, setResolvingPdfUrl] = useState(false);
@@ -292,7 +297,7 @@ export default function PaperReadingArea({
       window.setTimeout(() => setCopiedUploadLog(false), 2000);
     } catch (error) {
       console.error("Failed to copy upload error log:", error);
-      alert("Failed to copy the upload error log. You can still select and copy it manually.");
+      alert(isZh ? "无法复制上传错误日志。您仍然可以手动选择并复制。" : "Failed to copy the upload error log. You can still select and copy it manually.");
     }
   };
 
@@ -305,7 +310,7 @@ export default function PaperReadingArea({
       window.setTimeout(() => setCopiedPreviewLog(false), 2000);
     } catch (error) {
       console.error("Failed to copy preview error log:", error);
-      alert("Failed to copy the preview error log. You can still select and copy it manually.");
+      alert(isZh ? "无法复制预览错误日志。您仍然可以手动选择并复制。" : "Failed to copy the preview error log. You can still select and copy it manually.");
     }
   };
 
@@ -315,7 +320,7 @@ export default function PaperReadingArea({
 
   const handleDeletePDF = async () => {
     if (!paper.pdf_path) return;
-    const confirmed = window.confirm("Delete current PDF file from this paper?");
+    const confirmed = window.confirm(isZh ? "从这篇论文中删除当前PDF文件？" : "Delete current PDF file from this paper?");
     if (!confirmed) return;
 
     try {
@@ -323,7 +328,7 @@ export default function PaperReadingArea({
       onChanged("pdf-file-updated");
     } catch (error) {
       console.error("Failed to delete PDF:", error);
-      alert("Failed to delete PDF. Please try again.");
+      alert(isZh ? "删除PDF失败。请再试一次。" : "Failed to delete PDF. Please try again.");
     }
   };
 
@@ -342,7 +347,7 @@ export default function PaperReadingArea({
             <div className="flex-1 text-left">
               <div className="font-medium text-slate-200 line-clamp-1">{paper.title}</div>
               {!titleExpanded ? (
-                <div className="text-xs text-slate-500 mt-1">Show paper details</div>
+                <div className="text-xs text-slate-500 mt-1">{isZh ? "显示论文详情" : "Show paper details"}</div>
               ) : null}
             </div>
             {titleExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -430,7 +435,7 @@ export default function PaperReadingArea({
           <div className="px-4 pt-4">
             <Alert className="border-rose-500/40 bg-rose-950/30 text-rose-100">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>PDF upload failed</AlertTitle>
+              <AlertTitle>{isZh ? "PDF上传失败" : "PDF upload failed"}</AlertTitle>
               <AlertDescription>
                 <p className="mb-3 text-sm text-rose-100/90">
                   Detailed error log is shown below. Copy it and paste it into codespace for further debugging.
@@ -454,7 +459,7 @@ export default function PaperReadingArea({
             {paper.pdf_path?.startsWith("local://") ? (
               <Alert className="border-yellow-500/40 bg-yellow-950/30 text-yellow-100 mb-4">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>PDF file was lost after backend update</AlertTitle>
+                <AlertTitle>{isZh ? "PDF文件在后端更新后丢失" : "PDF file was lost after backend update"}</AlertTitle>
                 <AlertDescription>
                   <p className="mb-3 text-sm text-yellow-100/90">
                     This PDF was stored locally and was removed when the backend was redeployed. Please re-upload the file to continue.
@@ -474,7 +479,7 @@ export default function PaperReadingArea({
             ) : null}
             <Alert className="border-amber-500/40 bg-amber-950/30 text-amber-100">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>PDF preview resolve failed</AlertTitle>
+              <AlertTitle>{isZh ? "PDF预览解析失败" : "PDF preview resolve failed"}</AlertTitle>
               <AlertDescription>
                 <p className="mb-3 text-sm text-amber-100/90">
                   Detailed error log is shown below. Copy it for debugging if needed.
@@ -501,7 +506,7 @@ export default function PaperReadingArea({
                 size="sm"
                 variant="ghost"
                 className="h-7 px-2 text-[11px] text-slate-300 hover:text-white"
-                title="Download PDF"
+                title={isZh ? "下载PDF" : "Download PDF"}
                 onClick={async () => {
                   try {
                     const { url, filename } = await paperAPI.downloadPdf(paper.id);
@@ -511,7 +516,7 @@ export default function PaperReadingArea({
                     a.click();
                     window.setTimeout(() => URL.revokeObjectURL(url), 5000);
                   } catch {
-                    alert("Download failed. Please try again.");
+                    alert(isZh ? "下载失败。请重试。" : "Download failed. Please try again.");
                   }
                 }}
               >
@@ -523,7 +528,7 @@ export default function PaperReadingArea({
                 size="sm"
                 variant="ghost"
                 className="h-7 px-2 text-[11px] text-slate-300 hover:text-white"
-                title="Replace PDF"
+                title={isZh ? "替换PDF" : "Replace PDF"}
                 disabled={isBusyUploading}
                 onClick={handleReplacePDF}
               >
@@ -535,7 +540,7 @@ export default function PaperReadingArea({
                 size="sm"
                 variant="ghost"
                 className="h-7 px-2 text-[11px] text-rose-400 hover:text-rose-300"
-                title="Delete PDF"
+                title={isZh ? "删除PDF" : "Delete PDF"}
                 disabled={isBusyUploading}
                 onClick={handleDeletePDF}
               >
@@ -550,7 +555,7 @@ export default function PaperReadingArea({
                 size="sm"
                 variant="ghost"
                 className="h-7 w-7 p-0 text-slate-300 hover:text-white"
-                title="Zoom out"
+                title={isZh ? "缩小" : "Zoom out"}
                 onClick={() => setZoomLevel(prev => Math.max(30, prev - 10))}
               >
                 <ZoomOut className="h-3.5 w-3.5" />
@@ -560,7 +565,7 @@ export default function PaperReadingArea({
                 size="sm"
                 variant="ghost"
                 className="h-7 w-7 p-0 text-slate-300 hover:text-white"
-                title="Zoom in"
+                title={isZh ? "放大" : "Zoom in"}
                 onClick={() => setZoomLevel(prev => Math.min(300, prev + 10))}
               >
                 <ZoomIn className="h-3.5 w-3.5" />
@@ -612,7 +617,7 @@ export default function PaperReadingArea({
             <div className="text-center space-y-4 px-6">
               <FileText className="h-16 w-16 mx-auto text-gray-300" />
               <div>
-                <h3 className="font-semibold text-gray-700">No PDF Available</h3>
+                <h3 className="font-semibold text-gray-700">{isZh ? "没有可用的PDF" : "No PDF Available"}</h3>
                 <p className="text-sm text-gray-600 mt-1">
                   This paper does not have an attached PDF yet. Upload one to start annotation.
                 </p>
