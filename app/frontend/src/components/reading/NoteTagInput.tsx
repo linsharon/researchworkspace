@@ -41,7 +41,7 @@ export default function NoteTagInput({
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
         {tags.map(tag => (
-          <Badge className="gap-1 bg-slate-100 text-slate-700 hover:bg-slate-200" key={tag} variant="secondary">
+          <Badge className="gap-1 badge-tag-chip" key={tag} variant="secondary">
             {tag}
             <button
               aria-label={`Remove keyword ${tag}`}

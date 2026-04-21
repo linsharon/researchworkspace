@@ -773,10 +773,10 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                           <SelectTrigger
                             className={`h-7 min-w-[110px] text-xs border ${
                               paper.reading_status === "Completed"
-                                ? "bg-green-50 text-green-700 border-green-200"
+                                ? "bg-emerald-900/40 text-emerald-300 border-emerald-700/40"
                                 : paper.reading_status === "Reading"
-                                ? "bg-blue-50 text-blue-700 border-blue-200"
-                                : "bg-gray-50 text-gray-700 border-gray-200"
+                                ? "bg-blue-900/40 text-blue-300 border-blue-700/40"
+                                : "bg-slate-800/60 text-slate-400 border-slate-600/40"
                             }`}
                           >
                             <SelectValue />
@@ -827,10 +827,10 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
                         variant="outline"
                         className={`${
                           paper.relevance === "high"
-                            ? "bg-red-50 text-red-700"
+                            ? "bg-red-900/40 text-red-300"
                             : paper.relevance === "medium"
-                            ? "bg-yellow-50 text-yellow-700"
-                            : "bg-blue-50 text-blue-700"
+                            ? "bg-yellow-900/40 text-yellow-300"
+                            : "bg-blue-900/40 text-blue-300"
                         }`}
                       >
                         {paper.relevance === "high"

@@ -327,10 +327,13 @@
 }
 
 .workflow-content-btn-tab {
+  @apply inline-flex items-center justify-center gap-2 shrink-0 cursor-pointer;
   @apply h-8 px-3 rounded-md text-xs font-medium transition-all;
   @apply border border-input bg-input text-foreground dark:text-slate-200;
   @apply hover:bg-secondary dark:hover:bg-slate-700/70;
   @apply hover:text-foreground dark:hover:text-slate-100;
+  @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
+  @apply disabled:pointer-events-none disabled:opacity-50;
 }
 
 .workflow-content-btn-tab--active {
@@ -338,8 +341,12 @@
 }
 
 .workflow-filter-btn {
-  @apply h-8 px-3 text-xs text-foreground dark:text-slate-500;
+  @apply inline-flex items-center justify-center gap-2 shrink-0 cursor-pointer;
+  @apply h-8 px-3 rounded-md text-xs font-medium transition-all;
+  @apply text-foreground dark:text-slate-400;
   @apply hover:bg-secondary hover:text-foreground;
+  @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring;
+  @apply disabled:pointer-events-none disabled:opacity-50;
 }
 
 .workflow-filter-btn--compact {
@@ -360,6 +367,42 @@
 
 .app-btn-primary {
   @apply bg-cyan-600 hover:bg-cyan-700 text-white;
+}
+
+/* ── Semantic badge color utilities (dark-first palette) ───────────── */
+.badge-uploading {
+  @apply bg-cyan-900/50 border-cyan-700/40 text-cyan-300;
+}
+.badge-success {
+  @apply bg-emerald-900/50 border-emerald-700/40 text-emerald-300;
+}
+.badge-warning {
+  @apply bg-amber-900/50 border-amber-700/40 text-amber-300;
+}
+.badge-danger {
+  @apply bg-red-900/50 border-red-700/40 text-red-300;
+}
+.badge-info {
+  @apply bg-blue-900/50 border-blue-700/40 text-blue-300;
+}
+.badge-neutral {
+  @apply bg-slate-800/60 border-slate-600/40 text-slate-300;
+}
+.badge-tag-chip {
+  @apply bg-slate-700/60 border-slate-600/50 text-slate-200 hover:bg-slate-700/80;
+}
+/* Publication-type badges */
+.badge-pub-journal {
+  @apply bg-sky-900/40 border-sky-700/40 text-sky-300;
+}
+.badge-pub-conference {
+  @apply bg-violet-900/40 border-violet-700/40 text-violet-300;
+}
+.badge-pub-book {
+  @apply bg-amber-900/40 border-amber-700/40 text-amber-300;
+}
+.badge-pub-preprint {
+  @apply bg-emerald-900/40 border-emerald-700/40 text-emerald-300;
 }
 
 .landing-icon-cyan {

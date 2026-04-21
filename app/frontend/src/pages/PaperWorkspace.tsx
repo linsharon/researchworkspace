@@ -394,7 +394,7 @@ export default function PaperWorkspace() {
                   variant="outline"
                   className={cn(
                     "app-btn-compact",
-                    importedFromPdf && "bg-emerald-50 border-emerald-300 text-emerald-700"
+                    importedFromPdf && "badge-success"
                   )}
                   onClick={handleImportFromPdf}
                   disabled={importedFromPdf}
@@ -491,8 +491,8 @@ export default function PaperWorkspace() {
                         className={cn(
                           "text-xs px-2 py-1 rounded mb-2 inline-block",
                           ann.color === "yellow"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-green-100 text-green-800"
+                            ? "bg-yellow-900/40 text-yellow-200"
+                            : "bg-emerald-900/40 text-emerald-200"
                         )}
                       >
                         &ldquo;{ann.text}&rdquo;

@@ -1344,10 +1344,9 @@ export default function ArtifactCenter() {
                 ? keywordPackGroups.map(({ category, ids }) => {
                   const allSelected = ids.length > 0 && ids.every((id) => selectedForPack.has(conceptPackToken(id)));
                   return (
-                    <Button
+                    <button
                       key={category}
-                      size="sm"
-                      variant={allSelected ? "default" : "outline"}
+                      type="button"
                       className={cn(
                         "workflow-filter-btn workflow-filter-btn--compact",
                         allSelected && "workflow-filter-btn--active"
@@ -1355,16 +1354,15 @@ export default function ArtifactCenter() {
                       onClick={() => toggleSelectKeywordCategoryForPack(category)}
                     >
                       {category} ({ids.length})
-                    </Button>
+                    </button>
                   );
                 })
                 : artifactPackGroups.map(([type, items]) => {
                 const allSelected = items.every((item) => selectedForPack.has(artifactPackToken(item.id)));
                 return (
-                  <Button
+                  <button
                     key={type}
-                    size="sm"
-                    variant={allSelected ? "default" : "outline"}
+                    type="button"
                     className={cn(
                       "workflow-filter-btn workflow-filter-btn--compact",
                       allSelected && "workflow-filter-btn--active"
@@ -1372,7 +1370,7 @@ export default function ArtifactCenter() {
                     onClick={() => toggleSelectTypeForPack(type)}
                   >
                     {ARTIFACT_TYPE_META[type].label} ({items.length})
-                  </Button>
+                  </button>
                 );
               })}
             </div>
@@ -1392,10 +1390,9 @@ export default function ArtifactCenter() {
           </div>
           <div className="flex flex-wrap gap-1.5">
             {FILTER_OPTIONS.map((opt) => (
-              <Button
+              <button
                 key={opt.value}
-                size="sm"
-                variant={filter === opt.value ? "default" : "outline"}
+                type="button"
                 className={cn(
                   "workflow-filter-btn",
                   filter === opt.value && "workflow-filter-btn--active"
@@ -1403,7 +1400,7 @@ export default function ArtifactCenter() {
                 onClick={() => setFilter(opt.value)}
               >
                 {(isZh ? opt.zhLabel : opt.label)} ({getFilterCount(opt.value)})
-              </Button>
+              </button>
             ))}
           </div>
         </div>
@@ -1512,7 +1509,7 @@ export default function ArtifactCenter() {
                     </div>
                     <div className="shrink-0">
                       {file.uploading ? (
-                        <Badge className="border-cyan-200 bg-cyan-100 text-[9px] text-cyan-700">{isZh ? "正在上传" : "Uploading"}</Badge>
+                        <Badge className="badge-uploading text-[9px]">{isZh ? "正在上传" : "Uploading"}</Badge>
                       ) : file.failed ? (
                         <Button
                           size="sm"
@@ -1522,7 +1519,7 @@ export default function ArtifactCenter() {
                         >
                           {isZh ? "重试" : "Retry"}</Button>
                       ) : file.addedToVisual ? (
-                        <Badge className="border-emerald-200 bg-emerald-100 text-[9px] text-emerald-700">
+                        <Badge className="badge-success text-[9px]">
                           <CheckCircle2 className="mr-0.5 h-2.5 w-2.5" />
                           {isZh ? "已保存到 Visuals" : "Saved to Visuals"}
                         </Badge>
@@ -1542,19 +1539,17 @@ export default function ArtifactCenter() {
               return (
                 <div className="space-y-4">
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="default"
+                    <button
+                      type="button"
                       className="workflow-filter-btn workflow-filter-btn--active"
                       onClick={() => setSelectedKeywordCategory("all")}
                     >
                       {isZh ? "全部（" : "All ("}{filteredConcepts.length})
-                    </Button>
+                    </button>
                     {keywordCategories.map((category) => (
-                      <Button
+                      <button
                         key={category}
-                        size="sm"
-                        variant={selectedKeywordCategory === category ? "default" : "outline"}
+                        type="button"
                         className={cn(
                           "workflow-filter-btn",
                           selectedKeywordCategory === category && "workflow-filter-btn--active"
@@ -1562,7 +1557,7 @@ export default function ArtifactCenter() {
                         onClick={() => setSelectedKeywordCategory(category)}
                       >
                         {category} ({keywordCategoryCounts[category] || 0})
-                      </Button>
+                      </button>
                     ))}
                   </div>
                   <div className="text-center py-12 border border-slate-700/50 rounded-lg bg-slate-800/30">
@@ -1577,9 +1572,8 @@ export default function ArtifactCenter() {
             return (
               <div className="space-y-6">
                 <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-lg border border-slate-700/50 border-b-slate-500/70 bg-[#0d1b30]/95 p-2 shadow-sm backdrop-blur">
-                  <Button
-                    size="sm"
-                    variant={selectedKeywordCategory === "all" ? "default" : "outline"}
+                  <button
+                    type="button"
                     className={cn(
                       "workflow-filter-btn",
                       selectedKeywordCategory === "all" && "workflow-filter-btn--active"
@@ -1587,12 +1581,11 @@ export default function ArtifactCenter() {
                     onClick={() => setSelectedKeywordCategory("all")}
                   >
                     {isZh ? "全部（" : "All ("}{filteredConcepts.length})
-                  </Button>
+                  </button>
                   {keywordCategories.map((category) => (
-                    <Button
+                    <button
                       key={category}
-                      size="sm"
-                      variant={selectedKeywordCategory === category ? "default" : "outline"}
+                      type="button"
                       className={cn(
                         "workflow-filter-btn",
                         selectedKeywordCategory === category && "workflow-filter-btn--active"
@@ -1600,7 +1593,7 @@ export default function ArtifactCenter() {
                       onClick={() => setSelectedKeywordCategory(category)}
                     >
                       {category} ({keywordCategoryCounts[category] || 0})
-                    </Button>
+                    </button>
                   ))}
                   <span className="ml-auto text-xs text-slate-500 px-2">
                   </span>

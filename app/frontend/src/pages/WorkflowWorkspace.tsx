@@ -2354,11 +2354,11 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   };
 
   const publicationTypeBadgeClass = (publicationType: string) => {
-    if (publicationType === "journal article") return "border-sky-300 bg-sky-50 text-sky-800";
-    if (publicationType === "conference") return "border-violet-300 bg-violet-50 text-violet-800";
-    if (publicationType === "book") return "border-amber-300 bg-amber-50 text-amber-800";
-    if (publicationType === "preprint") return "border-emerald-300 bg-emerald-50 text-emerald-800";
-    return "border-slate-400 bg-slate-100 text-slate-800";
+    if (publicationType === "journal article") return "badge-pub-journal";
+    if (publicationType === "conference") return "badge-pub-conference";
+    if (publicationType === "book") return "badge-pub-book";
+    if (publicationType === "preprint") return "badge-pub-preprint";
+    return "badge-neutral";
   };
 
   const relevanceRank = (level: CandidatePaper["relevance"]) => {
@@ -4603,10 +4603,9 @@ function ReadWorkspace() {
                   variant="outline"
                   className={cn(
                     "text-xs h-7",
-                    importedFromPdf && "bg-emerald-50 border-emerald-300 text-emerald-700"
+                    importedFromPdf && "badge-success"
                   )}
                   onClick={handleImportFromPdf}
-                  disabled={importedFromPdf}
                 >
                   <Download className="w-3 h-3 mr-1" />
                   {importedFromPdf ? "Imported ✓" : "Import from PDF"}
@@ -4681,8 +4680,8 @@ function ReadWorkspace() {
                       className={cn(
                         "text-xs px-2 py-1 rounded mb-2 inline-block",
                         ann.color === "yellow"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-green-100 text-green-800"
+                          ? "bg-yellow-900/40 text-yellow-200"
+                          : "bg-emerald-900/40 text-emerald-200"
                       )}
                     >
                       {isZh ? "“" : "&ldquo;"}{ann.text}{isZh ? "”" : "&rdquo;"}</div>
@@ -4719,7 +4718,7 @@ function ReadWorkspace() {
                         className={cn(
                           "text-[10px] h-6 px-2",
                           quotedToDraft === ann.id &&
-                            "bg-emerald-50 border-emerald-300 text-emerald-700"
+                            "badge-success"
                         )}
                         onClick={() => setQuotedToDraft(ann.id)}
                       >
@@ -6680,38 +6679,34 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
       <Card className="border-slate-700/50">
         <CardContent className="p-3">
           <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant={vizSection === "paper-overview" ? "default" : "outline"}
+            <button
+              type="button"
               className={cn(STEP_TAB_CLASS, vizSection === "paper-overview" && STEP_TAB_ACTIVE_CLASS)}
               onClick={() => setVizSection("paper-overview")}
             >
               <BookOpen className="w-3 h-3 mr-1" />
-              {isZh ? "论文概览" : "Paper Overview"}</Button>
-            <Button
-              size="sm"
-              variant={vizSection === "upload-visualizations" ? "default" : "outline"}
+              {isZh ? "论文概览" : "Paper Overview"}</button>
+            <button
+              type="button"
               className={cn(STEP_TAB_CLASS, vizSection === "upload-visualizations" && STEP_TAB_ACTIVE_CLASS)}
               onClick={() => setVizSection("upload-visualizations")}
             >
               <Upload className="w-3 h-3 mr-1" />
-              {isZh ? "上传可视化图表" : "Upload Visualizations"}</Button>
-            <Button
-              size="sm"
-              variant={vizSection === "synthesis" ? "default" : "outline"}
+              {isZh ? "上传可视化图表" : "Upload Visualizations"}</button>
+            <button
+              type="button"
               className={cn(STEP_TAB_CLASS, vizSection === "synthesis" && STEP_TAB_ACTIVE_CLASS)}
               onClick={() => setVizSection("synthesis")}
             >
               <Table2 className="w-3 h-3 mr-1" />
-              {isZh ? "数据合成表" : "Synthesis Tables"}</Button>
-            <Button
-              size="sm"
-              variant={vizSection === "viztools" ? "default" : "outline"}
+              {isZh ? "数据合成表" : "Synthesis Tables"}</button>
+            <button
+              type="button"
               className={cn(STEP_TAB_CLASS, vizSection === "viztools" && STEP_TAB_ACTIVE_CLASS)}
               onClick={() => setVizSection("viztools")}
             >
               <Zap className="w-3 h-3 mr-1" />
-              {isZh ? "可视化工具" : "Visualization Tools"}</Button>
+              {isZh ? "可视化工具" : "Visualization Tools"}</button>
           </div>
         </CardContent>
       </Card>
@@ -6911,7 +6906,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                         </div>
                         <div className="shrink-0">
                           {file.uploading ? (
-                            <Badge className="text-[9px] bg-cyan-100 text-cyan-700 border-cyan-200">{isZh ? "正在上传" : "Uploading"}</Badge>
+                            <Badge className="text-[9px] badge-uploading">{isZh ? "正在上传" : "Uploading"}</Badge>
                           ) : file.failed ? (
                             <Button
                               size="sm"
@@ -6921,7 +6916,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                             >
                               {isZh ? "重试" : "Retry"}</Button>
                           ) : file.addedToVisual ? (
-                            <Badge className="text-[9px] bg-emerald-100 text-emerald-700 border-emerald-200">
+                            <Badge className="text-[9px] badge-success">
                               <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />
                               {isZh ? "已保存到我的产件/可视化" : "Saved to My Artifacts / Visuals"}</Badge>
                           ) : (
@@ -7235,9 +7230,9 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                       <Badge
                         className={cn(
                           "text-[9px] px-1.5 py-0",
-                          tool.pricing === "free" && "bg-emerald-100 text-emerald-700 border-emerald-200",
-                          tool.pricing === "freemium" && "bg-amber-100 text-amber-700 border-amber-200",
-                          tool.pricing === "paid" && "bg-red-100 text-red-700 border-red-200"
+                          tool.pricing === "free" && "badge-success",
+                          tool.pricing === "freemium" && "badge-warning",
+                          tool.pricing === "paid" && "badge-danger"
                         )}
                       >
                         {tool.pricing === "free" ? "Free" : tool.pricing === "freemium" ? "Freemium" : "Paid"}
@@ -8950,7 +8945,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     {newPreWriteUploads.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {newPreWriteUploads.map((f, i) => (
-                          <Badge key={i} variant="secondary" className="text-[9px] px-1.5 py-0 bg-blue-50 text-blue-700 gap-1">
+                          <Badge key={i} variant="secondary" className="text-[9px] px-1.5 py-0 badge-info gap-1">
                             📎 {f.name}
                             <button onClick={() => setNewPreWriteUploads(newPreWriteUploads.filter((_, idx) => idx !== i))}>
                               <X className="w-2 h-2" />
@@ -9002,10 +8997,9 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
               {isZh ? "报告风格：" : "Reporting Style:"}</span>
             <div className="flex gap-2 flex-wrap">
               {REPORTING_STYLES.map((style) => (
-                <Button
+                <button
                   key={style.id}
-                  size="sm"
-                  variant={selectedStyle === style.id ? "default" : "outline"}
+                  type="button"
                   className={cn(
                     STEP_TAB_CLASS,
                       selectedStyle === style.id && STEP_TAB_ACTIVE_CLASS
@@ -9018,7 +9012,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   }}
                 >
                   {getStyleName(style)}
-                </Button>
+                </button>
               ))}
             </div>
           </div>
@@ -9069,8 +9063,8 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                                 className={cn(
                                   "w-full text-left p-1.5 rounded text-[10px] transition-all border",
                                   selectedDraftId === draft.id && selectedVersionId === version.id
-                                    ? "bg-orange-100 border-orange-300 text-orange-800"
-                                    : "bg-slate-800/40 border-slate-700/50 hover:border-orange-200 text-slate-600"
+                                    ? "bg-orange-900/40 border-orange-700/40 text-orange-300"
+                                    : "bg-slate-800/40 border-slate-700/50 hover:border-orange-700/40 text-slate-400"
                                 )}
                               >
                                 <span className="flex items-center gap-1">
@@ -9750,16 +9744,16 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                         className={cn(
                           "text-[9px] px-1.5 py-0.5 mt-0.5 shrink-0",
                           a.subtype === "purpose"
-                            ? "bg-sky-50 text-sky-700"
+                            ? "bg-sky-900/40 text-sky-300"
                             : a.subtype === "literature-note"
-                              ? "bg-amber-50 text-amber-700"
+                              ? "bg-amber-900/40 text-amber-300"
                               : a.subtype === "permanent-note"
-                                ? "bg-rose-50 text-rose-700"
+                                ? "bg-rose-900/40 text-rose-300"
                                 : a.subtype === "pre-writing-note"
-                                  ? "bg-violet-50 text-violet-700"
+                                  ? "bg-violet-900/40 text-violet-300"
                                   : a.subtype === "visualization"
-                                    ? "bg-lime-50 text-lime-700"
-                                    : "bg-cyan-50 text-cyan-700"
+                                    ? "bg-lime-900/40 text-lime-300"
+                                    : "bg-cyan-900/40 text-cyan-300"
                         )}
                       >
                         {badgeLabel}
