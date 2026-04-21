@@ -550,7 +550,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
           }}
         >
           <div className="space-y-3">
-            <div className="rounded-xl border border-slate-700/50 bg-slate-900/20 px-3 pt-5 pb-2">
+            <div className="rounded-xl border border-slate-700/50 px-3 pt-5 pb-2">
               <TabsList className="flex w-full flex-wrap justify-start gap-2 bg-transparent p-0">
                 <TabsTrigger
                   value="all"

@@ -320,10 +320,12 @@
 
 /* Unified tab styles for Workflow Step 2-6 content labels */
 .workflow-content-tab {
-  @apply h-8 px-3 text-xs text-foreground dark:text-slate-200;
+  @apply h-8 px-3 rounded-md text-xs font-medium;
+  @apply border border-input bg-input text-foreground dark:text-slate-200;
   @apply hover:bg-secondary dark:hover:bg-slate-700/70;
   @apply hover:text-foreground dark:hover:text-slate-100;
-  @apply data-[state=active]:bg-cyan-600 data-[state=active]:text-white;
+  @apply data-[state=active]:!bg-cyan-600 data-[state=active]:!text-white;
+  @apply data-[state=active]:!border-cyan-600 data-[state=active]:!shadow-none;
 }
 
 .workflow-content-btn-tab {
