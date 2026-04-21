@@ -551,22 +551,22 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
         >
           <div className="space-y-3">
             <div className="rounded-xl border border-slate-700/50 bg-slate-900/20 px-3 pt-5 pb-2">
-              <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+              <TabsList className="flex w-full flex-wrap justify-center gap-2 bg-transparent p-0">
                 <TabsTrigger
                   value="all"
-                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                  className="h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
                   {tr("All", "全部")} ({papers.length})
                 </TabsTrigger>
                 <TabsTrigger
                   value="entry"
-                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                  className="h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
                   {tr("Entry", "入口文献")} ({papers.filter((p) => p.is_entry_paper).length})
                 </TabsTrigger>
                 <TabsTrigger
                   value="expanded"
-                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                  className="h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
                 >
                   {tr("Expanded", "扩展文献")} ({papers.filter((p) => p.is_expanded_paper).length})
                 </TabsTrigger>
