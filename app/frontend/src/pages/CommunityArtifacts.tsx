@@ -25,6 +25,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { type UserProfileSummary, userProfileApi } from "@/lib/user-profile-api";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
+import { readJsonWithBackup, writeJsonWithBackup } from "@/lib/local-persistence";
 
 const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
 const MY_DOWNLOADED_PACKAGES_KEY = "rw-my-downloaded-packages";
@@ -47,9 +48,11 @@ export default function CommunityArtifacts() {
   const loadPackages = async () => {
     if (typeof window === "undefined") return;
     try {
-      const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
-      const parsed = saved ? JSON.parse(saved) : [];
-      const list = Array.isArray(parsed) ? (parsed as ArtifactPackage[]) : [];
+      const list = readJsonWithBackup<ArtifactPackage[]>(
+        COMMUNITY_PACKAGES_KEY,
+        (value): value is ArtifactPackage[] => Array.isArray(value),
+        []
+      );
       const filteredPackages = list.filter((pkg) => pkg.shared && (pkg.type === "created" || !pkg.type));
       setPackages(filteredPackages);
 
@@ -112,9 +115,15 @@ export default function CommunityArtifacts() {
   const handleAddToMyPackages = (pkg: ArtifactPackage) => {
     if (typeof window === "undefined" || !user) return;
     try {
-      const downloadedStr = window.localStorage.getItem(MY_DOWNLOADED_PACKAGES_KEY);
-      const downloadedMap: Record<string, ArtifactPackage[]> = downloadedStr ? JSON.parse(downloadedStr) : {};
-      const myDownloaded = downloadedMap[user.id] || [];
+      const downloadedMap = readJsonWithBackup<Record<string, ArtifactPackage[]>>(
+        MY_DOWNLOADED_PACKAGES_KEY,
+        (value): value is Record<string, ArtifactPackage[]> => !!value && typeof value === "object" && !Array.isArray(value),
+        {}
+      );
+      const myDownloaded = [
+        ...(downloadedMap[user.id] || []),
+        ...(downloadedMap[user.email.toLowerCase()] || []),
+      ];
 
       const alreadyDownloaded = myDownloaded.some(
         (item) =>
@@ -141,16 +150,21 @@ export default function CommunityArtifacts() {
         shared: false,
       };
 
-      downloadedMap[user.id] = [...myDownloaded, downloadedPkg];
-      window.localStorage.setItem(MY_DOWNLOADED_PACKAGES_KEY, JSON.stringify(downloadedMap));
+      const nextDownloaded = [...myDownloaded, downloadedPkg];
+      downloadedMap[user.id] = nextDownloaded;
+      downloadedMap[user.email.toLowerCase()] = nextDownloaded;
+      writeJsonWithBackup(MY_DOWNLOADED_PACKAGES_KEY, downloadedMap);
 
       // Only increment download count in community packages; no other changes.
-      const communityStr = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
-      const communityPackages: ArtifactPackage[] = communityStr ? JSON.parse(communityStr) : [];
+      const communityPackages = readJsonWithBackup<ArtifactPackage[]>(
+        COMMUNITY_PACKAGES_KEY,
+        (value): value is ArtifactPackage[] => Array.isArray(value),
+        []
+      );
       const updatedCommunity = communityPackages.map((item) =>
         item.id === pkg.id ? { ...item, downloadCount: (item.downloadCount || 0) + 1 } : item
       );
-      window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(updatedCommunity));
+      writeJsonWithBackup(COMMUNITY_PACKAGES_KEY, updatedCommunity);
 
       toast.success(tr("Added to My Packages", "已添加到我的产集"));
       setSelectedPackageId(null);

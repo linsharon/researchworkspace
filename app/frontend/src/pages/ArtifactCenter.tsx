@@ -50,6 +50,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { getAPIBaseURL } from "@/lib/config";
 import { getAuthToken } from "@/lib/session";
+import { readJsonWithBackup, writeJsonWithBackup } from "@/lib/local-persistence";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 
@@ -210,9 +211,26 @@ function parseVisualizationContent(content?: string): { bucketName?: string; obj
   try {
     const parsed = JSON.parse(content) as Record<string, unknown>;
     return {
-      bucketName: typeof parsed.bucketName === "string" ? parsed.bucketName : undefined,
-      objectKey: typeof parsed.objectKey === "string" ? parsed.objectKey : undefined,
-      accessUrl: typeof parsed.accessUrl === "string" ? parsed.accessUrl : undefined,
+      bucketName:
+        typeof parsed.bucketName === "string"
+          ? parsed.bucketName
+          : typeof parsed.bucket_name === "string"
+            ? parsed.bucket_name
+            : undefined,
+      objectKey:
+        typeof parsed.objectKey === "string"
+          ? parsed.objectKey
+          : typeof parsed.object_key === "string"
+            ? parsed.object_key
+            : undefined,
+      accessUrl:
+        typeof parsed.accessUrl === "string"
+          ? parsed.accessUrl
+          : typeof parsed.access_url === "string"
+            ? parsed.access_url
+            : typeof parsed.url === "string"
+              ? parsed.url
+              : undefined,
     };
   } catch {
     return null;
@@ -334,19 +352,16 @@ export default function ArtifactCenter() {
   }, []);
 
   const loadLocalArtifacts = (): Artifact[] => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-      const parsed = saved ? JSON.parse(saved) : [];
-      return Array.isArray(parsed) ? (parsed as Artifact[]) : [];
-    } catch {
-      return [];
-    }
+    return readJsonWithBackup<Artifact[]>(
+      ARTIFACTS_STORAGE_KEY,
+      (value): value is Artifact[] => Array.isArray(value),
+      []
+    );
   };
 
   const saveLocalArtifacts = (artifactsToSave: Artifact[]) => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(artifactsToSave));
+    writeJsonWithBackup(ARTIFACTS_STORAGE_KEY, artifactsToSave);
     window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
   };
 
@@ -545,19 +560,16 @@ export default function ArtifactCenter() {
   };
 
   const loadPackages = (): ArtifactPackage[] => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
-      const parsed = saved ? JSON.parse(saved) : [];
-      return Array.isArray(parsed) ? (parsed as ArtifactPackage[]) : [];
-    } catch {
-      return [];
-    }
+    return readJsonWithBackup<ArtifactPackage[]>(
+      COMMUNITY_PACKAGES_KEY,
+      (value): value is ArtifactPackage[] => Array.isArray(value),
+      []
+    );
   };
 
   const savePackages = (packages: ArtifactPackage[]) => {
     if (typeof window === "undefined") return;
-    window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(packages));
+    writeJsonWithBackup(COMMUNITY_PACKAGES_KEY, packages);
     setMyPackages(packages);
   };
 
@@ -1774,14 +1786,20 @@ export default function ArtifactCenter() {
                       {displayTitle}
                     </h4>
                     {artifact.type === "visualization" && visualThumbUrls[artifact.id] ? (
-                      <div className="mb-3 overflow-hidden rounded-md border border-slate-700/50 bg-slate-900/40">
+                      <a
+                        href={visualThumbUrls[artifact.id]}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="mb-3 block overflow-hidden rounded-md border border-slate-700/50 bg-slate-900/40"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <img
                           src={visualThumbUrls[artifact.id]}
                           alt={displayTitle}
                           className="h-28 w-full object-cover"
                           loading="lazy"
                         />
-                      </div>
+                      </a>
                     ) : null}
                     {artifact.type === "entry-paper" && (literatureTags.isEntry || literatureTags.isExpanded) && (
                       <div className="mb-2 flex flex-wrap gap-1.5">
@@ -1893,6 +1911,31 @@ export default function ArtifactCenter() {
                     <p className="text-sm text-slate-600">
                       {artifact.description}
                     </p>
+                    {artifact.type === "visualization" && visualThumbUrls[artifact.id] ? (
+                      <div className="space-y-2">
+                        <a
+                          href={visualThumbUrls[artifact.id]}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="block overflow-hidden rounded-md border border-slate-700/50 bg-slate-900/40"
+                        >
+                          <img
+                            src={visualThumbUrls[artifact.id]}
+                            alt={displayTitle}
+                            className="max-h-64 w-full object-contain"
+                            loading="lazy"
+                          />
+                        </a>
+                        <a
+                          href={visualThumbUrls[artifact.id]}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="inline-flex text-xs text-cyan-300 hover:underline break-all"
+                        >
+                          {visualThumbUrls[artifact.id]}
+                        </a>
+                      </div>
+                    ) : null}
                     {artifact.content && (
                       <div className="p-4 bg-slate-800/40 rounded-lg border border-slate-700/50">
                         <p className="text-sm text-slate-700 whitespace-pre-wrap">

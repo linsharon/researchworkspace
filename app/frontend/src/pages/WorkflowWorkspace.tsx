@@ -100,6 +100,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getAPIBaseURL } from "@/lib/config";
 import { getAuthToken } from "@/lib/session";
+import { readJsonWithBackup, writeJsonWithBackup } from "@/lib/local-persistence";
 import Step3ReadFoundPapers from "@/components/workflow/Step3ReadFoundPapers";
 
 // Paper decision history — shared localStorage key with Step 3
@@ -126,6 +127,20 @@ type WorkflowCacheMeta = {
   lastInvalidatedAt?: string;
   reason?: string;
   invalidatedKeys?: string[];
+};
+
+const readArtifactsStorage = (): Artifact[] =>
+  readJsonWithBackup<Artifact[]>(
+    ARTIFACTS_STORAGE_KEY,
+    (value): value is Artifact[] => Array.isArray(value),
+    []
+  );
+
+const writeArtifactsStorage = (next: Artifact[]) => {
+  writeJsonWithBackup(ARTIFACTS_STORAGE_KEY, next);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+  }
 };
 
 type SlashInsertItem = {
@@ -560,8 +575,32 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
   const [newCustomPurpose, setNewCustomPurpose] = useState("");
   const [notes, setNotes] = useState("");
   const [cardGenerated, setCardGenerated] = useState(false);
+  const [recentPurposeCards, setRecentPurposeCards] = useState<Artifact[]>([]);
 
   const allPurposes = [...PURPOSE_OPTIONS, ...customPurposes];
+
+  useEffect(() => {
+    const loadRecentPurposes = () => {
+      const all = readArtifactsStorage();
+      const sorted = all
+        .filter((artifact) => artifact.type === "purpose" && (!artifact.projectId || artifact.projectId === projectId))
+        .sort((a, b) => {
+          const aTs = Number((a.id.match(/purpose-(\d+)/)?.[1] || "0"));
+          const bTs = Number((b.id.match(/purpose-(\d+)/)?.[1] || "0"));
+          return bTs - aTs;
+        })
+        .slice(0, 3);
+      setRecentPurposeCards(sorted);
+    };
+
+    loadRecentPurposes();
+    window.addEventListener(ARTIFACTS_UPDATED_EVENT, loadRecentPurposes);
+    window.addEventListener("storage", loadRecentPurposes);
+    return () => {
+      window.removeEventListener(ARTIFACTS_UPDATED_EVENT, loadRecentPurposes);
+      window.removeEventListener("storage", loadRecentPurposes);
+    };
+  }, [projectId]);
 
   const handleAddCustomPurpose = () => {
     const trimmed = newCustomPurpose.trim();
@@ -589,13 +628,8 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
       content: `${tr("Goals", "阅读目的")}: ${selectedDisplay.join(", ")}${notes.trim() ? `\n\n${tr("Focus", "焦点")}: ${notes.trim()}` : ""}`,
     };
     try {
-      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-      const existing: Artifact[] = saved ? (JSON.parse(saved) as Artifact[]) : [];
-      window.localStorage.setItem(
-        ARTIFACTS_STORAGE_KEY,
-        JSON.stringify([...existing, card])
-      );
-      window.dispatchEvent(new CustomEvent("artifacts-updated"));
+      const existing = readArtifactsStorage();
+      writeArtifactsStorage([...existing, card]);
     } catch {
       // ignore storage errors
     }
@@ -695,6 +729,36 @@ function PurposeWorkspace({ projectId }: { projectId: string }) {
               className="text-sm"
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-slate-700/50 bg-[#0d1b30]">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold text-slate-100 flex items-center justify-between gap-3">
+            <span>{tr("Recent Purpose Cards", "最近创建的目的卡片")}</span>
+            <Link to={`/artifacts?tab=purpose&projectId=${encodeURIComponent(projectId)}`}>
+              <Button size="sm" variant="outline" className="app-btn-compact">
+                {tr("Open My Artifacts > Purposes", "打开我的产件 > 目的")}
+                <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
+            </Link>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {recentPurposeCards.length > 0 ? (
+            recentPurposeCards.map((artifact) => (
+              <Link
+                key={artifact.id}
+                to={`/artifacts?tab=purpose&projectId=${encodeURIComponent(projectId)}`}
+                className="block rounded-md border border-slate-700/50 bg-slate-900/30 px-3 py-2 hover:border-cyan-700/50"
+              >
+                <p className="text-xs text-slate-200 line-clamp-1">{artifact.title}</p>
+                <p className="text-[11px] text-slate-500 line-clamp-1">{artifact.description}</p>
+              </Link>
+            ))
+          ) : (
+            <p className="text-xs text-slate-500">{tr("No purpose cards yet. Generate one below.", "还没有目的卡片，请先在下方生成。")}</p>
+          )}
         </CardContent>
       </Card>
 
@@ -818,10 +882,8 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const [addedToCenterIds, setAddedToCenterIds] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set<string>();
     try {
-      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-      const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
       return new Set(
-        (Array.isArray(parsed) ? parsed : [])
+        readArtifactsStorage()
           .filter((a) => a.type === "entry-paper")
           .map((a) => a.id.replace("entry-paper-", ""))
       );
@@ -941,8 +1003,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   useEffect(() => {
     const load = () => {
       try {
-        const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-        const all: Artifact[] = saved ? JSON.parse(saved) : [];
+        const all = readArtifactsStorage();
         setPurposeCards(all.filter((a) => a.type === "purpose" && (!a.projectId || a.projectId === projectId)));
       } catch { /* ignore */ }
     };
@@ -1240,11 +1301,8 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
   const persistArtifacts = (updater: (prev: Artifact[]) => Artifact[]) => {
     if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-    const parsed = saved ? JSON.parse(saved) : [];
-    const next = updater(Array.isArray(parsed) ? parsed : []);
-    window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(next));
-    window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+    const next = updater(readArtifactsStorage());
+    writeArtifactsStorage(next);
   };
 
   const candidatePaperToArtifact = (paper: CandidatePaper): Artifact => ({
@@ -1481,9 +1539,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
   const allArtifactKeywords = useMemo(() => {
     if (typeof window === "undefined") return [] as string[];
     try {
-      const raw = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-      const parsed = raw ? (JSON.parse(raw) as Artifact[]) : [];
-      return parsed
+      return readArtifactsStorage()
         .filter((artifact) => artifact.type === "keyword")
         .map((artifact) => artifact.title)
         .filter(Boolean);
@@ -6429,8 +6485,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
   }) => {
     if (typeof window === "undefined") return null;
     const artifactId = `visual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const savedRaw = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-    const saved = savedRaw ? (JSON.parse(savedRaw) as Artifact[]) : [];
+    const saved = readArtifactsStorage();
     const artifact: Artifact = {
       id: artifactId,
       title: payload.fileName,
@@ -6448,8 +6503,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
       }),
     };
     const next = [...saved, artifact];
-    window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(next));
-    window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+    writeArtifactsStorage(next);
     return artifactId;
   };
 
@@ -7540,16 +7594,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
 
     const loadCurrentProjectArtifacts = async () => {
       const loadLocalArtifacts = (): Artifact[] => {
-        if (typeof window === "undefined") return [];
-        try {
-          const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-          const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
-          return Array.isArray(parsed)
-            ? parsed.filter((artifact) => !artifact.projectId || artifact.projectId === projectId)
-            : [];
-        } catch {
-          return [];
-        }
+        return readArtifactsStorage().filter((artifact) => !artifact.projectId || artifact.projectId === projectId);
       };
 
       try {
@@ -8156,9 +8201,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
 
     if (typeof window !== "undefined") {
       try {
-        const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-        const parsed = saved ? (JSON.parse(saved) as Artifact[]) : [];
-        const current = Array.isArray(parsed) ? parsed : [];
+        const current = readArtifactsStorage();
         const artifact: Artifact = {
           id: `prewrite-note-${newNote.id}`,
           title: newPreWriteTitle.trim(),
@@ -8170,8 +8213,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
           content: newNote.content,
         };
         const next = [...current.filter((item) => item.id !== artifact.id), artifact];
-        window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(next));
-        window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+        writeArtifactsStorage(next);
       } catch {
         // Ignore local persistence errors for pre-writing artifacts.
       }
@@ -8370,9 +8412,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
     };
 
     try {
-      const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-      const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
-      const current = Array.isArray(parsed) ? parsed : [];
+      const current = readArtifactsStorage();
 
       const existing = current.find(
         (artifact) =>
@@ -8406,8 +8446,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
         ? current.map((artifact) => (artifact.id === existing.id ? draftArtifact : artifact))
         : [...current, draftArtifact];
 
-      window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(next));
-      window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
+      writeArtifactsStorage(next);
       setDraftSaveMsg(`Saved to draft artifact "${currentDraftName}" at ${timeStr}`);
       setTimeout(() => setDraftSaveMsg(null), 3000);
     } catch {
@@ -8498,16 +8537,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
       const uniqueProjectIds = Array.from(new Set(projectIds.filter(Boolean)));
       const collected: SlashInsertItem[] = [];
 
-      const loadLocalArtifacts = (): Artifact[] => {
-        if (typeof window === "undefined") return [];
-        try {
-          const saved = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-          const parsed: Artifact[] = saved ? JSON.parse(saved) : [];
-          return Array.isArray(parsed) ? parsed : [];
-        } catch {
-          return [];
-        }
-      };
+      const loadLocalArtifacts = (): Artifact[] => readArtifactsStorage();
       const localArtifacts = loadLocalArtifacts();
 
       for (const pid of uniqueProjectIds) {

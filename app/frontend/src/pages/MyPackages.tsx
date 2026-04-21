@@ -16,6 +16,7 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { readJsonWithBackup, writeJsonWithBackup } from "@/lib/local-persistence";
 
 const COMMUNITY_PACKAGES_KEY = "rw-community-packages";
 const MY_DOWNLOADED_PACKAGES_KEY = "rw-my-downloaded-packages";
@@ -61,19 +62,35 @@ export default function MyPackages() {
   const loadPackages = async () => {
     if (typeof window === "undefined" || !user) return;
     try {
-      const communityStr = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
-      const allCommunity: ArtifactPackage[] = communityStr ? JSON.parse(communityStr) : [];
+      const allCommunity = readJsonWithBackup<ArtifactPackage[]>(
+        COMMUNITY_PACKAGES_KEY,
+        (value): value is ArtifactPackage[] => Array.isArray(value),
+        []
+      );
       const mine = allCommunity.filter(
-        (pkg) => pkg.ownerId === user.id && (pkg.type === "created" || !pkg.type)
+        (pkg) =>
+          (pkg.ownerId === user.id || (user.name && pkg.ownerName === user.name)) &&
+          (pkg.type === "created" || !pkg.type)
       );
       setCreatedPackages(mine);
 
-      const downloadedStr = window.localStorage.getItem(MY_DOWNLOADED_PACKAGES_KEY);
-      const downloadedMap: Record<string, ArtifactPackage[]> = downloadedStr ? JSON.parse(downloadedStr) : {};
-      const myDownloaded = downloadedMap[user.id] || [];
-      setDownloadedPackages(myDownloaded);
+      const downloadedMap = readJsonWithBackup<Record<string, ArtifactPackage[]>>(
+        MY_DOWNLOADED_PACKAGES_KEY,
+        (value): value is Record<string, ArtifactPackage[]> => !!value && typeof value === "object" && !Array.isArray(value),
+        {}
+      );
+      const emailKey = user.email.toLowerCase();
+      const mergedDownloaded = [
+        ...(downloadedMap[user.id] || []),
+        ...(downloadedMap[emailKey] || []),
+      ];
+      const dedupedDownloaded = Array.from(new Map(mergedDownloaded.map((pkg) => [pkg.id, pkg])).values());
+      downloadedMap[user.id] = dedupedDownloaded;
+      downloadedMap[emailKey] = dedupedDownloaded;
+      writeJsonWithBackup(MY_DOWNLOADED_PACKAGES_KEY, downloadedMap);
+      setDownloadedPackages(dedupedDownloaded);
 
-      const ownerIds = [...mine, ...myDownloaded].map((pkg) => pkg.ownerId);
+      const ownerIds = [...mine, ...dedupedDownloaded].map((pkg) => pkg.ownerId);
       const profileMap = await userProfileApi.getPublicProfiles(ownerIds);
       setProfiles(profileMap);
     } catch {
@@ -143,23 +160,30 @@ export default function MyPackages() {
 
   const saveCreatedPackages = (next: ArtifactPackage[]) => {
     if (typeof window === "undefined" || !user) return;
-    const communityStr = window.localStorage.getItem(COMMUNITY_PACKAGES_KEY);
-    const allCommunity: ArtifactPackage[] = communityStr ? JSON.parse(communityStr) : [];
+    const allCommunity = readJsonWithBackup<ArtifactPackage[]>(
+      COMMUNITY_PACKAGES_KEY,
+      (value): value is ArtifactPackage[] => Array.isArray(value),
+      []
+    );
 
     const mineIds = new Set(createdPackages.map((pkg) => pkg.id));
     const untouched = allCommunity.filter((pkg) => !mineIds.has(pkg.id));
     const merged = [...untouched, ...next];
 
-    window.localStorage.setItem(COMMUNITY_PACKAGES_KEY, JSON.stringify(merged));
+    writeJsonWithBackup(COMMUNITY_PACKAGES_KEY, merged);
     setCreatedPackages(next);
   };
 
   const saveDownloadedPackages = (next: ArtifactPackage[]) => {
     if (typeof window === "undefined" || !user) return;
-    const downloadedStr = window.localStorage.getItem(MY_DOWNLOADED_PACKAGES_KEY);
-    const downloadedMap: Record<string, ArtifactPackage[]> = downloadedStr ? JSON.parse(downloadedStr) : {};
+    const downloadedMap = readJsonWithBackup<Record<string, ArtifactPackage[]>>(
+      MY_DOWNLOADED_PACKAGES_KEY,
+      (value): value is Record<string, ArtifactPackage[]> => !!value && typeof value === "object" && !Array.isArray(value),
+      {}
+    );
     downloadedMap[user.id] = next;
-    window.localStorage.setItem(MY_DOWNLOADED_PACKAGES_KEY, JSON.stringify(downloadedMap));
+    downloadedMap[user.email.toLowerCase()] = next;
+    writeJsonWithBackup(MY_DOWNLOADED_PACKAGES_KEY, downloadedMap);
     setDownloadedPackages(next);
   };
 
@@ -249,8 +273,11 @@ export default function MyPackages() {
     const duplicateSet = new Set(duplicateKeys);
 
     try {
-      const savedArtifacts = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-      const currentArtifacts: Artifact[] = savedArtifacts ? JSON.parse(savedArtifacts) : [];
+      const currentArtifacts = readJsonWithBackup<Artifact[]>(
+        ARTIFACTS_STORAGE_KEY,
+        (value): value is Artifact[] => Array.isArray(value),
+        []
+      );
 
       const importedArtifacts = pkg.artifacts.map((artifact) => importArtifactFromPackage(artifact, pkg.ownerName));
 
@@ -274,7 +301,7 @@ export default function MyPackages() {
         finalArtifacts = [...mineWithoutDuplicates, ...importedArtifacts];
       }
 
-      window.localStorage.setItem(ARTIFACTS_STORAGE_KEY, JSON.stringify(finalArtifacts));
+      writeJsonWithBackup(ARTIFACTS_STORAGE_KEY, finalArtifacts);
       window.dispatchEvent(new CustomEvent(ARTIFACTS_UPDATED_EVENT));
 
       if (mode === "keep-mine") {
@@ -290,8 +317,11 @@ export default function MyPackages() {
   const handleUnpackToArtifactCenter = (pkg: ArtifactPackage) => {
     if (typeof window === "undefined") return;
     try {
-      const savedArtifacts = window.localStorage.getItem(ARTIFACTS_STORAGE_KEY);
-      const currentArtifacts: Artifact[] = savedArtifacts ? JSON.parse(savedArtifacts) : [];
+      const currentArtifacts = readJsonWithBackup<Artifact[]>(
+        ARTIFACTS_STORAGE_KEY,
+        (value): value is Artifact[] => Array.isArray(value),
+        []
+      );
 
       const currentFingerprintSet = new Set(currentArtifacts.map(buildArtifactFingerprint));
       const duplicateKeys = pkg.artifacts
