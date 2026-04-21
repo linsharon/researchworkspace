@@ -268,7 +268,7 @@ function UnauthenticatedLanding() {
                 <Card key={item.title} className="glass-panel border-0">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm text-slate-100 flex items-center gap-2">
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[rgba(128,8,240,0.14)] text-[#ead1ff] border border-[rgba(128,8,240,0.22)]">
+                      <span className="landing-icon-violet inline-flex h-8 w-8 items-center justify-center rounded-md">
                         <Icon className="h-4 w-4" />
                       </span>
                       {item.title}
@@ -287,7 +287,7 @@ function UnauthenticatedLanding() {
           <Card className="glass-panel border-0">
             <CardHeader>
               <CardTitle className="text-slate-100 flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[rgba(24,187,237,0.14)] text-[#87ecff] border border-[rgba(24,187,237,0.22)]">
+                <span className="landing-icon-cyan inline-flex h-8 w-8 items-center justify-center rounded-md">
                   <Users className="h-4 w-4" />
                 </span>
                 {isZh ? "团队协作" : "Team Collaboration"}
@@ -300,7 +300,7 @@ function UnauthenticatedLanding() {
                   : "When research is not a solo activity, Team keeps members, papers, artifacts, and writing context inside one shared project space."}
               </p>
               {teamFeatures.map((item) => (
-                <div key={item} className="rounded-lg border border-[rgba(103,121,237,0.22)] bg-[rgba(18,23,67,0.5)] px-3 py-3 text-sm text-slate-300 leading-relaxed">
+                <div key={item} className="landing-team-item rounded-lg px-3 py-3 text-sm leading-relaxed">
                   {item}
                 </div>
               ))}
@@ -310,7 +310,7 @@ function UnauthenticatedLanding() {
           <Card className="glass-panel border-0">
             <CardHeader>
               <CardTitle className="text-slate-100 flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[rgba(128,8,240,0.14)] text-[#ead1ff] border border-[rgba(128,8,240,0.22)]">
+                <span className="landing-icon-violet inline-flex h-8 w-8 items-center justify-center rounded-md">
                   <Crown className="h-4 w-4" />
                 </span>
                 {isZh ? "免费版与高级版" : "Free vs Premium"}
@@ -323,7 +323,7 @@ function UnauthenticatedLanding() {
                     <tr className="border-b border-slate-700/60 text-left">
                       <th className="px-2 py-2 text-slate-400">{isZh ? "功能" : "Capability"}</th>
                       <th className="px-2 py-2 text-slate-300">{isZh ? "免费版" : "Free"}</th>
-                      <th className="px-2 py-2 text-[#d4b0ff]">{isZh ? "高级版" : "Premium"}</th>
+                      <th className="landing-premium-text px-2 py-2">{isZh ? "高级版" : "Premium"}</th>
                     </tr>
                   </thead>
                   <tbody>

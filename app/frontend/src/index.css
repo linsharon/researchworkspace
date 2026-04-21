@@ -318,6 +318,50 @@
   background: var(--outline-hover-bg);
 }
 
+.landing-icon-cyan {
+  background: rgba(24, 187, 237, 0.14);
+  color: #87ecff;
+  border: 1px solid rgba(24, 187, 237, 0.22);
+}
+
+.landing-icon-violet {
+  background: rgba(128, 8, 240, 0.14);
+  color: #ead1ff;
+  border: 1px solid rgba(128, 8, 240, 0.22);
+}
+
+.landing-premium-text {
+  color: #d4b0ff;
+}
+
+.landing-team-item {
+  border: 1px solid rgba(103, 121, 237, 0.22);
+  background: rgba(18, 23, 67, 0.5);
+  color: hsl(var(--muted-foreground));
+}
+
+.light .landing-icon-cyan {
+  background: rgba(58, 149, 173, 0.12);
+  color: #3d6f82;
+  border-color: rgba(58, 149, 173, 0.24);
+}
+
+.light .landing-icon-violet {
+  background: rgba(136, 102, 171, 0.12);
+  color: #73508f;
+  border-color: rgba(136, 102, 171, 0.24);
+}
+
+.light .landing-premium-text {
+  color: #7a588f;
+}
+
+.light .landing-team-item {
+  border-color: rgba(177, 151, 126, 0.26);
+  background: rgba(255, 249, 242, 0.88);
+  color: #4a5464;
+}
+
 .shell-chrome {
   background: var(--chrome-bg);
   border-color: var(--chrome-border);
@@ -431,6 +475,30 @@
   inset: auto 24px 0 24px;
   height: 1px;
   background: linear-gradient(90deg, transparent 0%, rgba(197, 151, 112, 0.3) 50%, transparent 100%);
+}
+
+/* Keep tag/tab labels readable in dark theme without affecting light theme. */
+.dark [class*="dark:text-slate-500"] {
+  color: #e2e8f0 !important;
+}
+
+.dark [class*="dark:hover:text-slate-100"]:hover {
+  color: #f8fafc !important;
+}
+
+.dark [class*="dark:hover:bg-slate-700/70"]:hover {
+  background-color: rgba(51, 65, 85, 0.7) !important;
+}
+
+.dark [role="tab"][class*="text-slate-500"],
+.dark button[class*="text-slate-500"][class*="data-[state=active]:bg-cyan-600"] {
+  color: #e2e8f0 !important;
+}
+
+.dark [role="tab"][class*="hover:bg-slate-800"]:hover,
+.dark button[class*="hover:bg-slate-800"][class*="data-[state=active]:bg-cyan-600"]:hover {
+  background-color: rgba(51, 65, 85, 0.7) !important;
+  color: #f1f5f9 !important;
 }
 
 .light .text-slate-100,
