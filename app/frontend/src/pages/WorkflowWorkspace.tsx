@@ -6215,9 +6215,31 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
             if (!Number.isNaN(ms)) timestamps.push(ms);
           });
 
-          const minTime = timestamps.length ? Math.min(...timestamps) : 0;
-          const maxTime = timestamps.length ? Math.max(...timestamps) : 0;
-          const elapsed = timestamps.length > 1 ? maxTime - minTime : 0;
+          // Calculate processing time using session-gap analysis:
+          // Group consecutive annotation events within 30 min into sessions,
+          // then sum session durations (with 1 min buffer per session, max 2 h each).
+          const SESSION_GAP = 30 * 60 * 1000;
+          const SESSION_BUFFER = 60 * 1000;
+          const MAX_SESSION = 2 * 60 * 60 * 1000;
+          timestamps.sort((a, b) => a - b);
+          let totalElapsed = 0;
+          let sessionStart = 0;
+          let sessionLast = 0;
+          for (const ts of timestamps) {
+            if (sessionStart === 0) {
+              sessionStart = ts;
+              sessionLast = ts;
+            } else if (ts - sessionLast > SESSION_GAP) {
+              totalElapsed += Math.min(sessionLast - sessionStart + SESSION_BUFFER, MAX_SESSION);
+              sessionStart = ts;
+              sessionLast = ts;
+            } else {
+              sessionLast = ts;
+            }
+          }
+          if (sessionStart > 0) {
+            totalElapsed += Math.min(sessionLast - sessionStart + SESSION_BUFFER, MAX_SESSION);
+          }
 
           return {
             paper,
@@ -6225,7 +6247,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
             literatureNotes: paperNotes.filter((note) => note.note_type === "literature-note").length,
             permanentNotes: paperNotes.filter((note) => note.note_type === "permanent-note").length,
             conceptCounts,
-            processingTime: formatDuration(elapsed),
+            processingTime: formatDuration(totalElapsed),
           };
         });
 

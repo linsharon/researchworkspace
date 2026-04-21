@@ -105,19 +105,52 @@ class UserService:
 
     @staticmethod
     async def get_user_activity_stats(db: AsyncSession) -> dict[str, UserActivityStats]:
-        aggregate_result = await db.execute(
-            select(
-                ActivityEvent.user_id,
-                func.coalesce(func.sum(ActivityEvent.duration_ms), 0),
-            )
+        # Fetch all activity event timestamps per user, ordered chronologically.
+        # We compute "online time" by grouping consecutive events into sessions
+        # (session gap = 30 min) and summing session durations.
+        SESSION_GAP_MS = 30 * 60 * 1000       # 30 minutes between events → new session
+        SESSION_BUFFER_MS = 60 * 1000          # 1 minute buffer added per session for the last action
+        MAX_SESSION_MS = 2 * 60 * 60 * 1000    # cap a single session at 2 hours
+
+        events_result = await db.execute(
+            select(ActivityEvent.user_id, ActivityEvent.created_at)
             .where(ActivityEvent.user_id.is_not(None))
-            .group_by(ActivityEvent.user_id)
+            .order_by(ActivityEvent.user_id, ActivityEvent.created_at)
         )
-        totals = {
-            str(user_id): int(total_duration or 0)
-            for user_id, total_duration in aggregate_result.all()
-            if user_id
-        }
+
+        totals: dict[str, int] = {}
+        current_user_id: str | None = None
+        session_start_ms: int = 0
+        last_event_ms: int = 0
+
+        for user_id, created_at in events_result.all():
+            if not user_id or not created_at:
+                continue
+            uid = str(user_id)
+            event_ms = int(created_at.timestamp() * 1000)
+
+            if uid != current_user_id:
+                # Flush previous user's last session
+                if current_user_id is not None and last_event_ms > 0:
+                    session_ms = min(last_event_ms - session_start_ms + SESSION_BUFFER_MS, MAX_SESSION_MS)
+                    totals[current_user_id] = totals.get(current_user_id, 0) + session_ms
+
+                current_user_id = uid
+                session_start_ms = event_ms
+                last_event_ms = event_ms
+            else:
+                gap = event_ms - last_event_ms
+                if gap > SESSION_GAP_MS:
+                    # End previous session
+                    session_ms = min(last_event_ms - session_start_ms + SESSION_BUFFER_MS, MAX_SESSION_MS)
+                    totals[uid] = totals.get(uid, 0) + session_ms
+                    session_start_ms = event_ms
+                last_event_ms = event_ms
+
+        # Flush the last user's session
+        if current_user_id is not None and last_event_ms > 0:
+            session_ms = min(last_event_ms - session_start_ms + SESSION_BUFFER_MS, MAX_SESSION_MS)
+            totals[current_user_id] = totals.get(current_user_id, 0) + session_ms
 
         latest_event_subquery = (
             select(

@@ -3,7 +3,7 @@ from pathlib import Path
 
 from dependencies.auth import get_admin_user, get_current_user
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from schemas.auth import UserResponse
 from schemas.storage import (
     BucketListResponse,
@@ -191,6 +191,40 @@ async def get_local_visual(object_key: str):
     if not path.exists() or not path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Visualization file not found")
     return FileResponse(path)
+
+
+@router.get("/proxy/{bucket_name}/{object_key:path}")
+async def proxy_object(
+    bucket_name: str,
+    object_key: str,
+    _current_user: UserResponse = Depends(get_current_user),
+):
+    """Proxy an object from MinIO/S3 through the backend to the browser.
+
+    This avoids requiring the browser to have direct access to the internal
+    MinIO endpoint (MINIO_PUBLIC_ENDPOINT). The object is fetched using the
+    internal S3 client and streamed to the authenticated caller.
+    """
+    # Validate bucket_name and object_key to prevent SSRF / path traversal
+    if "/" in bucket_name or ".." in bucket_name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid bucket name")
+    safe_key = object_key.replace("\\", "/")
+    if ".." in safe_key.split("/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid object key")
+
+    try:
+        service = StorageService()
+        s3_response = service.s3_client.get_object(Bucket=bucket_name, Key=safe_key)
+        content = s3_response["Body"].read()
+        content_type = s3_response.get("ContentType", "application/octet-stream")
+        return Response(
+            content=content,
+            media_type=content_type,
+            headers={"Cache-Control": "private, max-age=3600"},
+        )
+    except Exception as exc:
+        logger.error("Failed to proxy object %s/%s: %s", bucket_name, safe_key, exc)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Object not found")
 
 
 @router.post("/upload-url", response_model=FileUpDownResponse)

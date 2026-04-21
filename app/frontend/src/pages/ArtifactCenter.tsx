@@ -643,6 +643,8 @@ export default function ArtifactCenter() {
   useEffect(() => {
     const baseURL = getAPIBaseURL() || "";
     const token = getAuthToken();
+    // Track blob URLs created in this effect so we can revoke them on cleanup
+    const createdBlobUrls: string[] = [];
 
     const loadVisualThumbs = async () => {
       const visualArtifacts = artifacts.filter((artifact) => artifact.type === "visualization");
@@ -655,29 +657,29 @@ export default function ArtifactCenter() {
         visualArtifacts.map(async (artifact) => {
           const meta = parseVisualizationContent(artifact.content);
           if (!meta) return [artifact.id, ""] as const;
-          // Prefer fetching a fresh presigned URL using bucket+key (stored URLs expire)
-          if (!meta.bucketName || !meta.objectKey) {
-            return [artifact.id, meta.accessUrl || ""] as const;
+
+          // If we have bucket+key, fetch through the backend proxy so the image
+          // works regardless of whether the internal MinIO endpoint is accessible
+          // from the user's browser.
+          if (meta.bucketName && meta.objectKey) {
+            try {
+              const proxyUrl = `${baseURL}/api/v1/storage/proxy/${encodeURIComponent(meta.bucketName)}/${meta.objectKey.split("/").map(encodeURIComponent).join("/")}`;
+              const response = await fetch(proxyUrl, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+              });
+              if (response.ok) {
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                createdBlobUrls.push(blobUrl);
+                return [artifact.id, blobUrl] as const;
+              }
+            } catch {
+              // Fall through to accessUrl fallback
+            }
           }
 
-          try {
-            const response = await fetch(`${baseURL}/api/v1/storage/download-url`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              },
-              body: JSON.stringify({
-                bucket_name: meta.bucketName,
-                object_key: meta.objectKey,
-              }),
-            });
-            if (!response.ok) return [artifact.id, meta.accessUrl || ""] as const;
-            const result = (await response.json()) as { download_url?: string };
-            return [artifact.id, result.download_url || meta.accessUrl || ""] as const;
-          } catch {
-            return [artifact.id, meta.accessUrl || ""] as const;
-          }
+          // Fallback: use stored accessUrl (e.g. local-visual endpoint for local uploads)
+          return [artifact.id, meta.accessUrl || ""] as const;
         })
       );
 
@@ -685,6 +687,11 @@ export default function ArtifactCenter() {
     };
 
     void loadVisualThumbs();
+
+    return () => {
+      // Revoke blob URLs to avoid memory leaks
+      createdBlobUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
   }, [artifacts]);
 
   const keywordArtifactsForAll = useMemo(() => {
