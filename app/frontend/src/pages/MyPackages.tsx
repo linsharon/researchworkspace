@@ -417,11 +417,11 @@ export default function MyPackages() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="created" className="flex items-center gap-2">
+            <TabsTrigger value="created" className="h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground data-[state=active]:bg-cyan-600 data-[state=active]:text-white flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
               {isZh ? "创建的产集" : "Created Packages"} ({filteredCreatedPackages.length})
             </TabsTrigger>
-            <TabsTrigger value="downloaded" className="flex items-center gap-2">
+            <TabsTrigger value="downloaded" className="h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground data-[state=active]:bg-cyan-600 data-[state=active]:text-white flex items-center gap-2">
               <DownloadIcon className="w-4 h-4" />
               {isZh ? "下载的产集" : "Downloaded Packages"} ({filteredDownloadedPackages.length})
             </TabsTrigger>

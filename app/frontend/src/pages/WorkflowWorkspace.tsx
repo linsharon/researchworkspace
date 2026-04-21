@@ -113,6 +113,8 @@ const SEARCH_RECORD_PURPOSE_LINKS_KEY_PREFIX = "rw-search-record-purpose-links";
 const DRAFT_COMPONENTS_STORAGE_KEY = "rw-draft-components";
 const DRAFT_STRUCTURE_STORAGE_KEY = "rw-draft-structure-check";
 const DRAFT_INSERTED_SEGMENTS_STORAGE_KEY = "rw-draft-inserted-segments";
+const STEP_TAB_CLASS = "h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground";
+const STEP_TAB_ACTIVE_CLASS = "bg-cyan-600 hover:bg-cyan-700 text-white";
 // Never include rw-artifacts in versioned aux-cache invalidation.
 // Otherwise user-created artifacts (e.g. Purpose Cards) are lost on cache version bumps.
 const WORKFLOW_AUX_CACHE_KEYS = [PAPER_DECISIONS_KEY] as const;
@@ -2526,19 +2528,19 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
               <TabsTrigger
                 value="keywords"
-                className="h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
               >
                 {tr("Keywords", "关键词")}
               </TabsTrigger>
               <TabsTrigger
                 value="search"
-                className="h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
               >
                 {tr("Search Log", "检索日志")}
               </TabsTrigger>
               <TabsTrigger
                 value="candidates"
-                className="h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
               >
                 {tr("Candidate Papers", "候选论文")}
               </TabsTrigger>
@@ -5741,17 +5743,17 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
             <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
               <TabsTrigger
                 value="entry-paper"
-                className="h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
               >
                 {isZh ? "通过入口文献扩展" : "Expand by Entry Paper"}</TabsTrigger>
               <TabsTrigger
                 value="doi-url"
-                className="h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
               >
                 {isZh ? "通过DOI/URL扩展" : "Expand by DOI/URL"}</TabsTrigger>
               <TabsTrigger
                 value="manual"
-                className="h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
               >
                 {isZh ? "手动扩展" : "Expand Manually"}</TabsTrigger>
             </TabsList>
@@ -6681,7 +6683,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
             <Button
               size="sm"
               variant={vizSection === "paper-overview" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "paper-overview" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+              className={cn(STEP_TAB_CLASS, vizSection === "paper-overview" && STEP_TAB_ACTIVE_CLASS)}
               onClick={() => setVizSection("paper-overview")}
             >
               <BookOpen className="w-3 h-3 mr-1" />
@@ -6689,7 +6691,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
             <Button
               size="sm"
               variant={vizSection === "upload-visualizations" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "upload-visualizations" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+              className={cn(STEP_TAB_CLASS, vizSection === "upload-visualizations" && STEP_TAB_ACTIVE_CLASS)}
               onClick={() => setVizSection("upload-visualizations")}
             >
               <Upload className="w-3 h-3 mr-1" />
@@ -6697,7 +6699,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
             <Button
               size="sm"
               variant={vizSection === "synthesis" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "synthesis" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+              className={cn(STEP_TAB_CLASS, vizSection === "synthesis" && STEP_TAB_ACTIVE_CLASS)}
               onClick={() => setVizSection("synthesis")}
             >
               <Table2 className="w-3 h-3 mr-1" />
@@ -6705,7 +6707,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
             <Button
               size="sm"
               variant={vizSection === "viztools" ? "default" : "outline"}
-              className={cn("text-xs", vizSection === "viztools" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+              className={cn(STEP_TAB_CLASS, vizSection === "viztools" && STEP_TAB_ACTIVE_CLASS)}
               onClick={() => setVizSection("viztools")}
             >
               <Zap className="w-3 h-3 mr-1" />
@@ -8829,10 +8831,10 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     key={key}
                     onClick={() => { setPreWriteTab(key); setShowNewPreWrite(false); }}
                     className={cn(
-                      "px-3 py-1.5 rounded-md text-xs font-medium transition-all border",
+                      "h-8 px-3 rounded-md text-xs font-medium transition-all border border-input bg-input/76 text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground",
                       preWriteTab === key
-                        ? "text-cyan-400 border-cyan-400 bg-cyan-400/10"
-                        : "bg-[#0d1b30] text-white border-white/30 hover:border-cyan-400 hover:text-cyan-400"
+                        ? "bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600"
+                        : ""
                     )}
                   >
                     {strategy.label}
@@ -9005,8 +9007,8 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   size="sm"
                   variant={selectedStyle === style.id ? "default" : "outline"}
                   className={cn(
-                    "text-xs",
-                    selectedStyle === style.id && "bg-cyan-600 hover:bg-cyan-700 text-white"
+                    STEP_TAB_CLASS,
+                    selectedStyle === style.id && STEP_TAB_ACTIVE_CLASS
                   )}
                   onClick={() => {
                     setSelectedStyle(style.id);
@@ -9142,12 +9144,10 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     key={comp.id}
                     onClick={() => setActiveComponentId(comp.id)}
                     className={cn(
-                      "px-2.5 py-1 rounded-md text-[11px] whitespace-nowrap transition-all border shrink-0",
+                      "h-8 px-3 rounded-md text-xs whitespace-nowrap transition-all border border-input bg-input/76 text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground shrink-0",
                       activeComponentId === comp.id
-                        ? "bg-cyan-600 text-white border-cyan-600"
-                        : componentContents[getContentKey(comp.id)]
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-[#0d1b30] text-slate-500 border-slate-700/50 hover:border-slate-300"
+                        ? "bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600"
+                        : ""
                     )}
                   >
                     {getComponentLabel(activeStyle.id, comp.id, comp.label)}
@@ -9265,10 +9265,10 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                 key={tab}
                 onClick={() => setCheckTab(tab)}
                 className={cn(
-                  "px-2.5 py-1 rounded-md text-[11px] font-medium transition-all capitalize",
+                  "h-8 px-3 rounded-md text-xs font-medium transition-all capitalize border border-input bg-input/76 text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground",
                   checkTab === tab
-                    ? "bg-cyan-600 text-white"
-                    : "text-white/80 hover:bg-slate-800"
+                    ? "bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600"
+                    : ""
                 )}
               >
                 {isZh ? (tab === "macro" ? "宏观" : tab === "meso" ? "中观" : "微观") : tab}

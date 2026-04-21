@@ -1391,7 +1391,7 @@ export default function ArtifactCenter() {
                 size="sm"
                 variant={filter === opt.value ? "default" : "outline"}
                 className={cn(
-                  "text-xs",
+                  "h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground",
                   filter === opt.value &&
                     "bg-cyan-600 hover:bg-cyan-700 text-white"
                 )}
@@ -1402,7 +1402,7 @@ export default function ArtifactCenter() {
             ))}
           </div>
         </div>
-
+                      className={cn("h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground", allSelected && "bg-cyan-600 hover:bg-cyan-700 text-white")}
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-700/50 bg-slate-800/20 px-3 py-2">
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <span>{isZh ? "每页卡片数" : "Cards per page"}</span>
@@ -1456,9 +1456,11 @@ export default function ArtifactCenter() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
                   <DropdownMenuItem onClick={() => setShowAddPaperDialog(true)}>
-                    {isZh ? "添加一篇" : "Add One"}</DropdownMenuItem>
+                    {isZh ? "添加一篇" : "Add One"}
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowAddMultiplePaperDialog(true)}>
-                    {isZh ? "添加多篇" : "Add Multiple"}</DropdownMenuItem>
+                    {isZh ? "添加多篇" : "Add Multiple"}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -1585,7 +1587,7 @@ export default function ArtifactCenter() {
                       size="sm"
                       variant={selectedKeywordCategory === category ? "default" : "outline"}
                       className={cn(
-                        "text-xs",
+                        "h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground",
                         selectedKeywordCategory === category && "bg-cyan-600 hover:bg-cyan-700 text-white"
                       )}
                       onClick={() => setSelectedKeywordCategory(category)}
@@ -1594,7 +1596,7 @@ export default function ArtifactCenter() {
                     </Button>
                   ))}
                   <span className="ml-auto text-xs text-slate-500 px-2">
-                    {isZh ? "显示" : "Showing"}{visibleConcepts.length} {isZh ? "的" : "of"}{filteredConcepts.length}
+                      className={cn("h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground", selectedKeywordCategory === "all" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
                   </span>
                 </div>
 
