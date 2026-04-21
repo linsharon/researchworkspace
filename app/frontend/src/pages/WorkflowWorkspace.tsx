@@ -6720,7 +6720,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
             <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold text-slate-200">{paperAnalyticsRows.length}</p>
-                <p className="text-[10px] text-slate-500 uppercase">{isZh ? "可视化工具" : "Total Reading Papers"}</p>
+                <p className="text-[10px] text-slate-500 uppercase">{isZh ? "现有文献" : "Total Reading Papers"}</p>
               </CardContent>
             </Card>
             <Card className="border-slate-700/50">
@@ -6732,7 +6732,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
             <Card className="border-slate-700/50">
               <CardContent className="p-4 text-center">
                 <p className="text-2xl font-bold text-amber-600">{expandedPaperRows.length}</p>
-                <p className="text-[10px] text-slate-500 uppercase">{isZh ? "扩展论文" : "Expanded Papers"}</p>
+                <p className="text-[10px] text-slate-500 uppercase">{isZh ? "扩展文献" : "Expanded Papers"}</p>
               </CardContent>
             </Card>
           </div>
@@ -7000,7 +7000,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                               else setSynthSelectedPapers(synthSelectedPapers.filter((id) => id !== paper.id));
                             }}
                           />
-                          <span className="text-xs text-slate-700 truncate">{paper.title} ({paper.year})</span>
+                          <span className="text-xs text-cyan-300 truncate">{paper.title} ({paper.year})</span>
                         </label>
                       ))}
                     </div>
@@ -7085,7 +7085,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                             if (!paper) return null;
                             return (
                               <tr key={pid}>
-                                <td className="p-2 border border-slate-700/50 font-medium text-slate-700">
+                                <td className="p-2 border border-slate-700/50 font-medium text-cyan-300">
                                   {paper.authors[0]} ({paper.year})
                                 </td>
                                 {synthColumns.map((col) => (
@@ -7126,7 +7126,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                   <CardTitle className="text-sm font-semibold flex items-center gap-1.5">
                     <Zap className="w-4 h-4 text-amber-500" />
                     {isZh ? "可视化工具目录" : "Visualization Tools Directory"}</CardTitle>
-                  <p className="text-[10px] text-slate-400 mt-1">
+                    <p className="text-[10px] text-slate-300 mt-1">
                     {isZh ? "用于研究可视化、文献计量和数据展示的常用软件和应用程序。" : "Common software and apps for research visualization, bibliometrics, and data presentation."}</p>
                 </div>
                 <Button
@@ -7241,7 +7241,7 @@ function VisualizeWorkspace({ projectId }: { projectId: string }) {
                         {tool.pricing === "free" ? "Free" : tool.pricing === "freemium" ? "Freemium" : "Paid"}
                       </Badge>
                     </div>
-                    <p className="text-[10px] text-slate-600 mb-2 line-clamp-2">{tool.description}</p>
+                    <p className="text-[10px] text-slate-400 mb-2 line-clamp-2">{tool.description}</p>
                     {tool.price && (
                       <p className="text-[9px] text-slate-400 mb-2">💰 {tool.price}</p>
                     )}

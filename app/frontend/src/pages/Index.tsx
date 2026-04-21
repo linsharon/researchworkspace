@@ -474,7 +474,7 @@ function AuthenticatedLanding() {
       <div className="p-6 max-w-6xl mx-auto space-y-6">
         <div className="brand-hero rounded-2xl p-6">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-xs text-[#87ecff] tracking-wider uppercase">{isZh ? "项目管理" : "Project Management"}</p>
+            <p className="text-xs text-slate-700 dark:text-[#87ecff] tracking-wider uppercase">{isZh ? "项目管理" : "Project Management"}</p>
             <Badge className={isPremiumUser ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/30" : "bg-slate-700/60 text-slate-200 border-slate-500/40"}>
               {isPremiumUser ? (isZh ? "高级版用户" : "Premium") : (isZh ? "免费版用户" : "Free")}
             </Badge>
@@ -541,7 +541,7 @@ function AuthenticatedLanding() {
               ) : (
                 <div className="space-y-3">
                   {projects.map((project) => (
-                    <div key={project.id} className="rounded-lg border border-[rgba(103,121,237,0.22)] p-4 bg-[rgba(18,23,67,0.52)]">
+                    <div key={project.id} className="rounded-lg border border-[rgba(103,121,237,0.22)] p-4 bg-transparent dark:bg-[rgba(18,23,67,0.52)]">
                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <div>
                           <h3 className="text-sm font-semibold text-slate-100">{project.title}</h3>
