@@ -91,30 +91,30 @@ export default function AdminActivity() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-7xl mx-auto space-y-4">
+      <div className="p-6 max-w-7xl mx-auto space-y-4 text-slate-100">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-slate-100">{isZh ? "管理活动审计" : "Admin Activity Audit"}</h1>
-          <Button onClick={() => { void fetchSummary(); void fetchEvents(0); }} size="sm">
+          <Button className="brand-button border-0" onClick={() => { void fetchSummary(); void fetchEvents(0); }} size="sm">
             Refresh
           </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Card className="border-slate-700/50">
+          <Card className="glass-panel border-0">
             <CardHeader className="pb-2"><CardTitle className="text-sm">{isZh ? "总请求次数" : "Total Requests"}</CardTitle></CardHeader>
             <CardContent><p className="text-2xl font-semibold">{summary?.total ?? '--'}</p></CardContent>
           </Card>
-          <Card className="border-slate-700/50">
+          <Card className="glass-panel border-0">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Success (&lt;400)</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-semibold text-emerald-500">{summary?.success ?? '--'}</p></CardContent>
+            <CardContent><p className="text-2xl font-semibold text-[#87ecff]">{summary?.success ?? '--'}</p></CardContent>
           </Card>
-          <Card className="border-slate-700/50">
+          <Card className="glass-panel border-0">
             <CardHeader className="pb-2"><CardTitle className="text-sm">Failed (&gt;=400)</CardTitle></CardHeader>
             <CardContent><p className="text-2xl font-semibold text-rose-500">{summary?.failed ?? '--'}</p></CardContent>
           </Card>
         </div>
 
-        <Card className="border-slate-700/50">
+        <Card className="glass-panel border-0">
           <CardHeader className="pb-3">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2">
               <Input
@@ -144,7 +144,7 @@ export default function AdminActivity() {
               />
             </div>
             <div className="flex items-center gap-2 pt-2">
-              <Button size="sm" variant="outline" onClick={() => void fetchEvents(0)}>Apply</Button>
+              <Button size="sm" variant="outline" className="brand-outline" onClick={() => void fetchEvents(0)}>Apply</Button>
               <Button
                 size="sm"
                 variant="ghost"
@@ -166,7 +166,7 @@ export default function AdminActivity() {
             <div className="space-y-2">
               {loading && <p className="text-sm text-slate-500">Loading...</p>}
               {!loading && events.map((event) => (
-                <div key={event.id} className="rounded border border-slate-700/50 p-3 text-sm">
+                <div key={event.id} className="rounded border border-[rgba(103,121,237,0.22)] bg-[rgba(18,23,67,0.42)] p-3 text-sm">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge>{event.event_type}</Badge>
                     <Badge variant="outline">{event.action}</Badge>
@@ -178,7 +178,7 @@ export default function AdminActivity() {
                     {event.created_at} | user: {event.user_id || 'anonymous'} | resource: {event.resource_id || '-'} | req: {event.request_id || '-'} | {event.duration_ms ?? 0} ms
                   </div>
                   {event.details && (
-                    <pre className="mt-2 overflow-x-auto rounded bg-slate-950/70 p-2 text-[11px] text-slate-300">
+                    <pre className="mt-2 overflow-x-auto rounded bg-[rgba(10,12,38,0.78)] p-2 text-[11px] text-slate-300">
                       {JSON.stringify(event.details, null, 2)}
                     </pre>
                   )}

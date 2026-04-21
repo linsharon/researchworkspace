@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import ThemeToggle from "@/components/ThemeToggle";
 import ChatMessageContent from "@/components/chat/ChatMessageContent";
 import {
   AlertDialog,
@@ -294,16 +295,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
   ];
 
   return (
-    <div className="flex h-screen bg-[#061423] overflow-hidden">
+    <div className="app-shell flex h-screen overflow-hidden">
       {/* Left Sidebar */}
       <aside
         className={cn(
-          "flex flex-col border-r border-slate-700/30 bg-[#061423] transition-all duration-300 shrink-0",
+          "sidebar-shell flex flex-col border-r transition-all duration-300 shrink-0",
           sidebarCollapsed ? "w-0 overflow-hidden border-r-0" : "w-60"
         )}
       >
         {/* Logo */}
-        <div className="flex items-center gap-2 px-4 h-12 border-b border-slate-700/30 shrink-0">
+        <div className="sidebar-divider flex items-center gap-2 px-4 h-12 border-b shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <img
               src={BRAND_FAVICON_URL}
@@ -318,15 +319,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </div>
 
         {/* Project Info + Switcher */}
-        <div className="px-4 py-3 border-b border-slate-700/30 shrink-0">
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">
+        <div className="sidebar-divider px-4 py-3 border-b shrink-0">
+          <p className="warm-section-label text-xs uppercase tracking-wider mb-1">
             {t("app.currentProject")}
           </p>
           <button
             onClick={() => setShowProjectSwitcher(!showProjectSwitcher)}
             className="w-full text-left flex items-center justify-between gap-1 group"
           >
-            <p className="text-sm font-medium text-slate-200 truncate group-hover:text-cyan-300 transition-colors">
+            <p className="text-sm font-medium text-slate-200 truncate group-hover:text-[#87ecff] transition-colors">
               {activeProject.title}
             </p>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -336,8 +337,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
               className={cn(
                 "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border",
                 location.pathname === "/"
-                  ? "bg-cyan-500/20 text-cyan-200 border-cyan-500/40"
-                  : "text-slate-400 border-slate-700/40 hover:bg-slate-800/60 hover:text-slate-200"
+                  ? "nav-item-active"
+                  : "nav-item-idle"
               )}
             >
               <LayoutDashboard className="w-4 h-4 shrink-0" />
@@ -351,11 +352,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
               onClick={() => setShowProjectSwitcher(false)}
             >
               <div
-                className="w-full max-w-sm mx-4 bg-[#0a1a2b] rounded-xl shadow-2xl border border-slate-700/60 overflow-hidden"
+                className="glass-panel w-full max-w-sm mx-4 rounded-xl overflow-hidden border-0"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Modal header */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/40">
+                  <div className="sidebar-divider flex items-center justify-between px-4 py-3 border-b">
                   <p className="text-sm font-semibold text-slate-200">{t("app.switchProject")}</p>
                   <button
                     onClick={() => setShowProjectSwitcher(false)}
@@ -372,7 +373,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     <select
                       value={activeProjectId}
                       onChange={(e) => setActiveProjectId(e.target.value)}
-                      className="w-full text-sm bg-slate-800 border border-slate-700/60 text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-cyan-500"
+                      className="w-full text-sm bg-[rgba(15,18,52,0.82)] border border-[rgba(103,121,237,0.22)] text-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-[rgba(24,187,237,0.56)]"
                     >
                       {projects.map((proj) => (
                         <option key={proj.id} value={proj.id}>{proj.title}</option>
@@ -383,7 +384,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   {/* Switch button */}
                   <Button
                     size="sm"
-                    className="w-full bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+                    className="brand-button w-full border-0 text-xs"
                     onClick={() => {
                       setShowProjectSwitcher(false);
                       if (location.pathname.startsWith("/workflow/")) {
@@ -403,7 +404,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   </Button>
 
                   {/* New project */}
-                  <div className="border-t border-slate-700/40 pt-3">
+                  <div className="sidebar-divider border-t pt-3">
                     {projects.length >= 1 && (
                       <div className="flex items-center gap-1.5 mb-2">
                         <Badge
@@ -413,7 +414,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                             "text-[9px] border cursor-pointer",
                             isPremiumUser
                               ? "bg-emerald-900/50 text-emerald-300 border-emerald-700/40"
-                              : "bg-cyan-900/60 text-cyan-300 border-cyan-700/40"
+                                : "warm-chip"
                           )}
                           onClick={() => {
                             setShowProjectSwitcher(false);
@@ -443,19 +444,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
                           value={newProjectTitle}
                           onChange={(e) => setNewProjectTitle(e.target.value)}
                           placeholder={t("app.projectTitle")}
-                          className="text-xs h-8 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
+                          className="text-xs h-8 bg-[rgba(15,18,52,0.82)] border-[rgba(103,121,237,0.22)] text-slate-200 placeholder:text-slate-500"
                           autoFocus
                         />
                         <Input
                           value={newProjectGoal}
                           onChange={(e) => setNewProjectGoal(e.target.value)}
                           placeholder={t("app.researchGoal")}
-                          className="text-xs h-8 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
+                          className="text-xs h-8 bg-[rgba(15,18,52,0.82)] border-[rgba(103,121,237,0.22)] text-slate-200 placeholder:text-slate-500"
                         />
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            className="text-xs h-7 bg-cyan-500 hover:bg-cyan-600 text-white flex-1"
+                            className="brand-button text-xs h-7 border-0 flex-1"
                             onClick={handleCreateProject}
                             disabled={hasReachedFreeProjectLimit}
                           >
@@ -520,7 +521,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Navigation */}
         <ScrollArea className="flex-1">
           <nav className="p-2 space-y-0.5">
-            <p className="text-[10px] uppercase tracking-wider text-slate-500 px-2 pt-2 pb-1">
+            <p className="warm-section-label text-[10px] uppercase tracking-wider px-2 pt-2 pb-1">
               {t("nav.workflow")}
             </p>
             {NAV_ITEMS.map((item, idx) => {
@@ -546,10 +547,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     className={cn(
                       "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                       isActive
-                        ? "text-cyan-200 border-cyan-500/30"
+                        ? "text-[#c7f2ff] border-[rgba(24,187,237,0.28)] bg-[rgba(24,187,237,0.08)]"
                         : !item.path
-                        ? "text-slate-600 border-slate-800/40"
-                        : "text-slate-400 border-slate-700/40"
+                        ? "text-slate-600 border-[rgba(103,121,237,0.1)]"
+                        : "text-slate-400 border-[rgba(103,121,237,0.18)]"
                     )}
                   >
                     {isCompleted && !isActive ? (
@@ -563,7 +564,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               );
             })}
 
-            <p className="text-[10px] uppercase tracking-wider text-slate-500 px-2 pt-4 pb-1">
+            <p className="warm-section-label text-[10px] uppercase tracking-wider px-2 pt-4 pb-1">
               {t("nav.artifacts")}
             </p>
             {/* My Artifacts */}
@@ -573,8 +574,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 className={cn(
                   "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                   location.pathname === "/artifacts"
-                    ? "text-cyan-200 border-cyan-500/30"
-                    : "text-slate-400 border-slate-700/40"
+                    ? "text-[#c7f2ff] border-[rgba(24,187,237,0.28)] bg-[rgba(24,187,237,0.08)]"
+                    : "text-slate-400 border-[rgba(103,121,237,0.18)]"
                 )}
               >
                 <Archive className="w-4 h-4 shrink-0" />
@@ -588,8 +589,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 className={cn(
                   "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                   location.pathname === "/my-packages"
-                    ? "text-cyan-200 border-cyan-500/30"
-                    : "text-slate-400 border-slate-700/40"
+                    ? "text-[#c7f2ff] border-[rgba(24,187,237,0.28)] bg-[rgba(24,187,237,0.08)]"
+                    : "text-slate-400 border-[rgba(103,121,237,0.18)]"
                 )}
               >
                 <Archive className="w-4 h-4 shrink-0" />
@@ -603,8 +604,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 className={cn(
                   "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                   location.pathname === "/community-artifacts"
-                    ? "text-cyan-200 border-cyan-500/30"
-                    : "text-slate-400 border-slate-700/40"
+                    ? "text-[#c7f2ff] border-[rgba(24,187,237,0.28)] bg-[rgba(24,187,237,0.08)]"
+                    : "text-slate-400 border-[rgba(103,121,237,0.18)]"
                 )}
               >
                 <Globe className="w-4 h-4 shrink-0" />
@@ -612,7 +613,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </div>
             </Link>
 
-            <p className="text-[10px] uppercase tracking-wider text-slate-500 px-2 pt-4 pb-1">
+            <p className="warm-section-label text-[10px] uppercase tracking-wider px-2 pt-4 pb-1">
               {lang === "zh" ? "团队" : "Team"}
             </p>
             <button
@@ -631,8 +632,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 className={cn(
                   "flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                   location.pathname === "/projects/members"
-                    ? "text-cyan-200 border-cyan-500/30"
-                    : "text-slate-400 border-slate-700/40"
+                    ? "nav-item-active"
+                    : "nav-item-idle"
                 )}
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -640,7 +641,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   <span className="truncate record-item-title">{lang === "zh" ? "项目成员" : "Project Members"}</span>
                 </div>
                 {!isPremiumUser && (
-                  <Badge className="text-[9px] bg-cyan-900/60 text-cyan-300 border-cyan-700/40">
+                  <Badge className="warm-chip text-[9px]">
                     <Crown className="w-2.5 h-2.5 mr-0.5" />
                     Premium
                   </Badge>
@@ -650,7 +651,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
             {showDesignatedAdminEntry && (
               <>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 px-2 pt-4 pb-1">
+                <p className="warm-section-label text-[10px] uppercase tracking-wider px-2 pt-4 pb-1">
                   Admin
                 </p>
                 <Link to="/admin/users">
@@ -659,8 +660,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     className={cn(
                       "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                       location.pathname === "/admin/users"
-                        ? "text-cyan-200 border-cyan-500/30"
-                        : "text-slate-400 border-slate-700/40"
+                        ? "nav-item-active"
+                        : "nav-item-idle"
                     )}
                   >
                     <ShieldCheck className="w-4 h-4 shrink-0" />
@@ -673,8 +674,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     className={cn(
                       "flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors border record-item",
                       location.pathname === "/admin/activity"
-                        ? "text-cyan-200 border-cyan-500/30"
-                        : "text-slate-400 border-slate-700/40"
+                        ? "nav-item-active"
+                        : "nav-item-idle"
                     )}
                   >
                     <FileText className="w-4 h-4 shrink-0" />
@@ -690,15 +691,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top Bar */}
-        <header className="h-12 border-b border-slate-700/30 bg-[#061423] flex items-center px-2 shrink-0">
+        <header className="shell-chrome h-12 border-b flex items-center px-2 shrink-0">
           {/* Left toggle button */}
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className={cn(
               "flex items-center gap-1.5 h-9 px-3 rounded-lg border transition-all text-xs font-medium",
               sidebarCollapsed
-                ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20"
-                : "border-slate-700/50 bg-slate-800/40 text-slate-400 hover:bg-slate-800/70"
+                ? "warm-toggle"
+                : "shell-toggle"
             )}
             title={sidebarCollapsed ? t("app.expandSidebar") : t("app.collapseSidebar")}
           >
@@ -727,7 +728,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             )}
           </div>
 
-          {/* Right: Language switcher */}
+          {/* Right: Theme + language switcher */}
           <div className="flex items-center gap-2">
             {!user ? (
               <>
@@ -737,7 +738,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   </Button>
                 </Link>
                 <Link to="/auth/login">
-                  <Button size="sm" className="h-8 text-xs bg-cyan-500 hover:bg-cyan-600">
+                  <Button size="sm" className="brand-button h-8 text-xs border-0">
                     {lang === "zh" ? "登录" : "Login"}
                   </Button>
                 </Link>
@@ -745,7 +746,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             ) : (
               <>
                 <Link to="/profile">
-                  <Badge variant="outline" className="text-xs text-slate-300 border-slate-600 hover:border-cyan-400/60 cursor-pointer">
+                  <Badge variant="outline" className="text-xs text-slate-300 border-[rgba(103,121,237,0.24)] hover:border-[rgba(24,187,237,0.45)] cursor-pointer">
                     {headerDisplayName || user.name || user.email}
                   </Badge>
                 </Link>
@@ -761,10 +762,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 </Button>
               </>
             )}
+            <ThemeToggle compact />
             <div className="relative">
               <button
                 onClick={() => setShowLangSwitcher(!showLangSwitcher)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-700/50 hover:border-slate-500/60 hover:bg-slate-800/50 transition-all text-sm"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[rgba(103,121,237,0.2)] hover:border-[rgba(24,187,237,0.32)] hover:bg-[rgba(31,39,103,0.42)] transition-all text-sm"
               >
                 <Globe className="w-3.5 h-3.5 text-slate-500" />
                 <span className="text-slate-300 font-medium text-xs">
@@ -776,8 +778,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
               {showLangSwitcher && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowLangSwitcher(false)} />
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-[#0a1528] rounded-xl shadow-2xl border border-slate-700/50 z-50 overflow-hidden">
-                    <div className="p-2 border-b border-slate-700/40">
+                  <div className="glass-panel absolute right-0 top-full mt-1 w-44 rounded-xl z-50 overflow-hidden border-0">
+                    <div className="p-2 border-b border-[rgba(103,121,237,0.16)]">
                       <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
                         {t("app.language")}
                       </p>
@@ -789,15 +791,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         className={cn(
                           "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between border record-item",
                           lang === "en"
-                            ? "border-cyan-500/30 font-medium"
-                            : "border-slate-700/40"
+                            ? "nav-item-active font-medium"
+                            : "nav-item-idle"
                         )}
                       >
                         <span className="flex items-center gap-2">
                           <span className="text-base">🇺🇸</span>
                           <span className="text-slate-300 record-item-title">{isZh ? "英文" : "English"}</span>
                         </span>
-                        {lang === "en" && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-300" />}
+                        {lang === "en" && <CheckCircle2 className="w-3.5 h-3.5 text-[#87ecff]" />}
                       </button>
                       <button
                         onClick={() => { setLang("zh"); setShowLangSwitcher(false); }}
@@ -805,15 +807,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
                         className={cn(
                           "w-full text-left px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-between border record-item",
                           lang === "zh"
-                            ? "border-slate-700/40"
-                            : "border-slate-700/40"
+                            ? "nav-item-active"
+                            : "nav-item-idle"
                         )}
                       >
                         <span className="flex items-center gap-2">
                           <span className="text-base">🇨🇳</span>
                           <span className="text-slate-300 record-item-title">中文</span>
                         </span>
-                        {lang === "zh" && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-300" />}
+                        {lang === "zh" && <CheckCircle2 className="w-3.5 h-3.5 text-[#87ecff]" />}
                       </button>
                     </div>
                   </div>
@@ -826,14 +828,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Page Content */}
         <main className="flex-1 overflow-auto">{children}</main>
 
-        <footer className="h-10 border-t border-slate-700/30 bg-[#061423] px-4 flex items-center justify-center">
+        <footer className="shell-chrome h-10 border-t px-4 flex items-center justify-center">
           <p className="text-[11px] text-slate-400">
             {lang === "zh" ? "版权所有" : "Copyright"} © {new Date().getFullYear()} ·
             <a
               href="https://researchic.com"
               target="_blank"
               rel="noreferrer"
-              className="ml-1 text-cyan-300 hover:text-cyan-200"
+              className="ml-1 text-[#87ecff] hover:text-white"
             >
               {lang === "zh" ? "西西弗斯林" : "Sisyphus Lynn"}
             </a>
@@ -851,7 +853,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </div>
 
       <AlertDialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-        <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
+        <AlertDialogContent className="glass-panel text-slate-100 border-0">
           <AlertDialogHeader>
             <AlertDialogTitle>{lang === "zh" ? "升级为高级版" : "Upgrade to Premium"}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300">
@@ -865,7 +867,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               {lang === "zh" ? "稍后再试" : "Maybe later"}
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-cyan-500 hover:bg-cyan-400 text-slate-900"
+              className="brand-button border-0"
               onClick={() => navigate("/premium")}
             >
               {lang === "zh" ? "查看高级版详情" : "View Premium details"}
@@ -875,7 +877,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </AlertDialog>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
+        <AlertDialogContent className="glass-panel text-slate-100 border-0">
           <AlertDialogHeader>
             <AlertDialogTitle>{lang === "zh" ? "确认删除项目" : "Confirm project deletion"}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300">
@@ -904,9 +906,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Floating AI Assistant */}
       {/* Chat Dialog */}
       {showChat && (
-        <div className="fixed bottom-20 right-5 z-50 w-[380px] max-h-[520px] bg-[#0a1528] rounded-2xl shadow-2xl border border-slate-700/50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200">
+        <div className="glass-panel fixed bottom-20 right-5 z-50 w-[380px] max-h-[520px] rounded-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-200 border-0">
           {/* Chat Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-cyan-500 text-white shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 text-white shrink-0 bg-[linear-gradient(135deg,#18BBED_0%,#1878ED_52%,#8008F0_100%)]">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
                 <Bot className="w-4 h-4" />
@@ -926,7 +928,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
 
           {/* Chat Messages */}
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden border-b border-slate-700/40 pr-1 [scrollbar-color:#06b6d4_#0f172a] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-slate-900/70 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-500/70">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden border-b border-[rgba(103,121,237,0.16)] pr-1 [scrollbar-color:#18BBED_#0f1234] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-[rgba(15,18,52,0.88)] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[rgba(24,187,237,0.72)]">
             <div className="p-4 space-y-3">
               {chatMessages.map((msg) => (
                 <div
@@ -940,7 +942,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     className={cn(
                       "max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
                       msg.role === "user"
-                        ? "border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 rounded-br-md"
+                        ? "warm-thread-user rounded-br-md"
                         : "bg-slate-800 text-white rounded-bl-md"
                     )}
                   >
@@ -953,13 +955,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
 
           {/* Chat Input */}
-          <div className="p-3 border-t border-slate-700/40 shrink-0 bg-[#0a1a2b]">
+          <div className="p-3 border-t border-[rgba(103,121,237,0.16)] shrink-0 bg-[rgba(15,18,52,0.72)]">
             <div className="flex items-center gap-2">
               <Input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 placeholder={lang === "zh" ? "输入你的问题..." : "Type your question..."}
-                className="text-sm h-9 rounded-full px-4 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 focus-visible:ring-cyan-400"
+                className="text-sm h-9 rounded-full px-4 bg-[rgba(15,18,52,0.82)] border-[rgba(103,121,237,0.22)] text-slate-200 placeholder:text-slate-500 focus-visible:ring-[rgba(24,187,237,0.45)]"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -1001,7 +1003,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <>
             <Bot className="w-6 h-6 text-white" />
             {/* Pulse indicator */}
-            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-[#061423]" />
+            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-[rgba(10,12,38,0.95)]" />
           </>
         )}
       </button>

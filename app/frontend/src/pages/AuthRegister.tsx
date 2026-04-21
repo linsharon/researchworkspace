@@ -44,8 +44,8 @@ export default function AuthRegister() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-      <Card className="w-full max-w-md border-slate-700/50 bg-[#0a1528]">
+    <div className="app-shell min-h-screen flex items-center justify-center px-4">
+      <Card className="glass-panel w-full max-w-md border-0">
         <CardHeader>
           <CardTitle className="text-slate-100">邮箱注册</CardTitle>
         </CardHeader>
@@ -78,14 +78,14 @@ export default function AuthRegister() {
               onChange={(event) => setConfirmPassword(event.target.value)}
               autoComplete="new-password"
             />
-            <Button type="submit" className="w-full" disabled={submitting}>
+            <Button type="submit" className="brand-button w-full border-0" disabled={submitting}>
               {submitting ? "注册中..." : "注册"}
             </Button>
           </form>
 
           <p className="text-xs text-slate-400 mt-4">
             已有账号？
-            <Link to="/auth/login" className="text-cyan-300 hover:text-cyan-200 ml-1">
+            <Link to="/auth/login" className="text-[#87ecff] hover:text-white ml-1">
               去登录
             </Link>
           </p>

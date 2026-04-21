@@ -1,5 +1,6 @@
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { ThemeProvider } from '@/components/theme-provider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { I18nProvider } from '@/lib/i18n';
@@ -38,42 +39,44 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     {/* MODULE_PROVIDERS_START */}
     {/* MODULE_PROVIDERS_END */}
-    <AuthProvider>
-      <I18nProvider>
-        <TooltipProvider>
-          <Toaster />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/workflow/:projectId/:step" element={<ProtectedRoute><WorkflowWorkspace /></ProtectedRoute>} />
-              <Route path="/artifacts" element={<ProtectedRoute><ArtifactCenter /></ProtectedRoute>} />
-              <Route path="/paper/:paperId" element={<ProtectedRoute><PaperWorkspace /></ProtectedRoute>} />
-              <Route path="/paper-read/:projectId/:paperId" element={<ProtectedRoute><PaperReadPage /></ProtectedRoute>} />
-              <Route path="/pdf/:paperId" element={<ProtectedRoute><PdfViewer /></ProtectedRoute>} />
-              <Route path="/pdf-manager" element={<ProtectedRoute><PdfManager /></ProtectedRoute>} />
-              <Route path="/visualization" element={<ProtectedRoute><VisualizationBoard /></ProtectedRoute>} />
-              <Route path="/draft" element={<ProtectedRoute><DraftStudio /></ProtectedRoute>} />
-              <Route path="/admin/activity" element={<ProtectedAdminRoute><AdminActivity /></ProtectedAdminRoute>} />
-              <Route path="/admin/users" element={<ProtectedAdminRoute><AdminUsers /></ProtectedAdminRoute>} />
-              <Route path="/documents" element={<ProtectedRoute><DocumentCenter /></ProtectedRoute>} />
-              <Route path="/projects/members" element={<ProtectedRoute><ProjectMembers /></ProtectedRoute>} />
-              <Route path="/premium" element={<ProtectedRoute><PremiumPlans /></ProtectedRoute>} />
-              <Route path="/community-artifacts" element={<ProtectedRoute><CommunityArtifacts /></ProtectedRoute>} />
-              <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-              <Route path="/profile/:userId" element={<ProtectedRoute><ProfileView /></ProtectedRoute>} />
-              <Route path="/my-packages" element={<ProtectedRoute><MyPackages /></ProtectedRoute>} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/auth/error" element={<AuthError />} />
-              <Route path="/auth/login" element={<AuthLogin />} />
-              <Route path="/auth/register" element={<AuthRegister />} />
-              {/* MODULE_ROUTES_START */}
-              {/* MODULE_ROUTES_END */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </I18nProvider>
-    </AuthProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <AuthProvider>
+        <I18nProvider>
+          <TooltipProvider>
+            <Toaster />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/workflow/:projectId/:step" element={<ProtectedRoute><WorkflowWorkspace /></ProtectedRoute>} />
+                <Route path="/artifacts" element={<ProtectedRoute><ArtifactCenter /></ProtectedRoute>} />
+                <Route path="/paper/:paperId" element={<ProtectedRoute><PaperWorkspace /></ProtectedRoute>} />
+                <Route path="/paper-read/:projectId/:paperId" element={<ProtectedRoute><PaperReadPage /></ProtectedRoute>} />
+                <Route path="/pdf/:paperId" element={<ProtectedRoute><PdfViewer /></ProtectedRoute>} />
+                <Route path="/pdf-manager" element={<ProtectedRoute><PdfManager /></ProtectedRoute>} />
+                <Route path="/visualization" element={<ProtectedRoute><VisualizationBoard /></ProtectedRoute>} />
+                <Route path="/draft" element={<ProtectedRoute><DraftStudio /></ProtectedRoute>} />
+                <Route path="/admin/activity" element={<ProtectedAdminRoute><AdminActivity /></ProtectedAdminRoute>} />
+                <Route path="/admin/users" element={<ProtectedAdminRoute><AdminUsers /></ProtectedAdminRoute>} />
+                <Route path="/documents" element={<ProtectedRoute><DocumentCenter /></ProtectedRoute>} />
+                <Route path="/projects/members" element={<ProtectedRoute><ProjectMembers /></ProtectedRoute>} />
+                <Route path="/premium" element={<ProtectedRoute><PremiumPlans /></ProtectedRoute>} />
+                <Route path="/community-artifacts" element={<ProtectedRoute><CommunityArtifacts /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+                <Route path="/profile/:userId" element={<ProtectedRoute><ProfileView /></ProtectedRoute>} />
+                <Route path="/my-packages" element={<ProtectedRoute><MyPackages /></ProtectedRoute>} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/auth/error" element={<AuthError />} />
+                <Route path="/auth/login" element={<AuthLogin />} />
+                <Route path="/auth/register" element={<AuthRegister />} />
+                {/* MODULE_ROUTES_START */}
+                {/* MODULE_ROUTES_END */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </I18nProvider>
+      </AuthProvider>
+    </ThemeProvider>
     {/* MODULE_PROVIDERS_CLOSE */}
   </QueryClientProvider>
 );

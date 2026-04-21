@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import ThemeToggle from "@/components/ThemeToggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -154,11 +155,11 @@ function UnauthenticatedLanding() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#061423] text-slate-100 flex flex-col">
+    <div className="app-shell min-h-screen text-slate-100 flex flex-col">
       <div className="mx-auto max-w-6xl px-6 py-10 flex-1 w-full">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-cyan-500/20 border border-cyan-300/30 flex items-center justify-center">
+            <div className="glass-panel h-10 w-10 rounded-xl flex items-center justify-center border-0">
               <img src={BRAND_FAVICON_URL} alt={isZh ? "研究工作空间商标" : isZh ? "研究工作空间商标" : isZh ? "研究工作区商标" : "Research Workspace logo"} className="h-5 w-5" />
             </div>
             <div>
@@ -168,33 +169,36 @@ function UnauthenticatedLanding() {
               </p>
             </div>
           </div>
-          <div className="inline-flex rounded-lg border border-slate-700/60 overflow-hidden">
-            <button
-              onClick={() => setLang("en")}
-              className={`px-3 py-1.5 text-xs ${lang === "en" ? "bg-cyan-500 text-slate-900" : "bg-slate-900 text-slate-300"}`}
-            >
-              EN
-            </button>
-            <button
-              onClick={() => setLang("zh")}
-              className={`px-3 py-1.5 text-xs ${lang === "zh" ? "bg-slate-900 text-slate-300" : "bg-slate-900 text-slate-300"}`}
-            >
-              中文
-            </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <div className="brand-outline inline-flex rounded-lg overflow-hidden backdrop-blur-sm">
+              <button
+                onClick={() => setLang("en")}
+                className={`px-3 py-1.5 text-xs transition-colors ${lang === "en" ? "brand-button" : "text-slate-300 hover:bg-[rgba(103,121,237,0.18)]"}`}
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setLang("zh")}
+                className={`px-3 py-1.5 text-xs transition-colors ${lang === "zh" ? "brand-button" : "text-slate-300 hover:bg-[rgba(103,121,237,0.18)]"}`}
+              >
+                中文
+              </button>
+            </div>
           </div>
         </div>
-        <div className="rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-[#0f2a45] via-[#0b1f34] to-[#111a26] p-8 md:p-12 overflow-hidden relative">
-          <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-cyan-400/15 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-amber-400/10 blur-3xl pointer-events-none" />
+        <div className="brand-hero rounded-3xl p-8 md:p-12 overflow-hidden relative">
+          <div className="absolute -top-16 -right-16 h-56 w-56 rounded-full bg-[rgba(24,187,237,0.16)] blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-[rgba(128,8,240,0.16)] blur-3xl pointer-events-none" />
 
           <div className="relative z-10">
 
-          <Badge className="bg-cyan-500/20 text-cyan-200 border-cyan-300/30">
+          <Badge className="brand-pill">
             {isZh ? "研究工作流平台" : "Research Workflow Platform"}
           </Badge>
           <h1 className="mt-4 text-3xl md:text-5xl font-bold tracking-tight leading-tight">
             {isZh ? "从文献发现到初稿" : "From Literature Discovery to First Draft,"}
-            <span className="text-cyan-300">{isZh ? "在一个连续的工作流中" : "in One Continuous Workflow"}</span>
+            <span className="gradient-text">{isZh ? "在一个连续的工作流中" : "in One Continuous Workflow"}</span>
           </h1>
           <p className="mt-4 max-w-2xl text-slate-300 text-base md:text-lg">
             {isZh
@@ -204,7 +208,7 @@ function UnauthenticatedLanding() {
 
           <div className="mt-8 flex flex-wrap gap-3">
             <Button
-              className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-semibold"
+              className="brand-button border-0 font-semibold"
               onClick={() => navigate("/auth/register")}
             >
               {isZh ? "免费注册" : "Start Free"}
@@ -212,7 +216,7 @@ function UnauthenticatedLanding() {
             </Button>
             <Button
               variant="outline"
-              className="border-slate-500/40 text-slate-100 hover:bg-slate-800/60"
+              className="brand-outline text-slate-100"
               onClick={() => navigate("/auth/login")}
             >
               {isZh ? "登录" : "Sign In"}
@@ -225,10 +229,10 @@ function UnauthenticatedLanding() {
           {featureBlocks.map((item) => {
             const Icon = item.icon;
             return (
-              <Card key={item.title} className="border-slate-700/60 bg-[#0a1a2b]">
+              <Card key={item.title} className="glass-panel border-0">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm text-slate-100 flex items-center gap-2">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-cyan-400/15 text-cyan-300">
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[rgba(24,187,237,0.14)] text-[#87ecff] border border-[rgba(24,187,237,0.22)]">
                       <Icon className="h-4 w-4" />
                     </span>
                     {item.title}
@@ -244,7 +248,7 @@ function UnauthenticatedLanding() {
 
         <section className="mt-12">
           <div className="max-w-3xl">
-            <Badge className="bg-amber-500/15 text-amber-200 border-amber-300/20">
+            <Badge className="border-[rgba(128,8,240,0.3)] bg-[rgba(128,8,240,0.14)] text-[#ead1ff]">
               {isZh ? "研究产物" : "Research Artifacts"}
             </Badge>
             <h2 className="mt-4 text-2xl md:text-3xl font-bold text-slate-100">
@@ -261,10 +265,10 @@ function UnauthenticatedLanding() {
             {artifactModules.map((item) => {
               const Icon = item.icon;
               return (
-                <Card key={item.title} className="border-slate-700/60 bg-[#0a1a2b]">
+                <Card key={item.title} className="glass-panel border-0">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm text-slate-100 flex items-center gap-2">
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-amber-400/15 text-amber-300">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[rgba(128,8,240,0.14)] text-[#ead1ff] border border-[rgba(128,8,240,0.22)]">
                         <Icon className="h-4 w-4" />
                       </span>
                       {item.title}
@@ -280,10 +284,10 @@ function UnauthenticatedLanding() {
         </section>
 
         <section className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <Card className="border-slate-700/60 bg-[#0a1a2b]">
+          <Card className="glass-panel border-0">
             <CardHeader>
               <CardTitle className="text-slate-100 flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-cyan-400/15 text-cyan-300">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[rgba(24,187,237,0.14)] text-[#87ecff] border border-[rgba(24,187,237,0.22)]">
                   <Users className="h-4 w-4" />
                 </span>
                 {isZh ? "团队协作" : "Team Collaboration"}
@@ -296,17 +300,17 @@ function UnauthenticatedLanding() {
                   : "When research is not a solo activity, Team keeps members, papers, artifacts, and writing context inside one shared project space."}
               </p>
               {teamFeatures.map((item) => (
-                <div key={item} className="rounded-lg border border-slate-700/60 bg-slate-900/30 px-3 py-3 text-sm text-slate-300 leading-relaxed">
+                <div key={item} className="rounded-lg border border-[rgba(103,121,237,0.22)] bg-[rgba(18,23,67,0.5)] px-3 py-3 text-sm text-slate-300 leading-relaxed">
                   {item}
                 </div>
               ))}
             </CardContent>
           </Card>
 
-          <Card className="border-slate-700/60 bg-[#0a1a2b]">
+          <Card className="glass-panel border-0">
             <CardHeader>
               <CardTitle className="text-slate-100 flex items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-amber-400/15 text-amber-300">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[rgba(128,8,240,0.14)] text-[#ead1ff] border border-[rgba(128,8,240,0.22)]">
                   <Crown className="h-4 w-4" />
                 </span>
                 {isZh ? "免费版与高级版" : "Free vs Premium"}
@@ -319,7 +323,7 @@ function UnauthenticatedLanding() {
                     <tr className="border-b border-slate-700/60 text-left">
                       <th className="px-2 py-2 text-slate-400">{isZh ? "功能" : "Capability"}</th>
                       <th className="px-2 py-2 text-slate-300">{isZh ? "免费版" : "Free"}</th>
-                      <th className="px-2 py-2 text-amber-300">{isZh ? "高级版" : "Premium"}</th>
+                      <th className="px-2 py-2 text-[#d4b0ff]">{isZh ? "高级版" : "Premium"}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -343,14 +347,14 @@ function UnauthenticatedLanding() {
         </section>
       </div>
 
-      <footer className="h-10 border-t border-slate-700/40 bg-[#061423] px-4 flex items-center justify-center">
+      <footer className="h-10 border-t border-[rgba(103,121,237,0.16)] bg-[rgba(10,12,38,0.66)] px-4 flex items-center justify-center backdrop-blur-sm">
         <p className="text-[11px] text-slate-400">
           {isZh ? "版权所有" : "Copyright"} © {new Date().getFullYear()} ·
           <a
             href="https://researchic.com"
             target="_blank"
             rel="noreferrer"
-            className="ml-1 text-cyan-300 hover:text-cyan-200"
+            className="ml-1 text-[#87ecff] hover:text-white"
           >
             {isZh ? "西西弗斯林" : "Sisyphus Lynn"}
           </a>
@@ -468,9 +472,9 @@ function AuthenticatedLanding() {
   return (
     <AppLayout>
       <div className="p-6 max-w-6xl mx-auto space-y-6">
-        <div className="rounded-2xl border border-slate-700/50 bg-gradient-to-r from-[#10243a] via-[#102b3f] to-[#172b34] p-6">
+        <div className="brand-hero rounded-2xl p-6">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-xs text-cyan-300 tracking-wider uppercase">{isZh ? "项目管理" : "Project Management"}</p>
+            <p className="text-xs text-[#87ecff] tracking-wider uppercase">{isZh ? "项目管理" : "Project Management"}</p>
             <Badge className={isPremiumUser ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/30" : "bg-slate-700/60 text-slate-200 border-slate-500/40"}>
               {isPremiumUser ? (isZh ? "高级版用户" : "Premium") : (isZh ? "免费版用户" : "Free")}
             </Badge>
@@ -486,10 +490,10 @@ function AuthenticatedLanding() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <Card className="lg:col-span-1 border-slate-700/50 bg-[#0a1528]">
+          <Card className="lg:col-span-1 glass-panel border-0">
             <CardHeader>
               <CardTitle className="text-slate-100 flex items-center gap-2">
-                <FolderPlus className="h-4 w-4 text-cyan-300" />
+                <FolderPlus className="h-4 w-4 text-[#87ecff]" />
                 {isZh ? "创建项目" : "Create Project"}
               </CardTitle>
             </CardHeader>
@@ -504,7 +508,7 @@ function AuthenticatedLanding() {
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
               />
-              <Button className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900" onClick={() => void handleCreateProject()} disabled={creating}>
+              <Button className="brand-button w-full border-0" onClick={() => void handleCreateProject()} disabled={creating}>
                 {creating ? (isZh ? "创建中..." : "Creating...") : (isZh ? "创建并进入步骤1" : "Create and Enter Step 1")}
               </Button>
               {hasReachedFreeProjectLimit && (
@@ -515,7 +519,7 @@ function AuthenticatedLanding() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 border-slate-700/50 bg-[#0a1528]">
+          <Card className="lg:col-span-2 glass-panel border-0">
             <CardHeader>
               <CardTitle className="text-slate-100 flex items-center justify-between">
                 <span className="flex items-center gap-2">
@@ -537,7 +541,7 @@ function AuthenticatedLanding() {
               ) : (
                 <div className="space-y-3">
                   {projects.map((project) => (
-                    <div key={project.id} className="rounded-lg border border-slate-700/60 p-4 bg-slate-900/30">
+                    <div key={project.id} className="rounded-lg border border-[rgba(103,121,237,0.22)] p-4 bg-[rgba(18,23,67,0.52)]">
                       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <div>
                           <h3 className="text-sm font-semibold text-slate-100">{project.title}</h3>
@@ -580,7 +584,7 @@ function AuthenticatedLanding() {
       </div>
 
       <AlertDialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
-        <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
+        <AlertDialogContent className="glass-panel text-slate-100 border-0">
           <AlertDialogHeader>
             <AlertDialogTitle>{isZh ? "升级为高级版" : "Upgrade to Premium"}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300">
@@ -594,7 +598,7 @@ function AuthenticatedLanding() {
               {isZh ? "稍后再试" : "Maybe later"}
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-cyan-500 hover:bg-cyan-400 text-slate-900"
+              className="brand-button border-0"
               onClick={() => navigate("/premium")}
             >
               {isZh ? "查看高级版详情" : "View Premium details"}
@@ -604,7 +608,7 @@ function AuthenticatedLanding() {
       </AlertDialog>
 
       <AlertDialog open={Boolean(pendingDeleteProject)} onOpenChange={(open) => !open && setPendingDeleteProject(null)}>
-        <AlertDialogContent className="bg-[#0b1f34] border-slate-700 text-slate-100">
+        <AlertDialogContent className="glass-panel text-slate-100 border-0">
           <AlertDialogHeader>
             <AlertDialogTitle>{isZh ? "确认删除项目" : "Confirm project deletion"}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-300">

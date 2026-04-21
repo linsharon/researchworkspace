@@ -218,10 +218,10 @@ export default function AdminUsers() {
     return (
       <AppLayout>
         <div className="p-6 max-w-4xl mx-auto">
-          <Card className="border-slate-700/50 bg-slate-950/40 text-slate-100">
+          <Card className="glass-panel border-0 text-slate-100">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Shield className="w-5 h-5 text-amber-400" />
+                <Shield className="w-5 h-5 text-[#d4b0ff]" />
                 {isZh ? 'Admin 入口仅对指定账户开放' : 'Admin access is limited to the designated account'}
               </CardTitle>
             </CardHeader>
@@ -254,11 +254,11 @@ export default function AdminUsers() {
                 className="pl-9"
               />
             </div>
-            <Button variant="outline" onClick={() => void loadUsers(query)}>
+            <Button variant="outline" className="brand-outline" onClick={() => void loadUsers(query)}>
               <Search className="mr-2 h-4 w-4" />
               {isZh ? '搜索' : 'Search'}
             </Button>
-            <Button onClick={() => void loadUsers(query)}>
+            <Button className="brand-button border-0" onClick={() => void loadUsers(query)}>
               <RefreshCw className="mr-2 h-4 w-4" />
               {isZh ? '刷新' : 'Refresh'}
             </Button>
@@ -266,17 +266,17 @@ export default function AdminUsers() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <Card className="border-slate-700/50 bg-slate-950/40">
+          <Card className="glass-panel border-0">
             <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-300">{isZh ? '用户总数' : 'Total users'}</CardTitle></CardHeader>
             <CardContent><div className="text-3xl font-semibold">{total}</div></CardContent>
           </Card>
-          <Card className="border-slate-700/50 bg-slate-950/40">
+          <Card className="glass-panel border-0">
             <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-300">{isZh ? '高级版用户' : 'Premium users'}</CardTitle></CardHeader>
-            <CardContent><div className="text-3xl font-semibold text-amber-300">{premiumCount}</div></CardContent>
+            <CardContent><div className="text-3xl font-semibold text-[#d4b0ff]">{premiumCount}</div></CardContent>
           </Card>
-          <Card className="border-slate-700/50 bg-slate-950/40">
+          <Card className="glass-panel border-0">
             <CardHeader className="pb-2"><CardTitle className="text-sm text-slate-300">{isZh ? '管理员数量' : 'Admin accounts'}</CardTitle></CardHeader>
-            <CardContent><div className="text-3xl font-semibold text-cyan-300">{adminCount}</div></CardContent>
+            <CardContent><div className="text-3xl font-semibold text-[#87ecff]">{adminCount}</div></CardContent>
           </Card>
         </div>
 
@@ -297,7 +297,7 @@ export default function AdminUsers() {
           </Alert>
         )}
 
-        <Card className="border-slate-700/50 bg-slate-950/40">
+        <Card className="glass-panel border-0">
           <CardContent className="pt-6">
             <Table>
               <TableHeader>
@@ -329,7 +329,7 @@ export default function AdminUsers() {
                     <TableRow key={item.userId}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10 border border-slate-700">
+                          <Avatar className="h-10 w-10 border border-[rgba(103,121,237,0.22)]">
                             <AvatarImage src={item.avatarUrl || undefined} alt={item.username} />
                             <AvatarFallback>{avatarFallback(item)}</AvatarFallback>
                           </Avatar>
@@ -349,7 +349,7 @@ export default function AdminUsers() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant={item.role === 'admin' ? 'default' : 'outline'}>{item.role}</Badge>
+                            <Badge variant={item.role === 'admin' ? 'default' : 'outline'} className={item.role === 'admin' ? 'bg-[rgba(64,24,237,0.28)] text-[#efe2ff] border-[rgba(128,8,240,0.28)]' : ''}>{item.role}</Badge>
                           <Badge variant={item.isPremium ? 'secondary' : 'outline'}>
                             {item.isPremium ? (isZh ? '高级版' : 'Premium') : (isZh ? '免费版' : 'Free')}
                           </Badge>
@@ -361,6 +361,7 @@ export default function AdminUsers() {
                           <Button
                             size="sm"
                             variant="outline"
+                            className="brand-outline"
                             onClick={() => {
                               setEditingUser(item);
                               syncFormFromUser(item);
@@ -373,6 +374,7 @@ export default function AdminUsers() {
                           <Button
                             size="sm"
                             variant="outline"
+                            className="brand-outline"
                             onClick={() => {
                               setResetTarget(item);
                               setResetPassword('');

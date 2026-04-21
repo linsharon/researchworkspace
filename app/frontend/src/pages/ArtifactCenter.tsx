@@ -1731,7 +1731,7 @@ export default function ArtifactCenter() {
                 <DialogTrigger asChild>
                   <div
                     className={cn(
-                      "p-4 bg-[#0d1b30] border border-slate-700/50 rounded-xl hover:border-slate-300 hover:shadow-md transition-all cursor-pointer group",
+                      "artifact-card p-4 border rounded-xl transition-all cursor-pointer group",
                       packMode && selectedForPack.has(artifactPackToken(artifact.id)) && "border-cyan-400/60 bg-cyan-500/10"
                     )}
                     onClick={() => {
@@ -1769,7 +1769,7 @@ export default function ArtifactCenter() {
                         {isZh ? "步骤" : "Step"}{artifact.sourceStep}
                       </span>
                     </div>
-                    <h4 className="text-sm font-medium text-slate-200 mb-1 group-hover:text-cyan-300 transition-colors line-clamp-2">
+                    <h4 className="artifact-card-title text-sm font-medium text-slate-200 mb-1 transition-colors line-clamp-2">
                       {displayTitle}
                     </h4>
                     {artifact.type === "visualization" && visualThumbUrls[artifact.id] ? (
@@ -1867,7 +1867,7 @@ export default function ArtifactCenter() {
                     </div>
                   </div>
                 </DialogTrigger>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="artifact-preview-dialog max-w-lg">
                   <DialogHeader>
                     <DialogTitle className="text-base">
                       {displayTitle}

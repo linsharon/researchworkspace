@@ -2521,28 +2521,30 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
         }}
         className="w-full"
       >
-        <div className="mb-4 rounded-xl border border-slate-700/50 bg-slate-900/20 px-3 pt-5 pb-2">
-          <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
-            <TabsTrigger
-              value="keywords"
-              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
-            >
-              {tr("Keywords", "关键词")}
-            </TabsTrigger>
-            <TabsTrigger
-              value="search"
-              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
-            >
-              {tr("Search Log", "检索日志")}
-            </TabsTrigger>
-            <TabsTrigger
-              value="candidates"
-              className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
-            >
-              {tr("Candidate Papers", "候选论文")}
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        <Card className="mb-4 border-slate-700/50">
+          <CardContent className="p-3">
+            <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+              <TabsTrigger
+                value="keywords"
+                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              >
+                {tr("Keywords", "关键词")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="search"
+                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              >
+                {tr("Search Log", "检索日志")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="candidates"
+                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              >
+                {tr("Candidate Papers", "候选论文")}
+              </TabsTrigger>
+            </TabsList>
+          </CardContent>
+        </Card>
 
         <TabsContent value="keywords" className="mt-4 space-y-4">
           {purposeCards.length === 0 && (
@@ -5736,25 +5738,23 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
       <Card className="border-slate-700/50">
         <CardContent className="space-y-4">
           <Tabs value={expandMode} onValueChange={(value) => { setExpandMode(value as ExpandMode); setExpandError(null); }}>
-            <div className="rounded-xl border border-slate-700/50 bg-slate-900/20 px-3 pt-5 pb-2">
-              <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
-                <TabsTrigger
-                  value="entry-paper"
-                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
-                >
-                  {isZh ? "通过入口文献扩展" : "Expand by Entry Paper"}</TabsTrigger>
-                <TabsTrigger
-                  value="doi-url"
-                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
-                >
-                  {isZh ? "通过DOI/URL扩展" : "Expand by DOI/URL"}</TabsTrigger>
-                <TabsTrigger
-                  value="manual"
-                  className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
-                >
-                  {isZh ? "手动扩展" : "Expand Manually"}</TabsTrigger>
-              </TabsList>
-            </div>
+            <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
+              <TabsTrigger
+                value="entry-paper"
+                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              >
+                {isZh ? "通过入口文献扩展" : "Expand by Entry Paper"}</TabsTrigger>
+              <TabsTrigger
+                value="doi-url"
+                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              >
+                {isZh ? "通过DOI/URL扩展" : "Expand by DOI/URL"}</TabsTrigger>
+              <TabsTrigger
+                value="manual"
+                className="h-8 px-3 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-200 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+              >
+                {isZh ? "手动扩展" : "Expand Manually"}</TabsTrigger>
+            </TabsList>
 
             <TabsContent value="entry-paper" className="mt-4 space-y-4">
               <div className="rounded-lg border border-slate-700/50 bg-slate-800/40 p-3">

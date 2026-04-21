@@ -34,8 +34,8 @@ export default function AuthLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-      <Card className="w-full max-w-md border-slate-700/50 bg-[#0a1528]">
+    <div className="app-shell min-h-screen flex items-center justify-center px-4">
+      <Card className="glass-panel w-full max-w-md border-0">
         <CardHeader>
           <CardTitle className="text-slate-100">邮箱密码登录</CardTitle>
         </CardHeader>
@@ -55,14 +55,14 @@ export default function AuthLogin() {
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
             />
-            <Button type="submit" className="w-full" disabled={submitting}>
+            <Button type="submit" className="brand-button w-full border-0" disabled={submitting}>
               {submitting ? "登录中..." : "登录"}
             </Button>
           </form>
 
           <p className="text-xs text-slate-400 mt-4">
             还没有账号？
-            <Link to="/auth/register" className="text-cyan-300 hover:text-cyan-200 ml-1">
+            <Link to="/auth/register" className="text-[#87ecff] hover:text-white ml-1">
               去注册
             </Link>
           </p>

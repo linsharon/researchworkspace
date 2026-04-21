@@ -94,8 +94,8 @@ export default function PremiumPlans() {
   return (
     <AppLayout>
       <div className="mx-auto max-w-6xl p-6 space-y-6">
-        <div className="rounded-2xl border border-cyan-500/20 bg-gradient-to-r from-[#10243a] via-[#153149] to-[#112c3c] p-6">
-          <Badge className="bg-cyan-500/20 text-cyan-100 border-cyan-300/30">
+        <div className="brand-hero rounded-2xl p-6">
+          <Badge className="brand-pill">
             {isZh ? "订阅计划" : "Subscription Plans"}
           </Badge>
           <h1 className="text-3xl font-bold text-slate-100 mt-3">
@@ -108,7 +108,7 @@ export default function PremiumPlans() {
           </p>
         </div>
 
-        <Card className="border-slate-700/50 bg-[#0a1528]">
+        <Card className="glass-panel border-0">
           <CardHeader>
             <CardTitle className="text-slate-100">{isZh ? "功能对比" : "Feature Comparison"}</CardTitle>
           </CardHeader>
@@ -116,29 +116,29 @@ export default function PremiumPlans() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="text-left border-b border-slate-700/60">
+                  <tr className="text-left border-b border-[rgba(103,121,237,0.18)]">
                     <th className="px-3 py-2 text-slate-300">{isZh ? "功能" : "Capability"}</th>
                     <th className="px-3 py-2 text-slate-300">{isZh ? "免费版" : "Free"}</th>
-                    <th className="px-3 py-2 text-amber-300">{isZh ? "高级" : "Premium"}</th>
+                    <th className="px-3 py-2 text-[#d4b0ff]">{isZh ? "高级" : "Premium"}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-slate-800/80">
+                  <tr className="border-b border-[rgba(103,121,237,0.14)]">
                     <td className="px-3 py-2 text-slate-300">{isZh ? "项目创建限制" : "Project creation limit"}</td>
                     <td className="px-3 py-2 text-slate-400">1</td>
                     <td className="px-3 py-2 text-slate-100">{isZh ? "无限" : "Unlimited"}</td>
                   </tr>
-                  <tr className="border-b border-slate-800/80">
+                  <tr className="border-b border-[rgba(103,121,237,0.14)]">
                     <td className="px-3 py-2 text-slate-300">{isZh ? "删除项目" : "Delete project"}</td>
                     <td className="px-3 py-2 text-rose-300">{isZh ? "不可用" : "Not available"}</td>
                     <td className="px-3 py-2 text-emerald-300">{isZh ? "需要确认后可用" : "Available with confirmation"}</td>
                   </tr>
-                  <tr className="border-b border-slate-800/80">
+                  <tr className="border-b border-[rgba(103,121,237,0.14)]">
                     <td className="px-3 py-2 text-slate-300">{isZh ? "团队/项目成员管理" : "Team / Project member management"}</td>
                     <td className="px-3 py-2 text-rose-300">{isZh ? "不支持" : "Not available"}</td>
                     <td className="px-3 py-2 text-emerald-300">{isZh ? "可用" : "Available"}</td>
                   </tr>
-                  <tr className="border-b border-slate-800/80">
+                  <tr className="border-b border-[rgba(103,121,237,0.14)]">
                     <td className="px-3 py-2 text-slate-300">{isZh ? "添加到我的产集的社区产集" : "Community Packages added to My Packages"}</td>
                     <td className="px-3 py-2 text-slate-400">{isZh ? "最多2个产集" : "Up to 2 packages"}</td>
                     <td className="px-3 py-2 text-slate-100">{isZh ? "更高限额" : "Higher limit"}</td>
@@ -155,7 +155,7 @@ export default function PremiumPlans() {
         </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <Card className="border-slate-700/50 bg-[#0a1528]">
+          <Card className="glass-panel border-0">
             <CardHeader>
               <CardTitle className="text-slate-100">{isZh ? "PayPal" : "PayPal"}</CardTitle>
             </CardHeader>
@@ -168,14 +168,14 @@ export default function PremiumPlans() {
                 href="https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-5B02189379420942WNHSA4GA"
                 target="_blank"
                 rel="noreferrer"
-                className="text-xs text-cyan-300 hover:text-cyan-200 underline"
+                className="text-xs text-[#87ecff] hover:text-white underline"
               >
                 {isZh ? "备用直接订阅链接" : "Fallback direct subscription link"}
               </a>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-700/50 bg-[#0a1528]">
+          <Card className="glass-panel border-0">
             <CardHeader>
               <CardTitle className="text-slate-100">{isZh ? "微信支付" : "WeChat Pay"}</CardTitle>
             </CardHeader>
@@ -185,7 +185,7 @@ export default function PremiumPlans() {
                   ? "请添加 wenrenws 为微信好友，并备注“Premium 升级”。"
                   : "Please add wenrenws as a WeChat friend and mention \"Premium upgrade\"."}
               </p>
-              <div className="mt-4 inline-flex items-center rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+              <div className="mt-4 inline-flex items-center rounded-md border border-[rgba(24,187,237,0.28)] bg-[rgba(24,187,237,0.1)] px-3 py-2 text-sm text-[#d8f7ff]">
                 {isZh ? "微信联系：wenrenws" : "WeChat contact: wenrenws"}
               </div>
             </CardContent>

@@ -11,19 +11,19 @@
 }
 
 .highlight-yellow {
-	background-color: rgba(253, 224, 71, 0.45);
+	background-color: rgba(245, 217, 114, 0.28);
 }
 
 .highlight-green {
-	background-color: rgba(134, 239, 172, 0.45);
+	background-color: rgba(144, 211, 172, 0.26);
 }
 
 .highlight-red {
-	background-color: rgba(252, 165, 165, 0.45);
+	background-color: rgba(214, 142, 151, 0.24);
 }
 
 .highlight-blue {
-	background-color: rgba(147, 197, 253, 0.45);
+	background-color: rgba(137, 174, 223, 0.26);
 }
 
 .pdf-scroll-host {
@@ -44,37 +44,37 @@
 	overflow-x: hidden !important;
 	scrollbar-gutter: stable;
 	scrollbar-width: auto;
-	scrollbar-color: rgba(6, 182, 212, 0.75) rgba(15, 23, 42, 0.9);
+	scrollbar-color: rgba(126, 138, 181, 0.72) rgba(22, 25, 40, 0.88);
 }
 
 .pdf-scroll-host .rpv-core__inner-pages::-webkit-scrollbar {
-	width: 12px;
+	width: 10px;
 }
 
 .pdf-scroll-host .rpv-core__inner-pages::-webkit-scrollbar-track {
-	background: rgba(15, 23, 42, 0.9);
-	border-left: 1px solid rgba(71, 85, 105, 0.35);
+	background: rgba(22, 25, 40, 0.88);
+	border-left: 1px solid rgba(133, 141, 176, 0.16);
 }
 
 .pdf-scroll-host .rpv-core__inner-pages::-webkit-scrollbar-thumb {
-	background: rgba(6, 182, 212, 0.72);
+	background: rgba(126, 138, 181, 0.74);
 	border-radius: 9999px;
-	border: 2px solid rgba(15, 23, 42, 0.9);
+	border: 2px solid rgba(22, 25, 40, 0.88);
 }
 
 .pdf-scroll-host .rpv-core__inner-pages::-webkit-scrollbar-thumb:hover {
-	background: rgba(34, 211, 238, 0.95);
-	box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.16);
+	background: rgba(144, 155, 194, 0.88);
+	box-shadow: 0 0 0 2px rgba(126, 138, 181, 0.12);
 }
 
 .pdf-scroll-host:hover .rpv-core__inner-pages::-webkit-scrollbar {
-	width: 14px;
+	width: 12px;
 }
 
 .pdf-scroll-host:hover .rpv-core__inner-pages::-webkit-scrollbar-track {
-	background: rgba(8, 15, 28, 0.98);
+	background: rgba(20, 22, 34, 0.96);
 }
 
 .pdf-scroll-host:hover .rpv-core__inner-pages {
-	scrollbar-color: rgba(34, 211, 238, 0.95) rgba(8, 15, 28, 0.98);
+	scrollbar-color: rgba(144, 155, 194, 0.82) rgba(20, 22, 34, 0.96);
 }

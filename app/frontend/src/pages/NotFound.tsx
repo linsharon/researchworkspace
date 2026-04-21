@@ -7,15 +7,15 @@ export default function NotFound() {
   const { lang } = useI18n();
   const isZh = lang === "zh";
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-800/40">
-      <div className="text-center space-y-4">
-        <h1 className="text-6xl font-bold text-slate-200">404</h1>
-        <p className="text-lg text-slate-600">{isZh ? "页面未找到" : "Page not found"}</p>
+    <div className="app-shell min-h-screen flex items-center justify-center px-4">
+      <div className="glass-panel rounded-3xl px-8 py-10 text-center space-y-4 border-0 max-w-md w-full">
+        <h1 className="text-6xl font-bold gradient-text">404</h1>
+        <p className="text-lg text-slate-200">{isZh ? "页面未找到" : "Page not found"}</p>
         <p className="text-sm text-slate-400">
           The page you're looking for doesn't exist or has been moved.
         </p>
         <Link to="/">
-          <Button className="bg-cyan-600 hover:bg-cyan-700 text-white mt-4">
+          <Button className="brand-button mt-4 border-0">
             <Home className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>
