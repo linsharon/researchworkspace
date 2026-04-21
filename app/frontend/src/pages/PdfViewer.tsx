@@ -317,7 +317,7 @@ export default function PdfViewer() {
                       <div className="flex gap-1.5">
                         <Button
                           size="sm"
-                          className="text-xs h-7 flex-1 bg-cyan-600 hover:bg-cyan-700 text-white"
+                          className="app-btn-primary app-btn-compact flex-1"
                           onClick={() => setShowNewHighlight(true)}
                         >
                           <Plus className="w-3 h-3 mr-1" />
@@ -368,7 +368,7 @@ export default function PdfViewer() {
                           <div className="flex gap-1.5">
                             <Button
                               size="sm"
-                              className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
+                              className="app-btn-primary app-btn-compact"
                               onClick={handleAddHighlight}
                             >
                               Save
@@ -376,7 +376,7 @@ export default function PdfViewer() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-xs h-7"
+                              className="app-btn-compact"
                               onClick={() => {
                                 setShowNewHighlight(false);
                                 setNewHText("");
@@ -488,7 +488,7 @@ export default function PdfViewer() {
                       <div className="flex gap-1.5">
                         <Button
                           size="sm"
-                          className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
+                          className="app-btn-primary app-btn-xs"
                           onClick={() => setLitNoteSaved(true)}
                         >
                           <Save className="w-3 h-3 mr-1" />

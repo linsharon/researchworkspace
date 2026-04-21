@@ -417,11 +417,11 @@ export default function MyPackages() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="created" className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white flex items-center gap-2">
+            <TabsTrigger value="created" className="workflow-content-tab flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
               {isZh ? "创建的产集" : "Created Packages"} ({filteredCreatedPackages.length})
             </TabsTrigger>
-            <TabsTrigger value="downloaded" className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white flex items-center gap-2">
+            <TabsTrigger value="downloaded" className="workflow-content-tab flex items-center gap-2">
               <DownloadIcon className="w-4 h-4" />
               {isZh ? "下载的产集" : "Downloaded Packages"} ({filteredDownloadedPackages.length})
             </TabsTrigger>
@@ -452,7 +452,7 @@ export default function MyPackages() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs"
+                    className="app-btn-compact"
                     disabled={currentCardPage <= 1}
                     onClick={() => activeTab === "created" ? setCreatedPage((prev) => Math.max(1, prev - 1)) : setDownloadedPage((prev) => Math.max(1, prev - 1))}
                   >
@@ -461,7 +461,7 @@ export default function MyPackages() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs"
+                    className="app-btn-compact"
                     disabled={currentCardPage >= totalCardPages}
                     onClick={() => activeTab === "created" ? setCreatedPage((prev) => Math.min(totalCardPages, prev + 1)) : setDownloadedPage((prev) => Math.min(totalCardPages, prev + 1))}
                   >
@@ -559,10 +559,10 @@ export default function MyPackages() {
               </div>
 
               <div className="flex gap-2 pt-2">
-                <Button variant="outline" className="text-xs" onClick={() => setShowEditDialog(false)}>
+                <Button variant="outline" className="app-btn-xs" onClick={() => setShowEditDialog(false)}>
                   Cancel
                 </Button>
-                <Button className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white flex-1" onClick={handleSaveEdit}>
+                <Button className="app-btn-primary app-btn-xs flex-1" onClick={handleSaveEdit}>
                   Save Changes
                 </Button>
               </div>
@@ -596,7 +596,7 @@ export default function MyPackages() {
                   Keep My Version
                 </Button>
                 <Button
-                  className="justify-start text-left h-auto py-2 bg-cyan-600 hover:bg-cyan-700 text-white"
+                  className="app-btn-primary justify-start text-left h-auto py-2"
                   onClick={() => {
                     if (!unpackConflict) return;
                     applyUnpackStrategy(unpackConflict.pkg, "use-community", unpackConflict.duplicateKeys);

@@ -293,7 +293,7 @@ export default function PaperWorkspace() {
             </Button>
             <Button
               size="sm"
-              className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
+              className="app-btn-primary app-btn-xs"
               onClick={() => {
                 setShowNewLitNote(true);
                 setShowNewPermNote(false);
@@ -393,7 +393,7 @@ export default function PaperWorkspace() {
                   size="sm"
                   variant="outline"
                   className={cn(
-                    "text-xs h-7",
+                    "app-btn-compact",
                     importedFromPdf && "bg-emerald-50 border-emerald-300 text-emerald-700"
                   )}
                   onClick={handleImportFromPdf}
@@ -405,7 +405,7 @@ export default function PaperWorkspace() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="text-xs h-7"
+                  className="app-btn-compact"
                   onClick={() => setShowNewAnnotation(!showNewAnnotation)}
                 >
                   <Highlighter className="w-3 h-3 mr-1" />
@@ -456,7 +456,7 @@ export default function PaperWorkspace() {
                 <div className="flex gap-1.5">
                   <Button
                     size="sm"
-                    className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
+                    className="app-btn-primary app-btn-compact"
                     onClick={handleAddAnnotation}
                   >
                     <Plus className="w-3 h-3 mr-1" />
@@ -465,7 +465,7 @@ export default function PaperWorkspace() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-xs h-7"
+                    className="app-btn-compact"
                     onClick={() => {
                       setShowNewAnnotation(false);
                       setNewAnnText("");
@@ -573,7 +573,7 @@ export default function PaperWorkspace() {
               </CardTitle>
               <Button
                 size="sm"
-                className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
+                className="app-btn-primary app-btn-compact"
                 onClick={() => {
                   setShowNewLitNote(true);
                   setShowNewPermNote(false);
@@ -608,7 +608,7 @@ export default function PaperWorkspace() {
                 <div className="flex gap-1.5">
                   <Button
                     size="sm"
-                    className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white"
+                    className="app-btn-primary app-btn-xs"
                     onClick={handleAddLitNote}
                   >
                     <Save className="w-3 h-3 mr-1" />

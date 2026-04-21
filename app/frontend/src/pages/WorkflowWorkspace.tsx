@@ -113,8 +113,8 @@ const SEARCH_RECORD_PURPOSE_LINKS_KEY_PREFIX = "rw-search-record-purpose-links";
 const DRAFT_COMPONENTS_STORAGE_KEY = "rw-draft-components";
 const DRAFT_STRUCTURE_STORAGE_KEY = "rw-draft-structure-check";
 const DRAFT_INSERTED_SEGMENTS_STORAGE_KEY = "rw-draft-inserted-segments";
-const STEP_TAB_CLASS = "h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100";
-const STEP_TAB_ACTIVE_CLASS = "bg-cyan-600 hover:bg-cyan-700 text-white";
+const STEP_TAB_CLASS = "workflow-content-btn-tab";
+const STEP_TAB_ACTIVE_CLASS = "workflow-content-btn-tab--active";
 // Never include rw-artifacts in versioned aux-cache invalidation.
 // Otherwise user-created artifacts (e.g. Purpose Cards) are lost on cache version bumps.
 const WORKFLOW_AUX_CACHE_KEYS = [PAPER_DECISIONS_KEY] as const;
@@ -2528,19 +2528,19 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
             <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
               <TabsTrigger
                 value="keywords"
-                className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                className="workflow-content-tab"
               >
                 {tr("Keywords", "关键词")}
               </TabsTrigger>
               <TabsTrigger
                 value="search"
-                className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                className="workflow-content-tab"
               >
                 {tr("Search Log", "检索日志")}
               </TabsTrigger>
               <TabsTrigger
                 value="candidates"
-                className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                className="workflow-content-tab"
               >
                 {tr("Candidate Papers", "候选论文")}
               </TabsTrigger>
@@ -3408,7 +3408,7 @@ function EntryPaperWorkspace({ projectId }: { projectId: string }) {
 
           <div className="flex gap-2 pt-1">
             <Button
-              className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+              className="app-btn-primary app-btn-xs"
               onClick={() => void handleAddConcept()}
               disabled={!conceptName.trim()}
             >
@@ -4649,7 +4649,7 @@ function ReadWorkspace() {
                 <div className="flex gap-1.5">
                   <Button
                     size="sm"
-                    className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
+                    className="app-btn-primary app-btn-compact"
                     onClick={handleAddAnnotation}
                   >
                     <Plus className="w-3 h-3 mr-1" />
@@ -4657,7 +4657,7 @@ function ReadWorkspace() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-xs h-7"
+                    className="app-btn-compact"
                     onClick={() => {
                       setShowNewAnnotation(false);
                       setNewAnnText("");
@@ -5743,17 +5743,17 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
             <TabsList className="flex w-auto flex-wrap justify-start gap-2 bg-transparent p-0">
               <TabsTrigger
                 value="entry-paper"
-                className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                className="workflow-content-tab"
               >
                 {isZh ? "通过入口文献扩展" : "Expand by Entry Paper"}</TabsTrigger>
               <TabsTrigger
                 value="doi-url"
-                className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                className="workflow-content-tab"
               >
                 {isZh ? "通过DOI/URL扩展" : "Expand by DOI/URL"}</TabsTrigger>
               <TabsTrigger
                 value="manual"
-                className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                className="workflow-content-tab"
               >
                 {isZh ? "手动扩展" : "Expand Manually"}</TabsTrigger>
             </TabsList>
@@ -5838,12 +5838,12 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                   <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
                     <TabsTrigger
                       value="references"
-                      className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                      className="workflow-content-tab"
                     >
                       {isZh ? "参考文献" : "References"}</TabsTrigger>
                     <TabsTrigger
                       value="citations"
-                      className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                      className="workflow-content-tab"
                     >
                       {isZh ? "引文" : "Citations"}</TabsTrigger>
                   </TabsList>
@@ -5891,12 +5891,12 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                 <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
                   <TabsTrigger
                     value="references"
-                    className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                    className="workflow-content-tab"
                   >
                     {isZh ? "参考文献" : "References"}</TabsTrigger>
                   <TabsTrigger
                     value="citations"
-                    className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                    className="workflow-content-tab"
                   >
                     {isZh ? "引文" : "Citations"}</TabsTrigger>
                 </TabsList>
@@ -5967,12 +5967,12 @@ function ExpandWorkspace({ projectId }: { projectId: string }) {
                 <TabsList className="flex w-full flex-wrap gap-2 bg-transparent p-0">
                   <TabsTrigger
                     value="references"
-                    className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                    className="workflow-content-tab"
                   >
                     {isZh ? "参考文献" : "References"}</TabsTrigger>
                   <TabsTrigger
                     value="citations"
-                    className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                    className="workflow-content-tab"
                   >
                     {isZh ? "引文" : "Citations"}</TabsTrigger>
                 </TabsList>
@@ -8831,9 +8831,9 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     key={key}
                     onClick={() => { setPreWriteTab(key); setShowNewPreWrite(false); }}
                     className={cn(
-                      "h-8 px-3 rounded-md text-xs font-medium transition-all border border-input bg-input/76 text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100",
+                      "workflow-content-btn-tab",
                       preWriteTab === key
-                        ? "bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600"
+                        ? "workflow-content-btn-tab--active"
                         : ""
                     )}
                   >
@@ -9008,7 +9008,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   variant={selectedStyle === style.id ? "default" : "outline"}
                   className={cn(
                     STEP_TAB_CLASS,
-                    selectedStyle === style.id && STEP_TAB_ACTIVE_CLASS
+                      selectedStyle === style.id && STEP_TAB_ACTIVE_CLASS
                   )}
                   onClick={() => {
                     setSelectedStyle(style.id);
@@ -9144,9 +9144,9 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                     key={comp.id}
                     onClick={() => setActiveComponentId(comp.id)}
                     className={cn(
-                      "h-8 px-3 rounded-md text-xs whitespace-nowrap transition-all border border-input bg-input/76 text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 shrink-0",
+                      "workflow-content-btn-tab whitespace-nowrap shrink-0",
                       activeComponentId === comp.id
-                        ? "bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600"
+                        ? "workflow-content-btn-tab--active"
                         : ""
                     )}
                   >
@@ -9265,9 +9265,9 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                 key={tab}
                 onClick={() => setCheckTab(tab)}
                 className={cn(
-                  "h-8 px-3 rounded-md text-xs font-medium transition-all capitalize border border-input bg-input/76 text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100",
+                  "workflow-content-btn-tab capitalize",
                   checkTab === tab
-                    ? "bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600"
+                    ? "workflow-content-btn-tab--active"
                     : ""
                 )}
               >
@@ -9308,7 +9308,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                 <Separator className="my-2" />
                 <Button
                   size="sm"
-                  className="w-full text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
+                  className="app-btn-primary app-btn-compact w-full"
                   onClick={handleAiCheck}
                   disabled={aiChecking}
                 >
@@ -9527,7 +9527,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
               <div className="flex gap-1.5 mt-3">
                 <Button
                   size="sm"
-                  className="text-xs h-7 bg-cyan-600 hover:bg-cyan-700 text-white"
+                  className="app-btn-primary app-btn-compact"
                   onClick={() => {
                     handleInsertArtifact(previewArtifact.id);
                     setPreviewArtifactId(null);
@@ -9536,7 +9536,7 @@ function DraftWorkspaceInline({ projectId }: { projectId: string }) {
                   <Plus className="w-3 h-3 mr-1" />
                   {isZh ? "插入到" : "Insert into"}{activeStyle.components.find((c) => c.id === activeComponentId)?.label || "Current Section"}
                 </Button>
-                <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setPreviewArtifactId(null)}>
+                <Button size="sm" variant="ghost" className="app-btn-compact" onClick={() => setPreviewArtifactId(null)}>
                   {isZh ? "关闭" : "Close"}</Button>
               </div>
             </div>

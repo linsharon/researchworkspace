@@ -318,6 +318,50 @@
   background: var(--outline-hover-bg);
 }
 
+/* Unified tab styles for Workflow Step 2-6 content labels */
+.workflow-content-tab {
+  @apply h-8 px-3 text-xs text-foreground dark:text-slate-200;
+  @apply hover:bg-secondary dark:hover:bg-slate-700/70;
+  @apply hover:text-foreground dark:hover:text-slate-100;
+  @apply data-[state=active]:bg-cyan-600 data-[state=active]:text-white;
+}
+
+.workflow-content-btn-tab {
+  @apply h-8 px-3 rounded-md text-xs font-medium transition-all;
+  @apply border border-input bg-input text-foreground dark:text-slate-200;
+  @apply hover:bg-secondary dark:hover:bg-slate-700/70;
+  @apply hover:text-foreground dark:hover:text-slate-100;
+}
+
+.workflow-content-btn-tab--active {
+  @apply bg-cyan-600 hover:bg-cyan-700 text-white border-cyan-600;
+}
+
+.workflow-filter-btn {
+  @apply h-8 px-3 text-xs text-foreground dark:text-slate-500;
+  @apply hover:bg-secondary hover:text-foreground;
+}
+
+.workflow-filter-btn--compact {
+  @apply h-7 px-3 text-xs;
+}
+
+.workflow-filter-btn--active {
+  @apply bg-cyan-600 hover:bg-cyan-700 text-white;
+}
+
+.app-btn-xs {
+  @apply text-xs;
+}
+
+.app-btn-compact {
+  @apply h-7 text-xs;
+}
+
+.app-btn-primary {
+  @apply bg-cyan-600 hover:bg-cyan-700 text-white;
+}
+
 .landing-icon-cyan {
   background: rgba(24, 187, 237, 0.14);
   color: #87ecff;

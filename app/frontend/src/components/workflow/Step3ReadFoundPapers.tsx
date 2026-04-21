@@ -554,19 +554,19 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
               <TabsList className="flex w-full flex-wrap justify-start gap-2 bg-transparent p-0">
                 <TabsTrigger
                   value="all"
-                  className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                  className="workflow-content-tab"
                 >
                   {tr("All", "全部")} ({papers.length})
                 </TabsTrigger>
                 <TabsTrigger
                   value="entry"
-                  className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                  className="workflow-content-tab"
                 >
                   {tr("Entry", "入口文献")} ({papers.filter((p) => p.is_entry_paper).length})
                 </TabsTrigger>
                 <TabsTrigger
                   value="expanded"
-                  className="h-8 px-3 text-xs text-foreground dark:text-slate-200 hover:bg-secondary dark:hover:bg-slate-700/70 hover:text-foreground dark:hover:text-slate-100 data-[state=active]:bg-cyan-600 data-[state=active]:text-white"
+                  className="workflow-content-tab"
                 >
                   {tr("Expanded", "扩展文献")} ({papers.filter((p) => p.is_expanded_paper).length})
                 </TabsTrigger>
@@ -577,7 +577,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
               {selectedTab === "entry" && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="outline" className="h-7 text-xs">
+                    <Button size="sm" variant="outline" className="app-btn-compact">
                       <Plus className="w-3 h-3 mr-1" />
                       {tr("Add Paper", "添加论文")}
                       <ChevronDown className="w-3 h-3 ml-1" />
@@ -866,7 +866,7 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
               <label className="text-xs font-medium text-slate-600">{tr("DOI or URL (optional)", "DOI 或 URL（可选）")}</label>
               <div className="flex gap-2">
                 <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder={isZh ? isZh ? isZh ? "https://doi.org/..." : "https://doi.org/..." : "https://doi.org/..." : "https://doi.org/..."} className="text-sm" />
-                <Button type="button" variant="outline" className="text-xs" disabled={doiFetching || !newPaperDoiUrl.trim()} onClick={() => void handleFetchByDoiUrl()}>
+                <Button type="button" variant="outline" className="app-btn-xs" disabled={doiFetching || !newPaperDoiUrl.trim()} onClick={() => void handleFetchByDoiUrl()}>
                   <Sparkles className="w-3 h-3 mr-1" />
                   {doiFetching ? tr("Fetching...", "获取中...") : tr("Auto-fill", "自动填充")}
                 </Button>
@@ -921,11 +921,11 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
               <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} rows={2} placeholder={tr("How did you find this paper?", "你是如何找到这篇论文的？")} className="text-xs" />
             </div>
             <div className="flex gap-2 pt-2">
-              <Button className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs" onClick={() => void handleAddEntryPaper()}>
+              <Button className="app-btn-primary app-btn-xs" onClick={() => void handleAddEntryPaper()}>
                 <Plus className="w-3 h-3 mr-1" />
                 {tr("Add Paper", "添加文献")}
               </Button>
-              <Button variant="ghost" className="text-xs" onClick={() => setShowAddPaperDialog(false)}>
+              <Button variant="ghost" className="app-btn-xs" onClick={() => setShowAddPaperDialog(false)}>
                 {tr("Cancel", "取消")}
               </Button>
             </div>
@@ -959,14 +959,14 @@ export default function Step3ReadFoundPapers({ projectId }: Step3Props) {
             </div>
             <div className="flex gap-2 pt-2">
               <Button
-                className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+                className="app-btn-primary app-btn-xs"
                 onClick={() => void handleAddMultipleEntryPapers()}
                 disabled={bulkImporting || !bulkDoiInput.trim()}
               >
                 <Sparkles className="w-3 h-3 mr-1" />
                 {bulkImporting ? tr("Importing...", "导入中...") : tr("Import by DOI", "通过DOI导入")}
               </Button>
-              <Button variant="ghost" className="text-xs" onClick={() => setShowAddMultiplePaperDialog(false)}>
+              <Button variant="ghost" className="app-btn-xs" onClick={() => setShowAddMultiplePaperDialog(false)}>
                 {tr("Cancel", "取消")}
               </Button>
             </div>

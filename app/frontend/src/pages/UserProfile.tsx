@@ -219,13 +219,13 @@ export default function UserProfilePage() {
                     {isPublic ? "Public" : "Private"}
                   </Badge>
                   {user && (
-                    <Button size="sm" variant="outline" className="text-xs" onClick={() => setIsPublic((v) => !v)}>
+                      <Button size="sm" variant="outline" className="app-btn-xs" onClick={() => setIsPublic((v) => !v)}>
                       Toggle Visibility
                     </Button>
                   )}
                 </div>
                 {user && (
-                  <Button size="sm" className="text-xs bg-cyan-600 hover:bg-cyan-700 text-white" onClick={() => void handleSaveProfile()}>
+                    <Button size="sm" className="app-btn-primary app-btn-xs" onClick={() => void handleSaveProfile()}>
                     Save Profile
                   </Button>
                 )}

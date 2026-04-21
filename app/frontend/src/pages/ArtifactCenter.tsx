@@ -1294,7 +1294,7 @@ export default function ArtifactCenter() {
             <Button
               size="sm"
               variant={packMode ? "default" : "outline"}
-              className={packMode ? "bg-cyan-600 hover:bg-cyan-700 text-white text-xs" : "text-xs"}
+              className={cn("app-btn-xs", packMode && "app-btn-primary")}
               onClick={() => {
                 setPackMode(!packMode);
                 setSelectedForPack(new Set());
@@ -1304,7 +1304,7 @@ export default function ArtifactCenter() {
               {packMode ? (isZh ? "取消打包" : "Cancel Pack") : (isZh ? "打包与分享" : "Pack & Share")}
             </Button>
             <Link to="/community-artifacts">
-              <Button size="sm" variant="outline" className="text-xs">
+              <Button size="sm" variant="outline" className="app-btn-xs">
                 <Globe className="w-3.5 h-3.5 mr-1.5" />
                 {isZh ? "社区" : "Community"}</Button>
             </Link>
@@ -1327,12 +1327,12 @@ export default function ArtifactCenter() {
                 )}
               </div>
               <div className="flex items-center gap-1.5">
-                <Button size="sm" variant="outline" className="text-xs h-7" onClick={selectAllVisibleForPack}>
+                <Button size="sm" variant="outline" className="app-btn-compact" onClick={selectAllVisibleForPack}>
                   {isZh ? "选择当前可见项" : "Select Visible"}</Button>
                 <Button
                   size="sm"
                   disabled={totalPackSelectionCount === 0}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+                  className="app-btn-primary app-btn-xs"
                   onClick={() => setShowPackDialog(true)}
                 >
                   <Share2 className="w-3.5 h-3.5 mr-1.5" />
@@ -1348,7 +1348,10 @@ export default function ArtifactCenter() {
                       key={category}
                       size="sm"
                       variant={allSelected ? "default" : "outline"}
-                      className={cn("text-xs h-7", allSelected && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+                      className={cn(
+                        "workflow-filter-btn workflow-filter-btn--compact",
+                        allSelected && "workflow-filter-btn--active"
+                      )}
                       onClick={() => toggleSelectKeywordCategoryForPack(category)}
                     >
                       {category} ({ids.length})
@@ -1362,7 +1365,10 @@ export default function ArtifactCenter() {
                     key={type}
                     size="sm"
                     variant={allSelected ? "default" : "outline"}
-                    className={cn("text-xs h-7", allSelected && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+                    className={cn(
+                      "workflow-filter-btn workflow-filter-btn--compact",
+                      allSelected && "workflow-filter-btn--active"
+                    )}
                     onClick={() => toggleSelectTypeForPack(type)}
                   >
                     {ARTIFACT_TYPE_META[type].label} ({items.length})
@@ -1391,9 +1397,8 @@ export default function ArtifactCenter() {
                 size="sm"
                 variant={filter === opt.value ? "default" : "outline"}
                 className={cn(
-                  "h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground",
-                  filter === opt.value &&
-                    "bg-cyan-600 hover:bg-cyan-700 text-white"
+                  "workflow-filter-btn",
+                  filter === opt.value && "workflow-filter-btn--active"
                 )}
                 onClick={() => setFilter(opt.value)}
               >
@@ -1402,7 +1407,6 @@ export default function ArtifactCenter() {
             ))}
           </div>
         </div>
-                      className={cn("h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground", allSelected && "bg-cyan-600 hover:bg-cyan-700 text-white")}
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-700/50 bg-slate-800/20 px-3 py-2">
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <span>{isZh ? "每页卡片数" : "Cards per page"}</span>
@@ -1428,9 +1432,9 @@ export default function ArtifactCenter() {
             </span>
             {cardPageSize !== "all" && totalCardPages > 1 ? (
               <>
-                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentCardPage <= 1} onClick={() => setCardPage((prev) => Math.max(1, prev - 1))}>
+                <Button size="sm" variant="outline" className="app-btn-compact" disabled={currentCardPage <= 1} onClick={() => setCardPage((prev) => Math.max(1, prev - 1))}>
                   {isZh ? "上一页" : "Prev"}</Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentCardPage >= totalCardPages} onClick={() => setCardPage((prev) => Math.min(totalCardPages, prev + 1))}>
+                <Button size="sm" variant="outline" className="app-btn-compact" disabled={currentCardPage >= totalCardPages} onClick={() => setCardPage((prev) => Math.min(totalCardPages, prev + 1))}>
                   {isZh ? "前进" : "Next"}</Button>
               </>
             ) : null}
@@ -1541,7 +1545,7 @@ export default function ArtifactCenter() {
                     <Button
                       size="sm"
                       variant="default"
-                      className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                      className="workflow-filter-btn workflow-filter-btn--active"
                       onClick={() => setSelectedKeywordCategory("all")}
                     >
                       {isZh ? "全部（" : "All ("}{filteredConcepts.length})
@@ -1552,8 +1556,8 @@ export default function ArtifactCenter() {
                         size="sm"
                         variant={selectedKeywordCategory === category ? "default" : "outline"}
                         className={cn(
-                          "text-xs",
-                          selectedKeywordCategory === category && "bg-cyan-600 hover:bg-cyan-700 text-white"
+                          "workflow-filter-btn",
+                          selectedKeywordCategory === category && "workflow-filter-btn--active"
                         )}
                         onClick={() => setSelectedKeywordCategory(category)}
                       >
@@ -1576,7 +1580,10 @@ export default function ArtifactCenter() {
                   <Button
                     size="sm"
                     variant={selectedKeywordCategory === "all" ? "default" : "outline"}
-                    className={cn("text-xs", selectedKeywordCategory === "all" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
+                    className={cn(
+                      "workflow-filter-btn",
+                      selectedKeywordCategory === "all" && "workflow-filter-btn--active"
+                    )}
                     onClick={() => setSelectedKeywordCategory("all")}
                   >
                     {isZh ? "全部（" : "All ("}{filteredConcepts.length})
@@ -1587,8 +1594,8 @@ export default function ArtifactCenter() {
                       size="sm"
                       variant={selectedKeywordCategory === category ? "default" : "outline"}
                       className={cn(
-                        "h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground",
-                        selectedKeywordCategory === category && "bg-cyan-600 hover:bg-cyan-700 text-white"
+                        "workflow-filter-btn",
+                        selectedKeywordCategory === category && "workflow-filter-btn--active"
                       )}
                       onClick={() => setSelectedKeywordCategory(category)}
                     >
@@ -1596,7 +1603,6 @@ export default function ArtifactCenter() {
                     </Button>
                   ))}
                   <span className="ml-auto text-xs text-slate-500 px-2">
-                      className={cn("h-8 px-3 text-xs text-foreground dark:text-slate-500 hover:bg-secondary hover:text-foreground", selectedKeywordCategory === "all" && "bg-cyan-600 hover:bg-cyan-700 text-white")}
                   </span>
                 </div>
 
@@ -1912,7 +1918,7 @@ export default function ArtifactCenter() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 text-xs"
+                          className="app-btn-compact"
                           onClick={() => void handleOpenArtifactSource(artifact)}
                         >
                           <ArrowRight className="w-3 h-3 mr-1" />
@@ -1987,13 +1993,13 @@ export default function ArtifactCenter() {
               <div className="flex items-center gap-2 pt-1">
                 <Button
                   size="sm"
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+                  className="app-btn-primary app-btn-xs"
                   disabled={!packName.trim() || totalPackSelectionCount === 0}
                   onClick={handleCreatePackage}
                 >
                   <Share2 className="w-3 h-3 mr-1" />
                   {isZh ? "分享产集" : "Share Package"}</Button>
-                <Button size="sm" variant="ghost" className="text-xs" onClick={() => setShowPackDialog(false)}>
+                <Button size="sm" variant="ghost" className="app-btn-xs" onClick={() => setShowPackDialog(false)}>
                   {isZh ? "取消" : "Cancel"}</Button>
                 {packSaved && <span className="text-xs text-emerald-500">{isZh ? "产集已分享。" : "Package shared."}</span>}
               </div>
@@ -2017,7 +2023,7 @@ export default function ArtifactCenter() {
                 <label className="text-xs font-medium text-slate-600">{isZh ? "DOI 或 URL（可选）" : "DOI or URL (optional)"}</label>
                 <div className="flex gap-2">
                   <Input value={newPaperDoiUrl} onChange={(e) => setNewPaperDoiUrl(e.target.value)} placeholder={isZh ? isZh ? isZh ? "https://doi.org/..." : "https://doi.org/..." : "https://doi.org/..." : "https://doi.org/..."} className="text-sm" />
-                  <Button type="button" variant="outline" className="text-xs" disabled={doiFetching || !newPaperDoiUrl.trim()} onClick={() => void handleFetchByDoiUrl()}>
+                  <Button type="button" variant="outline" className="app-btn-xs" disabled={doiFetching || !newPaperDoiUrl.trim()} onClick={() => void handleFetchByDoiUrl()}>
                     <Sparkles className="w-3 h-3 mr-1" />
                     {doiFetching ? "Fetching..." : "Auto-fill"}
                   </Button>
@@ -2072,10 +2078,10 @@ export default function ArtifactCenter() {
                 <Textarea value={newPaperDiscoveryNote} onChange={(e) => setNewPaperDiscoveryNote(e.target.value)} rows={2} placeholder={isZh ? "你是如何找到这篇论文的？" : "How did you find this paper?"} className="text-xs" />
               </div>
               <div className="flex gap-2 pt-2">
-                <Button className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs" onClick={() => void handleAddEntryPaper()}>
+                <Button className="app-btn-primary app-btn-xs" onClick={() => void handleAddEntryPaper()}>
                   <Plus className="w-3 h-3 mr-1" />
                   {isZh ? "发现笔记" : "Add Paper"}</Button>
-                <Button variant="ghost" className="text-xs" onClick={() => setShowAddPaperDialog(false)}>
+                <Button variant="ghost" className="app-btn-xs" onClick={() => setShowAddPaperDialog(false)}>
                   {isZh ? "取消" : "Cancel"}</Button>
               </div>
             </div>
@@ -2106,14 +2112,14 @@ export default function ArtifactCenter() {
               </div>
               <div className="flex gap-2 pt-2">
                 <Button
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+                  className="app-btn-primary app-btn-xs"
                   onClick={() => void handleAddMultipleEntryPapers()}
                   disabled={bulkImporting || !bulkDoiInput.trim()}
                 >
                   <Sparkles className="w-3 h-3 mr-1" />
                   {bulkImporting ? "Importing..." : "Import by DOI"}
                 </Button>
-                <Button variant="ghost" className="text-xs" onClick={() => setShowAddMultiplePaperDialog(false)}>
+                <Button variant="ghost" className="app-btn-xs" onClick={() => setShowAddMultiplePaperDialog(false)}>
                   {isZh ? "取消" : "Cancel"}</Button>
               </div>
             </div>
@@ -2171,14 +2177,14 @@ export default function ArtifactCenter() {
                 <div className="flex gap-2 pt-1">
                   {conceptDialogMode === "edit" ? (
                     <Button
-                      className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
+                      className="app-btn-primary app-btn-xs"
                       onClick={handleSaveConcept}
                     >
                       {isZh ? "保存" : "Save"}</Button>
                   ) : null}
                   <Button
                     variant="ghost"
-                    className="text-xs"
+                    className="app-btn-xs"
                     onClick={() => {
                       setShowConceptDialog(false);
                       setSelectedConceptId(null);
