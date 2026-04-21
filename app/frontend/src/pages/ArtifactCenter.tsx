@@ -655,8 +655,10 @@ export default function ArtifactCenter() {
         visualArtifacts.map(async (artifact) => {
           const meta = parseVisualizationContent(artifact.content);
           if (!meta) return [artifact.id, ""] as const;
-          if (meta.accessUrl) return [artifact.id, meta.accessUrl] as const;
-          if (!meta.bucketName || !meta.objectKey) return [artifact.id, ""] as const;
+          // Prefer fetching a fresh presigned URL using bucket+key (stored URLs expire)
+          if (!meta.bucketName || !meta.objectKey) {
+            return [artifact.id, meta.accessUrl || ""] as const;
+          }
 
           try {
             const response = await fetch(`${baseURL}/api/v1/storage/download-url`, {
@@ -670,11 +672,11 @@ export default function ArtifactCenter() {
                 object_key: meta.objectKey,
               }),
             });
-            if (!response.ok) return [artifact.id, ""] as const;
+            if (!response.ok) return [artifact.id, meta.accessUrl || ""] as const;
             const result = (await response.json()) as { download_url?: string };
-            return [artifact.id, result.download_url || ""] as const;
+            return [artifact.id, result.download_url || meta.accessUrl || ""] as const;
           } catch {
-            return [artifact.id, ""] as const;
+            return [artifact.id, meta.accessUrl || ""] as const;
           }
         })
       );
